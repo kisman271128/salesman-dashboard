@@ -29,7 +29,7 @@ class SalesmanDashboardUpdater:
             'performance': 'd.performance', 
             'salesmanlob': 'd.salesmanlob',
             'salesmanproses': 'd.salesmanproses',
-            'soharian': 'd.soharian'  # ← ADD THIS
+            'soharian': 'd.soharian'  # ← Sheet untuk chart data
         }
     
     def ensure_folders(self):
@@ -168,7 +168,7 @@ class SalesmanDashboardUpdater:
                     salesman_data = {
                         'id': str(salesman_id) if salesman_id else f"S{index+1}",
                         'name': str(name),
-                        'tipe': str(zone) if Tipe else 'Zone Unknown',
+                        'tipe': str(tipe) if tipe else 'Zone Unknown',  # Fixed typo: zone -> tipe
                         'achievement': f"{achievement_num}%",
                         'achievement_num': achievement_num,  # For sorting
                         'status': status
@@ -257,6 +257,127 @@ class SalesmanDashboardUpdater:
         except Exception as e:
             logging.error(f"❌ Error processing salesman details: {e}")
             return {}
+    
+    def generate_chart_data(self, sheets=None):
+        """Generate chart data dari parameter sheets"""
+        chart_data = {
+            'so_data': [],
+            'do_data': [],
+            'target_data': [],
+            'labels': [],
+            'period': '30 Hari Terakhir',
+            'stats': {
+                'avg_so': 0,
+                'avg_do': 0,
+                'avg_target': 127,
+                'achievement_so': 0,
+                'achievement_do': 0,
+                'total_days': 0
+            }
+        }
+        
+        try:
+            # ✅ GUNAKAN parameter sheets
+            if sheets and 'soharian' in sheets:
+                so_df = sheets['soharian']  # ← Ambil dari parameter
+                logging.info(f"📊 Processing {len(so_df)} rows from sheets['soharian']")
+                logging.info(f"📊 Columns in soharian: {list(so_df.columns)}")
+                
+                for index, row in so_df.iterrows():
+                    if pd.isna(row.iloc[0]):  # Skip empty rows
+                        continue
+                    
+                    # Get values dengan flexible mapping
+                    tgl = self.get_cell_value(row, ['Tgl', 'Tanggal', 'Date'])
+                    target = self.get_cell_value(row, ['Target', 'target'])
+                    so = self.get_cell_value(row, ['SO', 'so'])
+                    do = self.get_cell_value(row, ['DO', 'do'])
+                    
+                    if tgl is not None and so is not None:
+                        # Parse date
+                        try:
+                            if isinstance(tgl, str):
+                                date_obj = datetime.strptime(tgl, '%m/%d/%Y')
+                            else:
+                                date_obj = pd.to_datetime(tgl)
+                            label = date_obj.strftime('%d/%m')
+                        except Exception as e:
+                            logging.warning(f"Date parse error: {e}")
+                            label = f"Day {len(chart_data['labels'])+1}"
+                        
+                        # Convert to millions
+                        so_millions = int(self.safe_number(so) / 1_000_000)
+                        do_millions = int(self.safe_number(do) / 1_000_000) if do else 0
+                        target_millions = int(self.safe_number(target) / 1_000_000) if target else 127
+                        
+                        chart_data['so_data'].append(so_millions)
+                        chart_data['do_data'].append(do_millions)
+                        chart_data['target_data'].append(target_millions)
+                        chart_data['labels'].append(label)
+                
+                # Calculate stats
+                if chart_data['so_data']:
+                    chart_data['stats']['total_days'] = len(chart_data['so_data'])
+                    chart_data['stats']['avg_so'] = int(sum(chart_data['so_data']) / len(chart_data['so_data']))
+                    chart_data['stats']['avg_do'] = int(sum(chart_data['do_data']) / len(chart_data['do_data']))
+                    chart_data['stats']['avg_target'] = int(sum(chart_data['target_data']) / len(chart_data['target_data']))
+                    
+                    if chart_data['stats']['avg_target'] > 0:
+                        chart_data['stats']['achievement_so'] = round((chart_data['stats']['avg_so'] / chart_data['stats']['avg_target']) * 100, 1)
+                        chart_data['stats']['achievement_do'] = round((chart_data['stats']['avg_do'] / chart_data['stats']['avg_target']) * 100, 1)
+                
+                logging.info(f"✅ Processed {len(chart_data['so_data'])} days from sheets parameter")
+                logging.info(f"📈 Stats: SO={chart_data['stats']['avg_so']}M, DO={chart_data['stats']['avg_do']}M")
+                
+                # Return real data jika ada
+                if chart_data['so_data']:
+                    return chart_data
+            
+            # Jika sheets kosong atau sheet tidak ada
+            logging.info("⚠️ Sheet 'soharian' not found or empty, using sample data")
+            return self.generate_sample_chart_data_fallback()
+            
+        except Exception as e:
+            logging.error(f"❌ Error processing chart data: {e}")
+            return self.generate_sample_chart_data_fallback()
+
+    def generate_sample_chart_data_fallback(self):
+        """Sample data fallback"""
+        import random
+        from datetime import datetime, timedelta
+        
+        chart_data = {
+            'so_data': [],
+            'do_data': [],
+            'target_data': [],
+            'labels': [],
+            'period': '30 Hari Terakhir',
+            'stats': {
+                'avg_so': 0, 'avg_do': 0, 'avg_target': 127,
+                'achievement_so': 0, 'achievement_do': 0, 'total_days': 30
+            }
+        }
+        
+        base_date = datetime.now() - timedelta(days=30)
+        
+        for i in range(30):
+            so_val = random.randint(60, 90)
+            do_val = random.randint(45, 85)
+            
+            chart_data['so_data'].append(so_val)
+            chart_data['do_data'].append(do_val)
+            chart_data['target_data'].append(127)
+            
+            current_date = base_date + timedelta(days=i)
+            chart_data['labels'].append(current_date.strftime('%d/%m'))
+        
+        # Calculate sample stats
+        chart_data['stats']['avg_so'] = int(sum(chart_data['so_data']) / 30)
+        chart_data['stats']['avg_do'] = int(sum(chart_data['do_data']) / 30)
+        chart_data['stats']['achievement_so'] = round((chart_data['stats']['avg_so'] / 127) * 100, 1)
+        chart_data['stats']['achievement_do'] = round((chart_data['stats']['avg_do'] / 127) * 100, 1)
+        
+        return chart_data
     
     def get_cell_value(self, row, possible_columns):
         """Ambil nilai dari row dengan berbagai kemungkinan nama kolom"""
@@ -382,8 +503,8 @@ class SalesmanDashboardUpdater:
             files_saved.append('salesman_details.json')
             logging.info(f"✅ Saved: {details_file}")
             
-            # Generate sample chart data
-            chart_data = self.generate_chart_data()
+            # ✅ FIXED: Generate chart data ONLY ONCE dengan parameter sheets
+            chart_data = self.generate_chart_data(sheets)
             chart_file = f'{self.data_folder}/chart_data.json'
             with open(chart_file, 'w', encoding='utf-8') as f:
                 json.dump(chart_data, f, ensure_ascii=False, indent=2)
@@ -396,119 +517,6 @@ class SalesmanDashboardUpdater:
         except Exception as e:
             logging.error(f"❌ Error generating JSON files: {e}")
             return False
-    
-        def generate_chart_data(self, sheets=None):
-            """Generate modern chart data dari Excel sheet d.soharian"""
-            from datetime import datetime
-            
-            chart_data = {
-                'so_data': [],
-                'do_data': [],
-                'target_data': [],
-                'labels': [],
-                'period': '30 Hari Terakhir',
-                'stats': {
-                    'avg_so': 0,
-                    'avg_do': 0,
-                    'avg_target': 160,
-                    'achievement_so': 0,
-                    'achievement_do': 0,
-                    'total_days': 0
-                }
-            }
-            
-            try:
-                if sheets and 'soharian' in sheets:
-                    so_df = sheets['soharian']
-                    logging.info("📊 Reading SO Harian data from d.soharian sheet...")
-                    
-                    # Read data dari Excel
-                    for index, row in so_df.iterrows():
-                        if pd.isna(row.iloc[0]):  # Skip empty rows
-                            continue
-                        
-                        # Get values dengan column mapping
-                        tanggal = self.get_cell_value(row, ['Tgl'])
-                        target = self.get_cell_value(row, ['Target'])
-                        so = self.get_cell_value(row, ['SO'])
-                        do = self.get_cell_value(row, ['DO'])
-                        
-                        if tanggal is not None:
-                            # Format tanggal untuk label
-                            try:
-                                if isinstance(tanggal, str):
-                                    date_obj = datetime.strptime(tanggal, '%Y-%m-%d')
-                                else:
-                                    date_obj = pd.to_datetime(tanggal)
-                                label = date_obj.strftime('%d/%m')
-                            except:
-                                label = str(tanggal)[:5] if tanggal else f"Day {len(chart_data['labels'])+1}"
-                            
-                            # Add data points
-                            chart_data['labels'].append(label)
-                            chart_data['so_data'].append(self.safe_number(so))
-                            chart_data['do_data'].append(self.safe_number(do))
-                            chart_data['target_data'].append(self.safe_number(target) if target else 160)
-                    
-                    # Limit to last 30 days
-                    if len(chart_data['so_data']) > 30:
-                        chart_data['so_data'] = chart_data['so_data'][-30:]
-                        chart_data['do_data'] = chart_data['do_data'][-30:]
-                        chart_data['target_data'] = chart_data['target_data'][-30:]
-                        chart_data['labels'] = chart_data['labels'][-30:]
-                    
-                    # Calculate statistics
-                    if chart_data['so_data']:
-                        chart_data['stats']['avg_so'] = int(sum(chart_data['so_data']) / len(chart_data['so_data']))
-                        chart_data['stats']['avg_do'] = int(sum(chart_data['do_data']) / len(chart_data['do_data']))
-                        chart_data['stats']['avg_target'] = int(sum(chart_data['target_data']) / len(chart_data['target_data']))
-                        chart_data['stats']['total_days'] = len(chart_data['so_data'])
-                        
-                        # Achievement percentages
-                        if chart_data['stats']['avg_target'] > 0:
-                            chart_data['stats']['achievement_so'] = round((chart_data['stats']['avg_so'] / chart_data['stats']['avg_target']) * 100, 1)
-                            chart_data['stats']['achievement_do'] = round((chart_data['stats']['avg_do'] / chart_data['stats']['avg_target']) * 100, 1)
-                    
-                    logging.info(f"✅ Loaded {len(chart_data['so_data'])} days of SO/DO data")
-                    logging.info(f"📈 Avg SO: {chart_data['stats']['avg_so']}, Avg DO: {chart_data['stats']['avg_do']}")
-                    
-                else:
-                    logging.info("📊 Sheet d.soharian not found, using sample data")
-                    self.generate_sample_chart_data(chart_data)
-                    
-            except Exception as e:
-                logging.error(f"❌ Error reading SO harian data: {e}")
-                self.generate_sample_chart_data(chart_data)
-            
-            return chart_data
-
-        def generate_sample_chart_data(self, chart_data):
-            """Generate sample data untuk testing"""
-            import random
-            from datetime import datetime, timedelta
-            
-            base_date = datetime.now() - timedelta(days=30)
-            
-            for i in range(30):
-                # Realistic sample data
-                target_val = 160
-                so_val = random.randint(120, 180)
-                do_val = int(so_val * random.uniform(0.7, 0.95))  # DO usually lower than SO
-                
-                chart_data['so_data'].append(so_val)
-                chart_data['do_data'].append(do_val)
-                chart_data['target_data'].append(target_val)
-                
-                current_date = base_date + timedelta(days=i)
-                chart_data['labels'].append(current_date.strftime('%d/%m'))
-            
-            # Calculate sample stats
-            chart_data['stats']['avg_so'] = int(sum(chart_data['so_data']) / len(chart_data['so_data']))
-            chart_data['stats']['avg_do'] = int(sum(chart_data['do_data']) / len(chart_data['do_data']))
-            chart_data['stats']['avg_target'] = 160
-            chart_data['stats']['total_days'] = 30
-            chart_data['stats']['achievement_so'] = round((chart_data['stats']['avg_so'] / 160) * 100, 1)
-            chart_data['stats']['achievement_do'] = round((chart_data['stats']['avg_do'] / 160) * 100, 1)
     
     def git_push_changes(self):
         """Push changes ke GitHub dengan error handling"""
