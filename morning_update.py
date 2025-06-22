@@ -107,9 +107,9 @@ class SalesmanDashboardUpdater:
                         'name': str(lob_name).upper(),
                         'achievement': f"{self.safe_percentage(achievement)}%",
                         'gap': self.format_currency(gap),
-                        'vs_lm': f"{self.safe_percentage(vs_lm)}%",
-                        'vs_3lm': f"{self.safe_percentage(vs_3lm)}%",
-                        'vs_ly': f"{self.safe_percentage(vs_ly)}%"
+                        'vs_lm': self.safe_percentage(vs_lm),
+                        'vs_3lm': self.safe_percentage(vs_3lm),
+                        'vs_ly': self.safe_percentage(vs_ly)
                     }
                     lob_cards.append(lob_card)
                     logging.info(f"Added LOB: {lob_card['name']} - {lob_card['achievement']}")
@@ -267,15 +267,17 @@ class SalesmanDashboardUpdater:
         return None
     
     def safe_percentage(self, value):
-        """Konversi ke percentage dengan handling error - Integer only"""
+        """Konversi ke percentage dengan handling error - Preserve sign"""
         if pd.isna(value):
             return 0
         try:
-            # Convert to integer percentage (no decimals)
             percentage = float(value)
-            # If value is already 0-1 range (like 0.59), multiply by 100
-            if 0 <= percentage <= 1:
+            
+            # If value is 0-1 range (like 0.59), multiply by 100
+            if 0 <= abs(percentage) <= 1:
                 percentage = percentage * 100
+            
+            # Return integer but preserve sign
             return int(round(percentage))
         except:
             return 0
@@ -316,6 +318,30 @@ class SalesmanDashboardUpdater:
             return f"{sign}{formatted}"
         except:
             return "0"
+            
+    def format_growth(self, value):
+        """Format growth percentage dengan tanda + atau -"""
+        if pd.isna(value):
+            return "+0%"
+        try:
+            percentage = float(value)
+            
+            # If value is 0-1 range, multiply by 100
+            if 0 <= abs(percentage) <= 1:
+                percentage = percentage * 100
+            
+            # Round to integer
+            rounded_pct = int(round(percentage))
+            
+            # Add explicit + or - sign
+            if rounded_pct > 0:
+                return f"+{rounded_pct}%"
+            elif rounded_pct < 0:
+                return f"{rounded_pct}%"  # Negative sign already included
+            else:
+                return "+0%"
+        except:
+            return "+0%"
         
     def generate_json_files(self, sheets):
         """Generate JSON files dari Excel data"""
