@@ -267,12 +267,16 @@ class SalesmanDashboardUpdater:
         return None
     
     def safe_percentage(self, value):
-        """Konversi ke percentage dengan handling error"""
+        """Konversi ke percentage dengan handling error - Integer only"""
         if pd.isna(value):
             return 0
         try:
             # Convert to integer percentage (no decimals)
-            return int(round(float(value)))
+            percentage = float(value)
+            # If value is already 0-1 range (like 0.59), multiply by 100
+            if 0 <= percentage <= 1:
+                percentage = percentage * 100
+            return int(round(percentage))
         except:
             return 0
     
