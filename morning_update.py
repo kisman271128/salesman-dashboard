@@ -499,9 +499,9 @@ class SalesmanDashboardUpdater:
         try:
             percentage = float(value)
             
-            # If value is 0-1 range (like 0.59), multiply by 100
-            if 0 <= abs(percentage) <= 1:
-                percentage = percentage * 100
+            # Jika nilainya antara -1 dan 1 (tidak termasuk 0), maka asumsikan ini 0.xx dan perlu dikali 100
+            if -1 < percentage < 1:
+                percentage *= 100
             
             # Return integer but preserve sign
             return int(round(percentage))
