@@ -95,12 +95,12 @@ class SalesmanDashboardUpdater:
                     continue
                     
                 # Map columns fleksibel - sesuaikan dengan nama kolom Excel Anda
-                lob_name = self.get_cell_value(row, ['LOB', 'Line of Business', 'Nama LOB', 'lob'])
-                achievement = self.get_cell_value(row, ['Achievement', 'Ach', 'Pencapaian', 'achievement'])
-                gap = self.get_cell_value(row, ['Gap', 'Selisih', 'gap'])
-                vs_lm = self.get_cell_value(row, ['vs_LM', 'vs LM', 'Last Month', 'vs_lastmonth'])
-                vs_3lm = self.get_cell_value(row, ['vs_3LM', 'vs 3LM', '3 Month', 'vs_3months'])
-                vs_ly = self.get_cell_value(row, ['vs_LY', 'vs LY', 'Last Year', 'vs_lastyear'])
+                lob_name = self.get_cell_value(row, ['LOB'])
+                achievement = self.get_cell_value(row, ['vs BP'])
+                gap = self.get_cell_value(row, ['Gap'])
+                vs_lm = self.get_cell_value(row, ['vs LM'])
+                vs_3lm = self.get_cell_value(row, ['vs 3LM'])
+                vs_ly = self.get_cell_value(row, ['vs LY'])
                 
                 if lob_name:  # Only add if LOB name exists
                     lob_card = {
@@ -146,10 +146,10 @@ class SalesmanDashboardUpdater:
                     continue
                 
                 # Flexible column mapping
-                salesman_id = self.get_cell_value(row, ['ID', 'Salesman_ID', 'SalesmanID', 'id'])
-                name = self.get_cell_value(row, ['Name', 'Nama', 'Salesman', 'nama_salesman'])
-                zone = self.get_cell_value(row, ['Zone', 'Area', 'Wilayah', 'zone'])
-                achievement = self.get_cell_value(row, ['Achievement', 'Ach', 'Pencapaian', 'achievement'])
+                salesman_id = self.get_cell_value(row, ['NIK'])
+                name = self.get_cell_value(row, ['Nama Salesman'])
+                tipe = self.get_cell_value(row, ['Tipe Salesman'])
+                achievement = self.get_cell_value(row, ['Ach'])
                 
                 if name and achievement is not None:  # Only add if essential data exists
                     achievement_num = self.safe_percentage(achievement)
@@ -167,7 +167,7 @@ class SalesmanDashboardUpdater:
                     salesman_data = {
                         'id': str(salesman_id) if salesman_id else f"S{index+1}",
                         'name': str(name),
-                        'zone': str(zone) if zone else 'Zone Unknown',
+                        'tipe': str(zone) if Tipe else 'Zone Unknown',
                         'achievement': f"{achievement_num}%",
                         'achievement_num': achievement_num,  # For sorting
                         'status': status
@@ -183,7 +183,7 @@ class SalesmanDashboardUpdater:
                 salesman['rank'] = len(salesman_list) - i  # Reverse ranking
                 del salesman['achievement_num']  # Remove helper field
             
-            logging.info(f"✅ Processed {len(salesman_list)} salesmen")
+            logging.info(f"✅ Processed {len(salesman_list)} salesman")
             return salesman_list
             
         except Exception as e:
@@ -208,11 +208,11 @@ class SalesmanDashboardUpdater:
                     if pd.isna(row.iloc[0]):
                         continue
                     
-                    salesman_id = self.get_cell_value(row, ['Salesman_ID', 'ID', 'SalesmanID', 'id'])
-                    lob_name = self.get_cell_value(row, ['LOB', 'Line of Business', 'lob'])
-                    achievement = self.get_cell_value(row, ['Achievement', 'Ach', 'Pencapaian'])
-                    target = self.get_cell_value(row, ['Target', 'target'])
-                    actual = self.get_cell_value(row, ['Actual', 'Realisasi', 'actual'])
+                    salesman_id = self.get_cell_value(row, ['NIK'])
+                    lob_name = self.get_cell_value(row, ['LOB'])
+                    achievement = self.get_cell_value(row, ['Ach'])
+                    target = self.get_cell_value(row, ['Target'])
+                    actual = self.get_cell_value(row, ['Actual'])
                     
                     if salesman_id and lob_name:
                         if salesman_id not in salesman_details:
@@ -235,13 +235,13 @@ class SalesmanDashboardUpdater:
                     if pd.isna(row.iloc[0]):
                         continue
                     
-                    salesman_id = self.get_cell_value(row, ['Salesman_ID', 'ID', 'SalesmanID', 'id'])
+                    salesman_id = self.get_cell_value(row, ['NIK'])
                     
                     if salesman_id and salesman_id in salesman_details:
-                        ca = self.get_cell_value(row, ['CA', 'Customer_Active', 'ca'])
-                        ca_prod = self.get_cell_value(row, ['CA_Prod', 'CA Prod', 'Customer_Active_Product'])
-                        sku = self.get_cell_value(row, ['SKU', 'Stock_Keeping_Unit', 'sku'])
-                        gp = self.get_cell_value(row, ['GP', 'Gross_Profit', 'gp'])
+                        ca = self.get_cell_value(row, ['Ach_CA'])
+                        ca_prod = self.get_cell_value(row, ['Ach_CAProdAll'])
+                        sku = self.get_cell_value(row, ['Ach_AvgSKU'])
+                        gp = self.get_cell_value(row, ['Ach_GPFood'])
                         
                         salesman_details[salesman_id]['metrics'] = {
                             'CA': self.safe_percentage(ca),
@@ -250,7 +250,7 @@ class SalesmanDashboardUpdater:
                             'GP': self.safe_percentage(gp)
                         }
             
-            logging.info(f"✅ Processed details for {len(salesman_details)} salesmen")
+            logging.info(f"✅ Processed details for {len(salesman_details)} salesman")
             return salesman_details
             
         except Exception as e:
