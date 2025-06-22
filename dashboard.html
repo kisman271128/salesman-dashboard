@@ -626,21 +626,134 @@
             margin-left: 20px;
         }
 
-        .salesman-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-            font-size: 14px;
-            overflow: hidden;
-            border: 2px solid white;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
+		/* ✅ Complete CSS untuk salesman avatar dengan photo support */
+
+		.salesman-avatar {
+			width: 40px;
+			height: 40px;
+			border-radius: 50%;
+			background: linear-gradient(135deg, #667eea, #764ba2);
+			color: white;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-weight: 600;
+			font-size: 14px;
+			overflow: hidden;
+			border: 2px solid white;
+			box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+			position: relative;
+			transition: transform 0.3s ease, box-shadow 0.3s ease;
+		}
+
+		/* ✅ Styling untuk foto */
+		.salesman-avatar img {
+			width: 100%;
+			height: 100%;
+			object-fit: cover;
+			border-radius: 50%;
+			position: absolute;
+			top: 0;
+			left: 0;
+			z-index: 2;
+			opacity: 0;
+			transition: opacity 0.3s ease;
+		}
+
+		/* ✅ Ketika foto berhasil dimuat */
+		.salesman-avatar.photo-loaded img {
+			opacity: 1;
+		}
+
+		/* ✅ Initials sebagai fallback */
+		.salesman-avatar .avatar-initials {
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			z-index: 1;
+			font-size: 12px;
+			font-weight: 600;
+			transition: opacity 0.3s ease;
+			color: white;
+			text-align: center;
+			line-height: 1;
+		}
+
+		/* ✅ Hide initials ketika foto dimuat */
+		.salesman-avatar.photo-loaded .avatar-initials {
+			opacity: 0;
+		}
+
+		/* ✅ Ketika foto error, tampilkan initials */
+		.salesman-avatar.photo-error .avatar-initials {
+			opacity: 1;
+		}
+
+		.salesman-avatar.photo-error img {
+			opacity: 0;
+		}
+
+		/* ✅ Loading shimmer effect */
+		.salesman-avatar::before {
+			content: '';
+			position: absolute;
+			top: 0;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+			animation: loading-shimmer 1.5s infinite;
+			z-index: 3;
+			border-radius: 50%;
+			opacity: 0;
+			pointer-events: none;
+		}
+
+		/* ✅ Show shimmer only when loading */
+		.salesman-avatar:not(.photo-loaded):not(.photo-error)::before {
+			opacity: 1;
+		}
+
+		/* ✅ Shimmer animation */
+		@keyframes loading-shimmer {
+			0% { 
+				transform: translateX(-100%); 
+			}
+			100% { 
+				transform: translateX(100%); 
+			}
+		}
+
+		/* ✅ Hover effect untuk salesman item */
+		.salesman-item:hover .salesman-avatar {
+			transform: scale(1.05);
+			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+		}
+
+		/* ✅ Active state */
+		.salesman-item:active .salesman-avatar {
+			transform: scale(0.95);
+		}
+
+		/* ✅ Focus state untuk accessibility */
+		.salesman-item:focus .salesman-avatar {
+			outline: 2px solid #667eea;
+			outline-offset: 2px;
+		}
+
+		/* ✅ Responsive untuk mobile */
+		@media (max-width: 480px) {
+			.salesman-avatar {
+				width: 36px;
+				height: 36px;
+				font-size: 12px;
+			}
+			
+			.salesman-avatar .avatar-initials {
+				font-size: 10px;
+			}
+		}
 
         .salesman-details h4 {
             font-size: 14px;
@@ -974,6 +1087,93 @@
             return card;
         }
 
+		// ✅ Updated function untuk create salesman item dengan multiple format support
+		function createSalesmanItem(salesman, index) {
+			const item = document.createElement('div');
+			item.className = 'salesman-item';
+			
+			const statusClass = getStatusClass(salesman.status);
+			
+			// ✅ Generate photo URLs dengan multiple format fallback
+			const photoExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+			const nik = salesman.id;
+			
+			item.innerHTML = `
+				<div class="rank-number">${salesman.rank}</div>
+				<div class="salesman-info">
+					<div class="salesman-avatar" data-nik="${nik}">
+						<img src="" 
+							 alt="${salesman.name}" 
+							 style="display: none;">
+						<div class="avatar-initials">${nik}</div>
+					</div>
+					<div class="salesman-details">
+						<h4>${salesman.name}</h4>
+						<p>${salesman.tipe}</p>
+					</div>
+				</div>
+				<div class="salesman-amount">
+					<div class="amount">${salesman.achievement}</div>
+					<div class="status ${statusClass}">${salesman.status}</div>
+				</div>
+			`;
+
+			// ✅ Try loading photo dengan multiple extensions
+			const avatarElement = item.querySelector('.salesman-avatar');
+			const imgElement = item.querySelector('.salesman-avatar img');
+			
+			tryLoadPhoto(nik, photoExtensions, 0, imgElement, avatarElement);
+
+			// Add click handler for salesman details
+			item.addEventListener('click', () => {
+				openSalesmanDetail(salesman.id);
+			});
+
+			return item;
+		}
+
+		// ✅ Function untuk try load photo dengan multiple extensions
+		function tryLoadPhoto(nik, extensions, currentIndex, imgElement, avatarElement) {
+			if (currentIndex >= extensions.length) {
+				// All extensions failed, try default.jpg
+				tryDefaultPhoto(imgElement, avatarElement);
+				return;
+			}
+			
+			const extension = extensions[currentIndex];
+			const photoUrl = `photos/${nik}.${extension}`;
+			
+			imgElement.onload = function() {
+				imgElement.style.display = 'block';
+				avatarElement.classList.add('photo-loaded');
+				console.log(`✅ Loaded photo: ${photoUrl}`);
+			};
+			
+			imgElement.onerror = function() {
+				// Try next extension
+				tryLoadPhoto(nik, extensions, currentIndex + 1, imgElement, avatarElement);
+			};
+			
+			imgElement.src = photoUrl;
+		}
+
+		// ✅ Function untuk try default photo
+		function tryDefaultPhoto(imgElement, avatarElement) {
+			imgElement.onload = function() {
+				imgElement.style.display = 'block';
+				avatarElement.classList.add('photo-loaded');
+				console.log(`✅ Loaded default photo`);
+			};
+			
+			imgElement.onerror = function() {
+				// Default photo juga tidak ada, pakai initials
+				avatarElement.classList.add('photo-error');
+				console.log(`⚠️ No photos available, using initials`);
+			};
+			
+			imgElement.src = 'photos/default.jpg';
+		}
+		
         // Update salesman list
         function updateSalesmanList(salesmanList) {
             const salesmanListElement = document.getElementById('salesmanList');
