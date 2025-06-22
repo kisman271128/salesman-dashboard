@@ -168,7 +168,7 @@ class SalesmanDashboardUpdater:
                     salesman_data = {
                         'id': str(salesman_id) if salesman_id else f"S{index+1}",
                         'name': str(name),
-                        'tipe': str(tipe) if tipe else 'Zone Unknown',
+                        'tipe': str(tipe) if tipe else 'Tipe Unknown',
                         'achievement': f"{achievement_num}%",
                         'achievement_num': achievement_num,  # For sorting
                         'status': status
