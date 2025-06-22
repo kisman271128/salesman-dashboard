@@ -29,7 +29,7 @@ class SalesmanDashboardUpdater:
             'performance': 'd.performance', 
             'salesmanlob': 'd.salesmanlob',
             'salesmanproses': 'd.salesmanproses',
-            'soharian': 'd.soharian'
+            'soharian': 'd.soharian'  # ← Sheet untuk chart data
         }
     
     def ensure_folders(self):
@@ -168,7 +168,7 @@ class SalesmanDashboardUpdater:
                     salesman_data = {
                         'id': str(salesman_id) if salesman_id else f"S{index+1}",
                         'name': str(name),
-                        'tipe': str(tipe) if tipe else 'Zone Unknown',
+                        'tipe': str(tipe) if tipe else 'Zone Unknown',  # Fixed typo: zone -> tipe
                         'achievement': f"{achievement_num}%",
                         'achievement_num': achievement_num,  # For sorting
                         'status': status
@@ -258,86 +258,53 @@ class SalesmanDashboardUpdater:
             logging.error(f"❌ Error processing salesman details: {e}")
             return {}
     
-    def get_period_from_data(self, sheets):
-        """Ambil periode bulan-tahun dari data sheet soharian"""
-        try:
-            if not sheets or 'soharian' not in sheets:
-                return "Data MTD"
-            
-            so_df = sheets['soharian']
-            
-            # Ambil tanggal pertama yang tidak kosong
-            for index, row in so_df.iterrows():
-                if pd.isna(row.iloc[0]):
-                    continue
-                    
-                tgl = self.get_cell_value(row, ['Tgl', 'Tanggal', 'Date'])
-                
-                if tgl is not None:
-                    try:
-                        # Parse tanggal
-                        if isinstance(tgl, str):
-                            date_obj = datetime.strptime(tgl, '%m/%d/%Y')
-                        else:
-                            date_obj = pd.to_datetime(tgl)
-                        
-                        # Array nama bulan Indonesia
-                        months_id = [
-                            'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-                            'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-                        ]
-                        
-                        month_name = months_id[date_obj.month - 1]
-                        year = date_obj.year
-                        
-                        period = f"{month_name} {year}"
-                        logging.info(f"📅 Period from data: {period}")
-                        return period
-                        
-                    except Exception as e:
-                        logging.warning(f"Error parsing date {tgl}: {e}")
-                        continue
-            
-            # Jika tidak ada tanggal yang bisa diparsing
-            logging.warning("⚠️ No valid dates found in soharian sheet")
+def get_period_from_data(self, sheets):
+    """Ambil periode bulan-tahun dari data sheet soharian"""
+    try:
+        if not sheets or 'soharian' not in sheets:
             return "Data MTD"
-            
-        except Exception as e:
-            logging.error(f"❌ Error getting period from data: {e}")
-            return "Data MTD"
-
-    def get_gap_total_from_dashboard(self, sheets):
-        """Ambil Gap Total dari LOB 'Total' di sheet dashboard"""
-        try:
-            if not sheets or 'dashboard' not in sheets:
-                logging.warning("⚠️ Dashboard sheet not available for Gap Total")
-                return "0"
-            
-            dashboard_df = sheets['dashboard']
-            logging.info(f"🔍 Looking for Gap Total in dashboard with {len(dashboard_df)} rows")
-            
-            # Cari row dengan LOB = 'Total' atau 'TOTAL' (case insensitive)
-            for index, row in dashboard_df.iterrows():
-                lob_name = self.get_cell_value(row, ['LOB'])
+        
+        so_df = sheets['soharian']
+        
+        # Ambil tanggal pertama yang tidak kosong
+        for index, row in so_df.iterrows():
+            if pd.isna(row.iloc[0]):
+                continue
                 
-                if lob_name and str(lob_name).upper().strip() == 'TOTAL':
-                    gap_value = self.get_cell_value(row, ['Gap'])
-                    
-                    if gap_value is not None:
-                        # Format gap value sama seperti format_currency
-                        gap_formatted = self.format_currency(gap_value)
-                        logging.info(f"✅ Found Gap Total: {gap_formatted} for LOB: {lob_name}")
-                        return gap_formatted
+            tgl = self.get_cell_value(row, ['Tgl', 'Tanggal', 'Date'])
+            
+            if tgl is not None:
+                try:
+                    # Parse tanggal
+                    if isinstance(tgl, str):
+                        date_obj = datetime.strptime(tgl, '%m/%d/%Y')
                     else:
-                        logging.warning(f"⚠️ Gap column empty for LOB: {lob_name}")
-            
-            # Jika tidak ketemu LOB Total
-            logging.warning("⚠️ LOB 'Total' not found in dashboard")
-            return "0"
-            
-        except Exception as e:
-            logging.error(f"❌ Error getting Gap Total: {e}")
-            return "0"
+                        date_obj = pd.to_datetime(tgl)
+                    
+                    # Array nama bulan Indonesia
+                    months_id = [
+                        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+                        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+                    ]
+                    
+                    month_name = months_id[date_obj.month - 1]
+                    year = date_obj.year
+                    
+                    period = f"{month_name} {year}"
+                    logging.info(f"📅 Period from data: {period}")
+                    return period
+                    
+                except Exception as e:
+                    logging.warning(f"Error parsing date {tgl}: {e}")
+                    continue
+        
+        # Jika tidak ada tanggal yang bisa diparsing
+        logging.warning("⚠️ No valid dates found in soharian sheet")
+        return "Data MTD"
+        
+    except Exception as e:
+        logging.error(f"❌ Error getting period from data: {e}")
+        return "Data MTD"
 
     def generate_chart_data(self, sheets=None):
         """Generate chart data dari parameter sheets dengan period dari data"""
@@ -607,7 +574,7 @@ class SalesmanDashboardUpdater:
             files_saved.append('salesman_details.json')
             logging.info(f"✅ Saved: {details_file}")
             
-            # ✅ Generate chart data ONLY ONCE dengan parameter sheets
+            # ✅ FIXED: Generate chart data ONLY ONCE dengan parameter sheets
             chart_data = self.generate_chart_data(sheets)
             chart_file = f'{self.data_folder}/chart_data.json'
             with open(chart_file, 'w', encoding='utf-8') as f:
