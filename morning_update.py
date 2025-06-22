@@ -497,13 +497,17 @@ class SalesmanDashboardUpdater:
         if pd.isna(value):
             return 0
         try:
+            # Handle string percentages
+            if isinstance(value, str) and value.endswith('%'):
+                return int(round(float(value.rstrip('%'))))
+            
             percentage = float(value)
             
-            # Jika nilainya antara -1 dan 1 (tidak termasuk 0), maka asumsikan ini 0.xx dan perlu dikali 100
-            if -1 < percentage < 1:
+            # Deteksi apakah nilai sudah dalam bentuk persentase atau masih desimal
+            # Jika nilai antara -10 dan 10, kemungkinan besar masih dalam bentuk desimal
+            if -10 < percentage < 10:
                 percentage *= 100
             
-            # Return integer but preserve sign
             return int(round(percentage))
         except:
             return 0
