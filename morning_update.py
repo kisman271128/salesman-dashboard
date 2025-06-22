@@ -107,9 +107,9 @@ class SalesmanDashboardUpdater:
                         'name': str(lob_name).upper(),
                         'achievement': f"{self.safe_percentage(achievement)}%",
                         'gap': self.format_currency(gap),
-                        'vs_lm': f"{self.safe_percentage(vs_lm)}%",
-                        'vs_3lm': f"{self.safe_percentage(vs_3lm)}%",
-                        'vs_ly': f"{self.safe_percentage(vs_ly)}%"
+                        'vs_lm': f"{self.safe_percentage(vs_lm)}",
+                        'vs_3lm': f"{self.safe_percentage(vs_3lm)}",
+                        'vs_ly': f"{self.safe_percentage(vs_ly)}"
                     }
                     lob_cards.append(lob_card)
                     logging.info(f"Added LOB: {lob_card['name']} - {lob_card['achievement']}")
