@@ -106,7 +106,7 @@ class SalesmanDashboardUpdater:
                     lob_card = {
                         'name': str(lob_name).upper(),
                         'achievement': f"{self.safe_percentage(achievement)}%",
-                        'gap': f"+{self.safe_number(gap)}",
+                        'gap': self.format_currency(gap),
                         'vs_lm': f"+{self.safe_percentage(vs_lm)}%",
                         'vs_3lm': f"+{self.safe_percentage(vs_3lm)}%",
                         'vs_ly': f"+{self.safe_percentage(vs_ly)}%"
@@ -271,7 +271,8 @@ class SalesmanDashboardUpdater:
         if pd.isna(value):
             return 0
         try:
-            return float(value)
+            # Convert to integer percentage (no decimals)
+            return int(round(float(value)))
         except:
             return 0
     
@@ -283,7 +284,35 @@ class SalesmanDashboardUpdater:
             return int(float(value))
         except:
             return 0
-    
+            
+    def format_currency(self, value):
+        """Format currency untuk display ringkas"""
+        if pd.isna(value):
+            return "0"
+        try:
+            num = float(value)
+            
+            # Handle negative numbers
+            sign = "+" if num >= 0 else ""
+            abs_num = abs(num)
+            
+            if abs_num >= 1_000_000_000:
+                # Miliar - format: 1.26 M
+                formatted = f"{abs_num / 1_000_000_000:.2f} M".rstrip('0').rstrip('.')
+            elif abs_num >= 1_000_000:
+                # Juta - format: 742 jt
+                formatted = f"{int(abs_num / 1_000_000)} jt"
+            elif abs_num >= 1_000:
+                # Ribu - format: 250 rb
+                formatted = f"{int(abs_num / 1_000)} rb"
+            else:
+                # Kurang dari ribu
+                formatted = f"{int(abs_num)}"
+            
+            return f"{sign}{formatted}"
+        except:
+            return "0"
+        
     def generate_json_files(self, sheets):
         """Generate JSON files dari Excel data"""
         try:
