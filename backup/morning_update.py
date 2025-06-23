@@ -79,14 +79,15 @@ class SalesmanDashboardUpdater:
             return None
     
     def process_dashboard_data(self, sheets):
-        """✅ UPDATED: Process data untuk dashboard dengan semua vs metrics"""
+        """Process data untuk dashboard utama dengan mapping yang fleksibel"""
         try:
             dashboard_df = sheets['dashboard']
-            logging.info("🔄 Processing dashboard data with all metrics...")
+            logging.info("🔄 Processing dashboard data...")
             
             # Print columns untuk debugging
             logging.info(f"Dashboard columns: {list(dashboard_df.columns)}")
             
+            # Flexible column mapping - adjust sesuai struktur Excel Anda
             lob_cards = []
             
             for index, row in dashboard_df.iterrows():
@@ -94,9 +95,9 @@ class SalesmanDashboardUpdater:
                 if pd.isna(row.iloc[0]):
                     continue
                     
-                # ✅ UPDATED: Map semua kolom metrics
+                # Map columns fleksibel - sesuaikan dengan nama kolom Excel Anda
                 lob_name = self.get_cell_value(row, ['LOB'])
-                achievement = self.get_cell_value(row, ['vs BP', 'Achievement'])
+                achievement = self.get_cell_value(row, ['vs BP'])
                 gap = self.get_cell_value(row, ['Gap'])
                 vs_lm = self.get_cell_value(row, ['vs LM'])
                 vs_3lm = self.get_cell_value(row, ['vs 3LM'])
@@ -112,7 +113,7 @@ class SalesmanDashboardUpdater:
                         'vs_ly': self.format_growth(vs_ly)
                     }
                     lob_cards.append(lob_card)
-                    logging.info(f"✅ Added LOB: {lob_card['name']} - Ach:{lob_card['achievement']}, vs LM:{lob_card['vs_lm']}, vs 3LM:{lob_card['vs_3lm']}, vs LY:{lob_card['vs_ly']}")
+                    logging.info(f"Added LOB: {lob_card['name']} - {lob_card['achievement']}")
             
             dashboard_data = {
                 'last_updated': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -122,7 +123,7 @@ class SalesmanDashboardUpdater:
                 'total_lobs': len(lob_cards)
             }
             
-            logging.info(f"✅ Processed {len(lob_cards)} LOB cards with all metrics")
+            logging.info(f"✅ Processed {len(lob_cards)} LOB cards")
             return dashboard_data
             
         except Exception as e:
@@ -130,10 +131,10 @@ class SalesmanDashboardUpdater:
             return None
     
     def process_salesman_data(self, sheets):
-        """✅ UPDATED: Process data salesman untuk ranking dan login system"""
+        """Process data salesman untuk ranking"""
         try:
             performance_df = sheets['performance']
-            logging.info("🔄 Processing salesman data for ranking and login...")
+            logging.info("🔄 Processing salesman data...")
             
             # Print columns untuk debugging
             logging.info(f"Performance columns: {list(performance_df.columns)}")
@@ -147,11 +148,11 @@ class SalesmanDashboardUpdater:
                 
                 # Flexible column mapping
                 salesman_id = self.get_cell_value(row, ['NIK'])
-                name = self.get_cell_value(row, ['Nama Salesman', 'Nama'])
-                tipe = self.get_cell_value(row, ['Tipe Salesman', 'Tipe'])
-                achievement = self.get_cell_value(row, ['Ach', 'Achievement'])
+                name = self.get_cell_value(row, ['Nama Salesman'])
+                tipe = self.get_cell_value(row, ['Tipe Salesman'])
+                achievement = self.get_cell_value(row, ['Ach'])
                 
-                if name and achievement is not None and salesman_id:  # ✅ NIK required
+                if name and achievement is not None:  # Only add if essential data exists
                     achievement_num = self.safe_percentage(achievement)
                     
                     # Determine status
@@ -165,15 +166,15 @@ class SalesmanDashboardUpdater:
                         status = 'Excellent'
                     
                     salesman_data = {
-                        'id': str(salesman_id),  # ✅ NIK as string
+                        'id': str(salesman_id) if salesman_id else f"S{index+1}",
                         'name': str(name),
-                        'tipe': str(tipe) if tipe else 'Sales Representative',
+                        'tipe': str(tipe) if tipe else 'Tipe Unknown',
                         'achievement': f"{achievement_num}%",
                         'achievement_num': achievement_num,  # For sorting
                         'status': status
                     }
                     salesman_list.append(salesman_data)
-                    logging.info(f"✅ Added salesman: NIK {salesman_data['id']} - {salesman_data['name']} - {salesman_data['achievement']}")
+                    logging.info(f"Added salesman: {salesman_data['name']} - {salesman_data['achievement']}")
             
             # Sort by achievement (lowest to highest for ranking display)
             salesman_list.sort(key=lambda x: x['achievement_num'])
@@ -183,7 +184,7 @@ class SalesmanDashboardUpdater:
                 salesman['rank'] = len(salesman_list) - i  # Reverse ranking
                 del salesman['achievement_num']  # Remove helper field
             
-            logging.info(f"✅ Processed {len(salesman_list)} salesman with NIK authentication")
+            logging.info(f"✅ Processed {len(salesman_list)} salesman")
             return salesman_list
             
         except Exception as e:
@@ -191,12 +192,12 @@ class SalesmanDashboardUpdater:
             return []
     
     def process_salesman_detail(self, sheets):
-        """✅ UPDATED: Process detailed performance untuk setiap salesman dengan NIK mapping"""
+        """Process detailed performance untuk setiap salesman"""
         try:
             salesmanlob_df = sheets.get('salesmanlob')
             salesmanproses_df = sheets.get('salesmanproses')
             
-            logging.info("🔄 Processing salesman details with NIK mapping...")
+            logging.info("🔄 Processing salesman details...")
             
             salesman_details = {}
             
@@ -208,13 +209,13 @@ class SalesmanDashboardUpdater:
                     if pd.isna(row.iloc[0]):
                         continue
                     
-                    salesman_id = str(self.get_cell_value(row, ['NIK']))  # ✅ NIK as string
+                    salesman_id = self.get_cell_value(row, ['NIK'])
                     lob_name = self.get_cell_value(row, ['LOB'])
-                    achievement = self.get_cell_value(row, ['Ach', 'Achievement'])
+                    achievement = self.get_cell_value(row, ['Ach'])
                     target = self.get_cell_value(row, ['Target'])
                     actual = self.get_cell_value(row, ['Actual'])
                     
-                    if salesman_id and lob_name and salesman_id != 'nan':
+                    if salesman_id and lob_name:
                         if salesman_id not in salesman_details:
                             salesman_details[salesman_id] = {
                                 'performance': {},
@@ -226,8 +227,6 @@ class SalesmanDashboardUpdater:
                             'target': self.safe_number(target),
                             'actual': self.safe_number(actual)
                         }
-                        
-                        logging.info(f"✅ Added performance for NIK {salesman_id}, LOB {lob_name}: {self.safe_percentage(achievement)}%")
             
             # Process metrics (CA, CA Prod, SKU, GP)
             if salesmanproses_df is not None:
@@ -237,19 +236,13 @@ class SalesmanDashboardUpdater:
                     if pd.isna(row.iloc[0]):
                         continue
                     
-                    salesman_id = str(self.get_cell_value(row, ['NIK']))  # ✅ NIK as string
+                    salesman_id = self.get_cell_value(row, ['NIK'])
                     
-                    if salesman_id and salesman_id != 'nan':
-                        if salesman_id not in salesman_details:
-                            salesman_details[salesman_id] = {
-                                'performance': {},
-                                'metrics': {}
-                            }
-                        
-                        ca = self.get_cell_value(row, ['Ach_CA', 'CA'])
-                        ca_prod = self.get_cell_value(row, ['Ach_CAProdAll', 'CAProd'])
-                        sku = self.get_cell_value(row, ['Ach_AvgSKU', 'SKU'])
-                        gp = self.get_cell_value(row, ['Ach_GPFood', 'GP'])
+                    if salesman_id and salesman_id in salesman_details:
+                        ca = self.get_cell_value(row, ['Ach_CA'])
+                        ca_prod = self.get_cell_value(row, ['Ach_CAProdAll'])
+                        sku = self.get_cell_value(row, ['Ach_AvgSKU'])
+                        gp = self.get_cell_value(row, ['Ach_GPFood'])
                         
                         salesman_details[salesman_id]['metrics'] = {
                             'CA': self.safe_percentage(ca),
@@ -257,156 +250,13 @@ class SalesmanDashboardUpdater:
                             'SKU': self.safe_percentage(sku),
                             'GP': self.safe_percentage(gp)
                         }
-                        
-                        logging.info(f"✅ Added metrics for NIK {salesman_id}: CA:{self.safe_percentage(ca)}%, GP:{self.safe_percentage(gp)}%")
             
-            logging.info(f"✅ Processed details for {len(salesman_details)} salesman with NIK keys")
+            logging.info(f"✅ Processed details for {len(salesman_details)} salesman")
             return salesman_details
             
         except Exception as e:
             logging.error(f"❌ Error processing salesman details: {e}")
             return {}
-    
-    def generate_chart_data(self, sheets=None):
-        """✅ UPDATED: Generate modern chart data dengan period dan stats akurat"""
-        
-        # Get period dari data sheet
-        data_period = self.get_period_from_data(sheets)
-        
-        chart_data = {
-            'so_data': [],
-            'do_data': [],
-            'target_data': [],
-            'labels': [],
-            'period': data_period,
-            'stats': {
-                'avg_so': 0,
-                'avg_do': 0,
-                'avg_target': 127,
-                'total_hk': 0,
-                'sisa_hk_do': 0,
-                'gap_total': '0'
-            }
-        }
-        
-        try:
-            if sheets and 'soharian' in sheets:
-                so_df = sheets['soharian']  
-                logging.info(f"📊 Processing {len(so_df)} rows for modern chart")
-                logging.info(f"📊 Columns in soharian: {list(so_df.columns)}")
-                
-                for index, row in so_df.iterrows():
-                    if pd.isna(row.iloc[0]):  # Skip empty rows
-                        continue
-                    
-                    # Get values dengan flexible mapping
-                    tgl = self.get_cell_value(row, ['Tgl', 'Tanggal', 'Date'])
-                    target = self.get_cell_value(row, ['Target', 'target'])
-                    so = self.get_cell_value(row, ['SO', 'so'])
-                    do = self.get_cell_value(row, ['DO', 'do'])
-                    
-                    if tgl is not None:
-                        # Parse date
-                        try:
-                            if isinstance(tgl, str):
-                                date_obj = datetime.strptime(tgl, '%m/%d/%Y')
-                            else:
-                                date_obj = pd.to_datetime(tgl)
-                            label = date_obj.strftime('%d/%m')
-                        except Exception as e:
-                            logging.warning(f"Date parse error: {e}")
-                            label = f"Day {len(chart_data['labels'])+1}"
-                        
-                        # Convert to millions (for chart display)
-                        so_millions = int(self.safe_number(so) / 1_000_000) if so else 0
-                        do_millions = int(self.safe_number(do) / 1_000_000) if do else 0
-                        target_millions = int(self.safe_number(target) / 1_000_000) if target else 127
-                        
-                        chart_data['so_data'].append(so_millions)
-                        chart_data['do_data'].append(do_millions)
-                        chart_data['target_data'].append(target_millions)
-                        chart_data['labels'].append(label)
-                
-                # ✅ Calculate accurate stats
-                if chart_data['so_data']:
-                    # Basic averages
-                    chart_data['stats']['avg_so'] = int(sum(chart_data['so_data']) / len(chart_data['so_data']))
-                    chart_data['stats']['avg_do'] = int(sum(chart_data['do_data']) / len(chart_data['do_data']))
-                    chart_data['stats']['avg_target'] = int(sum(chart_data['target_data']) / len(chart_data['target_data']))
-                    
-                    # COUNTA kolom tanggal (count non-empty dates)
-                    chart_data['stats']['total_hk'] = len(chart_data['labels'])
-                    
-                    # COUNTIF DO > 0 (count days with DO > 0)
-                    chart_data['stats']['sisa_hk_do'] = sum(1 for do in chart_data['do_data'] if do > 0)
-                
-                # Get Gap Total dari sheet dashboard
-                chart_data['stats']['gap_total'] = self.get_gap_total_from_dashboard(sheets)
-                
-                logging.info(f"✅ Modern chart data processed: {len(chart_data['so_data'])} days")
-                logging.info(f"📊 Period: {data_period}")
-                logging.info(f"📈 Stats: SO={chart_data['stats']['avg_so']}M, DO={chart_data['stats']['avg_do']}M, Target={chart_data['stats']['avg_target']}M")
-                logging.info(f"📅 HK: Total={chart_data['stats']['total_hk']}, Sisa DO={chart_data['stats']['sisa_hk_do']}")
-                logging.info(f"💰 Gap Total: {chart_data['stats']['gap_total']}")
-                
-                return chart_data
-            
-            # Fallback jika tidak ada data
-            logging.info("⚠️ No soharian data found, using sample data")
-            return self.generate_sample_chart_data_fallback()
-            
-        except Exception as e:
-            logging.error(f"❌ Error processing chart data: {e}")
-            return self.generate_sample_chart_data_fallback()
-
-    def generate_sample_chart_data_fallback(self):
-        """✅ UPDATED: Sample data fallback dengan format yang benar"""
-        import random
-        from datetime import datetime, timedelta
-        
-        # Current month period
-        now = datetime.now()
-        months_id = [
-            'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-            'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-        ]
-        fallback_period = f"{months_id[now.month - 1]} {now.year}"
-        
-        chart_data = {
-            'so_data': [],
-            'do_data': [],
-            'target_data': [],
-            'labels': [],
-            'period': fallback_period,
-            'stats': {
-                'avg_so': 0, 'avg_do': 0, 'avg_target': 127,
-                'total_hk': 30,
-                'sisa_hk_do': 0,
-                'gap_total': '+2.5M'
-            }
-        }
-        
-        base_date = datetime.now() - timedelta(days=30)
-        
-        for i in range(30):
-            # Random dengan beberapa hari SO/DO = 0 untuk simulasi realistis
-            so_val = random.randint(45, 180) if random.random() > 0.1 else 0
-            do_val = random.randint(30, 160) if random.random() > 0.15 else 0
-            
-            chart_data['so_data'].append(so_val)
-            chart_data['do_data'].append(do_val)
-            chart_data['target_data'].append(127)
-            
-            current_date = base_date + timedelta(days=i)
-            chart_data['labels'].append(current_date.strftime('%d/%m'))
-        
-        # Calculate sample stats
-        chart_data['stats']['avg_so'] = int(sum(chart_data['so_data']) / 30)
-        chart_data['stats']['avg_do'] = int(sum(chart_data['do_data']) / 30)
-        chart_data['stats']['total_hk'] = len(chart_data['labels'])
-        chart_data['stats']['sisa_hk_do'] = sum(1 for do in chart_data['do_data'] if do > 0)
-        
-        return chart_data
     
     def get_period_from_data(self, sheets):
         """Ambil periode bulan-tahun dari data sheet soharian"""
@@ -488,6 +338,150 @@ class SalesmanDashboardUpdater:
         except Exception as e:
             logging.error(f"❌ Error getting Gap Total: {e}")
             return "0"
+
+    def generate_chart_data(self, sheets=None):
+        """Generate chart data dari parameter sheets dengan period dari data"""
+        
+        # ✅ Get period dari data sheet
+        data_period = self.get_period_from_data(sheets)
+        
+        chart_data = {
+            'so_data': [],
+            'do_data': [],
+            'target_data': [],
+            'labels': [],
+            'period': data_period,          # ✅ Period dari data sheet
+            'stats': {
+                'avg_so': 0,
+                'avg_do': 0,
+                'avg_target': 127,
+                'total_hk': 0,              # ✅ COUNTA kolom tanggal
+                'sisa_hk_do': 0,            # ✅ COUNTIF DO > 0
+                'gap_total': '0'            # ✅ Gap Total dari dashboard
+            }
+        }
+        
+        try:
+            # ✅ GUNAKAN parameter sheets
+            if sheets and 'soharian' in sheets:
+                so_df = sheets['soharian']  
+                logging.info(f"📊 Processing {len(so_df)} rows from sheets['soharian']")
+                logging.info(f"📊 Columns in soharian: {list(so_df.columns)}")
+                
+                for index, row in so_df.iterrows():
+                    if pd.isna(row.iloc[0]):  # Skip empty rows
+                        continue
+                    
+                    # Get values dengan flexible mapping
+                    tgl = self.get_cell_value(row, ['Tgl', 'Tanggal', 'Date'])
+                    target = self.get_cell_value(row, ['Target', 'target'])
+                    so = self.get_cell_value(row, ['SO', 'so'])
+                    do = self.get_cell_value(row, ['DO', 'do'])
+                    
+                    if tgl is not None and so is not None:
+                        # Parse date
+                        try:
+                            if isinstance(tgl, str):
+                                date_obj = datetime.strptime(tgl, '%m/%d/%Y')
+                            else:
+                                date_obj = pd.to_datetime(tgl)
+                            label = date_obj.strftime('%d/%m')
+                        except Exception as e:
+                            logging.warning(f"Date parse error: {e}")
+                            label = f"Day {len(chart_data['labels'])+1}"
+                        
+                        # Convert to millions
+                        so_millions = int(self.safe_number(so) / 1_000_000)
+                        do_millions = int(self.safe_number(do) / 1_000_000) if do else 0
+                        target_millions = int(self.safe_number(target) / 1_000_000) if target else 127
+                        
+                        chart_data['so_data'].append(so_millions)
+                        chart_data['do_data'].append(do_millions)
+                        chart_data['target_data'].append(target_millions)
+                        chart_data['labels'].append(label)
+                
+                # ✅ Calculate stats dengan formula Excel equivalent
+                if chart_data['so_data']:
+                    # Basic averages
+                    chart_data['stats']['avg_so'] = int(sum(chart_data['so_data']) / len(chart_data['so_data']))
+                    chart_data['stats']['avg_do'] = int(sum(chart_data['do_data']) / len(chart_data['do_data']))
+                    chart_data['stats']['avg_target'] = int(sum(chart_data['target_data']) / len(chart_data['target_data']))
+                    
+                    # ✅ COUNTA kolom tanggal (count non-empty dates)
+                    chart_data['stats']['total_hk'] = len(chart_data['labels'])
+                    
+                    # ✅ COUNTIF DO > 0 (count days with DO > 0)
+                    chart_data['stats']['sisa_hk_do'] = sum(1 for do in chart_data['do_data'] if do > 0)
+                
+                # ✅ Get Gap Total dari sheet dashboard
+                chart_data['stats']['gap_total'] = self.get_gap_total_from_dashboard(sheets)
+                
+                logging.info(f"✅ Processed {len(chart_data['so_data'])} days from sheets parameter")
+                logging.info(f"📅 Period: {data_period}")
+                logging.info(f"📈 Stats: SO={chart_data['stats']['avg_so']}M, DO={chart_data['stats']['avg_do']}M")
+                logging.info(f"📅 HK: Total={chart_data['stats']['total_hk']}, Sisa DO={chart_data['stats']['sisa_hk_do']}")
+                logging.info(f"💰 Gap Total: {chart_data['stats']['gap_total']}")
+                
+                # Return real data jika ada
+                if chart_data['so_data']:
+                    return chart_data
+            
+            # Jika sheets kosong atau sheet tidak ada
+            logging.info("⚠️ Sheet 'soharian' not found or empty, using sample data")
+            return self.generate_sample_chart_data_fallback()
+            
+        except Exception as e:
+            logging.error(f"❌ Error processing chart data: {e}")
+            return self.generate_sample_chart_data_fallback()
+
+    def generate_sample_chart_data_fallback(self):
+        """Sample data fallback dengan period fallback"""
+        import random
+        from datetime import datetime, timedelta
+        
+        # ✅ Simple fallback period
+        now = datetime.now()
+        months_id = [
+            'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+            'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+        ]
+        fallback_period = f"{months_id[now.month - 1]} {now.year}"
+        
+        chart_data = {
+            'so_data': [],
+            'do_data': [],
+            'target_data': [],
+            'labels': [],
+            'period': fallback_period,      # ✅ Fallback period
+            'stats': {
+                'avg_so': 0, 'avg_do': 0, 'avg_target': 127,
+                'total_hk': 30,         # ✅ COUNTA tanggal
+                'sisa_hk_do': 0,        # ✅ COUNTIF DO > 0  
+                'gap_total': '+2.5M'    # ✅ Sample Gap Total
+            }
+        }
+        
+        base_date = datetime.now() - timedelta(days=30)
+        
+        for i in range(30):
+            # Random dengan beberapa hari SO/DO = 0 untuk simulasi
+            so_val = random.randint(0, 90) if random.random() > 0.1 else 0  # 10% chance SO = 0
+            do_val = random.randint(0, 85) if random.random() > 0.15 else 0  # 15% chance DO = 0
+            
+            chart_data['so_data'].append(so_val)
+            chart_data['do_data'].append(do_val)
+            chart_data['target_data'].append(127)
+            
+            current_date = base_date + timedelta(days=i)
+            chart_data['labels'].append(current_date.strftime('%d/%m'))
+        
+        # ✅ Calculate sample stats dengan formula yang benar
+        chart_data['stats']['avg_so'] = int(sum(chart_data['so_data']) / 30)
+        chart_data['stats']['avg_do'] = int(sum(chart_data['do_data']) / 30)
+        chart_data['stats']['total_hk'] = len(chart_data['labels'])  # COUNTA tanggal
+        chart_data['stats']['sisa_hk_do'] = sum(1 for do in chart_data['do_data'] if do > 0)  # COUNTIF DO > 0
+        
+        return chart_data
     
     def get_cell_value(self, row, possible_columns):
         """Ambil nilai dari row dengan berbagai kemungkinan nama kolom"""
@@ -580,9 +574,9 @@ class SalesmanDashboardUpdater:
             return "+0%"
         
     def generate_json_files(self, sheets):
-        """✅ UPDATED: Generate JSON files dengan semua improvements"""
+        """Generate JSON files dari Excel data"""
         try:
-            logging.info("🔄 Processing Excel data to JSON with all improvements...")
+            logging.info("🔄 Processing Excel data to JSON...")
             
             # Process all data
             dashboard_data = self.process_dashboard_data(sheets)
@@ -596,40 +590,36 @@ class SalesmanDashboardUpdater:
             # Save JSON files
             files_saved = []
             
-            # Dashboard data dengan all metrics
+            # Dashboard data
             dashboard_file = f'{self.data_folder}/dashboard.json'
             with open(dashboard_file, 'w', encoding='utf-8') as f:
                 json.dump(dashboard_data, f, ensure_ascii=False, indent=2)
             files_saved.append('dashboard.json')
-            logging.info(f"✅ Saved: {dashboard_file} with all vs metrics")
+            logging.info(f"✅ Saved: {dashboard_file}")
             
-            # Salesman list dengan NIK untuk login system
+            # Salesman list
             list_file = f'{self.data_folder}/salesman_list.json'
             with open(list_file, 'w', encoding='utf-8') as f:
                 json.dump(salesman_list, f, ensure_ascii=False, indent=2)
             files_saved.append('salesman_list.json')
-            logging.info(f"✅ Saved: {list_file} with NIK authentication")
+            logging.info(f"✅ Saved: {list_file}")
             
-            # Salesman details dengan NIK mapping
+            # Salesman details
             details_file = f'{self.data_folder}/salesman_details.json'
             with open(details_file, 'w', encoding='utf-8') as f:
                 json.dump(salesman_details, f, ensure_ascii=False, indent=2)
             files_saved.append('salesman_details.json')
-            logging.info(f"✅ Saved: {details_file} with NIK mapping")
+            logging.info(f"✅ Saved: {details_file}")
             
-            # Modern chart data dengan accurate stats
+            # ✅ Generate chart data ONLY ONCE dengan parameter sheets
             chart_data = self.generate_chart_data(sheets)
             chart_file = f'{self.data_folder}/chart_data.json'
             with open(chart_file, 'w', encoding='utf-8') as f:
                 json.dump(chart_data, f, ensure_ascii=False, indent=2)
             files_saved.append('chart_data.json')
-            logging.info(f"✅ Saved: {chart_file} with modern chart data")
+            logging.info(f"✅ Saved: {chart_file}")
             
-            logging.info(f"🎉 Generated {len(files_saved)} JSON files with all improvements!")
-            logging.info("📋 Files updated:")
-            for file in files_saved:
-                logging.info(f"   - {file}")
-            
+            logging.info(f"🎉 Generated {len(files_saved)} JSON files successfully!")
             return True
             
         except Exception as e:
@@ -658,10 +648,10 @@ class SalesmanDashboardUpdater:
                 logging.info("📝 No changes to commit")
                 return True
             
-            commit_message = f"Morning update: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Updated with all improvements"
+            commit_message = f"Morning update: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
             subprocess.run(['git', 'commit', '-m', commit_message], check=True)
             
-            # Push to remote
+            # Push to remote (will fail on first run, user needs to set remote)
             try:
                 subprocess.run(['git', 'push'], check=True)
                 logging.info("✅ Successfully pushed to GitHub!")
@@ -695,15 +685,8 @@ class SalesmanDashboardUpdater:
         return True
     
     def run_morning_update(self):
-        """✅ UPDATED: Main function untuk morning update dengan all improvements"""
+        """Main function untuk morning update"""
         print("🌅 MORNING BATCH UPDATE - SALESMAN DASHBOARD")
-        print("=" * 55)
-        print("🚀 Version 2.0 - With All Improvements:")
-        print("   ✅ Modern SVG Chart with real data")
-        print("   ✅ NIK-based Login System")
-        print("   ✅ All VS Metrics in LOB Cards")
-        print("   ✅ Real Data Integration")
-        print("   ✅ Updated Navigation")
         print("=" * 55)
         
         start_time = datetime.now()
@@ -719,7 +702,7 @@ class SalesmanDashboardUpdater:
             if not self.validate_data(sheets):
                 return False
             
-            # Step 3: Generate JSON dengan all improvements
+            # Step 3: Generate JSON
             if not self.generate_json_files(sheets):
                 logging.error("❌ Failed to generate JSON files")
                 return False
@@ -737,17 +720,11 @@ class SalesmanDashboardUpdater:
             print(f"⏱️  Processing time: {duration:.2f} seconds")
             print("📱 Dashboard URL: https://kisman271128.github.io/salesman-dashboard")
             print("⏰ Next update: Tomorrow morning at 07:00")
-            print("")
-            print("📊 Features Updated:")
-            print("   🎯 Modern Chart - Real trend SO/DO vs Target")
-            print("   🔐 NIK Login - All salesman + admin access")
-            print("   📈 Complete Metrics - vs LM/3LM/LY displayed")
-            print("   🔗 Data Integration - Real JSON connections")
-            print("   🧭 Updated Navigation - 4 & 5 icon menus")
-            print("")
-            print("🔑 Login Credentials:")
-            print("   Admin: admin / admin123")
-            print("   Salesman: [NIK] / sales123")
+            print("📊 Files updated:")
+            print("   - dashboard.json")
+            print("   - salesman_list.json") 
+            print("   - salesman_details.json")
+            print("   - chart_data.json")
             print("=" * 55)
             
             return True
@@ -757,16 +734,7 @@ class SalesmanDashboardUpdater:
             return False
 
 def main():
-    """Main entry point dengan welcome message"""
-    print("🚀 SALESMAN DASHBOARD UPDATER v2.0")
-    print("=" * 50)
-    print("Ready to process your Excel data with:")
-    print("✅ Modern chart visualization")
-    print("✅ NIK-based authentication") 
-    print("✅ Complete metrics display")
-    print("✅ Real-time data integration")
-    print("=" * 50)
-    
+    """Main entry point"""
     updater = SalesmanDashboardUpdater()
     success = updater.run_morning_update()
     
@@ -775,8 +743,7 @@ def main():
         input("Press Enter to continue...")
         return False
     
-    print("\n✅ Update successful! Dashboard ready with all improvements")
-    print("🌐 Your team can now access the enhanced dashboard")
+    print("\n✅ Update successful! Team can now see latest data")
     input("Press Enter to continue...")
     return True
 

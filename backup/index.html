@@ -312,16 +312,14 @@
             border-color: #667eea;
         }
 
-        .demo-info {
+        .forgot-password {
             color: rgba(255, 255, 255, 0.8);
             text-decoration: none;
-            font-size: 12px;
+            font-size: 14px;
             transition: color 0.3s ease;
-            cursor: pointer;
-            text-align: center;
         }
 
-        .demo-info:hover {
+        .forgot-password:hover {
             color: white;
         }
 
@@ -393,58 +391,10 @@
             animation: shake 0.5s ease-in-out;
         }
 
-        .success-message {
-            background: rgba(46, 213, 115, 0.2);
-            border: 1px solid rgba(46, 213, 115, 0.4);
-            color: #2ed573;
-            padding: 12px 15px;
-            border-radius: 10px;
-            font-size: 14px;
-            margin-bottom: 20px;
-            display: none;
-        }
-
         @keyframes shake {
             0%, 100% { transform: translateX(0); }
             25% { transform: translateX(-5px); }
             75% { transform: translateX(5px); }
-        }
-
-        /* Quick Login Section */
-        .quick-login {
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .quick-login-title {
-            color: rgba(255, 255, 255, 0.8);
-            font-size: 12px;
-            text-align: center;
-            margin-bottom: 15px;
-        }
-
-        .quick-login-buttons {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-        }
-
-        .quick-btn {
-            padding: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            font-size: 12px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(10px);
-        }
-
-        .quick-btn:hover {
-            background: rgba(255, 255, 255, 0.2);
-            transform: translateY(-2px);
         }
     </style>
 </head>
@@ -469,18 +419,13 @@
 
             <!-- Error Message -->
             <div class="error-message" id="errorMessage">
-                NIK atau password salah. Silakan coba lagi.
-            </div>
-
-            <!-- Success Message -->
-            <div class="success-message" id="successMessage">
-                Login berhasil! Mengarahkan ke dashboard...
+                Username atau password salah. Silakan coba lagi.
             </div>
 
             <!-- Login Form -->
             <form class="login-form" id="loginForm">
                 <div class="input-group">
-                    <input type="text" class="input-field" id="nikInput" placeholder="NIK Salesman" required maxlength="11">
+                    <input type="text" class="input-field" id="username" placeholder="Username" required>
                     <span class="input-icon">👤</span>
                 </div>
 
@@ -494,7 +439,7 @@
                         <input type="checkbox" class="checkbox" id="rememberMe">
                         Remember me
                     </label>
-                    <div class="demo-info" onclick="showDemoInfo()">Demo Info</div>
+                    <a href="#" class="forgot-password">Forgot Password?</a>
                 </div>
 
                 <button type="submit" class="login-button">
@@ -505,17 +450,6 @@
                 </button>
             </form>
 
-            <!-- Quick Login -->
-            <div class="quick-login">
-                <div class="quick-login-title">Quick Login (Demo)</div>
-                <div class="quick-login-buttons">
-                    <button class="quick-btn" onclick="quickLogin('admin')">Admin</button>
-                    <button class="quick-btn" onclick="quickLogin('17210032876')">Asman</button>
-                    <button class="quick-btn" onclick="quickLogin('17210036369')">M. Tamrin</button>
-                    <button class="quick-btn" onclick="quickLogin('17210037632')">Robianor</button>
-                </div>
-            </div>
-
             <!-- Footer -->
             <div class="login-footer">
                 <p class="version-info">Sales Dashboard v2.0 | Powered by Modern Analytics</p>
@@ -524,182 +458,73 @@
     </div>
 
     <script>
-        // Global variables
-        let validUsers = {};
-        let isLoading = false;
+        // Demo credentials
+        const DEMO_CREDENTIALS = {
+            'admin': 'admin123',
+            'sales': 'sales123',
+            'manager': 'manager123',
+            'demo': 'demo'
+        };
 
         // DOM Elements
         const loginForm = document.getElementById('loginForm');
-        const nikInput = document.getElementById('nikInput');
+        const usernameInput = document.getElementById('username');
         const passwordInput = document.getElementById('password');
         const errorMessage = document.getElementById('errorMessage');
-        const successMessage = document.getElementById('successMessage');
         const buttonText = document.getElementById('buttonText');
         const loading = document.getElementById('loading');
         const rememberMe = document.getElementById('rememberMe');
 
-        // ✅ Load valid users dari salesman_list.json
-        async function loadValidUsers() {
-            try {
-                console.log('🔄 Loading valid users...');
-                
-                // Load salesman data
-                const response = await fetch('data/salesman_list.json');
-                if (!response.ok) {
-                    throw new Error('Failed to load salesman data');
-                }
-                
-                const salesmanList = await response.json();
-                
-                // Build valid users object
-                validUsers = {};
-                
-                // Add admin user
-                validUsers['admin'] = {
-                    password: 'admin123',
-                    name: 'Administrator',
-                    role: 'admin'
-                };
-                
-                // Add all salesman NIKs
-                salesmanList.forEach(salesman => {
-                    validUsers[salesman.id] = {
-                        password: 'sales123', // Default password untuk semua salesman
-                        name: salesman.name,
-                        role: 'salesman'
-                    };
-                });
-                
-                console.log('✅ Valid users loaded:', Object.keys(validUsers));
-                console.log('📋 Available NIKs:', salesmanList.map(s => s.id));
-                
-            } catch (error) {
-                console.error('❌ Error loading valid users:', error);
-                
-                // Fallback users jika gagal load
-                validUsers = {
-                    'admin': { password: 'admin123', name: 'Administrator', role: 'admin' },
-                    '17210032876': { password: 'sales123', name: 'Asman', role: 'salesman' },
-                    '17210036369': { password: 'sales123', name: 'Muhammad Tamrin', role: 'salesman' },
-                    '17210037632': { password: 'sales123', name: 'Robianor', role: 'salesman' },
-                    '17210037713': { password: 'sales123', name: 'Rahmani', role: 'salesman' },
-                    '17210037897': { password: 'sales123', name: 'Hindra', role: 'salesman' },
-                    '17210038077': { password: 'sales123', name: 'Sopian Sauri', role: 'salesman' }
-                };
-                
-                console.log('⚠️ Using fallback users');
-            }
-        }
-
         // Check if user is already remembered
-        window.addEventListener('load', async function() {
-            await loadValidUsers();
-            
+        window.addEventListener('load', function() {
             const rememberedUser = localStorage.getItem('rememberedUser');
             if (rememberedUser) {
-                nikInput.value = rememberedUser;
+                usernameInput.value = rememberedUser;
                 rememberMe.checked = true;
             }
         });
 
-        // ✅ Enhanced Login Form Handler
-        loginForm.addEventListener('submit', async function(e) {
+        // Login Form Handler
+        loginForm.addEventListener('submit', function(e) {
             e.preventDefault();
             
-            if (isLoading) return;
-            
-            const nik = nikInput.value.trim();
+            const username = usernameInput.value.trim();
             const password = passwordInput.value.trim();
             
-            // Validation
-            if (!nik || !password) {
-                showError('NIK dan password harus diisi!');
-                return;
-            }
-            
-            // Hide messages
-            hideMessages();
+            // Hide error message
+            errorMessage.style.display = 'none';
             
             // Show loading
-            setLoading(true);
+            buttonText.style.display = 'none';
+            loading.style.display = 'block';
             
             // Simulate API call delay
             setTimeout(() => {
-                validateLogin(nik, password);
+                if (DEMO_CREDENTIALS[username] === password) {
+                    // Success - Remember user if checkbox is checked
+                    if (rememberMe.checked) {
+                        localStorage.setItem('rememberedUser', username);
+                    } else {
+                        localStorage.removeItem('rememberedUser');
+                    }
+                    
+                    // Store login session
+                    sessionStorage.setItem('isLoggedIn', 'true');
+                    sessionStorage.setItem('currentUser', username);
+                    
+                    // Success animation and redirect
+                    showSuccess();
+                } else {
+                    // Error
+                    showError();
+                }
             }, 1500);
         });
 
-        // ✅ Validate login dengan NIK system
-        function validateLogin(nik, password) {
-            console.log(`🔍 Validating login for NIK: ${nik}`);
-            
-            const user = validUsers[nik];
-            
-            if (user && user.password === password) {
-                // Success
-                console.log(`✅ Login successful for: ${user.name} (${user.role})`);
-                
-                // Remember user if checkbox is checked
-                if (rememberMe.checked) {
-                    localStorage.setItem('rememberedUser', nik);
-                } else {
-                    localStorage.removeItem('rememberedUser');
-                }
-                
-                // Store login session
-                sessionStorage.setItem('isLoggedIn', 'true');
-                sessionStorage.setItem('currentUser', nik);
-                sessionStorage.setItem('userName', user.name);
-                sessionStorage.setItem('userRole', user.role);
-                
-                showSuccess(user.name);
-            } else {
-                // Error
-                console.log(`❌ Login failed for NIK: ${nik}`);
-                showError('NIK atau password salah. Silakan coba lagi.');
-                setLoading(false);
-            }
-        }
-
-        // ✅ Quick Login Function
-        function quickLogin(nik) {
-            console.log(`⚡ Quick login for NIK: ${nik}`);
-            
-            nikInput.value = nik;
-            
-            if (nik === 'admin') {
-                passwordInput.value = 'admin123';
-            } else {
-                passwordInput.value = 'sales123';
-            }
-            
-            // Trigger form submission
-            loginForm.dispatchEvent(new Event('submit'));
-        }
-
-        // ✅ Show demo info
-        function showDemoInfo() {
-            const demoUsers = Object.keys(validUsers).map(nik => {
-                const user = validUsers[nik];
-                return `${nik} (${user.name}) - ${user.password}`;
-            }).join('\n');
-            
-            alert(`📋 Demo Login Credentials:\n\n${demoUsers}\n\n💡 Tip: Gunakan Quick Login buttons untuk akses cepat!`);
-        }
-
-        // UI Functions
-        function setLoading(loading) {
-            isLoading = loading;
-            buttonText.style.display = loading ? 'none' : 'block';
-            document.getElementById('loading').style.display = loading ? 'block' : 'none';
-        }
-
-        function showSuccess(userName) {
-            successMessage.innerHTML = `Selamat datang, ${userName}! Mengarahkan ke dashboard...`;
-            successMessage.style.display = 'block';
+        function showSuccess() {
             buttonText.textContent = 'Welcome!';
             buttonText.style.display = 'block';
-            document.getElementById('loading').style.display = 'none';
+            loading.style.display = 'none';
             
             // Animate card out
             const card = document.querySelector('.login-card');
@@ -708,11 +533,14 @@
             
             setTimeout(() => {
                 window.location.href = 'dashboard.html';
-            }, 2000);
+            }, 800);
         }
 
-        function showError(message) {
-            errorMessage.textContent = message;
+        function showError() {
+            buttonText.textContent = 'Sign In';
+            buttonText.style.display = 'block';
+            loading.style.display = 'none';
+            
             errorMessage.style.display = 'block';
             
             // Shake form
@@ -722,11 +550,6 @@
             setTimeout(() => {
                 card.style.animation = '';
             }, 500);
-        }
-
-        function hideMessages() {
-            errorMessage.style.display = 'none';
-            successMessage.style.display = 'none';
         }
 
         // Input field animations
@@ -741,29 +564,27 @@
             });
         });
 
-        // ✅ NIK input formatting (hanya angka)
-        nikInput.addEventListener('input', function(e) {
-            // Hanya izinkan angka
-            this.value = this.value.replace(/[^0-9]/g, '');
-            
-            // Highlight jika NIK valid
-            if (validUsers[this.value]) {
-                this.style.borderColor = 'rgba(46, 213, 115, 0.6)';
-                this.style.boxShadow = '0 0 10px rgba(46, 213, 115, 0.3)';
-            } else {
-                this.style.borderColor = 'rgba(255, 255, 255, 0.2)';
-                this.style.boxShadow = 'none';
-            }
-        });
-
-        // Easter egg - Auto-fill for demo
+        // Easter egg - Enter demo mode
+        let konamiCode = false;
         document.addEventListener('keydown', function(e) {
             if (e.ctrlKey && e.shiftKey && e.key === 'D') {
-                quickLogin('admin');
+                usernameInput.value = 'demo';
+                passwordInput.value = 'demo';
+                usernameInput.style.background = 'rgba(46, 213, 115, 0.2)';
+                passwordInput.style.background = 'rgba(46, 213, 115, 0.2)';
+                
+                setTimeout(() => {
+                    usernameInput.style.background = '';
+                    passwordInput.style.background = '';
+                }, 2000);
             }
         });
 
-        console.log('🚀 Login system initialized with NIK authentication');
+        // Forgot password handler
+        document.querySelector('.forgot-password').addEventListener('click', function(e) {
+            e.preventDefault();
+            alert('Demo credentials:\n\nUsername: demo\nPassword: demo\n\nOr try:\nadmin/admin123\nsales/sales123\nmanager/manager123');
+        });
     </script>
 </body>
 </html>
