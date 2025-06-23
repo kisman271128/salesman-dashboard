@@ -344,7 +344,7 @@
             border-radius: 50%;
         }
 
-        /* ✅ MODERN CHART CONTAINER dengan SVG */
+        /* ✅ MODERN CHART CONTAINER dengan SVG - FIXED */
         .modern-chart-container {
             height: 220px;
             position: relative;
@@ -353,11 +353,16 @@
             padding: 16px;
             overflow: hidden;
             border: 1px solid rgba(102, 126, 234, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .chart-svg {
             width: 100%;
             height: 100%;
+            max-width: 320px;
+            max-height: 180px;
         }
 
         .chart-grid-line {
@@ -971,7 +976,7 @@
             return card;
         }
 
-        // ✅ MODERN CHART UPDATE dengan SVG
+        // ✅ MODERN CHART UPDATE dengan SVG - IMPROVED
         function updateModernChart(chartData) {
             console.log('🎨 Updating modern chart with data:', chartData);
             
@@ -986,27 +991,38 @@
                 chartPeriodElement.textContent = chartData.period;
             }
 
-            // Generate SVG chart
-            generateSVGChart(chartData);
+            // Wait for DOM to be ready then generate chart
+            setTimeout(() => {
+                generateSVGChart(chartData);
+            }, 100);
 
             // Update chart stats
             updateChartStats(chartData.stats);
         }
 
-        // ✅ GENERATE SVG CHART
+        // ✅ GENERATE SVG CHART - FIXED VERSION
         function generateSVGChart(data) {
             const svg = document.getElementById('chartSvg');
-            const container = svg.parentElement;
-            const containerRect = container.getBoundingClientRect();
+            const container = document.querySelector('.modern-chart-container');
             
-            // Chart dimensions
-            const width = containerRect.width - 32; // padding
-            const height = containerRect.height - 32;
+            if (!svg || !container || !data.so_data.length) {
+                console.error('❌ Chart elements not found or no data');
+                return;
+            }
+            
+            // Chart dimensions - fixed calculation
+            const containerWidth = 320; // Fixed width for mobile
+            const containerHeight = 180; // Fixed height
             const margin = { top: 20, right: 20, bottom: 40, left: 40 };
-            const chartWidth = width - margin.left - margin.right;
-            const chartHeight = height - margin.top - margin.bottom;
+            const chartWidth = containerWidth - margin.left - margin.right;
+            const chartHeight = containerHeight - margin.top - margin.bottom;
 
-            // Clear existing content
+            // Set SVG dimensions
+            svg.setAttribute('width', containerWidth);
+            svg.setAttribute('height', containerHeight);
+            svg.setAttribute('viewBox', `0 0 ${containerWidth} ${containerHeight}`);
+
+            // Clear existing content except defs
             svg.innerHTML = `
                 <defs>
                     <linearGradient id="gradientSO" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -1026,58 +1042,48 @@
             const maxTarget = Math.max(...data.target_data);
             const maxValue = Math.max(maxSO, maxDO, maxTarget) * 1.1;
 
+            if (maxValue === 0) {
+                console.warn('⚠️ No data to display in chart');
+                return;
+            }
+
             // Create scales
-            const xScale = (i) => (i / (data.so_data.length - 1)) * chartWidth + margin.left;
+            const xScale = (i) => (i / Math.max(data.so_data.length - 1, 1)) * chartWidth + margin.left;
             const yScale = (value) => chartHeight - (value / maxValue) * chartHeight + margin.top;
 
             // Draw grid lines
             const gridGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-            for (let i = 0; i <= 5; i++) {
-                const y = margin.top + (i / 5) * chartHeight;
+            for (let i = 0; i <= 4; i++) {
+                const y = margin.top + (i / 4) * chartHeight;
                 const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
                 line.setAttribute('x1', margin.left);
                 line.setAttribute('y1', y);
                 line.setAttribute('x2', margin.left + chartWidth);
                 line.setAttribute('y2', y);
-                line.setAttribute('class', 'chart-grid-line');
+                line.setAttribute('stroke', 'rgba(102, 126, 234, 0.1)');
+                line.setAttribute('stroke-width', '1');
                 gridGroup.appendChild(line);
             }
             svg.appendChild(gridGroup);
 
-            // Create path strings
+            // Create path strings for lines
             let soPath = '';
             let doPath = '';
             let targetPath = '';
-            let soAreaPath = '';
-            let doAreaPath = '';
 
             data.so_data.forEach((value, i) => {
                 const x = xScale(i);
                 const y = yScale(value);
                 const command = i === 0 ? 'M' : 'L';
                 soPath += `${command} ${x} ${y} `;
-                
-                if (i === 0) {
-                    soAreaPath = `M ${x} ${chartHeight + margin.top} L ${x} ${y} `;
-                } else {
-                    soAreaPath += `L ${x} ${y} `;
-                }
             });
-            soAreaPath += `L ${xScale(data.so_data.length - 1)} ${chartHeight + margin.top} Z`;
 
             data.do_data.forEach((value, i) => {
                 const x = xScale(i);
                 const y = yScale(value);
                 const command = i === 0 ? 'M' : 'L';
                 doPath += `${command} ${x} ${y} `;
-                
-                if (i === 0) {
-                    doAreaPath = `M ${x} ${chartHeight + margin.top} L ${x} ${y} `;
-                } else {
-                    doAreaPath += `L ${x} ${y} `;
-                }
             });
-            doAreaPath += `L ${xScale(data.do_data.length - 1)} ${chartHeight + margin.top} Z`;
 
             data.target_data.forEach((value, i) => {
                 const x = xScale(i);
@@ -1086,40 +1092,47 @@
                 targetPath += `${command} ${x} ${y} `;
             });
 
-            // Draw area fills
-            const soArea = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            soArea.setAttribute('d', soAreaPath);
-            soArea.setAttribute('class', 'chart-area-so');
-            svg.appendChild(soArea);
-
-            const doArea = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            doArea.setAttribute('d', doAreaPath);
-            doArea.setAttribute('class', 'chart-area-do');
-            svg.appendChild(doArea);
-
             // Draw lines
-            const soLine = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            soLine.setAttribute('d', soPath);
-            soLine.setAttribute('class', 'chart-line-so');
-            svg.appendChild(soLine);
+            if (soPath) {
+                const soLine = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                soLine.setAttribute('d', soPath);
+                soLine.setAttribute('stroke', '#667eea');
+                soLine.setAttribute('stroke-width', '3');
+                soLine.setAttribute('fill', 'none');
+                soLine.setAttribute('stroke-linecap', 'round');
+                svg.appendChild(soLine);
+            }
 
-            const doLine = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            doLine.setAttribute('d', doPath);
-            doLine.setAttribute('class', 'chart-line-do');
-            svg.appendChild(doLine);
+            if (doPath) {
+                const doLine = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                doLine.setAttribute('d', doPath);
+                doLine.setAttribute('stroke', '#f093fb');
+                doLine.setAttribute('stroke-width', '3');
+                doLine.setAttribute('fill', 'none');
+                doLine.setAttribute('stroke-linecap', 'round');
+                svg.appendChild(doLine);
+            }
 
-            const targetLine = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            targetLine.setAttribute('d', targetPath);
-            targetLine.setAttribute('class', 'chart-line-target');
-            svg.appendChild(targetLine);
+            if (targetPath) {
+                const targetLine = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                targetLine.setAttribute('d', targetPath);
+                targetLine.setAttribute('stroke', '#43e97b');
+                targetLine.setAttribute('stroke-width', '2');
+                targetLine.setAttribute('stroke-dasharray', '5,3');
+                targetLine.setAttribute('fill', 'none');
+                svg.appendChild(targetLine);
+            }
 
-            // Draw points with tooltips
+            // Draw points with hover effects
             data.so_data.forEach((value, i) => {
                 if (value > 0) {
                     const point = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
                     point.setAttribute('cx', xScale(i));
                     point.setAttribute('cy', yScale(value));
-                    point.setAttribute('class', 'chart-point chart-point-so');
+                    point.setAttribute('r', '4');
+                    point.setAttribute('fill', 'white');
+                    point.setAttribute('stroke', '#667eea');
+                    point.setAttribute('stroke-width', '2');
                     point.addEventListener('mouseenter', (e) => showTooltip(e, `SO: ${value}M`, data.labels[i]));
                     point.addEventListener('mouseleave', hideTooltip);
                     svg.appendChild(point);
@@ -1131,7 +1144,10 @@
                     const point = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
                     point.setAttribute('cx', xScale(i));
                     point.setAttribute('cy', yScale(value));
-                    point.setAttribute('class', 'chart-point chart-point-do');
+                    point.setAttribute('r', '4');
+                    point.setAttribute('fill', 'white');
+                    point.setAttribute('stroke', '#f093fb');
+                    point.setAttribute('stroke-width', '2');
                     point.addEventListener('mouseenter', (e) => showTooltip(e, `DO: ${value}M`, data.labels[i]));
                     point.addEventListener('mouseleave', hideTooltip);
                     svg.appendChild(point);
@@ -1139,13 +1155,14 @@
             });
 
             // Draw Y-axis labels
-            for (let i = 0; i <= 5; i++) {
-                const value = Math.round((maxValue / 5) * (5 - i));
+            for (let i = 0; i <= 4; i++) {
+                const value = Math.round((maxValue / 4) * (4 - i));
                 const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                 text.setAttribute('x', margin.left - 5);
-                text.setAttribute('y', margin.top + (i / 5) * chartHeight + 4);
+                text.setAttribute('y', margin.top + (i / 4) * chartHeight + 4);
                 text.setAttribute('text-anchor', 'end');
-                text.setAttribute('class', 'chart-axis-text');
+                text.setAttribute('font-size', '10');
+                text.setAttribute('fill', '#7f8c8d');
                 text.textContent = value + 'M';
                 svg.appendChild(text);
             }
@@ -1155,15 +1172,16 @@
                 if (i % 5 === 0 || i === data.labels.length - 1) {
                     const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                     text.setAttribute('x', xScale(i));
-                    text.setAttribute('y', height - 5);
+                    text.setAttribute('y', containerHeight - 10);
                     text.setAttribute('text-anchor', 'middle');
-                    text.setAttribute('class', 'chart-axis-text');
+                    text.setAttribute('font-size', '10');
+                    text.setAttribute('fill', '#7f8c8d');
                     text.textContent = label;
                     svg.appendChild(text);
                 }
             });
 
-            console.log('✅ Modern SVG chart generated successfully');
+            console.log('✅ SVG chart generated successfully');
         }
 
         // Tooltip functions
@@ -1238,9 +1256,7 @@
                     <div class="salesman-avatar" data-nik="${salesman.id}">
                         <img src="photos/${salesman.id}.jpg" 
                              alt="${salesman.name}" 
-                             onerror="this.style.display='none'; this.parentNode.textContent='${salesman.id.slice(-3)}';"
-                             style="display: none;">
-                        ${salesman.id.slice(-3)}
+                             style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
                     </div>
                     <div class="salesman-details">
                         <h4>${salesman.name}</h4>
@@ -1328,13 +1344,6 @@
                 loadDashboardData();
             }, 5 * 60 * 1000);
         }
-
-        // Handle window resize untuk chart
-        window.addEventListener('resize', () => {
-            if (chartData) {
-                setTimeout(() => updateModernChart(chartData), 100);
-            }
-        });
 
         // Initialize page
         document.addEventListener('DOMContentLoaded', function() {
