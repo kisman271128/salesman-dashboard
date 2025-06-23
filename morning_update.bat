@@ -10,7 +10,7 @@ echo ============================================================
 echo.
 
 REM Change to YOUR repository directory
-cd /d "C:\salesman-dashboard"
+cd /d "C:\Dashboard"
 
 echo [%time%] Starting morning update...
 echo.
