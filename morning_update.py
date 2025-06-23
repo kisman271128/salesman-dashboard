@@ -338,7 +338,8 @@ class SalesmanDashboardUpdater:
                     chart_data['stats']['total_hk'] = len(chart_data['labels'])
                     
                     # COUNTIF DO > 0 (count days with DO > 0)
-                    chart_data['stats']['sisa_hk_do'] = sum(1 for do in chart_data['do_data'] if do > 0)
+                    days_with_do = sum(1 for do in chart_data['do_data'] if do > 0)
+                    chart_data['stats']['sisa_hk_do'] = chart_data['stats']['total_hk'] - days_with_do
                 
                 # Get Gap Total dari sheet dashboard
                 chart_data['stats']['gap_total'] = self.get_gap_total_from_dashboard(sheets)
