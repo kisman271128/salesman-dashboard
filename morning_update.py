@@ -18,7 +18,7 @@ logging.basicConfig(
 
 class SalesmanDashboardUpdater:
     def __init__(self):
-        self.excel_file = "DbaseSalesmanWebApp.xlsm"
+        self.excel_file = "DbaseSalesmanWebApp.xlsx"
         self.data_folder = "data"
         self.photos_folder = "photos"
         self.ensure_folders()
