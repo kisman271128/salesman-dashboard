@@ -1,4 +1,4 @@
-# Excel Auto-Refresh Script - Simplified & Fixed
+﻿# Excel Auto-Refresh Script - Simplified & Fixed
 # File: C:\Dashboard\excel_refresh_simplified.ps1
 # Purpose: Fixed HRESULT 0x800A03EC calculation error
 
