@@ -382,14 +382,16 @@ class SalesmanDashboardUpdater:
             return 'Extra Effort'
 
     def process_salesman_detail(self, sheets):
-        """Process detailed salesman data with NIK mapping"""
+        """Process detailed salesman data with NIK mapping + TOTAL & Ranking"""
         try:
-            self.safe_log('info', "🔄 Processing salesman details with NIK mapping...", "Processing salesman details with NIK mapping...")
+            self.safe_log('info', "🔄 Processing salesman details with NIK mapping + TOTAL & Ranking...", "Processing salesman details with NIK mapping + TOTAL & Ranking...")
             
             lob_df = sheets['d.salesmanlob']
             process_df = sheets['d.salesmanproses'] 
+            performance_df = sheets['d.performance']  # Add performance sheet for TOTAL & Ranking
             
             self.safe_log('info', f"LOB columns: {list(lob_df.columns)}")
+            self.safe_log('info', f"Performance columns: {list(performance_df.columns)}")
             
             salesman_details = {}
             
@@ -460,14 +462,54 @@ class SalesmanDashboardUpdater:
                         self.safe_log('info', f"✅ Added metrics for NIK {nik}: CA:{ca}%, GP:{(gp_food + gp_others) / 2:.1f}%", 
                                     f"[OK] Added metrics for NIK {nik}: CA:{ca}%, GP:{(gp_food + gp_others) / 2:.1f}%")
             
-            self.safe_log('info', f"✅ Processed details for {len(salesman_details)} salesman with NIK keys + Gap field", f"[OK] Processed details for {len(salesman_details)} salesman with NIK keys + Gap field")
+            # 🆕 NEW: Add TOTAL and Ranking from d.performance sheet
+            self.safe_log('info', "🎯 Adding TOTAL and Ranking data from d.performance...", "[TARGET] Adding TOTAL and Ranking data from d.performance...")
+            
+            # Get total salesman count for ranking context
+            total_salesman_count = len([nik for nik in salesman_details.keys() if nik])
+            
+            for _, row in performance_df.iterrows():
+                if pd.notna(row.get('NIK', '')):
+                    nik = str(int(float(row['NIK']))) if pd.notna(row['NIK']) else ''
+                    
+                    if nik and nik in salesman_details:
+                        # Get TOTAL performance data from d.performance
+                        total_actual = self.safe_float(row.get('Actual', 0))
+                        total_target = self.safe_float(row.get('Target', 1))
+                        total_achievement = (total_actual / total_target * 100) if total_target > 0 else 0
+                        total_gap = total_actual - total_target
+                        
+                        # Add TOTAL section
+                        salesman_details[nik]['TOTAL'] = {
+                            'actual': total_actual,
+                            'target': total_target,
+                            'percentage': int(round(total_achievement)),
+                            'gap': total_gap
+                        }
+                        
+                        # Get ranking information
+                        rank = int(row.get('Rank', 0)) if pd.notna(row.get('Rank')) else 0
+                        
+                        # Add Ranking section
+                        salesman_details[nik]['Ranking'] = {
+                            'Rank': rank,
+                            'total_salesman': total_salesman_count
+                        }
+                        
+                        self.safe_log('info', f"✅ Added TOTAL for NIK {nik}: Actual={self.format_currency_indonesia(total_actual)}, Target={self.format_currency_indonesia(total_target)}, Achievement={total_achievement:.1f}%, Gap={self.format_currency_indonesia(total_gap)}", 
+                                    f"[OK] Added TOTAL for NIK {nik}: Achievement={total_achievement:.1f}%, Rank={rank}/{total_salesman_count}")
+                        
+                        self.safe_log('info', f"✅ Added Ranking for NIK {nik}: Rank {rank} of {total_salesman_count} salesman", 
+                                    f"[OK] Added Ranking for NIK {nik}: Rank {rank} of {total_salesman_count}")
+            
+            self.safe_log('info', f"✅ Processed details for {len(salesman_details)} salesman with NIK keys + Gap field + TOTAL + Ranking", f"[OK] Processed details for {len(salesman_details)} salesman with NIK keys + Gap field + TOTAL + Ranking")
             
             return salesman_details
             
         except Exception as e:
             self.safe_log('error', f"Error processing salesman details: {str(e)}")
             return {}
-
+            
     def generate_chart_data(self, sheets):
         """🔧 FIXED: Generate chart data dengan format Indonesia Rb/Jt/M"""
         try:
