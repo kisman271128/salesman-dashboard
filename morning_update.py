@@ -666,19 +666,19 @@ class SalesmanDashboardUpdater:
             return False
 
 def main():
-    """Main function"""
-    print("🚀 SALESMAN DASHBOARD UPDATER v2.0")
-    print("=" * 50)
-    print("Ready to process your Excel data with:")
+    """Main function - Fully Automated"""
+    print("🚀 SALESMAN DASHBOARD UPDATER v2.0 - AUTOMATED MODE")
+    print("=" * 60)
+    print("Running in fully automated mode...")
     print("✅ Modern chart visualization")
     print("✅ NIK-based authentication") 
     print("✅ Complete metrics display")
     print("✅ Real-time data integration")
-    print("=" * 50)
+    print("=" * 60)
     
-    print("\n🌅 MORNING BATCH UPDATE - SALESMAN DASHBOARD")
+    print("\n🌅 MORNING BATCH UPDATE - AUTOMATED")
     print("=" * 55)
-    print("🚀 Version 2.0 - With All Improvements:")
+    print("🚀 Version 2.0 - All Improvements:")
     print("   ✅ Modern SVG Chart with real data")
     print("   ✅ NIK-based Login System")
     print("   ✅ All VS Metrics in LOB Cards") 
@@ -691,14 +691,16 @@ def main():
     success = updater.run_morning_update()
     
     if success:
-        print("\n✅ Update successful! Dashboard ready with all improvements")
-        print("🌐 Your team can now access the enhanced dashboard")
-        print("Press Enter to continue...")
-        input()
+        print("\n✅ AUTOMATED UPDATE SUCCESSFUL!")
+        print("🌐 Dashboard ready with all improvements")
+        print("📱 URL: https://kisman271128.github.io/salesman-dashboard")
+        # No input() for automation
+        sys.exit(0)
     else:
-        print("\n❌ Update failed! Check the logs for details")
-        print("Press Enter to continue...")
-        input()
+        print("\n❌ AUTOMATED UPDATE FAILED!")
+        print("❗ Check logs for details")
+        # No input() for automation  
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
