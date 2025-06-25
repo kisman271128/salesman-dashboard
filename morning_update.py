@@ -414,15 +414,19 @@ class SalesmanDashboardUpdater:
                         target = self.safe_float(row.get('Target', 1))
                         achievement = (actual / target * 100) if target > 0 else 0
                         
+                        # Calculate gap (Actual - Target)
+                        gap = actual - target
+                        
                         # Store data in format expected by HTML
                         salesman_details[nik]['performance'][lob_name] = {
                             'actual': actual,
                             'target': target,
-                            'percentage': int(round(achievement))
+                            'percentage': int(round(achievement)),
+                            'gap': gap
                         }
                         
-                        self.safe_log('info', f"✅ Added performance for NIK {nik}, LOB {lob_name}: {self.safe_percentage(achievement)}%", 
-                                    f"[OK] Added performance for NIK {nik}, LOB {lob_name}: {self.safe_percentage(achievement)}%")
+                        self.safe_log('info', f"✅ Added performance for NIK {nik}, LOB {lob_name}: {self.safe_percentage(achievement)}%, Gap: {self.format_currency_indonesia(gap)}", 
+                                    f"[OK] Added performance for NIK {nik}, LOB {lob_name}: {self.safe_percentage(achievement)}%, Gap: {self.format_currency_indonesia(gap)}")
             
             # Process additional metrics
             self.safe_log('info', f"Process columns: {list(process_df.columns)}")
@@ -456,7 +460,7 @@ class SalesmanDashboardUpdater:
                         self.safe_log('info', f"✅ Added metrics for NIK {nik}: CA:{ca}%, GP:{(gp_food + gp_others) / 2:.1f}%", 
                                     f"[OK] Added metrics for NIK {nik}: CA:{ca}%, GP:{(gp_food + gp_others) / 2:.1f}%")
             
-            self.safe_log('info', f"✅ Processed details for {len(salesman_details)} salesman with NIK keys", f"[OK] Processed details for {len(salesman_details)} salesman with NIK keys")
+            self.safe_log('info', f"✅ Processed details for {len(salesman_details)} salesman with NIK keys + Gap field", f"[OK] Processed details for {len(salesman_details)} salesman with NIK keys + Gap field")
             
             return salesman_details
             
@@ -685,7 +689,7 @@ class SalesmanDashboardUpdater:
     def generate_json_files(self, sheets):
         """Generate all JSON files with complete data"""
         try:
-            self.safe_log('info', "🔄 Processing Excel data to JSON with format Indonesia Rb/Jt/M...", "Processing Excel data to JSON with format Indonesia...")
+            self.safe_log('info', "🔄 Processing Excel data to JSON with format Indonesia Rb/Jt/M + Gap field...", "Processing Excel data to JSON with format Indonesia + Gap field...")
             
             # Process all data
             dashboard_data = self.process_dashboard_data(sheets)
@@ -712,7 +716,7 @@ class SalesmanDashboardUpdater:
             details_file = os.path.join(self.data_dir, 'salesman_details.json')
             with open(details_file, 'w', encoding='utf-8') as f:
                 json.dump(salesman_details, f, indent=2, ensure_ascii=False)
-            self.safe_log('info', f"✅ Saved: {details_file} with format Indonesia", f"[OK] Saved: {details_file} with format Indonesia")
+            self.safe_log('info', f"✅ Saved: {details_file} with format Indonesia + Gap field", f"[OK] Saved: {details_file} with format Indonesia + Gap field")
             
             # Generate and save chart data
             chart_data = self.generate_chart_data(sheets)
@@ -722,8 +726,8 @@ class SalesmanDashboardUpdater:
                     json.dump(chart_data, f, indent=2, ensure_ascii=False)
                 self.safe_log('info', f"✅ Saved: {chart_file} with format Indonesia", f"[OK] Saved: {chart_file} with format Indonesia")
             
-            self.safe_log('info', f"🎉 Generated 4 JSON files with Indonesia format (Rb/Jt/M)!", f"[SUCCESS] Generated 4 JSON files with Indonesia format!")
-            self.safe_log('info', "📋 Files updated with Rb/Jt/M format:", "[LIST] Files updated with Rb/Jt/M format:")
+            self.safe_log('info', f"🎉 Generated 4 JSON files with Indonesia format (Rb/Jt/M) + Gap field!", f"[SUCCESS] Generated 4 JSON files with Indonesia format + Gap field!")
+            self.safe_log('info', "📋 Files updated with Rb/Jt/M format + Gap field:", "[LIST] Files updated with Rb/Jt/M format + Gap field:")
             
             files = ['dashboard.json', 'salesman_list.json', 'salesman_details.json', 'chart_data.json']
             for file in files:
@@ -749,7 +753,7 @@ class SalesmanDashboardUpdater:
                 return False
             
             # Git commit
-            commit_message = f"Morning update: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - FIXED format Indonesia Rb/Jt/M & vs metrics display"
+            commit_message = f"Morning update: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - FIXED format Indonesia Rb/Jt/M, vs metrics display & added Gap field"
             result = subprocess.run(['git', 'commit', '-m', commit_message], 
                                   capture_output=True, text=True, cwd='.')
             
@@ -811,6 +815,7 @@ class SalesmanDashboardUpdater:
    💰 Indonesian Number Format - FIXED Rb/Jt/M display
    📈 vs Metrics Display - FIXED vs LM/3LM/LY showing
    🎯 Chart Stats Format - FIXED proper Rb/Jt/M format
+   📊 Gap Field Added - FIXED Gap calculation (Actual - Target) for each LOB
    🔐 NIK Login - All salesman + admin access
    🧭 Modern Navigation - Updated 4 & 5 icon menus
 
@@ -818,11 +823,12 @@ class SalesmanDashboardUpdater:
    Admin: admin / admin123
    Salesman: [NIK] / sales123
 
-💡 Format Indonesia:
+💡 Format Indonesia + Data Enhancement:
    • < 1K = angka langsung (500)
    • 1K-999K = Rb (500Rb) 
    • 1Jt-999Jt = Jt (50.5Jt)
    • ≥1M = M (1.5M)
+   • Gap = Actual - Target (untuk analisis performance)
 =======================================================
 """
             
@@ -838,23 +844,25 @@ class SalesmanDashboardUpdater:
 
 def main():
     """Main function - Fixed Indonesia Format"""
-    print("🚀 SALESMAN DASHBOARD UPDATER v2.3 - INDONESIA FORMAT FIXED")
-    print("=" * 70)
-    print("Running with INDONESIA FORMAT FIXES:")
+    print("🚀 SALESMAN DASHBOARD UPDATER v2.4 - INDONESIA FORMAT + GAP FIELD")
+    print("=" * 75)
+    print("Running with INDONESIA FORMAT FIXES & GAP FIELD:")
     print("✅ FIXED format Rb/Jt/M sesuai standar Indonesia")
     print("✅ FIXED vs metrics display (vs LM/3LM/LY)")
-    print("✅ FIXED chart stats dengan format yang benar") 
+    print("✅ FIXED chart stats dengan format yang benar")
+    print("✅ ADDED Gap field (Actual - Target) untuk setiap LOB") 
     print("✅ Enhanced number formatting untuk semua section")
     print("=" * 70)
     
-    print("\n🌅 MORNING BATCH UPDATE - INDONESIA FORMAT")
-    print("=" * 55)
-    print("🚀 Version 2.3 - INDONESIA FORMAT FIXES:")
+    print("\n🌅 MORNING BATCH UPDATE - INDONESIA FORMAT + GAP FIELD")
+    print("=" * 60)
+    print("🚀 Version 2.4 - INDONESIA FORMAT & GAP FIELD FIXES:")
     print("   ✅ FIXED Rb untuk < 1 juta (contoh: 500Rb)")
     print("   ✅ FIXED Jt untuk 1-999 juta (contoh: 50.5Jt)")
     print("   ✅ FIXED M untuk ≥ 1 miliar (contoh: 1.5M)")
     print("   ✅ FIXED vs metrics yang tidak muncul")
     print("   ✅ FIXED chart stats format Indonesia")
+    print("   ✅ ADDED Gap field untuk setiap LOB performance")
     print("=" * 55)
     
     # Create updater and run
@@ -862,8 +870,8 @@ def main():
     success = updater.run_morning_update()
     
     if success:
-        print("\n✅ INDONESIA FORMAT UPDATE SUCCESSFUL!")
-        print("🌐 Dashboard dengan format Rb/Jt/M yang benar")
+        print("\n✅ INDONESIA FORMAT + GAP FIELD UPDATE SUCCESSFUL!")
+        print("🌐 Dashboard dengan format Rb/Jt/M yang benar + Gap field")
         print("📱 URL: https://kisman271128.github.io/salesman-dashboard")
         sys.exit(0)
     else:
