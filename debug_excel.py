@@ -9,7 +9,7 @@ import sys
 
 def debug_excel_structure():
     """Debug Excel file structure"""
-    excel_file = "DbaseSalesmanWebApp.xlsm"
+    excel_file = "DbaseSalesmanWebApp.xlsx"
     
     print("🔍 DEBUGGING EXCEL FILE STRUCTURE")
     print("=" * 50)
