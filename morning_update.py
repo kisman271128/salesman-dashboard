@@ -14,7 +14,7 @@ if sys.platform == "win32":
     sys.stderr = codecs.getwriter('utf-8')(sys.stderr.detach())
 
 class SalesmanDashboardUpdater:
-    def __init__(self, excel_file="DbaseSalesmanWebApp.xlsm"):
+    def __init__(self, excel_file="DbaseSalesmanWebApp.xlsx"):
         self.excel_file = excel_file
         self.data_dir = "data"
         
