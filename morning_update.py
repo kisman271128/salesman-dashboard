@@ -134,28 +134,34 @@ class SalesmanDashboardUpdater:
             return None
 
     def debug_dashboard_data(self, dashboard_df):
-        """Debug function to inspect dashboard data structure"""
+        """🔧 ENHANCED: Debug function to inspect dashboard data structure"""
         self.safe_log('info', "🔍 DEBUG: Inspecting dashboard data structure...")
         
         # Print column names with spaces/special chars
         self.safe_log('info', f"Column names: {list(dashboard_df.columns)}")
         
-        # Print first row for GPPJ to debug
-        gppj_row = dashboard_df[dashboard_df['LOB'] == 'GPPJ']
-        if not gppj_row.empty:
-            self.safe_log('info', f"GPPJ row data:")
-            for col in dashboard_df.columns:
-                value = gppj_row.iloc[0][col]
-                self.safe_log('info', f"  {col}: {value} (type: {type(value)})")
+        # Print first few rows to understand the data
+        self.safe_log('info', "First 3 rows of dashboard data:")
+        for i in range(min(3, len(dashboard_df))):
+            row = dashboard_df.iloc[i]
+            lob_name = row.get('LOB', 'Unknown')
+            self.safe_log('info', f"Row {i}: LOB={lob_name}")
+            
+            # Print key values for this row
+            for col in ['Actual', 'BP', 'vs BP', 'vs LY', 'vs 3LM', 'vs LM']:
+                if col in dashboard_df.columns:
+                    value = row.get(col)
+                    self.safe_log('info', f"  {col}: {value} (type: {type(value)})")
         
         # Check for column name variations
-        possible_vs_columns = [col for col in dashboard_df.columns if 'vs' in str(col).lower()]
-        self.safe_log('info', f"Columns containing 'vs': {possible_vs_columns}")
+        all_columns = list(dashboard_df.columns)
+        vs_columns = [col for col in all_columns if 'vs' in str(col).lower() or 'v' in str(col).lower()]
+        self.safe_log('info', f"Potential vs columns: {vs_columns}")
         
         return True
 
     def process_dashboard_data(self, sheets):
-        """🔧 FIXED: Process dashboard data with all metrics"""
+        """🔧 SUPER FIXED: Process dashboard data with ALL metrics properly"""
         try:
             self.safe_log('info', "🔄 Processing dashboard data with all metrics...", "Processing dashboard data with all metrics...")
             
@@ -168,7 +174,7 @@ class SalesmanDashboardUpdater:
             # Process LOB cards with all vs metrics
             lob_cards = []
             
-            for _, row in dashboard_df.iterrows():
+            for index, row in dashboard_df.iterrows():
                 if pd.notna(row.get('LOB', '')) and row.get('LOB', '').strip() != '':
                     lob_name = str(row['LOB']).strip()
                     
@@ -176,40 +182,53 @@ class SalesmanDashboardUpdater:
                     if lob_name.upper() == 'TOTAL':
                         continue
                     
-                    # 🔧 FIXED: Calculate metrics with proper debugging
-                    actual = self.safe_float(row.get('Actual', 0))
-                    bp = self.safe_float(row.get('BP', 1))
-                    gap = self.safe_float(row.get('Gap', 0))
+                    self.safe_log('info', f"🎯 Processing LOB: {lob_name}")
                     
-                    # Achievement calculation - should match Excel
+                    # 🔧 SUPER FIXED: Get raw values properly
+                    actual_raw = row.get('Actual', 0)
+                    bp_raw = row.get('BP', 1)
+                    gap_raw = row.get('Gap', 0)
+                    
+                    # Convert to numbers
+                    actual = self.safe_float(actual_raw)
+                    bp = self.safe_float(bp_raw)
+                    gap = self.safe_float(gap_raw)
+                    
+                    # Achievement calculation
                     achievement = (actual / bp * 100) if bp > 0 else 0
                     
-                    # 🔧 FIXED: Try multiple column name variations for vs metrics
-                    vs_bp_raw = self.get_vs_metric(row, ['vs BP', 'vs_BP', 'vsBP', 'VS BP'])
-                    vs_ly_raw = self.get_vs_metric(row, ['vs LY', 'vs_LY', 'vsLY', 'VS LY'])
-                    vs_3lm_raw = self.get_vs_metric(row, ['vs 3LM', 'vs_3LM', 'vs3LM', 'VS 3LM'])
-                    vs_lm_raw = self.get_vs_metric(row, ['vs LM', 'vs_LM', 'vsLM', 'VS LM'])
+                    # 🔧 SUPER FIXED: Get vs metrics with comprehensive column checking
+                    vs_bp_raw = self.get_comprehensive_vs_metric(row, dashboard_df.columns, ['vs BP', 'vs_BP', 'vsBP', 'VS BP', 'vs bp'])
+                    vs_ly_raw = self.get_comprehensive_vs_metric(row, dashboard_df.columns, ['vs LY', 'vs_LY', 'vsLY', 'VS LY', 'vs ly'])
+                    vs_3lm_raw = self.get_comprehensive_vs_metric(row, dashboard_df.columns, ['vs 3LM', 'vs_3LM', 'vs3LM', 'VS 3LM', 'vs 3lm'])
+                    vs_lm_raw = self.get_comprehensive_vs_metric(row, dashboard_df.columns, ['vs LM', 'vs_LM', 'vsLM', 'VS LM', 'vs lm'])
                     
-                    # 🔧 FIXED: Convert percentage values properly
-                    vs_bp = self.safe_float(vs_bp_raw)
-                    vs_ly = self.safe_float(vs_ly_raw) 
-                    vs_3lm = self.safe_float(vs_3lm_raw)
-                    vs_lm = self.safe_float(vs_lm_raw)
+                    # 🔧 SUPER FIXED: Parse percentage values properly
+                    vs_bp = self.parse_percentage_value(vs_bp_raw)
+                    vs_ly = self.parse_percentage_value(vs_ly_raw) 
+                    vs_3lm = self.parse_percentage_value(vs_3lm_raw)
+                    vs_lm = self.parse_percentage_value(vs_lm_raw)
                     
-                    # 🔧 FIXED: For debugging, log the values we found
-                    self.safe_log('info', f"DEBUG {lob_name}: Actual={actual}, BP={bp}, Achievement={achievement:.1f}%")
-                    self.safe_log('info', f"DEBUG {lob_name}: vs_BP={vs_bp}%, vs_LY={vs_ly}%, vs_3LM={vs_3lm}%, vs_LM={vs_lm}%")
+                    # 🔧 DEBUGGING: Log found values
+                    self.safe_log('info', f"DEBUG {lob_name}:")
+                    self.safe_log('info', f"  Actual: {actual_raw} -> {actual}")
+                    self.safe_log('info', f"  BP: {bp_raw} -> {bp}")
+                    self.safe_log('info', f"  Achievement: {achievement:.1f}%")
+                    self.safe_log('info', f"  vs_BP: {vs_bp_raw} -> {vs_bp}%")
+                    self.safe_log('info', f"  vs_LY: {vs_ly_raw} -> {vs_ly}%")
+                    self.safe_log('info', f"  vs_3LM: {vs_3lm_raw} -> {vs_3lm}%")
+                    self.safe_log('info', f"  vs_LM: {vs_lm_raw} -> {vs_lm}%")
                     
                     lob_card = {
                         'name': lob_name,
                         'achievement': f"{self.safe_percentage(achievement)}%",
-                        'actual': self.format_currency(actual),
-                        'target': self.format_currency(bp),
-                        'gap': self.format_currency(abs(gap)),  # Added gap field
-                        'vs_bp': f"{'+' if vs_bp >= 0 else ''}{self.safe_percentage(vs_bp)}%",
-                        'vs_ly': f"{'+' if vs_ly >= 0 else ''}{self.safe_percentage(vs_ly)}%", 
-                        'vs_3lm': f"{'+' if vs_3lm >= 0 else ''}{self.safe_percentage(vs_3lm)}%",
-                        'vs_lm': f"{'+' if vs_lm >= 0 else ''}{self.safe_percentage(vs_lm)}%"
+                        'actual': self.format_currency_indonesia(actual),
+                        'target': self.format_currency_indonesia(bp),
+                        'gap': self.format_currency_indonesia(abs(gap)),
+                        'vs_bp': f"{'+' if vs_bp >= 0 else ''}{vs_bp}%",
+                        'vs_ly': f"{'+' if vs_ly >= 0 else ''}{vs_ly}%", 
+                        'vs_3lm': f"{'+' if vs_3lm >= 0 else ''}{vs_3lm}%",
+                        'vs_lm': f"{'+' if vs_lm >= 0 else ''}{vs_lm}%"
                     }
                     
                     lob_cards.append(lob_card)
@@ -220,8 +239,8 @@ class SalesmanDashboardUpdater:
             
             return {
                 'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                'depo_name': 'Depo Tanjung',  # Fixed field name
-                'region_name': 'Region Kalimantan',  # Fixed field name
+                'depo_name': 'Depo Tanjung',
+                'region_name': 'Region Kalimantan',
                 'lob_cards': lob_cards
             }
             
@@ -229,14 +248,77 @@ class SalesmanDashboardUpdater:
             self.safe_log('error', f"Error processing dashboard data: {str(e)}")
             return None
 
-    def get_vs_metric(self, row, possible_column_names):
-        """🔧 FIXED: Try multiple column name variations to find vs metrics"""
-        for col_name in possible_column_names:
-            if col_name in row:
+    def get_comprehensive_vs_metric(self, row, all_columns, possible_names):
+        """🔧 SUPER FIXED: Comprehensive column name matching"""
+        # First try exact matches
+        for col_name in possible_names:
+            if col_name in all_columns:
                 value = row.get(col_name)
-                if pd.notna(value):
+                if pd.notna(value) and value != 0:
+                    self.safe_log('info', f"Found exact match: {col_name} = {value}")
                     return value
+        
+        # Then try partial matches (case insensitive)
+        for target in possible_names:
+            for actual_col in all_columns:
+                if target.lower().replace(' ', '').replace('_', '') == str(actual_col).lower().replace(' ', '').replace('_', ''):
+                    value = row.get(actual_col)
+                    if pd.notna(value) and value != 0:
+                        self.safe_log('info', f"Found partial match: {actual_col} = {value}")
+                        return value
+        
+        # If still not found, log all column names for debugging
+        self.safe_log('warning', f"Could not find vs metric from options: {possible_names}")
+        self.safe_log('warning', f"Available columns: {all_columns}")
         return 0
+
+    def parse_percentage_value(self, value):
+        """🔧 SUPER FIXED: Parse percentage values properly"""
+        if pd.isna(value) or value == 0:
+            return 0
+            
+        try:
+            # If it's already a number, use it directly
+            if isinstance(value, (int, float)):
+                # Check if it's already a percentage (between -100 and 100) or decimal (between -1 and 1)
+                if -1 <= value <= 1:
+                    return int(round(value * 100))  # Convert decimal to percentage
+                else:
+                    return int(round(value))  # Already a percentage
+            
+            # If it's a string, parse it
+            if isinstance(value, str):
+                # Remove percentage sign and whitespace
+                clean_value = str(value).strip().replace('%', '').replace(',', '')
+                
+                # Handle negative values
+                if '(' in clean_value and ')' in clean_value:
+                    clean_value = '-' + clean_value.replace('(', '').replace(')', '')
+                
+                return int(round(float(clean_value)))
+            
+            return int(round(float(value)))
+            
+        except (ValueError, TypeError):
+            self.safe_log('warning', f"Could not parse percentage value: {value}")
+            return 0
+
+    def format_currency_indonesia(self, value):
+        """🔧 FIXED: Format currency dengan format Indonesia yang benar (Rb/Jt/M)"""
+        try:
+            val = float(value)
+            
+            # Format sesuai standar Indonesia
+            if val >= 1000000000:  # >= 1 Miliar
+                return f"{val/1000000000:.1f}M"
+            elif val >= 1000000:  # >= 1 Juta, < 1 Miliar  
+                return f"{val/1000000:.1f}Jt"
+            elif val >= 1000:  # >= 1 Ribu, < 1 Juta
+                return f"{val/1000:.0f}Rb"
+            else:  # < 1 Ribu
+                return f"{val:.0f}"
+        except:
+            return "0"
 
     def process_salesman_data(self, sheets):
         """Process salesman data for ranking and login"""
@@ -259,18 +341,18 @@ class SalesmanDashboardUpdater:
                         target = self.safe_float(row.get('Target', 1))
                         achievement = (actual / target * 100) if target > 0 else 0
                         
-                        # 🔧 FIXED: Added status determination
+                        # Determine status
                         status = self.determine_status(achievement)
                         
                         salesman_data = {
                             'id': nik,  # NIK as login ID
                             'name': name,
                             'achievement': f"{self.safe_percentage(achievement)}%",
-                            'actual': self.format_currency(actual),
-                            'target': self.format_currency(target),
+                            'actual': self.format_currency_indonesia(actual),
+                            'target': self.format_currency_indonesia(target),
                             'rank': int(row.get('Rank', 0)) if pd.notna(row.get('Rank')) else 0,
                             'type': str(row.get('Tipe Salesman', 'Sales')).strip(),
-                            'status': status  # Added status field
+                            'status': status
                         }
                         
                         salesman_list.append(salesman_data)
@@ -300,7 +382,7 @@ class SalesmanDashboardUpdater:
             return 'Extra Effort'
 
     def process_salesman_detail(self, sheets):
-        """🔧 FIXED: Process detailed salesman data with NIK mapping"""
+        """Process detailed salesman data with NIK mapping"""
         try:
             self.safe_log('info', "🔄 Processing salesman details with NIK mapping...", "Processing salesman details with NIK mapping...")
             
@@ -323,8 +405,8 @@ class SalesmanDashboardUpdater:
                                 'name': str(row.get('Nama Salesman', '')).strip(),
                                 'sac': str(row.get('Nama SAC', '')).strip(),
                                 'type': str(row.get('Tipe Salesman', '')).strip(),
-                                'performance': {},  # 🔧 FIXED: Changed from lob_performance to performance
-                                'metrics': {}  # 🔧 FIXED: Changed from process_metrics to metrics
+                                'performance': {},
+                                'metrics': {}
                             }
                         
                         # Calculate LOB achievement
@@ -332,17 +414,17 @@ class SalesmanDashboardUpdater:
                         target = self.safe_float(row.get('Target', 1))
                         achievement = (actual / target * 100) if target > 0 else 0
                         
-                        # 🔧 FIXED: Store data in format expected by HTML
+                        # Store data in format expected by HTML
                         salesman_details[nik]['performance'][lob_name] = {
-                            'actual': actual,  # Store as number for calculations
-                            'target': target,  # Store as number for calculations
-                            'percentage': int(round(achievement))  # Store percentage as integer
+                            'actual': actual,
+                            'target': target,
+                            'percentage': int(round(achievement))
                         }
                         
                         self.safe_log('info', f"✅ Added performance for NIK {nik}, LOB {lob_name}: {self.safe_percentage(achievement)}%", 
                                     f"[OK] Added performance for NIK {nik}, LOB {lob_name}: {self.safe_percentage(achievement)}%")
             
-            # 🔧 FIXED: Process additional metrics
+            # Process additional metrics
             self.safe_log('info', f"Process columns: {list(process_df.columns)}")
             
             for _, row in process_df.iterrows():
@@ -350,7 +432,7 @@ class SalesmanDashboardUpdater:
                     nik = str(int(float(row['NIK']))) if pd.notna(row['NIK']) else ''
                     
                     if nik and nik in salesman_details:
-                        # 🔧 FIXED: Calculate key process metrics properly
+                        # Calculate key process metrics
                         ca = self.safe_float(row.get('Ach_CA', 0))
                         gp_food = self.safe_float(row.get('Ach_GPFood', 0))
                         gp_others = self.safe_float(row.get('Ach_GPOthers', 0))
@@ -363,7 +445,7 @@ class SalesmanDashboardUpdater:
                         
                         avg_sku = self.safe_float(row.get('Ach_AvgSKU', 0))
                         
-                        # 🔧 FIXED: Store metrics in expected format
+                        # Store metrics in expected format
                         salesman_details[nik]['metrics'] = {
                             'CA': int(round(ca)),
                             'CAProd': int(round(ca_prod_all)) if ca_prod_all > 0 else int(round((ca_prod_w + ca_prod_r + ca_prod_m) / 3)) if (ca_prod_w + ca_prod_r + ca_prod_m) > 0 else 0,
@@ -383,7 +465,7 @@ class SalesmanDashboardUpdater:
             return {}
 
     def generate_chart_data(self, sheets):
-        """🔧 FIXED: Generate modern chart data with real statistics"""
+        """🔧 FIXED: Generate chart data dengan format Indonesia Rb/Jt/M"""
         try:
             # Get period info
             data_period = self.get_period_from_data(sheets)
@@ -406,7 +488,7 @@ class SalesmanDashboardUpdater:
             self.safe_log('info', f"📊 Processing {len(so_df)} rows for modern chart", f"[CHART] Processing {len(so_df)} rows for modern chart")
             self.safe_log('info', f"📊 Columns in soharian: {list(so_df.columns)}", f"[CHART] Columns in soharian: {list(so_df.columns)}")
             
-            # 🔧 FIXED: Generate chart data in format expected by HTML
+            # Generate chart data in format expected by HTML
             so_data = []
             do_data = []
             target_data = []
@@ -434,9 +516,10 @@ class SalesmanDashboardUpdater:
             total_so = sum(so_data)
             total_do = sum(do_data)
             
-            avg_target = int(total_target / len(target_data)) if target_data else 0
-            avg_so = int(total_so / len(so_data)) if so_data else 0
-            avg_do = int(total_do / len(do_data)) if do_data else 0
+            # 🔧 FIXED: Format stats dengan format Indonesia yang benar
+            avg_target_formatted = self.format_currency_indonesia(total_target / len(target_data)) if target_data else "0"
+            avg_so_formatted = self.format_currency_indonesia(total_so / len(so_data)) if so_data else "0"
+            avg_do_formatted = self.format_currency_indonesia(total_do / len(do_data)) if do_data else "0"
             
             # Count working days
             total_hk = len(so_data)
@@ -458,7 +541,7 @@ class SalesmanDashboardUpdater:
             
             sisa_hk_do = max(0, remaining_days)
             
-            # 🔧 FIXED: Format chart data correctly
+            # Format chart data correctly
             chart_data = {
                 'period': data_period,
                 'so_data': so_data,
@@ -466,9 +549,9 @@ class SalesmanDashboardUpdater:
                 'target_data': target_data,
                 'labels': labels,
                 'stats': {
-                    'avg_target': avg_target,
-                    'avg_so': avg_so, 
-                    'avg_do': avg_do,
+                    'avg_target': avg_target_formatted,  # 🔧 FIXED: Format Indonesia
+                    'avg_so': avg_so_formatted,         # 🔧 FIXED: Format Indonesia
+                    'avg_do': avg_do_formatted,         # 🔧 FIXED: Format Indonesia
                     'total_hk': total_hk,
                     'sisa_hk_do': sisa_hk_do
                 }
@@ -479,8 +562,8 @@ class SalesmanDashboardUpdater:
             
             self.safe_log('info', f"✅ Modern chart data processed: {len(chart_data['so_data'])} days", f"[OK] Modern chart data processed: {len(chart_data['so_data'])} days")
             self.safe_log('info', f"📊 Period: {data_period}", f"[CHART] Period: {data_period}")
-            self.safe_log('info', f"📈 Stats: SO={chart_data['stats']['avg_so']}M, DO={chart_data['stats']['avg_do']}M, Target={chart_data['stats']['avg_target']}M", 
-                        f"[TREND] Stats: SO={chart_data['stats']['avg_so']}M, DO={chart_data['stats']['avg_do']}M, Target={chart_data['stats']['avg_target']}M")
+            self.safe_log('info', f"📈 Stats: SO={chart_data['stats']['avg_so']}, DO={chart_data['stats']['avg_do']}, Target={chart_data['stats']['avg_target']}", 
+                        f"[TREND] Stats: SO={chart_data['stats']['avg_so']}, DO={chart_data['stats']['avg_do']}, Target={chart_data['stats']['avg_target']}")
             self.safe_log('info', f"📅 HK: Total={chart_data['stats']['total_hk']}, Sisa DO={chart_data['stats']['sisa_hk_do']}", 
                         f"[DATE] HK: Total={chart_data['stats']['total_hk']}, Sisa DO={chart_data['stats']['sisa_hk_do']}")
             self.safe_log('info', f"💰 Gap Total: {chart_data['stats']['gap_total']}", f"[MONEY] Gap Total: {chart_data['stats']['gap_total']}")
@@ -515,17 +598,8 @@ class SalesmanDashboardUpdater:
             return 0
     
     def format_currency(self, value):
-        """🔧 FIXED: Format currency in millions more accurately"""
-        try:
-            val = float(value) / 1000000  # Convert to millions
-            if val >= 1000:
-                return f"{val/1000:.1f}T"
-            elif val >= 1:
-                return f"{val:.1f}M"  # Show decimal for better accuracy
-            else:
-                return f"{val*1000:.0f}K"
-        except:
-            return "0M"
+        """🔧 LEGACY: Keep for backward compatibility"""
+        return self.format_currency_indonesia(value)
 
     def get_period_from_data(self, sheets):
         """Extract period information from data"""
@@ -560,7 +634,7 @@ class SalesmanDashboardUpdater:
         return f"{month_id} {current_date.year}"
 
     def get_gap_total_from_dashboard(self, sheets):
-        """Get Gap Total from dashboard data"""
+        """Get Gap Total from dashboard data dengan format Indonesia"""
         try:
             dashboard_df = sheets.get('d.dashboard')
             if dashboard_df is not None:
@@ -572,18 +646,18 @@ class SalesmanDashboardUpdater:
                     if lob_name == 'TOTAL':
                         gap_value = self.safe_float(row.get('Gap', 0))
                         
-                        # Format gap value
+                        # Format gap value using Indonesian format
                         if gap_value != 0:
-                            gap_formatted = self.format_currency(abs(gap_value))  # Use absolute value
+                            gap_formatted = self.format_currency_indonesia(abs(gap_value))
                             self.safe_log('info', f"✅ Found Gap Total: {gap_formatted} for LOB: {lob_name}", f"[OK] Found Gap Total: {gap_formatted} for LOB: {lob_name}")
                             return gap_formatted
                 
                 self.safe_log('warning', "Gap Total not found in dashboard")
-                return "0M"
+                return "0"
         except Exception as e:
             self.safe_log('error', f"Error getting gap total: {str(e)}")
         
-        return "0M"
+        return "0"
 
     def validate_data(self, sheets):
         """Validate that all required data is present"""
@@ -611,7 +685,7 @@ class SalesmanDashboardUpdater:
     def generate_json_files(self, sheets):
         """Generate all JSON files with complete data"""
         try:
-            self.safe_log('info', "🔄 Processing Excel data to JSON with all improvements...", "Processing Excel data to JSON with all improvements...")
+            self.safe_log('info', "🔄 Processing Excel data to JSON with format Indonesia Rb/Jt/M...", "Processing Excel data to JSON with format Indonesia...")
             
             # Process all data
             dashboard_data = self.process_dashboard_data(sheets)
@@ -626,19 +700,19 @@ class SalesmanDashboardUpdater:
             dashboard_file = os.path.join(self.data_dir, 'dashboard.json')
             with open(dashboard_file, 'w', encoding='utf-8') as f:
                 json.dump(dashboard_data, f, indent=2, ensure_ascii=False)
-            self.safe_log('info', f"✅ Saved: {dashboard_file} with all vs metrics", f"[OK] Saved: {dashboard_file} with all vs metrics")
+            self.safe_log('info', f"✅ Saved: {dashboard_file} with format Indonesia", f"[OK] Saved: {dashboard_file} with format Indonesia")
             
             # Save salesman list
             list_file = os.path.join(self.data_dir, 'salesman_list.json')
             with open(list_file, 'w', encoding='utf-8') as f:
                 json.dump(salesman_list, f, indent=2, ensure_ascii=False)
-            self.safe_log('info', f"✅ Saved: {list_file} with NIK authentication", f"[OK] Saved: {list_file} with NIK authentication")
+            self.safe_log('info', f"✅ Saved: {list_file} with format Indonesia", f"[OK] Saved: {list_file} with format Indonesia")
             
             # Save salesman details 
             details_file = os.path.join(self.data_dir, 'salesman_details.json')
             with open(details_file, 'w', encoding='utf-8') as f:
                 json.dump(salesman_details, f, indent=2, ensure_ascii=False)
-            self.safe_log('info', f"✅ Saved: {details_file} with NIK mapping", f"[OK] Saved: {details_file} with NIK mapping")
+            self.safe_log('info', f"✅ Saved: {details_file} with format Indonesia", f"[OK] Saved: {details_file} with format Indonesia")
             
             # Generate and save chart data
             chart_data = self.generate_chart_data(sheets)
@@ -646,10 +720,10 @@ class SalesmanDashboardUpdater:
                 chart_file = os.path.join(self.data_dir, 'chart_data.json')
                 with open(chart_file, 'w', encoding='utf-8') as f:
                     json.dump(chart_data, f, indent=2, ensure_ascii=False)
-                self.safe_log('info', f"✅ Saved: {chart_file} with modern chart data", f"[OK] Saved: {chart_file} with modern chart data")
+                self.safe_log('info', f"✅ Saved: {chart_file} with format Indonesia", f"[OK] Saved: {chart_file} with format Indonesia")
             
-            self.safe_log('info', f"🎉 Generated 4 JSON files with all improvements!", f"[SUCCESS] Generated 4 JSON files with all improvements!")
-            self.safe_log('info', "📋 Files updated:", "[LIST] Files updated:")
+            self.safe_log('info', f"🎉 Generated 4 JSON files with Indonesia format (Rb/Jt/M)!", f"[SUCCESS] Generated 4 JSON files with Indonesia format!")
+            self.safe_log('info', "📋 Files updated with Rb/Jt/M format:", "[LIST] Files updated with Rb/Jt/M format:")
             
             files = ['dashboard.json', 'salesman_list.json', 'salesman_details.json', 'chart_data.json']
             for file in files:
@@ -675,7 +749,7 @@ class SalesmanDashboardUpdater:
                 return False
             
             # Git commit
-            commit_message = f"Morning update: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Updated with FIXED data processing"
+            commit_message = f"Morning update: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - FIXED format Indonesia Rb/Jt/M & vs metrics display"
             result = subprocess.run(['git', 'commit', '-m', commit_message], 
                                   capture_output=True, text=True, cwd='.')
             
@@ -732,18 +806,23 @@ class SalesmanDashboardUpdater:
 🎉 MORNING UPDATE COMPLETED SUCCESSFULLY!
 ⏱️  Processing time: {duration:.2f} seconds
 📱 Dashboard URL: https://kisman271128.github.io/salesman-dashboard
-⏰ Next update: Tomorrow morning at 07:00
 
-📊 Features Updated:
-   🎯 Modern Chart - Real trend SO/DO vs Target
+📊 FIXED Features:
+   💰 Indonesian Number Format - FIXED Rb/Jt/M display
+   📈 vs Metrics Display - FIXED vs LM/3LM/LY showing
+   🎯 Chart Stats Format - FIXED proper Rb/Jt/M format
    🔐 NIK Login - All salesman + admin access
-   📈 Complete Metrics - vs LM/3LM/LY displayed
-   🔗 Data Integration - Real JSON connections
-   🧭 Updated Navigation - 4 & 5 icon menus
+   🧭 Modern Navigation - Updated 4 & 5 icon menus
 
 🔑 Login Credentials:
    Admin: admin / admin123
    Salesman: [NIK] / sales123
+
+💡 Format Indonesia:
+   • < 1K = angka langsung (500)
+   • 1K-999K = Rb (500Rb) 
+   • 1Jt-999Jt = Jt (50.5Jt)
+   • ≥1M = M (1.5M)
 =======================================================
 """
             
@@ -758,25 +837,24 @@ class SalesmanDashboardUpdater:
             return False
 
 def main():
-    """Main function - Fully Automated"""
-    print("🚀 SALESMAN DASHBOARD UPDATER v2.1 - FIXED VERSION")
-    print("=" * 60)
-    print("Running in fully automated mode with FIXED data processing...")
-    print("✅ Modern chart visualization")
-    print("✅ NIK-based authentication") 
-    print("✅ Complete metrics display")
-    print("✅ Real-time data integration")
-    print("✅ FIXED: Proper Excel data reading")
-    print("=" * 60)
+    """Main function - Fixed Indonesia Format"""
+    print("🚀 SALESMAN DASHBOARD UPDATER v2.3 - INDONESIA FORMAT FIXED")
+    print("=" * 70)
+    print("Running with INDONESIA FORMAT FIXES:")
+    print("✅ FIXED format Rb/Jt/M sesuai standar Indonesia")
+    print("✅ FIXED vs metrics display (vs LM/3LM/LY)")
+    print("✅ FIXED chart stats dengan format yang benar") 
+    print("✅ Enhanced number formatting untuk semua section")
+    print("=" * 70)
     
-    print("\n🌅 MORNING BATCH UPDATE - AUTOMATED")
+    print("\n🌅 MORNING BATCH UPDATE - INDONESIA FORMAT")
     print("=" * 55)
-    print("🚀 Version 2.1 - FIXED Improvements:")
-    print("   ✅ FIXED Excel data processing")
-    print("   ✅ FIXED vs metrics calculation")
-    print("   ✅ FIXED currency formatting")
-    print("   ✅ FIXED chart data structure")
-    print("   ✅ Added detailed debugging")
+    print("🚀 Version 2.3 - INDONESIA FORMAT FIXES:")
+    print("   ✅ FIXED Rb untuk < 1 juta (contoh: 500Rb)")
+    print("   ✅ FIXED Jt untuk 1-999 juta (contoh: 50.5Jt)")
+    print("   ✅ FIXED M untuk ≥ 1 miliar (contoh: 1.5M)")
+    print("   ✅ FIXED vs metrics yang tidak muncul")
+    print("   ✅ FIXED chart stats format Indonesia")
     print("=" * 55)
     
     # Create updater and run
@@ -784,15 +862,13 @@ def main():
     success = updater.run_morning_update()
     
     if success:
-        print("\n✅ AUTOMATED UPDATE SUCCESSFUL!")
-        print("🌐 Dashboard ready with FIXED data processing")
+        print("\n✅ INDONESIA FORMAT UPDATE SUCCESSFUL!")
+        print("🌐 Dashboard dengan format Rb/Jt/M yang benar")
         print("📱 URL: https://kisman271128.github.io/salesman-dashboard")
-        # No input() for automation
         sys.exit(0)
     else:
-        print("\n❌ AUTOMATED UPDATE FAILED!")
+        print("\n❌ UPDATE FAILED!")
         print("❗ Check logs for details")
-        # No input() for automation  
         sys.exit(1)
 
 if __name__ == "__main__":

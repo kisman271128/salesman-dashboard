@@ -851,6 +851,25 @@
         let salesmanData = null;
         let chartData = null;
 
+        // ✅ ADDED: Format Currency Indonesia function
+        function formatCurrencyIndonesia(value) {
+            try {
+                const val = parseFloat(value);
+                
+                if (val >= 1000000000) {  // >= 1 Miliar
+                    return (val / 1000000000).toFixed(1) + 'M';
+                } else if (val >= 1000000) {  // >= 1 Juta, < 1 Miliar  
+                    return (val / 1000000).toFixed(1) + 'Jt';
+                } else if (val >= 1000) {  // >= 1 Ribu, < 1 Juta
+                    return Math.round(val / 1000) + 'Rb';
+                } else {  // < 1 Ribu
+                    return Math.round(val).toString();
+                }
+            } catch {
+                return "0";
+            }
+        }
+
         // Check if user is logged in
         function checkLoginStatus() {
             const isLoggedIn = sessionStorage.getItem('isLoggedIn');
@@ -919,7 +938,7 @@
             }
         }
 
-        // ✅ UPDATE LOB CARDS dengan semua metrics
+        // ✅ UPDATE LOB CARDS dengan semua metrics FIXED
         function updateLOBCards(lobCards) {
             const cardsGrid = document.getElementById('cardsGrid');
             cardsGrid.innerHTML = '';
@@ -933,10 +952,15 @@
                 cardsGrid.appendChild(card);
             });
 
-            console.log('Generated', lobCards.length, 'LOB cards with all metrics');
+            console.log('✅ Generated', lobCards.length, 'LOB cards with all vs metrics');
+            
+            // ✅ DEBUG: Log vs metrics untuk debugging
+            lobCards.forEach(lob => {
+                console.log(`${lob.name}: vs_lm=${lob.vs_lm}, vs_3lm=${lob.vs_3lm}, vs_ly=${lob.vs_ly}`);
+            });
         }
 
-        // ✅ UPDATED createLOBCard dengan semua vs metrics
+        // ✅ UPDATED createLOBCard dengan vs metrics FIXED
         function createLOBCard(lob, index) {
             const card = document.createElement('div');
             card.className = `lob-card color-${index % 9}`;
@@ -954,15 +978,15 @@
                     <div class="vs-metrics">
                         <div class="vs-metric">
                             <span class="vs-label">vs LM</span>
-                            <span class="vs-value">${lob.vs_lm}</span>
+                            <span class="vs-value">${lob.vs_lm || '0%'}</span>
                         </div>
                         <div class="vs-metric">
                             <span class="vs-label">vs 3LM</span>
-                            <span class="vs-value">${lob.vs_3lm}</span>
+                            <span class="vs-value">${lob.vs_3lm || '0%'}</span>
                         </div>
                         <div class="vs-metric">
                             <span class="vs-label">vs LY</span>
-                            <span class="vs-value">${lob.vs_ly}</span>
+                            <span class="vs-value">${lob.vs_ly || '0%'}</span>
                         </div>
                     </div>
                 </div>
@@ -996,7 +1020,7 @@
                 generateSVGChart(chartData);
             }, 100);
 
-            // Update chart stats
+            // ✅ FIXED: Update chart stats dengan format Indonesia
             updateChartStats(chartData.stats);
         }
 
@@ -1123,7 +1147,7 @@
                 svg.appendChild(targetLine);
             }
 
-            // Draw points with hover effects
+            // Draw points with hover effects - ✅ FIXED dengan format Indonesia
             data.so_data.forEach((value, i) => {
                 if (value > 0) {
                     const point = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
@@ -1133,7 +1157,7 @@
                     point.setAttribute('fill', 'white');
                     point.setAttribute('stroke', '#667eea');
                     point.setAttribute('stroke-width', '2');
-                    point.addEventListener('mouseenter', (e) => showTooltip(e, `SO: ${value}M`, data.labels[i]));
+                    point.addEventListener('mouseenter', (e) => showTooltip(e, `SO: ${formatCurrencyIndonesia(value)}`, data.labels[i]));
                     point.addEventListener('mouseleave', hideTooltip);
                     svg.appendChild(point);
                 }
@@ -1148,22 +1172,22 @@
                     point.setAttribute('fill', 'white');
                     point.setAttribute('stroke', '#f093fb');
                     point.setAttribute('stroke-width', '2');
-                    point.addEventListener('mouseenter', (e) => showTooltip(e, `DO: ${value}M`, data.labels[i]));
+                    point.addEventListener('mouseenter', (e) => showTooltip(e, `DO: ${formatCurrencyIndonesia(value)}`, data.labels[i]));
                     point.addEventListener('mouseleave', hideTooltip);
                     svg.appendChild(point);
                 }
             });
 
-            // Draw Y-axis labels
+            // Draw Y-axis labels - ✅ FIXED dengan format Indonesia
             for (let i = 0; i <= 4; i++) {
-                const value = Math.round((maxValue / 4) * (4 - i));
+                const value = (maxValue / 4) * (4 - i);
                 const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                 text.setAttribute('x', margin.left - 5);
                 text.setAttribute('y', margin.top + (i / 4) * chartHeight + 4);
                 text.setAttribute('text-anchor', 'end');
                 text.setAttribute('font-size', '10');
                 text.setAttribute('fill', '#7f8c8d');
-                text.textContent = value + 'M';
+                text.textContent = formatCurrencyIndonesia(value);
                 svg.appendChild(text);
             }
 
@@ -1181,7 +1205,7 @@
                 }
             });
 
-            console.log('✅ SVG chart generated successfully');
+            console.log('✅ SVG chart generated successfully with Indonesia format');
         }
 
         // Tooltip functions
@@ -1200,22 +1224,43 @@
             tooltip.style.opacity = '0';
         }
 
-        // Update chart stats
+        // ✅ FIXED: Update chart stats dengan format Indonesia yang benar
         function updateChartStats(stats) {
             const chartStatsElement = document.getElementById('chartStats');
             if (!chartStatsElement) return;
             
+            console.log('📊 Original stats:', stats);
+            
+            // ✅ FIXED: Format stats jika masih berupa angka mentah
+            let avgSO = stats.avg_so;
+            let avgDO = stats.avg_do;
+            let avgTarget = stats.avg_target;
+            let gapTotal = stats.gap_total;
+            
+            // Jika masih berupa angka, format dengan fungsi Indonesia
+            if (typeof avgSO === 'number') {
+                avgSO = formatCurrencyIndonesia(avgSO);
+            }
+            if (typeof avgDO === 'number') {
+                avgDO = formatCurrencyIndonesia(avgDO);
+            }
+            if (typeof avgTarget === 'number') {
+                avgTarget = formatCurrencyIndonesia(avgTarget);
+            }
+            
+            console.log('📊 Formatted stats:', { avgSO, avgDO, avgTarget, gapTotal });
+            
             chartStatsElement.innerHTML = `
                 <div class="chart-stat">
-                    <div class="stat-value">${stats.avg_so || 0}</div>
+                    <div class="stat-value">${avgSO}</div>
                     <div class="stat-label">Avg SO/Hari</div>
                 </div>
                 <div class="chart-stat">
-                    <div class="stat-value">${stats.avg_do || 0}</div>
+                    <div class="stat-value">${avgDO}</div>
                     <div class="stat-label">Avg DO/Hari</div>
                 </div>
                 <div class="chart-stat">
-                    <div class="stat-value">${stats.avg_target || 127}</div>
+                    <div class="stat-value">${avgTarget}</div>
                     <div class="stat-label">Target/Hari</div>
                 </div>
                 <div class="chart-stat">
@@ -1227,10 +1272,12 @@
                     <div class="stat-label">Sisa HK DO</div>
                 </div>
                 <div class="chart-stat">
-                    <div class="stat-value">${stats.gap_total || '0'}</div>
+                    <div class="stat-value">${gapTotal || '0'}</div>
                     <div class="stat-label">Gap Total</div>
                 </div>
             `;
+            
+            console.log('✅ Chart stats updated with Indonesia format');
         }
 
         // ✅ UPDATE SALESMAN LIST dengan click handler untuk detail
@@ -1260,7 +1307,7 @@
                     </div>
                     <div class="salesman-details">
                         <h4>${salesman.name}</h4>
-                        <p>${salesman.tipe}</p>
+                        <p>${salesman.type}</p>
                     </div>
                 </div>
                 <div class="salesman-amount">
@@ -1351,10 +1398,10 @@
                 return;
             }
 
-            console.log('🚀 Initializing dashboard...');
+            console.log('🚀 Initializing dashboard with Indonesia format...');
             loadDashboardData();
             startAutoRefresh();
-            console.log('✅ Dashboard initialized');
+            console.log('✅ Dashboard initialized with Rb/Jt/M format');
         });
 
         // Handle offline/online status
