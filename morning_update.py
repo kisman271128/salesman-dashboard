@@ -133,13 +133,37 @@ class SalesmanDashboardUpdater:
             self.safe_log('error', f"Error reading Excel file: {str(e)}")
             return None
 
+    def debug_dashboard_data(self, dashboard_df):
+        """Debug function to inspect dashboard data structure"""
+        self.safe_log('info', "🔍 DEBUG: Inspecting dashboard data structure...")
+        
+        # Print column names with spaces/special chars
+        self.safe_log('info', f"Column names: {list(dashboard_df.columns)}")
+        
+        # Print first row for GPPJ to debug
+        gppj_row = dashboard_df[dashboard_df['LOB'] == 'GPPJ']
+        if not gppj_row.empty:
+            self.safe_log('info', f"GPPJ row data:")
+            for col in dashboard_df.columns:
+                value = gppj_row.iloc[0][col]
+                self.safe_log('info', f"  {col}: {value} (type: {type(value)})")
+        
+        # Check for column name variations
+        possible_vs_columns = [col for col in dashboard_df.columns if 'vs' in str(col).lower()]
+        self.safe_log('info', f"Columns containing 'vs': {possible_vs_columns}")
+        
+        return True
+
     def process_dashboard_data(self, sheets):
-        """Process dashboard data with all metrics"""
+        """🔧 FIXED: Process dashboard data with all metrics"""
         try:
             self.safe_log('info', "🔄 Processing dashboard data with all metrics...", "Processing dashboard data with all metrics...")
             
             dashboard_df = sheets['d.dashboard']
             self.safe_log('info', f"Dashboard columns: {list(dashboard_df.columns)}")
+            
+            # 🔍 DEBUG: Inspect data structure
+            self.debug_dashboard_data(dashboard_df)
             
             # Process LOB cards with all vs metrics
             lob_cards = []
@@ -152,22 +176,36 @@ class SalesmanDashboardUpdater:
                     if lob_name.upper() == 'TOTAL':
                         continue
                     
-                    # Calculate metrics
+                    # 🔧 FIXED: Calculate metrics with proper debugging
                     actual = self.safe_float(row.get('Actual', 0))
                     bp = self.safe_float(row.get('BP', 1))
+                    gap = self.safe_float(row.get('Gap', 0))
+                    
+                    # Achievement calculation - should match Excel
                     achievement = (actual / bp * 100) if bp > 0 else 0
                     
-                    # VS metrics
-                    vs_bp = self.safe_float(row.get('vs BP', 0))
-                    vs_ly = self.safe_float(row.get('vs LY', 0)) 
-                    vs_3lm = self.safe_float(row.get('vs 3LM', 0))
-                    vs_lm = self.safe_float(row.get('vs LM', 0))
+                    # 🔧 FIXED: Try multiple column name variations for vs metrics
+                    vs_bp_raw = self.get_vs_metric(row, ['vs BP', 'vs_BP', 'vsBP', 'VS BP'])
+                    vs_ly_raw = self.get_vs_metric(row, ['vs LY', 'vs_LY', 'vsLY', 'VS LY'])
+                    vs_3lm_raw = self.get_vs_metric(row, ['vs 3LM', 'vs_3LM', 'vs3LM', 'VS 3LM'])
+                    vs_lm_raw = self.get_vs_metric(row, ['vs LM', 'vs_LM', 'vsLM', 'VS LM'])
+                    
+                    # 🔧 FIXED: Convert percentage values properly
+                    vs_bp = self.safe_float(vs_bp_raw)
+                    vs_ly = self.safe_float(vs_ly_raw) 
+                    vs_3lm = self.safe_float(vs_3lm_raw)
+                    vs_lm = self.safe_float(vs_lm_raw)
+                    
+                    # 🔧 FIXED: For debugging, log the values we found
+                    self.safe_log('info', f"DEBUG {lob_name}: Actual={actual}, BP={bp}, Achievement={achievement:.1f}%")
+                    self.safe_log('info', f"DEBUG {lob_name}: vs_BP={vs_bp}%, vs_LY={vs_ly}%, vs_3LM={vs_3lm}%, vs_LM={vs_lm}%")
                     
                     lob_card = {
                         'name': lob_name,
                         'achievement': f"{self.safe_percentage(achievement)}%",
                         'actual': self.format_currency(actual),
                         'target': self.format_currency(bp),
+                        'gap': self.format_currency(abs(gap)),  # Added gap field
                         'vs_bp': f"{'+' if vs_bp >= 0 else ''}{self.safe_percentage(vs_bp)}%",
                         'vs_ly': f"{'+' if vs_ly >= 0 else ''}{self.safe_percentage(vs_ly)}%", 
                         'vs_3lm': f"{'+' if vs_3lm >= 0 else ''}{self.safe_percentage(vs_3lm)}%",
@@ -182,13 +220,23 @@ class SalesmanDashboardUpdater:
             
             return {
                 'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                'depo': 'Depo Tanjung - Region Kalimantan', 
+                'depo_name': 'Depo Tanjung',  # Fixed field name
+                'region_name': 'Region Kalimantan',  # Fixed field name
                 'lob_cards': lob_cards
             }
             
         except Exception as e:
             self.safe_log('error', f"Error processing dashboard data: {str(e)}")
             return None
+
+    def get_vs_metric(self, row, possible_column_names):
+        """🔧 FIXED: Try multiple column name variations to find vs metrics"""
+        for col_name in possible_column_names:
+            if col_name in row:
+                value = row.get(col_name)
+                if pd.notna(value):
+                    return value
+        return 0
 
     def process_salesman_data(self, sheets):
         """Process salesman data for ranking and login"""
@@ -211,6 +259,9 @@ class SalesmanDashboardUpdater:
                         target = self.safe_float(row.get('Target', 1))
                         achievement = (actual / target * 100) if target > 0 else 0
                         
+                        # 🔧 FIXED: Added status determination
+                        status = self.determine_status(achievement)
+                        
                         salesman_data = {
                             'id': nik,  # NIK as login ID
                             'name': name,
@@ -218,7 +269,8 @@ class SalesmanDashboardUpdater:
                             'actual': self.format_currency(actual),
                             'target': self.format_currency(target),
                             'rank': int(row.get('Rank', 0)) if pd.notna(row.get('Rank')) else 0,
-                            'type': str(row.get('Tipe Salesman', 'Sales')).strip()
+                            'type': str(row.get('Tipe Salesman', 'Sales')).strip(),
+                            'status': status  # Added status field
                         }
                         
                         salesman_list.append(salesman_data)
@@ -236,8 +288,19 @@ class SalesmanDashboardUpdater:
             self.safe_log('error', f"Error processing salesman data: {str(e)}")
             return []
 
+    def determine_status(self, achievement):
+        """Determine performance status based on achievement"""
+        if achievement >= 100:
+            return 'Excellent'
+        elif achievement >= 90:
+            return 'Very Good'
+        elif achievement >= 70:
+            return 'Good'
+        else:
+            return 'Extra Effort'
+
     def process_salesman_detail(self, sheets):
-        """Process detailed salesman data with NIK mapping"""
+        """🔧 FIXED: Process detailed salesman data with NIK mapping"""
         try:
             self.safe_log('info', "🔄 Processing salesman details with NIK mapping...", "Processing salesman details with NIK mapping...")
             
@@ -260,8 +323,8 @@ class SalesmanDashboardUpdater:
                                 'name': str(row.get('Nama Salesman', '')).strip(),
                                 'sac': str(row.get('Nama SAC', '')).strip(),
                                 'type': str(row.get('Tipe Salesman', '')).strip(),
-                                'lob_performance': {},
-                                'process_metrics': {}
+                                'performance': {},  # 🔧 FIXED: Changed from lob_performance to performance
+                                'metrics': {}  # 🔧 FIXED: Changed from process_metrics to metrics
                             }
                         
                         # Calculate LOB achievement
@@ -269,17 +332,17 @@ class SalesmanDashboardUpdater:
                         target = self.safe_float(row.get('Target', 1))
                         achievement = (actual / target * 100) if target > 0 else 0
                         
-                        salesman_details[nik]['lob_performance'][lob_name] = {
-                            'actual': self.format_currency(actual),
-                            'target': self.format_currency(target), 
-                            'achievement': f"{self.safe_percentage(achievement)}%",
-                            'vs_3lm': f"{'+' if self.safe_float(row.get('vs 3LM', 0)) >= 0 else ''}{self.safe_percentage(self.safe_float(row.get('vs 3LM', 0)))}%"
+                        # 🔧 FIXED: Store data in format expected by HTML
+                        salesman_details[nik]['performance'][lob_name] = {
+                            'actual': actual,  # Store as number for calculations
+                            'target': target,  # Store as number for calculations
+                            'percentage': int(round(achievement))  # Store percentage as integer
                         }
                         
                         self.safe_log('info', f"✅ Added performance for NIK {nik}, LOB {lob_name}: {self.safe_percentage(achievement)}%", 
                                     f"[OK] Added performance for NIK {nik}, LOB {lob_name}: {self.safe_percentage(achievement)}%")
             
-            # Process additional metrics
+            # 🔧 FIXED: Process additional metrics
             self.safe_log('info', f"Process columns: {list(process_df.columns)}")
             
             for _, row in process_df.iterrows():
@@ -287,21 +350,29 @@ class SalesmanDashboardUpdater:
                     nik = str(int(float(row['NIK']))) if pd.notna(row['NIK']) else ''
                     
                     if nik and nik in salesman_details:
-                        # Calculate key process metrics
+                        # 🔧 FIXED: Calculate key process metrics properly
                         ca = self.safe_float(row.get('Ach_CA', 0))
                         gp_food = self.safe_float(row.get('Ach_GPFood', 0))
                         gp_others = self.safe_float(row.get('Ach_GPOthers', 0))
-                        gp = (gp_food + gp_others) / 2 if gp_food > 0 or gp_others > 0 else 0
                         
-                        salesman_details[nik]['process_metrics'] = {
-                            'ca_achievement': f"{self.safe_percentage(ca)}%",
-                            'gp_achievement': f"{self.safe_percentage(gp)}%",
-                            'cr_achievement': f"{self.safe_percentage(self.safe_float(row.get('Ach_CR', 0)))}%",
-                            'pc_achievement': f"{self.safe_percentage(self.safe_float(row.get('Ach_PC', 0)))}%"
+                        # Calculate averages and combined metrics
+                        ca_prod_w = self.safe_float(row.get('Ach_CAProdW', 0))
+                        ca_prod_r = self.safe_float(row.get('Ach_CAProdR', 0))
+                        ca_prod_m = self.safe_float(row.get('Ach_CAProdM', 0))
+                        ca_prod_all = self.safe_float(row.get('Ach_CAProdAll', 0))
+                        
+                        avg_sku = self.safe_float(row.get('Ach_AvgSKU', 0))
+                        
+                        # 🔧 FIXED: Store metrics in expected format
+                        salesman_details[nik]['metrics'] = {
+                            'CA': int(round(ca)),
+                            'CAProd': int(round(ca_prod_all)) if ca_prod_all > 0 else int(round((ca_prod_w + ca_prod_r + ca_prod_m) / 3)) if (ca_prod_w + ca_prod_r + ca_prod_m) > 0 else 0,
+                            'SKU': int(round(avg_sku)),
+                            'GP': int(round((gp_food + gp_others) / 2)) if (gp_food + gp_others) > 0 else 0
                         }
                         
-                        self.safe_log('info', f"✅ Added metrics for NIK {nik}: CA:{self.safe_percentage(ca)}%, GP:{self.safe_percentage(gp)}%", 
-                                    f"[OK] Added metrics for NIK {nik}: CA:{self.safe_percentage(ca)}%, GP:{self.safe_percentage(gp)}%")
+                        self.safe_log('info', f"✅ Added metrics for NIK {nik}: CA:{ca}%, GP:{(gp_food + gp_others) / 2:.1f}%", 
+                                    f"[OK] Added metrics for NIK {nik}: CA:{ca}%, GP:{(gp_food + gp_others) / 2:.1f}%")
             
             self.safe_log('info', f"✅ Processed details for {len(salesman_details)} salesman with NIK keys", f"[OK] Processed details for {len(salesman_details)} salesman with NIK keys")
             
@@ -312,7 +383,7 @@ class SalesmanDashboardUpdater:
             return {}
 
     def generate_chart_data(self, sheets):
-        """Generate modern chart data with real statistics"""
+        """🔧 FIXED: Generate modern chart data with real statistics"""
         try:
             # Get period info
             data_period = self.get_period_from_data(sheets)
@@ -335,50 +406,65 @@ class SalesmanDashboardUpdater:
             self.safe_log('info', f"📊 Processing {len(so_df)} rows for modern chart", f"[CHART] Processing {len(so_df)} rows for modern chart")
             self.safe_log('info', f"📊 Columns in soharian: {list(so_df.columns)}", f"[CHART] Columns in soharian: {list(so_df.columns)}")
             
-            # Generate chart data points
-            chart_points = []
+            # 🔧 FIXED: Generate chart data in format expected by HTML
+            so_data = []
+            do_data = []
+            target_data = []
+            labels = []
             
             for _, row in so_df.iterrows():
                 if pd.notna(row.get('Tgl')):
                     date_val = row['Tgl']
                     
-                    point = {
-                        'date': date_val.strftime('%Y-%m-%d') if hasattr(date_val, 'strftime') else str(date_val),
-                        'day': date_val.strftime('%d') if hasattr(date_val, 'strftime') else str(date_val).split('-')[-1],
-                        'target': int(self.safe_float(row.get('Target', 0))),
-                        'so': int(self.safe_float(row.get('SO', 0))),
-                        'do': int(self.safe_float(row.get('DO', 0)))
-                    }
+                    # Format data for chart
+                    so_value = int(self.safe_float(row.get('SO', 0)))
+                    do_value = int(self.safe_float(row.get('DO', 0)))
+                    target_value = int(self.safe_float(row.get('Target', 0)))
                     
-                    chart_points.append(point)
+                    so_data.append(so_value)
+                    do_data.append(do_value)
+                    target_data.append(target_value)
+                    
+                    # Format label
+                    day_label = date_val.strftime('%d') if hasattr(date_val, 'strftime') else str(date_val).split('-')[-1]
+                    labels.append(day_label)
             
             # Calculate statistics
-            total_target = sum(p['target'] for p in chart_points)
-            total_so = sum(p['so'] for p in chart_points)
-            total_do = sum(p['do'] for p in chart_points)
+            total_target = sum(target_data)
+            total_so = sum(so_data)
+            total_do = sum(do_data)
             
-            avg_target = int(total_target / len(chart_points)) if chart_points else 0
-            avg_so = int(total_so / len(chart_points)) if chart_points else 0
-            avg_do = int(total_do / len(chart_points)) if chart_points else 0
+            avg_target = int(total_target / len(target_data)) if target_data else 0
+            avg_so = int(total_so / len(so_data)) if so_data else 0
+            avg_do = int(total_do / len(do_data)) if do_data else 0
             
             # Count working days
-            total_hk = len(chart_points)
+            total_hk = len(so_data)
             current_date = datetime.now()
             remaining_days = 0
             
-            for point in chart_points:
+            for i, label in enumerate(labels):
                 try:
-                    point_date = datetime.strptime(point['date'], '%Y-%m-%d')
-                    if point_date > current_date:
+                    # Reconstruct date to check if it's in the future
+                    day = int(label)
+                    current_month = current_date.month
+                    current_year = current_date.year
+                    check_date = datetime(current_year, current_month, day)
+                    
+                    if check_date > current_date:
                         remaining_days += 1
                 except:
                     pass
             
             sisa_hk_do = max(0, remaining_days)
             
+            # 🔧 FIXED: Format chart data correctly
             chart_data = {
                 'period': data_period,
-                'so_data': chart_points,
+                'so_data': so_data,
+                'do_data': do_data,
+                'target_data': target_data,
+                'labels': labels,
                 'stats': {
                     'avg_target': avg_target,
                     'avg_so': avg_so, 
@@ -411,6 +497,12 @@ class SalesmanDashboardUpdater:
         try:
             if pd.isna(value):
                 return 0.0
+            if isinstance(value, str):
+                # Handle percentage strings
+                if '%' in value:
+                    return float(value.replace('%', ''))
+                # Handle currency strings with commas
+                value = value.replace(',', '').replace('(', '-').replace(')', '')
             return float(value)
         except:
             return 0.0
@@ -423,13 +515,13 @@ class SalesmanDashboardUpdater:
             return 0
     
     def format_currency(self, value):
-        """Format currency in millions"""
+        """🔧 FIXED: Format currency in millions more accurately"""
         try:
             val = float(value) / 1000000  # Convert to millions
             if val >= 1000:
                 return f"{val/1000:.1f}T"
             elif val >= 1:
-                return f"{val:.0f}M"
+                return f"{val:.1f}M"  # Show decimal for better accuracy
             else:
                 return f"{val*1000:.0f}K"
         except:
@@ -482,7 +574,7 @@ class SalesmanDashboardUpdater:
                         
                         # Format gap value
                         if gap_value != 0:
-                            gap_formatted = self.format_currency(gap_value)
+                            gap_formatted = self.format_currency(abs(gap_value))  # Use absolute value
                             self.safe_log('info', f"✅ Found Gap Total: {gap_formatted} for LOB: {lob_name}", f"[OK] Found Gap Total: {gap_formatted} for LOB: {lob_name}")
                             return gap_formatted
                 
@@ -583,7 +675,7 @@ class SalesmanDashboardUpdater:
                 return False
             
             # Git commit
-            commit_message = f"Morning update: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Updated with all improvements"
+            commit_message = f"Morning update: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Updated with FIXED data processing"
             result = subprocess.run(['git', 'commit', '-m', commit_message], 
                                   capture_output=True, text=True, cwd='.')
             
@@ -667,23 +759,24 @@ class SalesmanDashboardUpdater:
 
 def main():
     """Main function - Fully Automated"""
-    print("🚀 SALESMAN DASHBOARD UPDATER v2.0 - AUTOMATED MODE")
+    print("🚀 SALESMAN DASHBOARD UPDATER v2.1 - FIXED VERSION")
     print("=" * 60)
-    print("Running in fully automated mode...")
+    print("Running in fully automated mode with FIXED data processing...")
     print("✅ Modern chart visualization")
     print("✅ NIK-based authentication") 
     print("✅ Complete metrics display")
     print("✅ Real-time data integration")
+    print("✅ FIXED: Proper Excel data reading")
     print("=" * 60)
     
     print("\n🌅 MORNING BATCH UPDATE - AUTOMATED")
     print("=" * 55)
-    print("🚀 Version 2.0 - All Improvements:")
-    print("   ✅ Modern SVG Chart with real data")
-    print("   ✅ NIK-based Login System")
-    print("   ✅ All VS Metrics in LOB Cards") 
-    print("   ✅ Real Data Integration")
-    print("   ✅ Updated Navigation")
+    print("🚀 Version 2.1 - FIXED Improvements:")
+    print("   ✅ FIXED Excel data processing")
+    print("   ✅ FIXED vs metrics calculation")
+    print("   ✅ FIXED currency formatting")
+    print("   ✅ FIXED chart data structure")
+    print("   ✅ Added detailed debugging")
     print("=" * 55)
     
     # Create updater and run
@@ -692,7 +785,7 @@ def main():
     
     if success:
         print("\n✅ AUTOMATED UPDATE SUCCESSFUL!")
-        print("🌐 Dashboard ready with all improvements")
+        print("🌐 Dashboard ready with FIXED data processing")
         print("📱 URL: https://kisman271128.github.io/salesman-dashboard")
         # No input() for automation
         sys.exit(0)
