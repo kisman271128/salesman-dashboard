@@ -204,6 +204,7 @@
             max-width: 600px;
         }
 
+        /* ✅ CHART CONTAINER (supports donut, polar area, etc.) */
         .donut-chart-container {
             position: relative;
             width: 280px;
@@ -217,16 +218,15 @@
             height: 100%;
         }
 
-        .polar-segment {
+        .donut-segment, .polar-segment {
             cursor: pointer;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             transform-origin: center;
         }
 
-        .polar-segment:hover {
-            opacity: 1 !important;
+        .donut-segment:hover, .polar-segment:hover {
             filter: brightness(1.15) saturate(1.1);
-            transform: scale(1.05);
+            opacity: 1 !important;
         }
 
         .donut-center-text {
@@ -604,7 +604,7 @@
                 border-width: 6px;
             }
 
-            /* ✅ RESPONSIVE CHART WITH LEGEND */
+            /* ✅ RESPONSIVE POLAR AREA CHART WITH LEGEND */
             .chart-with-legend {
                 flex-direction: column;
                 gap: 15px;
@@ -696,11 +696,6 @@
             .legend-details {
                 font-size: 8px;
                 gap: 6px;
-            }
-
-            /* ✅ POLAR AREA CHART RESPONSIVE */
-            .polar-segment:hover {
-                transform: scale(1.03);
             }
         }
     </style>
@@ -1170,22 +1165,29 @@
                 .filter(lob => performanceData[lob].target > 1000)
                 .sort((a, b) => performanceData[b].target - performanceData[a].target);
 
-            // Find max value untuk scaling radius
-            let maxValue = 0;
+            // Find max percentage untuk scaling
+            let maxPercentage = 0;
             validLOBs.forEach(lob => {
-                const value = performanceData[lob].target;
-                if (value > maxValue) maxValue = value;
+                const percentage = performanceData[lob].percentage;
+                if (percentage > maxPercentage) {
+                    maxPercentage = percentage;
+                }
             });
 
-            // Generate segments data untuk polar area
+            // Generate segments data untuk polar area chart
             let segments = [];
-            const anglePerSegment = 360 / validLOBs.length;
+            const anglePerSegment = 360 / validLOBs.length; // Sudut sama untuk semua segment
             
             validLOBs.forEach((lob, index) => {
                 const data = performanceData[lob];
-                // Radius berdasarkan proporsi target terhadap max value
-                const radiusRatio = data.target / maxValue;
-                const radius = 30 + (radiusRatio * 70); // Min 30, Max 100
+                const startAngle = index * anglePerSegment;
+                const endAngle = (index + 1) * anglePerSegment;
+                
+                // Radius berdasarkan percentage (scaled)
+                const radiusScale = data.percentage / maxPercentage;
+                const maxRadius = 100;
+                const minRadius = 20;
+                const segmentRadius = minRadius + (maxRadius - minRadius) * radiusScale;
                 
                 segments.push({
                     lob: lob,
@@ -1193,10 +1195,10 @@
                     target: data.target,
                     percentage: data.percentage,
                     gap: data.gap,
-                    radius: radius,
-                    startAngle: index * anglePerSegment,
-                    endAngle: (index + 1) * anglePerSegment,
-                    midAngle: index * anglePerSegment + (anglePerSegment / 2),
+                    startAngle: startAngle,
+                    endAngle: endAngle,
+                    midAngle: startAngle + (anglePerSegment / 2),
+                    radius: segmentRadius,
                     color: colors[lob] || `hsl(${index * 45}, 70%, 60%)`
                 });
             });
@@ -1206,7 +1208,6 @@
             const svgHeight = 280;
             const centerX = svgWidth / 2;
             const centerY = svgHeight / 2;
-            const maxRadius = 100;
 
             // Start building SVG
             let svgContent = `
@@ -1223,18 +1224,20 @@
                 const startAngleRad = (segment.startAngle - 90) * (Math.PI / 180);
                 const endAngleRad = (segment.endAngle - 90) * (Math.PI / 180);
                 
-                // Outer arc points
-                const x1 = centerX + segment.radius * Math.cos(startAngleRad);
-                const y1 = centerY + segment.radius * Math.sin(startAngleRad);
-                const x2 = centerX + segment.radius * Math.cos(endAngleRad);
-                const y2 = centerY + segment.radius * Math.sin(endAngleRad);
+                // Polar area segment points (dari center ke radius)
+                const x1 = centerX;
+                const y1 = centerY;
+                const x2 = centerX + segment.radius * Math.cos(startAngleRad);
+                const y2 = centerY + segment.radius * Math.sin(startAngleRad);
+                const x3 = centerX + segment.radius * Math.cos(endAngleRad);
+                const y3 = centerY + segment.radius * Math.sin(endAngleRad);
                 
                 const largeArcFlag = anglePerSegment > 180 ? 1 : 0;
                 
                 const pathData = `
-                    M ${centerX} ${centerY}
-                    L ${x1} ${y1}
-                    A ${segment.radius} ${segment.radius} 0 ${largeArcFlag} 1 ${x2} ${y2}
+                    M ${x1} ${y1}
+                    L ${x2} ${y2}
+                    A ${segment.radius} ${segment.radius} 0 ${largeArcFlag} 1 ${x3} ${y3}
                     Z
                 `;
 
@@ -1246,14 +1249,14 @@
                           filter="url(#dropshadow)"
                           class="polar-segment"
                           data-lob="${segment.lob}"
-                          opacity="0.8">
+                          style="opacity: 0.8;">
                     </path>
                 `;
 
-                // Add percentage label untuk segments yang cukup besar
-                if (segment.radius > 50) {
+                // Add percentage label (untuk segments dengan radius cukup besar)
+                if (segment.radius > 40) {
                     const labelAngle = (segment.midAngle - 90) * (Math.PI / 180);
-                    const labelRadius = segment.radius * 0.7;
+                    const labelRadius = segment.radius * 0.7; // 70% dari radius segment
                     const labelX = centerX + labelRadius * Math.cos(labelAngle);
                     const labelY = centerY + labelRadius * Math.sin(labelAngle);
 
@@ -1264,22 +1267,12 @@
                               font-size="11" 
                               font-weight="700" 
                               fill="white"
-                              text-shadow="1px 1px 2px rgba(0,0,0,0.6)">
+                              text-shadow="1px 1px 2px rgba(0,0,0,0.7)">
                             ${segment.percentage}%
                         </text>
                     `;
                 }
             });
-
-            // Add center circle untuk aesthetic
-            svgContent += `
-                <circle cx="${centerX}" cy="${centerY}" r="20" 
-                        fill="white" 
-                        stroke="#e0e0e0" 
-                        stroke-width="2"
-                        filter="url(#dropshadow)">
-                </circle>
-            `;
 
             svgContent += '</svg>';
 
