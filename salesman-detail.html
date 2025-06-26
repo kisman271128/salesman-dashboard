@@ -194,7 +194,7 @@
             margin-bottom: 20px;
         }
 
-        /* ✅ DONUT CHART DENGAN LEGEND */
+        /* ✅ POLAR AREA CHART DENGAN LEGEND */
         .chart-with-legend {
             display: flex;
             align-items: center;
@@ -217,14 +217,16 @@
             height: 100%;
         }
 
-        .donut-segment {
+        .polar-segment {
             cursor: pointer;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             transform-origin: center;
         }
 
-        .donut-segment:hover {
+        .polar-segment:hover {
+            opacity: 1 !important;
             filter: brightness(1.15) saturate(1.1);
+            transform: scale(1.05);
         }
 
         .donut-center-text {
@@ -695,6 +697,11 @@
                 font-size: 8px;
                 gap: 6px;
             }
+
+            /* ✅ POLAR AREA CHART RESPONSIVE */
+            .polar-segment:hover {
+                transform: scale(1.03);
+            }
         }
     </style>
 </head>
@@ -755,12 +762,12 @@
                         </div>
                     </div>
 
-                    <!-- Donut Chart dengan Legend -->
+                    <!-- Polar Area Chart dengan Legend -->
                     <div class="chart-with-legend">
-                        <!-- Chart dengan legend akan diisi di sini -->
+                        <!-- Polar area chart dengan legend akan diisi di sini -->
                         <div style="display: flex; justify-content: center; align-items: center; height: 280px; color: #7f8c8d; flex-direction: column; width: 100%;">
                             <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 12px;"></div>
-                            <div>Loading chart with legend...</div>
+                            <div>Loading polar area chart...</div>
                         </div>
                     </div>
                 </div>
@@ -1142,9 +1149,9 @@
             }
         }
 
-        // ✅ GENERATE DONUT CHART DENGAN LEGEND
+        // ✅ GENERATE POLAR AREA CHART DENGAN LEGEND
         function generateDonutChart(performanceData, totalData, rankingData) {
-            console.log('🍩 Generating donut chart with legend...');
+            console.log('🌟 Generating polar area chart with legend...');
 
             // Warna yang sesuai dengan contoh
             const colors = {
@@ -1163,20 +1170,22 @@
                 .filter(lob => performanceData[lob].target > 1000)
                 .sort((a, b) => performanceData[b].target - performanceData[a].target);
 
-            // Calculate total target
-            let totalTarget = 0;
+            // Find max value untuk scaling radius
+            let maxValue = 0;
             validLOBs.forEach(lob => {
-                totalTarget += performanceData[lob].target;
+                const value = performanceData[lob].target;
+                if (value > maxValue) maxValue = value;
             });
 
-            // Generate segments data
+            // Generate segments data untuk polar area
             let segments = [];
-            let currentAngle = 0;
+            const anglePerSegment = 360 / validLOBs.length;
             
             validLOBs.forEach((lob, index) => {
                 const data = performanceData[lob];
-                const proportion = data.target / totalTarget;
-                const angle = proportion * 360;
+                // Radius berdasarkan proporsi target terhadap max value
+                const radiusRatio = data.target / maxValue;
+                const radius = 30 + (radiusRatio * 70); // Min 30, Max 100
                 
                 segments.push({
                     lob: lob,
@@ -1184,15 +1193,12 @@
                     target: data.target,
                     percentage: data.percentage,
                     gap: data.gap,
-                    proportion: proportion,
-                    angle: angle,
-                    startAngle: currentAngle,
-                    endAngle: currentAngle + angle,
-                    midAngle: currentAngle + (angle / 2),
+                    radius: radius,
+                    startAngle: index * anglePerSegment,
+                    endAngle: (index + 1) * anglePerSegment,
+                    midAngle: index * anglePerSegment + (anglePerSegment / 2),
                     color: colors[lob] || `hsl(${index * 45}, 70%, 60%)`
                 });
-                
-                currentAngle += angle;
             });
 
             // SVG dimensions
@@ -1200,8 +1206,7 @@
             const svgHeight = 280;
             const centerX = svgWidth / 2;
             const centerY = svgHeight / 2;
-            const radius = 100;
-            const innerRadius = 60;
+            const maxRadius = 100;
 
             // Start building SVG
             let svgContent = `
@@ -1213,66 +1218,68 @@
                     </defs>
             `;
 
-            // Generate donut segments dengan percentage labels
+            // Generate polar area segments
             segments.forEach((segment, index) => {
-                if (segment.angle > 5) { // Only show segments with significant size
-                    const startAngleRad = (segment.startAngle - 90) * (Math.PI / 180);
-                    const endAngleRad = (segment.endAngle - 90) * (Math.PI / 180);
-                    
-                    // Outer arc points
-                    const x1 = centerX + radius * Math.cos(startAngleRad);
-                    const y1 = centerY + radius * Math.sin(startAngleRad);
-                    const x2 = centerX + radius * Math.cos(endAngleRad);
-                    const y2 = centerY + radius * Math.sin(endAngleRad);
-                    
-                    // Inner arc points
-                    const x3 = centerX + innerRadius * Math.cos(endAngleRad);
-                    const y3 = centerY + innerRadius * Math.sin(endAngleRad);
-                    const x4 = centerX + innerRadius * Math.cos(startAngleRad);
-                    const y4 = centerY + innerRadius * Math.sin(startAngleRad);
-                    
-                    const largeArcFlag = segment.angle > 180 ? 1 : 0;
-                    
-                    const pathData = `
-                        M ${x1} ${y1}
-                        A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2}
-                        L ${x3} ${y3}
-                        A ${innerRadius} ${innerRadius} 0 ${largeArcFlag} 0 ${x4} ${y4}
-                        Z
-                    `;
+                const startAngleRad = (segment.startAngle - 90) * (Math.PI / 180);
+                const endAngleRad = (segment.endAngle - 90) * (Math.PI / 180);
+                
+                // Outer arc points
+                const x1 = centerX + segment.radius * Math.cos(startAngleRad);
+                const y1 = centerY + segment.radius * Math.sin(startAngleRad);
+                const x2 = centerX + segment.radius * Math.cos(endAngleRad);
+                const y2 = centerY + segment.radius * Math.sin(endAngleRad);
+                
+                const largeArcFlag = anglePerSegment > 180 ? 1 : 0;
+                
+                const pathData = `
+                    M ${centerX} ${centerY}
+                    L ${x1} ${y1}
+                    A ${segment.radius} ${segment.radius} 0 ${largeArcFlag} 1 ${x2} ${y2}
+                    Z
+                `;
+
+                svgContent += `
+                    <path d="${pathData}" 
+                          fill="${segment.color}" 
+                          stroke="white" 
+                          stroke-width="2"
+                          filter="url(#dropshadow)"
+                          class="polar-segment"
+                          data-lob="${segment.lob}"
+                          opacity="0.8">
+                    </path>
+                `;
+
+                // Add percentage label untuk segments yang cukup besar
+                if (segment.radius > 50) {
+                    const labelAngle = (segment.midAngle - 90) * (Math.PI / 180);
+                    const labelRadius = segment.radius * 0.7;
+                    const labelX = centerX + labelRadius * Math.cos(labelAngle);
+                    const labelY = centerY + labelRadius * Math.sin(labelAngle);
 
                     svgContent += `
-                        <path d="${pathData}" 
-                              fill="${segment.color}" 
-                              stroke="white" 
-                              stroke-width="2"
-                              filter="url(#dropshadow)"
-                              class="donut-segment"
-                              data-lob="${segment.lob}">
-                        </path>
+                        <text x="${labelX}" y="${labelY}" 
+                              text-anchor="middle" 
+                              dominant-baseline="middle"
+                              font-size="11" 
+                              font-weight="700" 
+                              fill="white"
+                              text-shadow="1px 1px 2px rgba(0,0,0,0.6)">
+                            ${segment.percentage}%
+                        </text>
                     `;
-
-                    // Add percentage label in segment (only for segments > 10%)
-                    if (segment.angle > 36) { // 10% of 360 degrees
-                        const labelAngle = (segment.midAngle - 90) * (Math.PI / 180);
-                        const labelRadius = (radius + innerRadius) / 2;
-                        const labelX = centerX + labelRadius * Math.cos(labelAngle);
-                        const labelY = centerY + labelRadius * Math.sin(labelAngle);
-
-                        svgContent += `
-                            <text x="${labelX}" y="${labelY}" 
-                                  text-anchor="middle" 
-                                  dominant-baseline="middle"
-                                  font-size="12" 
-                                  font-weight="700" 
-                                  fill="white"
-                                  text-shadow="1px 1px 2px rgba(0,0,0,0.5)">
-                                ${segment.percentage}%
-                            </text>
-                        `;
-                    }
                 }
             });
+
+            // Add center circle untuk aesthetic
+            svgContent += `
+                <circle cx="${centerX}" cy="${centerY}" r="20" 
+                        fill="white" 
+                        stroke="#e0e0e0" 
+                        stroke-width="2"
+                        filter="url(#dropshadow)">
+                </circle>
+            `;
 
             svgContent += '</svg>';
 
@@ -1323,7 +1330,7 @@
                 `;
             }
 
-            console.log('✅ Donut chart with legend generated');
+            console.log('✅ Polar area chart with legend generated');
         }
 
         // ✅ UPDATE SUMMARY CARDS DENGAN LAYOUT HORIZONTAL
@@ -1647,11 +1654,11 @@
                 return;
             }
             
-            console.log('🚀 Initializing salesman detail page with donut chart and legend layout...');
+            console.log('🚀 Initializing salesman detail page with polar area chart and legend layout...');
             loadSalesmanData();
         });
 
-        console.log('✅ Donut chart with legend and horizontal metrics script loaded');
+        console.log('✅ Polar area chart with legend and horizontal metrics script loaded');
     </script>
 </body>
 </html>
