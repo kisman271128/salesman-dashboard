@@ -99,33 +99,19 @@ if exist "morning_update.log" (
     del "morning_update.log" >nul 2>&1
 )
 
-REM Run the Python script with explicit error handling
+REM Run the Python script
 echo [%time%] Executing Python script...
 echo --------------------------------------------------------
-
-REM CRITICAL FIX: Proper exit code capture
 python morning_update.py
 set SCRIPT_RESULT=%errorlevel%
-
-REM DEBUG: Show captured exit code immediately
-echo [DEBUG] Python script exit code captured: %SCRIPT_RESULT%
-
 echo --------------------------------------------------------
 echo [%time%] Python script completed with exit code: %SCRIPT_RESULT%
-
-REM CRITICAL FIX: Force logging regardless of exit code evaluation issues
-echo.
-echo === FORCED LOGGING TEST ===
-echo [%date% %time%] BATCH DEBUG - About to check script result: %SCRIPT_RESULT% >> update_history.log
-echo %SCRIPT_RESULT% > last_update_status.txt
-echo %date% %time% >> last_update_status.txt
-echo [DEBUG] Forced logging completed
 
 echo.
 echo === RESULTS ===
 
-REM IMPROVED: More robust exit code checking
-if "%SCRIPT_RESULT%"=="0" (
+REM Check results and log
+if %SCRIPT_RESULT% equ 0 (
     echo ============================================================
     echo                     SUCCESS: UPDATE COMPLETED
     echo ============================================================
@@ -181,19 +167,9 @@ echo Excel file: %EXCEL_FILE%
 echo Working directory: %cd%
 echo.
 
-REM CRITICAL FIX: Always update status files at the end
-echo.
-echo === FINAL STATUS UPDATE ===
-echo Updating final status files...
-
-REM Overwrite status file with current info
+REM Create status file for external monitoring
 echo %SCRIPT_RESULT% > last_update_status.txt
 echo %date% %time% >> last_update_status.txt
-
-REM Final log entry with timestamp
-echo [%date% %time%] Batch script completed - Exit code: %SCRIPT_RESULT% >> update_history.log
-
-echo Status files updated with current timestamp: %date% %time%
 
 REM Exit with the same code as Python script
 exit /b %SCRIPT_RESULT%
