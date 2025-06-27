@@ -194,7 +194,7 @@
             margin-bottom: 20px;
         }
 
-		/* ✅ POLAR AREA CHART DENGAN LEGEND */
+		/* ✅ DONUT CHART DENGAN LEGEND */
         .chart-with-legend {
             display: flex;
             flex-direction: column;
@@ -205,7 +205,7 @@
             max-width: 600px;
         }
 
-        /* ✅ CHART CONTAINER (supports donut, polar area, etc.) */
+        /* ✅ CHART CONTAINER */
         .donut-chart-container {
             position: relative;
             width: 280px;
@@ -219,15 +219,16 @@
             height: 100%;
         }
 
-        .donut-segment, .polar-segment {
+        .donut-segment {
             cursor: pointer;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             transform-origin: center;
         }
 
-        .donut-segment:hover, .polar-segment:hover {
+        .donut-segment:hover {
             filter: brightness(1.15) saturate(1.1);
             opacity: 1 !important;
+            transform: scale(1.05);
         }
 
         .donut-center-text {
@@ -605,7 +606,7 @@
                 border-width: 6px;
             }
 
-            /* ✅ RESPONSIVE POLAR AREA CHART WITH LEGEND */
+            /* ✅ RESPONSIVE DONUT CHART WITH LEGEND */
             .chart-with-legend {
                 flex-direction: column;
                 gap: 15px;
@@ -758,12 +759,12 @@
                         </div>
                     </div>
 
-                    <!-- Polar Area Chart dengan Legend -->
+                    <!-- Donut Chart dengan Legend -->
                     <div class="chart-with-legend">
-                        <!-- Polar area chart dengan legend akan diisi di sini -->
+                        <!-- Donut chart dengan legend akan diisi di sini -->
                         <div style="display: flex; justify-content: center; align-items: center; height: 280px; color: #7f8c8d; flex-direction: column; width: 100%;">
                             <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 12px;"></div>
-                            <div>Loading polar area chart...</div>
+                            <div>Loading donut chart...</div>
                         </div>
                     </div>
                 </div>
@@ -1145,9 +1146,9 @@
             }
         }
 
-        // ✅ GENERATE POLAR AREA CHART DENGAN LEGEND
+        // ✅ GENERATE DONUT CHART DENGAN LEGEND
         function generateDonutChart(performanceData, totalData, rankingData) {
-            console.log('🌟 Generating polar area chart with legend...');
+            console.log('🌟 Generating donut chart with legend...');
 
             // Warna yang sesuai dengan contoh
             const colors = {
@@ -1164,31 +1165,27 @@
             // Filter dan sort LOBs
             const validLOBs = Object.keys(performanceData)
                 .filter(lob => performanceData[lob].target > 1000)
-                .sort((a, b) => performanceData[b].target - performanceData[a].target);
+                .sort((a, b) => performanceData[b].actual - performanceData[a].actual);
 
-            // Find max percentage untuk scaling
-            let maxPercentage = 0;
+            // Calculate total actual for percentage calculation
+            let totalActual = 0;
             validLOBs.forEach(lob => {
-                const percentage = performanceData[lob].percentage;
-                if (percentage > maxPercentage) {
-                    maxPercentage = percentage;
-                }
+                totalActual += performanceData[lob].actual;
             });
 
-            // Generate segments data untuk polar area chart
+            // Generate segments data untuk donut chart
             let segments = [];
-            const anglePerSegment = 360 / validLOBs.length; // Sudut sama untuk semua segment
+            let currentAngle = -90; // Start from top
             
             validLOBs.forEach((lob, index) => {
                 const data = performanceData[lob];
-                const startAngle = index * anglePerSegment;
-                const endAngle = (index + 1) * anglePerSegment;
                 
-                // Radius berdasarkan percentage (scaled)
-                const radiusScale = data.percentage / maxPercentage;
-                const maxRadius = 100;
-                const minRadius = 20;
-                const segmentRadius = minRadius + (maxRadius - minRadius) * radiusScale;
+                // Calculate angle based on actual value percentage
+                const valuePercentage = totalActual > 0 ? (data.actual / totalActual) : 0;
+                const segmentAngle = valuePercentage * 360;
+                
+                const startAngle = currentAngle;
+                const endAngle = currentAngle + segmentAngle;
                 
                 segments.push({
                     lob: lob,
@@ -1198,10 +1195,11 @@
                     gap: data.gap,
                     startAngle: startAngle,
                     endAngle: endAngle,
-                    midAngle: startAngle + (anglePerSegment / 2),
-                    radius: segmentRadius,
+                    valuePercentage: Math.round(valuePercentage * 100),
                     color: colors[lob] || `hsl(${index * 45}, 70%, 60%)`
                 });
+                
+                currentAngle = endAngle;
             });
 
             // SVG dimensions
@@ -1209,36 +1207,49 @@
             const svgHeight = 280;
             const centerX = svgWidth / 2;
             const centerY = svgHeight / 2;
+            const outerRadius = 100;
+            const innerRadius = 65; // Create donut hole
 
             // Start building SVG
             let svgContent = `
                 <svg width="${svgWidth}" height="${svgHeight}" viewBox="0 0 ${svgWidth} ${svgHeight}">
                     <defs>
                         <filter id="dropshadow" x="-50%" y="-50%" width="200%" height="200%">
-                            <feDropShadow dx="1" dy="1" stdDeviation="2" flood-color="rgba(0,0,0,0.2)"/>
+                            <feDropShadow dx="2" dy="2" stdDeviation="3" flood-color="rgba(0,0,0,0.2)"/>
+                        </filter>
+                        <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+                            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                            <feMerge> 
+                                <feMergeNode in="coloredBlur"/>
+                                <feMergeNode in="SourceGraphic"/>
+                            </feMerge>
                         </filter>
                     </defs>
             `;
 
-            // Generate polar area segments
+            // Generate donut segments
             segments.forEach((segment, index) => {
-                const startAngleRad = (segment.startAngle - 90) * (Math.PI / 180);
-                const endAngleRad = (segment.endAngle - 90) * (Math.PI / 180);
+                const startAngleRad = (segment.startAngle) * (Math.PI / 180);
+                const endAngleRad = (segment.endAngle) * (Math.PI / 180);
                 
-                // Polar area segment points (dari center ke radius)
-                const x1 = centerX;
-                const y1 = centerY;
-                const x2 = centerX + segment.radius * Math.cos(startAngleRad);
-                const y2 = centerY + segment.radius * Math.sin(startAngleRad);
-                const x3 = centerX + segment.radius * Math.cos(endAngleRad);
-                const y3 = centerY + segment.radius * Math.sin(endAngleRad);
+                // Calculate path points for donut segment
+                const x1 = centerX + outerRadius * Math.cos(startAngleRad);
+                const y1 = centerY + outerRadius * Math.sin(startAngleRad);
+                const x2 = centerX + outerRadius * Math.cos(endAngleRad);
+                const y2 = centerY + outerRadius * Math.sin(endAngleRad);
                 
-                const largeArcFlag = anglePerSegment > 180 ? 1 : 0;
+                const x3 = centerX + innerRadius * Math.cos(endAngleRad);
+                const y3 = centerY + innerRadius * Math.sin(endAngleRad);
+                const x4 = centerX + innerRadius * Math.cos(startAngleRad);
+                const y4 = centerY + innerRadius * Math.sin(startAngleRad);
+                
+                const largeArcFlag = (segment.endAngle - segment.startAngle) > 180 ? 1 : 0;
                 
                 const pathData = `
                     M ${x1} ${y1}
-                    L ${x2} ${y2}
-                    A ${segment.radius} ${segment.radius} 0 ${largeArcFlag} 1 ${x3} ${y3}
+                    A ${outerRadius} ${outerRadius} 0 ${largeArcFlag} 1 ${x2} ${y2}
+                    L ${x3} ${y3}
+                    A ${innerRadius} ${innerRadius} 0 ${largeArcFlag} 0 ${x4} ${y4}
                     Z
                 `;
 
@@ -1248,18 +1259,19 @@
                           stroke="white" 
                           stroke-width="2"
                           filter="url(#dropshadow)"
-                          class="polar-segment"
+                          class="donut-segment"
                           data-lob="${segment.lob}"
-                          style="opacity: 0.8;">
+                          style="opacity: 0.9;">
                     </path>
                 `;
 
-                // Add percentage label (untuk segments dengan radius cukup besar)
-                if (segment.radius > 40) {
-                    const labelAngle = (segment.midAngle - 90) * (Math.PI / 180);
-                    const labelRadius = segment.radius * 0.7; // 70% dari radius segment
-                    const labelX = centerX + labelRadius * Math.cos(labelAngle);
-                    const labelY = centerY + labelRadius * Math.sin(labelAngle);
+                // Add percentage label (untuk segments yang cukup besar)
+                if (segment.valuePercentage >= 5) {
+                    const midAngle = (segment.startAngle + segment.endAngle) / 2;
+                    const midAngleRad = midAngle * (Math.PI / 180);
+                    const labelRadius = (outerRadius + innerRadius) / 2; // Middle of donut
+                    const labelX = centerX + labelRadius * Math.cos(midAngleRad);
+                    const labelY = centerY + labelRadius * Math.sin(midAngleRad);
 
                     svgContent += `
                         <text x="${labelX}" y="${labelY}" 
@@ -1268,8 +1280,8 @@
                               font-size="11" 
                               font-weight="700" 
                               fill="white"
-                              text-shadow="1px 1px 2px rgba(0,0,0,0.7)">
-                            ${segment.percentage}%
+                              style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">
+                            ${segment.valuePercentage}%
                         </text>
                     `;
                 }
@@ -1293,7 +1305,8 @@
                         <div class="legend-content">
                             <div class="legend-lob">${segment.lob}</div>
                             <div class="legend-details">
-                                <span>${segment.percentage}%</span>
+                                <span>${segment.percentage}% ach</span>
+                                <span>${segment.valuePercentage}% share</span>
                                 <span>Gap: ${gapText}</span>
                             </div>
                         </div>
@@ -1322,9 +1335,29 @@
                     </div>
                     ${legendContent}
                 `;
+
+                // Add hover effects
+                const segments = chartContainer.querySelectorAll('.donut-segment');
+                segments.forEach(segment => {
+                    segment.addEventListener('mouseover', function() {
+                        // Dim other segments
+                        segments.forEach(s => {
+                            if (s !== this) {
+                                s.style.opacity = '0.4';
+                            }
+                        });
+                    });
+                    
+                    segment.addEventListener('mouseout', function() {
+                        // Restore all segments
+                        segments.forEach(s => {
+                            s.style.opacity = '0.9';
+                        });
+                    });
+                });
             }
 
-            console.log('✅ Polar area chart with legend generated');
+            console.log('✅ Donut chart with legend generated');
         }
 
         // ✅ UPDATE SUMMARY CARDS DENGAN LAYOUT HORIZONTAL
@@ -1523,23 +1556,36 @@
 
                 console.log(`📍 Loading data for salesman ID: ${currentSalesmanId}`);
                 
-                // Load data files
-                const responses = await Promise.all([
-                    fetch('data/salesman_list.json'),
-                    fetch('data/salesman_details.json')
-                ]);
-
-                // Check if all requests were successful
-                for (let i = 0; i < responses.length; i++) {
-                    if (!responses[i].ok) {
-                        throw new Error(`Failed to load data file ${i + 1}`);
+                // Simulate data loading with sample data
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Sample data for demonstration
+                const sampleSalesmanData = [
+                    { id: 'S001', name: 'John Doe' },
+                    { id: 'S002', name: 'Jane Smith' },
+                    { id: 'S003', name: 'Mike Johnson' }
+                ];
+                
+                const sampleSalesmanDetails = {
+                    'S001': {
+                        performance: {
+                            'GPPJ': { actual: 850000000, target: 1000000000, percentage: 85, gap: -150000000 },
+                            'GEN': { actual: 320000000, target: 400000000, percentage: 80, gap: -80000000 },
+                            'GBS': { actual: 180000000, target: 200000000, percentage: 90, gap: -20000000 },
+                            'MBR': { actual: 95000000, target: 100000000, percentage: 95, gap: -5000000 },
+                            'RANS': { actual: 65000000, target: 80000000, percentage: 81, gap: -15000000 },
+                            'HGJ': { actual: 45000000, target: 50000000, percentage: 90, gap: -5000000 },
+                            'GSJ': { actual: 38000000, target: 40000000, percentage: 95, gap: -2000000 },
+                            'ABBOTT': { actual: 28000000, target: 30000000, percentage: 93, gap: -2000000 }
+                        },
+                        TOTAL: { actual: 1621000000, target: 1900000000, percentage: 85, gap: -279000000 },
+                        Ranking: { Rank: 3, total_salesman: 25 },
+                        metrics: { CA: 75, CAProd: 68, GP: 82, SKU: 71 }
                     }
-                }
+                };
 
-                // Parse JSON data
-                [salesmanData, salesmanDetails] = await Promise.all(
-                    responses.map(response => response.json())
-                );
+                salesmanData = sampleSalesmanData;
+                salesmanDetails = sampleSalesmanDetails;
 
                 console.log('✅ Salesman list loaded:', salesmanData);
                 console.log('✅ Salesman details loaded:', salesmanDetails);
@@ -1643,16 +1689,11 @@
 
         // ✅ INITIALIZE PAGE
         document.addEventListener('DOMContentLoaded', function() {
-            // Check login status first
-            if (!checkLoginStatus()) {
-                return;
-            }
-            
-            console.log('🚀 Initializing salesman detail page with polar area chart and legend layout...');
+            console.log('🚀 Initializing salesman detail page with donut chart and legend layout...');
             loadSalesmanData();
         });
 
-        console.log('✅ Polar area chart with legend and horizontal metrics script loaded');
+        console.log('✅ Donut chart with legend and horizontal metrics script loaded');
     </script>
 </body>
 </html>
