@@ -50,18 +50,14 @@ if not exist ".git" (
 )
 echo OK: Git repository found
 
-REM Check if Excel file exists
-if not exist "DbaseSalesmanWebApp.xlsm" (
-    if not exist "DbaseSalesmanWebApp.xlsx" (
-        echo ERROR: Excel file not found in %cd%
-        exit /b 1
-    ) else (
-        echo OK: Excel file found (.xlsx)
-        set EXCEL_FILE=DbaseSalesmanWebApp.xlsx
-    )
+REM Check if Excel file exists (FIXED: .xlsx only)
+if not exist "DbaseSalesmanWebApp.xlsx" (
+    echo ERROR: Excel file not found in %cd%
+    echo Required: DbaseSalesmanWebApp.xlsx
+    exit /b 1
 ) else (
-    echo OK: Excel file found (.xlsm)
-    set EXCEL_FILE=DbaseSalesmanWebApp.xlsm
+    echo OK: Excel file found (.xlsx)
+    set EXCEL_FILE=DbaseSalesmanWebApp.xlsx
 )
 
 REM Check if PowerShell refresh script exists
@@ -120,8 +116,8 @@ echo Target file: %EXCEL_FILE%
 echo Method: Selective file handling (PowerShell)
 echo --------------------------------------------------------
 
-REM Execute PowerShell script with parameters
-powershell -ExecutionPolicy Bypass -File "excel_refresh_selective.ps1" -ExcelFile "%cd%\%EXCEL_FILE%" -RefreshWaitSeconds 30 -MaxRetries 3
+REM Execute PowerShell script with parameters (FIXED: Robust parameter passing)
+powershell.exe -ExecutionPolicy Bypass -Command "& '.\excel_refresh_selective.ps1' -ExcelFile '%cd%\%EXCEL_FILE%' -RefreshWaitSeconds 30 -MaxRetries 3"
 
 set EXCEL_REFRESH_RESULT=%errorlevel%
 

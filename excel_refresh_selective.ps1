@@ -1,9 +1,10 @@
-# Excel Auto-Refresh Script - Selective File Handling
+# Excel Auto-Refresh Script - FIXED for .xlsx only
 # File: C:\Dashboard\excel_refresh_selective.ps1
 # Purpose: Check and close only specific file if in use, not all Excel processes
+# FIXED: Only works with DbaseSalesmanWebApp.xlsx
 
 param(
-    [string]$ExcelFile = "C:\Dashboard\DbaseSalesmanWebApp.xlsx",
+    [string]$ExcelFile = "C:\Dashboard\DbaseSalesmanWebApp.xlsx",  # FIXED: Default to .xlsx
     [int]$RefreshWaitSeconds = 30,
     [int]$MaxRetries = 3
 )
@@ -25,6 +26,70 @@ function Write-ErrorLog {
     $LogEntry = "$TimeStamp - ERROR: $Message"
     Write-Host $LogEntry -ForegroundColor Red
     Add-Content -Path $LogFile -Value $LogEntry
+}
+
+# FIXED: Enhanced parameter validation and auto-detection for .xlsx only
+Write-Log "=== PARAMETER VALIDATION - XLSX ONLY ==="
+Write-Log "Received ExcelFile parameter: '$ExcelFile'"
+
+# Auto-detect Excel file if not provided or invalid
+if ([string]::IsNullOrEmpty($ExcelFile) -or -not (Test-Path $ExcelFile)) {
+    Write-Log "Parameter file not found or empty, attempting auto-detection for .xlsx..."
+    
+    # Get current directory
+    $CurrentDir = Get-Location
+    Write-Log "Current directory: $CurrentDir"
+    
+    # FIXED: Only check for .xlsx file
+    $TestFileXlsx = Join-Path $CurrentDir "DbaseSalesmanWebApp.xlsx"
+    
+    Write-Log "Testing for: $TestFileXlsx"
+    
+    if (Test-Path $TestFileXlsx) {
+        $ExcelFile = $TestFileXlsx
+        Write-Log "AUTO-DETECTED: $ExcelFile (.xlsx)"
+    } else {
+        Write-ErrorLog "Excel file not found: $TestFileXlsx"
+        Write-ErrorLog "Required file: DbaseSalesmanWebApp.xlsx"
+        
+        # List all Excel files in directory for debugging
+        $ExcelFiles = Get-ChildItem -Path $CurrentDir -Filter "*.xls*" -ErrorAction SilentlyContinue
+        if ($ExcelFiles) {
+            Write-Log "Excel files found in directory:"
+            foreach ($file in $ExcelFiles) {
+                Write-Log "  - $($file.Name)"
+            }
+            Write-ErrorLog "Only DbaseSalesmanWebApp.xlsx is supported by this script"
+        } else {
+            Write-ErrorLog "No Excel files found in directory at all"
+        }
+        
+        exit 1
+    }
+}
+
+# Final validation
+Write-Log "=== FINAL VALIDATION ==="
+Write-Log "Target Excel file: $ExcelFile"
+
+if (Test-Path $ExcelFile) {
+    $FileInfo = Get-Item $ExcelFile
+    Write-Log "File exists and accessible"
+    Write-Log "File size: $([math]::Round($FileInfo.Length / 1MB, 2)) MB"
+    Write-Log "Last modified: $($FileInfo.LastWriteTime)"
+    
+    # FIXED: Validate it's the correct .xlsx file
+    if ($FileInfo.Name -ne "DbaseSalesmanWebApp.xlsx") {
+        Write-ErrorLog "Incorrect file detected: $($FileInfo.Name)"
+        Write-ErrorLog "This script only works with: DbaseSalesmanWebApp.xlsx"
+        exit 1
+    }
+    
+    Write-Log "Validated: Correct .xlsx file detected"
+} else {
+    Write-ErrorLog "CRITICAL: Final file validation failed"
+    Write-ErrorLog "Cannot access: $ExcelFile"
+    exit 1
 }
 
 function Test-FileInUse {
@@ -164,10 +229,11 @@ function Remove-LockFiles {
     param([string]$TargetFile)
     
     Write-Log "Removing lock files for target file..."
+    # FIXED: Updated to work with .xlsx specifically
     $FileName = [System.IO.Path]::GetFileNameWithoutExtension($TargetFile)
     $Directory = [System.IO.Path]::GetDirectoryName($TargetFile)
     
-    # Look for lock files specific to our target file
+    # Look for lock files specific to our .xlsx target file
     $LockPatterns = @(
         "$Directory\~`$$FileName*.xlsx",
         "$Directory\~`$$FileName*.tmp",
@@ -425,15 +491,15 @@ function Refresh-Excel-Selective {
             # Create success marker
             $SuccessMarker = "C:\Dashboard\excel_refresh_success.txt"
             $SuccessMessage = @"
-Excel Refresh Successful - Selective Method
-==========================================
+Excel Refresh Successful - XLSX Only
+====================================
 Time: $(Get-Date)
 Attempt: #$AttemptNumber
 File: $ExcelFile
 Size: $([math]::Round($FinalFileInfo.Length / 1MB, 2)) MB
 Last Modified: $($FinalFileInfo.LastWriteTime)
 Connections: $ConnectionCount
-Method: Selective file handling (only target file closed)
+Method: Selective file handling (DbaseSalesmanWebApp.xlsx only)
 Status: Ready for dashboard update
 "@
             Set-Content -Path $SuccessMarker -Value $SuccessMessage
@@ -460,19 +526,27 @@ Status: Ready for dashboard update
 
 # Main execution
 Write-Log "================================================"
-Write-Log "Excel Auto-Refresh Script - Selective File Handling"
+Write-Log "Excel Auto-Refresh Script - FIXED for .xlsx only"
 Write-Log "Target file: $ExcelFile"
 Write-Log "Refresh wait time: $RefreshWaitSeconds seconds"
 Write-Log "Max retries: $MaxRetries"
-Write-Log "Method: Selective (only close target file if in use)"
+Write-Log "Method: Selective (only DbaseSalesmanWebApp.xlsx supported)"
 
-# Check file exists
+# FIXED: Enhanced file validation for .xlsx only
 if (-not (Test-Path $ExcelFile)) {
     Write-ErrorLog "Excel file not found: $ExcelFile"
+    Write-ErrorLog "Required: DbaseSalesmanWebApp.xlsx"
     exit 1
 }
 
-Write-Log "Excel file confirmed: $ExcelFile"
+$FileInfo = Get-Item $ExcelFile
+if ($FileInfo.Name -ne "DbaseSalesmanWebApp.xlsx") {
+    Write-ErrorLog "Incorrect file: $($FileInfo.Name)"
+    Write-ErrorLog "This script only supports: DbaseSalesmanWebApp.xlsx"
+    exit 1
+}
+
+Write-Log "Excel file confirmed: DbaseSalesmanWebApp.xlsx"
 
 # Execute with retries
 $Success = $false
@@ -509,21 +583,22 @@ if ($Success) {
     # Create failure marker
     $FailureMarker = "C:\Dashboard\excel_refresh_failure.txt"
     $FailureMessage = @"
-Excel Refresh Failed - Selective Method
-======================================
+Excel Refresh Failed - XLSX Only
+================================
 Time: $(Get-Date)
 File: $ExcelFile
 Attempts: $MaxRetries
 Duration: $([math]::Round($TotalTime, 1)) seconds
-Error: Could not access or refresh target file
+Error: Could not access or refresh DbaseSalesmanWebApp.xlsx
 
 Troubleshooting:
-1. Check if file is open in Excel manually
+1. Check if DbaseSalesmanWebApp.xlsx is open in Excel manually
 2. Verify file permissions
 3. Check data connections manually
 4. Try running script as administrator
 5. Contact IT support if issue persists
 
+Required File: DbaseSalesmanWebApp.xlsx (only)
 Log File: $LogFile
 "@
     Set-Content -Path $FailureMarker -Value $FailureMessage
