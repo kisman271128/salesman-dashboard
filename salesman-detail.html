@@ -1162,10 +1162,24 @@
                 'ABBOTT': '#85c1e9'   // Biru terang
             };
 
-            // Filter dan sort LOBs
+            // Filter LOBs - only include those with actual > 1000 (significant values)
             const validLOBs = Object.keys(performanceData)
-                .filter(lob => performanceData[lob].target > 1000)
+                .filter(lob => performanceData[lob].actual > 1000)
                 .sort((a, b) => performanceData[b].actual - performanceData[a].actual);
+
+            if (validLOBs.length === 0) {
+                // No valid data to show
+                const chartContainer = document.querySelector('.chart-with-legend');
+                if (chartContainer) {
+                    chartContainer.innerHTML = `
+                        <div style="display: flex; justify-content: center; align-items: center; height: 280px; color: #7f8c8d; flex-direction: column;">
+                            <div style="font-size: 16px; margin-bottom: 8px;">📊</div>
+                            <div>No significant LOB data available</div>
+                        </div>
+                    `;
+                }
+                return;
+            }
 
             // Calculate total actual for percentage calculation
             let totalActual = 0;
@@ -1182,7 +1196,7 @@
                 
                 // Calculate angle based on actual value percentage
                 const valuePercentage = totalActual > 0 ? (data.actual / totalActual) : 0;
-                const segmentAngle = valuePercentage * 360;
+                const segmentAngle = Math.max(valuePercentage * 360, 5); // Minimum 5 degrees for visibility
                 
                 const startAngle = currentAngle;
                 const endAngle = currentAngle + segmentAngle;
@@ -1266,7 +1280,7 @@
                 `;
 
                 // Add percentage label (untuk segments yang cukup besar)
-                if (segment.valuePercentage >= 5) {
+                if (segment.valuePercentage >= 3) {
                     const midAngle = (segment.startAngle + segment.endAngle) / 2;
                     const midAngleRad = midAngle * (Math.PI / 180);
                     const labelRadius = (outerRadius + innerRadius) / 2; // Middle of donut
@@ -1277,7 +1291,7 @@
                         <text x="${labelX}" y="${labelY}" 
                               text-anchor="middle" 
                               dominant-baseline="middle"
-                              font-size="11" 
+                              font-size="10" 
                               font-weight="700" 
                               fill="white"
                               style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">
@@ -1556,51 +1570,254 @@
 
                 console.log(`📍 Loading data for salesman ID: ${currentSalesmanId}`);
                 
-                // Simulate data loading with sample data
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                // Try to load real data from JSON files, with fallback
+                let salesmanDetailsData;
                 
-                // Sample data for demonstration
-                const sampleSalesmanData = [
-                    { id: 'S001', name: 'John Doe' },
-                    { id: 'S002', name: 'Jane Smith' },
-                    { id: 'S003', name: 'Mike Johnson' }
-                ];
-                
-                const sampleSalesmanDetails = {
-                    'S001': {
-                        performance: {
-                            'GPPJ': { actual: 850000000, target: 1000000000, percentage: 85, gap: -150000000 },
-                            'GEN': { actual: 320000000, target: 400000000, percentage: 80, gap: -80000000 },
-                            'GBS': { actual: 180000000, target: 200000000, percentage: 90, gap: -20000000 },
-                            'MBR': { actual: 95000000, target: 100000000, percentage: 95, gap: -5000000 },
-                            'RANS': { actual: 65000000, target: 80000000, percentage: 81, gap: -15000000 },
-                            'HGJ': { actual: 45000000, target: 50000000, percentage: 90, gap: -5000000 },
-                            'GSJ': { actual: 38000000, target: 40000000, percentage: 95, gap: -2000000 },
-                            'ABBOTT': { actual: 28000000, target: 30000000, percentage: 93, gap: -2000000 }
-                        },
-                        TOTAL: { actual: 1621000000, target: 1900000000, percentage: 85, gap: -279000000 },
-                        Ranking: { Rank: 3, total_salesman: 25 },
-                        metrics: { CA: 75, CAProd: 68, GP: 82, SKU: 71 }
+                try {
+                    const response = await fetch('data/salesman_details.json');
+                    if (!response.ok) {
+                        throw new Error('File not found');
                     }
-                };
-
-                salesmanData = sampleSalesmanData;
-                salesmanDetails = sampleSalesmanDetails;
-
-                console.log('✅ Salesman list loaded:', salesmanData);
+                    salesmanDetailsData = await response.json();
+                } catch (fetchError) {
+                    console.log('⚠️ Could not load from file, using embedded data...');
+                    // Fallback to embedded data
+                    salesmanDetailsData = {
+                        "17210032876": {
+                            "name": "Asman",
+                            "sac": "Kisman Pidu",
+                            "type": "Sales Representative Mix Yudistira",
+                            "performance": {
+                                "GBS": {
+                                    "actual": 137318646.12802804,
+                                    "target": 292564000.0,
+                                    "percentage": 47,
+                                    "gap": -155245353.87197196
+                                },
+                                "GEN": {
+                                    "actual": 45183286.38397794,
+                                    "target": 72100000.0,
+                                    "percentage": 63,
+                                    "gap": -26916713.616022058
+                                },
+                                "GPPJ": {
+                                    "actual": 497461588.83898854,
+                                    "target": 618000000.0,
+                                    "percentage": 80,
+                                    "gap": -120538411.16101146
+                                },
+                                "HGJ": {
+                                    "actual": 26431.53,
+                                    "target": 2650000.0,
+                                    "percentage": 1,
+                                    "gap": -2623568.47
+                                },
+                                "MBR": {
+                                    "actual": 6248035.808098997,
+                                    "target": 10500000.0,
+                                    "percentage": 60,
+                                    "gap": -4251964.191901003
+                                },
+                                "RANS": {
+                                    "actual": 6689637.430000003,
+                                    "target": 2628719.390250495,
+                                    "percentage": 254,
+                                    "gap": 4060918.0397495083
+                                },
+                                "GSJ": {
+                                    "actual": 203378.24999999994,
+                                    "target": 72507.76870374221,
+                                    "percentage": 280,
+                                    "gap": 130870.48129625773
+                                },
+                                "ABBOTT": {
+                                    "actual": 8940354.009999998,
+                                    "target": 1484772.8410457626,
+                                    "percentage": 602,
+                                    "gap": 7455581.1689542355
+                                }
+                            },
+                            "metrics": {
+                                "CA": 85,
+                                "CAProd": 78,
+                                "SKU": 92,
+                                "GP": 76
+                            },
+                            "TOTAL": {
+                                "actual": 702071358.3790935,
+                                "target": 1000000000.0,
+                                "percentage": 70,
+                                "gap": -297928641.6209065
+                            },
+                            "Ranking": {
+                                "Rank": 5,
+                                "total_salesman": 6
+                            }
+                        },
+                        "17210036369": {
+                            "name": "Muhammad Tamrin",
+                            "sac": "Kisman Pidu",
+                            "type": "Sales Representative Mix Yudistira",
+                            "performance": {
+                                "GBS": {
+                                    "actual": 137040808.19159868,
+                                    "target": 205314000.0,
+                                    "percentage": 67,
+                                    "gap": -68273191.80840132
+                                },
+                                "GEN": {
+                                    "actual": 18854497.382749002,
+                                    "target": 40100000.0,
+                                    "percentage": 47,
+                                    "gap": -21245502.617250998
+                                },
+                                "GPPJ": {
+                                    "actual": 252893034.6243341,
+                                    "target": 253250000.0,
+                                    "percentage": 100,
+                                    "gap": -356965.3756659031
+                                },
+                                "HGJ": {
+                                    "actual": 44053.15,
+                                    "target": 650000.0,
+                                    "percentage": 7,
+                                    "gap": -605946.85
+                                },
+                                "MBR": {
+                                    "actual": 2652621.4812539998,
+                                    "target": 4800000.0,
+                                    "percentage": 55,
+                                    "gap": -2147378.5187460002
+                                },
+                                "RANS": {
+                                    "actual": 7772764.290000009,
+                                    "target": 3099936.719497302,
+                                    "percentage": 251,
+                                    "gap": 4672827.570502708
+                                },
+                                "GSJ": {
+                                    "actual": 27117.1,
+                                    "target": 86063.2805026982,
+                                    "percentage": 32,
+                                    "gap": -58946.1805026982
+                                },
+                                "ABBOTT": {
+                                    "actual": 0.0,
+                                    "target": 0.0,
+                                    "percentage": 0,
+                                    "gap": 0.0
+                                }
+                            },
+                            "metrics": {
+                                "CA": 82,
+                                "CAProd": 75,
+                                "SKU": 88,
+                                "GP": 79
+                            },
+                            "TOTAL": {
+                                "actual": 419284896.2199358,
+                                "target": 507300000.0,
+                                "percentage": 83,
+                                "gap": -88015103.78006423
+                            },
+                            "Ranking": {
+                                "Rank": 3,
+                                "total_salesman": 6
+                            }
+                        },
+                        "17210037632": {
+                            "name": "Robianor",
+                            "sac": "Kisman Pidu",
+                            "type": "Sales Representative Mix Yudistira",
+                            "performance": {
+                                "GBS": {
+                                    "actual": 114182950.64802517,
+                                    "target": 117564000.0,
+                                    "percentage": 97,
+                                    "gap": -3381049.35197483
+                                },
+                                "GEN": {
+                                    "actual": 18754421.718617007,
+                                    "target": 34400000.0,
+                                    "percentage": 55,
+                                    "gap": -15645578.281382993
+                                },
+                                "GPPJ": {
+                                    "actual": 271966519.9294862,
+                                    "target": 308800000.0,
+                                    "percentage": 88,
+                                    "gap": -36833480.070513785
+                                },
+                                "HGJ": {
+                                    "actual": 26431.53,
+                                    "target": 650000.0,
+                                    "percentage": 4,
+                                    "gap": -623568.47
+                                },
+                                "MBR": {
+                                    "actual": 2213343.1482830006,
+                                    "target": 2986000.0,
+                                    "percentage": 74,
+                                    "gap": -772656.8517169994
+                                },
+                                "RANS": {
+                                    "actual": 4821765.100000005,
+                                    "target": 5217809.939239618,
+                                    "percentage": 92,
+                                    "gap": -396044.83923961315
+                                },
+                                "GSJ": {
+                                    "actual": 67792.75,
+                                    "target": 82190.06076038124,
+                                    "percentage": 82,
+                                    "gap": -14397.310760381239
+                                },
+                                "ABBOTT": {
+                                    "actual": 0.0,
+                                    "target": 0.0,
+                                    "percentage": 0,
+                                    "gap": 0.0
+                                }
+                            },
+                            "metrics": {
+                                "CA": 94,
+                                "CAProd": 89,
+                                "SKU": 96,
+                                "GP": 87
+                            },
+                            "TOTAL": {
+                                "actual": 412033224.8244114,
+                                "target": 469700000.0,
+                                "percentage": 88,
+                                "gap": -57666775.17558861
+                            },
+                            "Ranking": {
+                                "Rank": 1,
+                                "total_salesman": 6
+                            }
+                        }
+                    };
+                }
+                
+                salesmanDetails = salesmanDetailsData;
                 console.log('✅ Salesman details loaded:', salesmanDetails);
 
-                // Find salesman in list
-                const salesman = salesmanData.find(s => s.id === currentSalesmanId);
+                // Find salesman details
                 const details = salesmanDetails[currentSalesmanId];
 
-                if (!salesman) {
+                if (!details) {
                     throw new Error(`Salesman not found: ${currentSalesmanId}`);
                 }
 
-                if (!details) {
-                    throw new Error(`Salesman details not found: ${currentSalesmanId}`);
-                }
+                // Create salesman object from details
+                const salesman = {
+                    id: currentSalesmanId,
+                    name: details.name || 'Unknown',
+                    sac: details.sac || '',
+                    type: details.type || ''
+                };
+
+                console.log(`✅ Found salesman: ${salesman.name} (${salesman.id})`);
 
                 // Update UI with loaded data
                 updateSalesmanProfile(salesman, details);
