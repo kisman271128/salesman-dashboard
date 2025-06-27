@@ -1121,7 +1121,10 @@
         </div>
     </div>
 
-    <script>
+    <script type="module">
+        // Import D3.js library
+        import * as d3 from 'd3';
+
         // Global variables
         let salesmanData = null;
         let salesmanDetails = null;
@@ -1146,9 +1149,9 @@
             }
         }
 
-        // ✅ GENERATE DONUT CHART DENGAN LEGEND
+        // ✅ GENERATE DONUT CHART DENGAN D3.JS
         function generateDonutChart(performanceData, totalData, rankingData) {
-            console.log('🌟 Generating donut chart with legend...');
+            console.log('🌟 Generating D3.js donut chart with legend...');
 
             // Warna yang sesuai dengan contoh
             const colors = {
@@ -1165,7 +1168,15 @@
             // Filter LOBs - only include those with actual > 1000 (significant values)
             const validLOBs = Object.keys(performanceData)
                 .filter(lob => performanceData[lob].actual > 1000)
-                .sort((a, b) => performanceData[b].actual - performanceData[a].actual);
+                .map(lob => ({
+                    lob: lob,
+                    actual: performanceData[lob].actual,
+                    target: performanceData[lob].target,
+                    percentage: performanceData[lob].percentage,
+                    gap: performanceData[lob].gap,
+                    color: colors[lob] || `hsl(${Object.keys(performanceData).indexOf(lob) * 45}, 70%, 60%)`
+                }))
+                .sort((a, b) => b.actual - a.actual);
 
             if (validLOBs.length === 0) {
                 // No valid data to show
@@ -1181,127 +1192,209 @@
                 return;
             }
 
-            // Calculate total actual for percentage calculation
-            let totalActual = 0;
-            validLOBs.forEach(lob => {
-                totalActual += performanceData[lob].actual;
-            });
+            // Chart dimensions
+            const width = 280;
+            const height = 280;
+            const margin = 10;
+            const radius = Math.min(width, height) / 2 - margin;
+            const innerRadius = radius * 0.65; // Create donut hole
 
-            // Generate segments data untuk donut chart
-            let segments = [];
-            let currentAngle = -90; // Start from top
+            // Clear any existing chart
+            const chartContainer = document.querySelector('.chart-with-legend');
+            chartContainer.innerHTML = '';
+
+            // Create main container div
+            const containerDiv = document.createElement('div');
+            containerDiv.className = 'donut-chart-container';
+            containerDiv.style.position = 'relative';
+            containerDiv.style.width = width + 'px';
+            containerDiv.style.height = height + 'px';
+            containerDiv.style.animation = 'fadeInScale 0.6s ease-out';
+
+            // Create SVG using D3
+            const svg = d3.select(containerDiv)
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height)
+                .attr('class', 'donut-chart');
+
+            // Create group element for the chart
+            const g = svg.append('g')
+                .attr('transform', `translate(${width / 2}, ${height / 2})`);
+
+            // Add filter definitions
+            const defs = svg.append('defs');
             
-            validLOBs.forEach((lob, index) => {
-                const data = performanceData[lob];
-                
-                // Calculate angle based on actual value percentage
-                const valuePercentage = totalActual > 0 ? (data.actual / totalActual) : 0;
-                const segmentAngle = Math.max(valuePercentage * 360, 5); // Minimum 5 degrees for visibility
-                
-                const startAngle = currentAngle;
-                const endAngle = currentAngle + segmentAngle;
-                
-                segments.push({
-                    lob: lob,
-                    actual: data.actual,
-                    target: data.target,
-                    percentage: data.percentage,
-                    gap: data.gap,
-                    startAngle: startAngle,
-                    endAngle: endAngle,
-                    valuePercentage: Math.round(valuePercentage * 100),
-                    color: colors[lob] || `hsl(${index * 45}, 70%, 60%)`
+            // Drop shadow filter
+            const filter = defs.append('filter')
+                .attr('id', 'dropshadow')
+                .attr('x', '-50%')
+                .attr('y', '-50%')
+                .attr('width', '200%')
+                .attr('height', '200%');
+            
+            filter.append('feDropShadow')
+                .attr('dx', 2)
+                .attr('dy', 2)
+                .attr('stdDeviation', 3)
+                .attr('flood-color', 'rgba(0,0,0,0.2)');
+
+            // Create pie layout
+            const pie = d3.pie()
+                .value(d => d.actual)
+                .sort(null)
+                .startAngle(0)
+                .endAngle(2 * Math.PI);
+
+            // Create arc generator
+            const arc = d3.arc()
+                .innerRadius(innerRadius)
+                .outerRadius(radius);
+
+            // Create arc for hover effect
+            const arcHover = d3.arc()
+                .innerRadius(innerRadius)
+                .outerRadius(radius + 8);
+
+            // Calculate pie data
+            const pieData = pie(validLOBs);
+
+            // Clean up any existing tooltips
+            d3.selectAll('.donut-tooltip').remove();
+
+            // Create tooltip
+            const tooltip = d3.select('body').append('div')
+                .attr('class', 'donut-tooltip')
+                .style('position', 'absolute')
+                .style('background', 'rgba(0, 0, 0, 0.8)')
+                .style('color', 'white')
+                .style('padding', '8px 12px')
+                .style('border-radius', '8px')
+                .style('font-size', '12px')
+                .style('font-weight', '600')
+                .style('pointer-events', 'none')
+                .style('opacity', 0)
+                .style('z-index', '1000');
+
+            // Create path elements
+            const paths = g.selectAll('.arc')
+                .data(pieData)
+                .enter().append('path')
+                .attr('class', 'arc donut-segment')
+                .attr('d', arc)
+                .attr('fill', d => d.data.color)
+                .attr('stroke', 'white')
+                .attr('stroke-width', 2)
+                .attr('filter', 'url(#dropshadow)')
+                .style('opacity', 0.9)
+                .style('cursor', 'pointer');
+
+            // Add animations
+            paths.transition()
+                .duration(1000)
+                .ease(d3.easeBack)
+                .attrTween('d', function(d) {
+                    const interpolate = d3.interpolate({ startAngle: 0, endAngle: 0 }, d);
+                    return function(t) {
+                        return arc(interpolate(t));
+                    };
                 });
+
+            // Add hover effects
+            paths.on('mouseover', function(event, d) {
+                // Scale up this segment
+                d3.select(this)
+                    .transition()
+                    .duration(200)
+                    .attr('d', arcHover)
+                    .style('filter', 'url(#dropshadow) brightness(1.1)');
+
+                // Dim other segments
+                paths.filter(function(data) { return data !== d; })
+                    .transition()
+                    .duration(200)
+                    .style('opacity', 0.4);
+
+                // Show tooltip
+                const valuePercentage = Math.round((d.data.actual / d3.sum(validLOBs, d => d.actual)) * 100);
+                const gapText = d.data.gap >= 0 ? `+${formatCurrencyIndonesia(d.data.gap)}` : `-${formatCurrencyIndonesia(Math.abs(d.data.gap))}`;
                 
-                currentAngle = endAngle;
+                tooltip.transition()
+                    .duration(200)
+                    .style('opacity', 1);
+                
+                tooltip.html(`
+                    <div style="font-weight: 700; margin-bottom: 4px;">${d.data.lob}</div>
+                    <div>Achievement: ${d.data.percentage}%</div>
+                    <div>Share: ${valuePercentage}%</div>
+                    <div>Gap: ${gapText}</div>
+                    <div>Actual: ${formatCurrencyIndonesia(d.data.actual)}</div>
+                `)
+                .style('left', (event.pageX + 10) + 'px')
+                .style('top', (event.pageY - 10) + 'px');
+            })
+            .on('mouseout', function(event, d) {
+                // Reset this segment
+                d3.select(this)
+                    .transition()
+                    .duration(200)
+                    .attr('d', arc)
+                    .style('filter', 'url(#dropshadow)');
+
+                // Restore all segments
+                paths.transition()
+                    .duration(200)
+                    .style('opacity', 0.9);
+
+                // Hide tooltip
+                tooltip.transition()
+                    .duration(200)
+                    .style('opacity', 0);
             });
 
-            // SVG dimensions
-            const svgWidth = 280;
-            const svgHeight = 280;
-            const centerX = svgWidth / 2;
-            const centerY = svgHeight / 2;
-            const outerRadius = 100;
-            const innerRadius = 65; // Create donut hole
+            // Add percentage labels
+            const labels = g.selectAll('.label')
+                .data(pieData)
+                .enter().append('text')
+                .attr('class', 'label')
+                .attr('transform', function(d) {
+                    const centroid = arc.centroid(d);
+                    return `translate(${centroid})`;
+                })
+                .attr('text-anchor', 'middle')
+                .attr('dominant-baseline', 'middle')
+                .style('font-size', '10px')
+                .style('font-weight', '700')
+                .style('fill', 'white')
+                .style('text-shadow', '1px 1px 2px rgba(0,0,0,0.8)')
+                .style('pointer-events', 'none')
+                .style('opacity', 0);
 
-            // Start building SVG
-            let svgContent = `
-                <svg width="${svgWidth}" height="${svgHeight}" viewBox="0 0 ${svgWidth} ${svgHeight}">
-                    <defs>
-                        <filter id="dropshadow" x="-50%" y="-50%" width="200%" height="200%">
-                            <feDropShadow dx="2" dy="2" stdDeviation="3" flood-color="rgba(0,0,0,0.2)"/>
-                        </filter>
-                        <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-                            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-                            <feMerge> 
-                                <feMergeNode in="coloredBlur"/>
-                                <feMergeNode in="SourceGraphic"/>
-                            </feMerge>
-                        </filter>
-                    </defs>
+            // Only show labels for segments > 3%
+            labels.filter(d => {
+                const total = d3.sum(validLOBs, d => d.actual);
+                return (d.data.actual / total) >= 0.03;
+            })
+            .text(d => {
+                const total = d3.sum(validLOBs, d => d.actual);
+                return Math.round((d.data.actual / total) * 100) + '%';
+            })
+            .transition()
+            .delay(800)
+            .duration(500)
+            .style('opacity', 1);
+
+            // Add center text
+            const centerText = document.createElement('div');
+            centerText.className = 'donut-center-text';
+            centerText.innerHTML = `
+                <div class="gap-total">
+                    ${totalData.gap < 0 ? '-' : '+'}${formatCurrencyIndonesia(Math.abs(totalData.gap))}
+                </div>
+                <div class="gap-label">Gap Total</div>
+                <div class="ranking-info">Ranking: ${rankingData.Rank} of ${rankingData.total_salesman}</div>
             `;
-
-            // Generate donut segments
-            segments.forEach((segment, index) => {
-                const startAngleRad = (segment.startAngle) * (Math.PI / 180);
-                const endAngleRad = (segment.endAngle) * (Math.PI / 180);
-                
-                // Calculate path points for donut segment
-                const x1 = centerX + outerRadius * Math.cos(startAngleRad);
-                const y1 = centerY + outerRadius * Math.sin(startAngleRad);
-                const x2 = centerX + outerRadius * Math.cos(endAngleRad);
-                const y2 = centerY + outerRadius * Math.sin(endAngleRad);
-                
-                const x3 = centerX + innerRadius * Math.cos(endAngleRad);
-                const y3 = centerY + innerRadius * Math.sin(endAngleRad);
-                const x4 = centerX + innerRadius * Math.cos(startAngleRad);
-                const y4 = centerY + innerRadius * Math.sin(startAngleRad);
-                
-                const largeArcFlag = (segment.endAngle - segment.startAngle) > 180 ? 1 : 0;
-                
-                const pathData = `
-                    M ${x1} ${y1}
-                    A ${outerRadius} ${outerRadius} 0 ${largeArcFlag} 1 ${x2} ${y2}
-                    L ${x3} ${y3}
-                    A ${innerRadius} ${innerRadius} 0 ${largeArcFlag} 0 ${x4} ${y4}
-                    Z
-                `;
-
-                svgContent += `
-                    <path d="${pathData}" 
-                          fill="${segment.color}" 
-                          stroke="white" 
-                          stroke-width="2"
-                          filter="url(#dropshadow)"
-                          class="donut-segment"
-                          data-lob="${segment.lob}"
-                          style="opacity: 0.9;">
-                    </path>
-                `;
-
-                // Add percentage label (untuk segments yang cukup besar)
-                if (segment.valuePercentage >= 3) {
-                    const midAngle = (segment.startAngle + segment.endAngle) / 2;
-                    const midAngleRad = midAngle * (Math.PI / 180);
-                    const labelRadius = (outerRadius + innerRadius) / 2; // Middle of donut
-                    const labelX = centerX + labelRadius * Math.cos(midAngleRad);
-                    const labelY = centerY + labelRadius * Math.sin(midAngleRad);
-
-                    svgContent += `
-                        <text x="${labelX}" y="${labelY}" 
-                              text-anchor="middle" 
-                              dominant-baseline="middle"
-                              font-size="10" 
-                              font-weight="700" 
-                              fill="white"
-                              style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">
-                            ${segment.valuePercentage}%
-                        </text>
-                    `;
-                }
-            });
-
-            svgContent += '</svg>';
+            containerDiv.appendChild(centerText);
 
             // Generate legend
             let legendContent = `
@@ -1310,17 +1403,19 @@
                     <div class="legend-items">
             `;
 
-            segments.forEach(segment => {
-                const gapText = segment.gap >= 0 ? `+${formatCurrencyIndonesia(segment.gap)}` : `-${formatCurrencyIndonesia(Math.abs(segment.gap))}`;
+            validLOBs.forEach(lob => {
+                const total = d3.sum(validLOBs, d => d.actual);
+                const valuePercentage = Math.round((lob.actual / total) * 100);
+                const gapText = lob.gap >= 0 ? `+${formatCurrencyIndonesia(lob.gap)}` : `-${formatCurrencyIndonesia(Math.abs(lob.gap))}`;
                 
                 legendContent += `
                     <div class="legend-item">
-                        <div class="legend-color" style="background: ${segment.color};"></div>
+                        <div class="legend-color" style="background: ${lob.color};"></div>
                         <div class="legend-content">
-                            <div class="legend-lob">${segment.lob}</div>
+                            <div class="legend-lob">${lob.lob}</div>
                             <div class="legend-details">
-                                <span>${segment.percentage}% ach</span>
-                                <span>${segment.valuePercentage}% share</span>
+                                <span>${lob.percentage}% ach</span>
+                                <span>${valuePercentage}% share</span>
                                 <span>Gap: ${gapText}</span>
                             </div>
                         </div>
@@ -1333,45 +1428,11 @@
                 </div>
             `;
 
-            // Update chart container
-            const chartContainer = document.querySelector('.chart-with-legend');
-            if (chartContainer) {
-                chartContainer.innerHTML = `
-                    <div class="donut-chart-container">
-                        ${svgContent}
-                        <div class="donut-center-text">
-                            <div class="gap-total">
-                                ${totalData.gap < 0 ? '-' : '+'}${formatCurrencyIndonesia(Math.abs(totalData.gap))}
-                            </div>
-                            <div class="gap-label">Gap Total</div>
-                            <div class="ranking-info">Ranking: ${rankingData.Rank} of ${rankingData.total_salesman}</div>
-                        </div>
-                    </div>
-                    ${legendContent}
-                `;
+            // Add to chart container
+            chartContainer.appendChild(containerDiv);
+            chartContainer.insertAdjacentHTML('beforeend', legendContent);
 
-                // Add hover effects
-                const segments = chartContainer.querySelectorAll('.donut-segment');
-                segments.forEach(segment => {
-                    segment.addEventListener('mouseover', function() {
-                        // Dim other segments
-                        segments.forEach(s => {
-                            if (s !== this) {
-                                s.style.opacity = '0.4';
-                            }
-                        });
-                    });
-                    
-                    segment.addEventListener('mouseout', function() {
-                        // Restore all segments
-                        segments.forEach(s => {
-                            s.style.opacity = '0.9';
-                        });
-                    });
-                });
-            }
-
-            console.log('✅ Donut chart with legend generated');
+            console.log('✅ D3.js donut chart with legend generated');
         }
 
         // ✅ UPDATE SUMMARY CARDS DENGAN LAYOUT HORIZONTAL
@@ -1910,7 +1971,7 @@
             loadSalesmanData();
         });
 
-        console.log('✅ Donut chart with legend and horizontal metrics script loaded');
+        console.log('✅ D3.js donut chart with legend and horizontal metrics script loaded');
     </script>
 </body>
 </html>
