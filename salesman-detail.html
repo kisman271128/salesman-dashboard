@@ -3,14 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Performance By Salesman - Dashboard</title>
+    <title>Performance By Salesman - Chart.js Dashboard</title>
     
-    <!-- React and Nivo Dependencies -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@nivo/core@0.83.0/dist/nivo-core.umd.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@nivo/radial-bar@0.83.0/dist/nivo-radial-bar.umd.js"></script>
+    <!-- Chart.js Dependencies -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
     
     <style>
         * {
@@ -202,12 +199,21 @@
             margin-bottom: 20px;
         }
 
-        /* ✅ NIVO RADIAL BAR CHART CONTAINER */
+        /* ✅ CHART.JS POLAR AREA CHART CONTAINER */
         .chart-container {
             width: 100%;
             height: 400px;
             margin: 20px auto;
             position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .chart-canvas-wrapper {
+            position: relative;
+            width: 350px;
+            height: 350px;
         }
 
         /* ✅ CHART SUMMARY OVERLAY */
@@ -519,6 +525,11 @@
             .chart-container {
                 height: 350px;
             }
+
+            .chart-canvas-wrapper {
+                width: 300px;
+                height: 300px;
+            }
             
             .gap-total {
                 font-size: 18px;
@@ -551,6 +562,11 @@
         @media (max-width: 360px) {
             .chart-container {
                 height: 300px;
+            }
+
+            .chart-canvas-wrapper {
+                width: 250px;
+                height: 250px;
             }
             
             .gap-total {
@@ -624,11 +640,11 @@
                         </div>
                     </div>
 
-                    <!-- Nivo Radial Bar Chart -->
-                    <div class="chart-container" id="radialBarChart">
+                    <!-- Chart.js Polar Area Chart -->
+                    <div class="chart-container" id="polarAreaChart">
                         <div style="display: flex; justify-content: center; align-items: center; height: 100%; color: #7f8c8d; flex-direction: column;">
                             <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 12px;"></div>
-                            <div>Loading radial bar chart...</div>
+                            <div>Loading polar area chart...</div>
                         </div>
                     </div>
                 </div>
@@ -1010,9 +1026,9 @@
             }
         }
 
-        // ✅ GENERATE NIVO RADIAL BAR CHART
-        function generateNivoRadialBarChart(performanceData, totalData, rankingData) {
-            console.log('🌟 Generating Nivo radial bar chart...');
+        // ✅ GENERATE CHART.JS POLAR AREA CHART
+        function generatePolarAreaChart(performanceData, totalData, rankingData) {
+            console.log('🌟 Generating Chart.js polar area chart...');
 
             // Define colors for each LOB
             const colors = {
@@ -1026,132 +1042,146 @@
                 'ABBOTT': '#85c1e9'   // Light blue
             };
 
-            // Filter and prepare data for Nivo radial bar
+            // Filter and prepare data
             const validLOBs = Object.keys(performanceData)
                 .filter(lob => performanceData[lob].target > 1000)
                 .sort((a, b) => performanceData[b].target - performanceData[a].target);
 
-            // Transform data to Nivo format
-            const nivoData = validLOBs.map(lob => {
-                const data = performanceData[lob];
-                return {
-                    id: lob,
-                    data: [
-                        {
-                            x: 'Achievement',
-                            y: data.percentage
-                        }
-                    ]
-                };
-            });
+            const labels = validLOBs;
+            const data = validLOBs.map(lob => performanceData[lob].percentage);
+            const backgroundColors = validLOBs.map(lob => colors[lob] || '#667eea');
+            const borderColors = backgroundColors.map(color => color);
 
-            console.log('📊 Nivo data prepared:', nivoData);
+            // Get chart container
+            const chartContainer = document.getElementById('polarAreaChart');
+            if (!chartContainer) return;
 
-            // Create Nivo Radial Bar Chart using React
-            const RadialBarChart = React.createElement(window.Nivo.ResponsiveRadialBar, {
-                data: nivoData,
-                valueFormat: ">-.1f",
-                padding: 0.4,
-                cornerRadius: 2,
-                margin: { top: 40, right: 80, bottom: 40, left: 40 },
-                radialAxisStart: { 
-                    tickSize: 5, 
-                    tickPadding: 5, 
-                    tickRotation: 0 
+            // Clear existing content
+            chartContainer.innerHTML = '';
+
+            // Create canvas wrapper
+            const canvasWrapper = document.createElement('div');
+            canvasWrapper.className = 'chart-canvas-wrapper';
+            
+            // Create canvas
+            const canvas = document.createElement('canvas');
+            canvas.id = 'polarChart';
+            canvas.width = 350;
+            canvas.height = 350;
+            
+            canvasWrapper.appendChild(canvas);
+            
+            // Create summary overlay
+            const summaryOverlay = document.createElement('div');
+            summaryOverlay.className = 'chart-summary-overlay';
+            summaryOverlay.innerHTML = `
+                <div class="gap-total">
+                    ${totalData.gap < 0 ? '-' : '+'}${formatCurrencyIndonesia(Math.abs(totalData.gap))}
+                </div>
+                <div class="gap-label">Gap Total</div>
+                <div class="ranking-info">Ranking: ${rankingData.Rank} of ${rankingData.total_salesman}</div>
+            `;
+            
+            canvasWrapper.appendChild(summaryOverlay);
+            chartContainer.appendChild(canvasWrapper);
+
+            // Create Chart.js polar area chart
+            const ctx = canvas.getContext('2d');
+            new Chart(ctx, {
+                type: 'polarArea',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Achievement %',
+                        data: data,
+                        backgroundColor: backgroundColors.map(color => color + '80'), // Add transparency
+                        borderColor: borderColors,
+                        borderWidth: 2
+                    }]
                 },
-                circularAxisOuter: { 
-                    tickSize: 5, 
-                    tickPadding: 12, 
-                    tickRotation: 0 
-                },
-                colors: (bar) => colors[bar.id] || '#667eea',
-                enableRadialGrid: true,
-                enableCircularGrid: true,
-                radialAxisEnd: null,
-                legends: [
-                    {
-                        anchor: 'right',
-                        direction: 'column',
-                        translateX: 80,
-                        itemsSpacing: 6,
-                        itemWidth: 100,
-                        itemHeight: 18,
-                        itemTextColor: '#2c3e50',
-                        symbolSize: 12,
-                        symbolShape: 'circle'
-                    }
-                ],
-                theme: {
-                    background: 'transparent',
-                    text: {
-                        fontSize: 11,
-                        fill: '#2c3e50',
-                        fontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif'
-                    },
-                    axis: {
-                        domain: {
-                            line: {
-                                stroke: '#e8ecff',
-                                strokeWidth: 1
-                            }
-                        },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
                         legend: {
-                            text: {
-                                fontSize: 10,
-                                fill: '#7f8c8d'
+                            position: 'right',
+                            align: 'center',
+                            labels: {
+                                boxWidth: 12,
+                                font: {
+                                    size: 11,
+                                    family: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif'
+                                },
+                                color: '#2c3e50',
+                                padding: 8,
+                                usePointStyle: true,
+                                pointStyle: 'circle',
+                                generateLabels: function(chart) {
+                                    const data = chart.data;
+                                    return data.labels.map((label, index) => {
+                                        const lobData = performanceData[label];
+                                        const gap = lobData.gap;
+                                        const gapText = gap >= 0 ? `+${formatCurrencyIndonesia(gap)}` : `-${formatCurrencyIndonesia(Math.abs(gap))}`;
+                                        
+                                        return {
+                                            text: `${label} (${data.datasets[0].data[index]}%)`,
+                                            fillStyle: backgroundColors[index],
+                                            strokeStyle: borderColors[index],
+                                            lineWidth: 2,
+                                            hidden: false,
+                                            index: index
+                                        };
+                                    });
+                                }
                             }
                         },
-                        ticks: {
-                            line: {
-                                stroke: '#e8ecff',
-                                strokeWidth: 1
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label;
+                                    const value = context.parsed.r;
+                                    const lobData = performanceData[label];
+                                    const gap = lobData.gap;
+                                    const gapText = gap >= 0 ? `+${formatCurrencyIndonesia(gap)}` : `-${formatCurrencyIndonesia(Math.abs(gap))}`;
+                                    
+                                    return [
+                                        `${label}: ${value}%`,
+                                        `Target: ${formatCurrencyIndonesia(lobData.target)}`,
+                                        `Actual: ${formatCurrencyIndonesia(lobData.actual)}`,
+                                        `Gap: ${gapText}`
+                                    ];
+                                }
                             },
-                            text: {
-                                fontSize: 10,
-                                fill: '#7f8c8d'
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            titleColor: 'white',
+                            bodyColor: 'white',
+                            borderColor: '#667eea',
+                            borderWidth: 1
+                        }
+                    },
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            max: 120,
+                            grid: {
+                                color: '#f1f2f6'
+                            },
+                            pointLabels: {
+                                display: false
+                            },
+                            ticks: {
+                                display: false
                             }
                         }
                     },
-                    grid: {
-                        line: {
-                            stroke: '#f1f2f6',
-                            strokeWidth: 1
-                        }
+                    animation: {
+                        duration: 1000,
+                        easing: 'easeOutQuart'
                     }
                 }
             });
 
-            // Render the chart
-            const chartContainer = document.getElementById('radialBarChart');
-            if (chartContainer) {
-                // Clear existing content
-                chartContainer.innerHTML = '';
-                
-                // Create chart wrapper with summary overlay
-                const chartWrapper = document.createElement('div');
-                chartWrapper.style.position = 'relative';
-                chartWrapper.style.width = '100%';
-                chartWrapper.style.height = '100%';
-                
-                // Create summary overlay
-                const summaryOverlay = document.createElement('div');
-                summaryOverlay.className = 'chart-summary-overlay';
-                summaryOverlay.innerHTML = `
-                    <div class="gap-total">
-                        ${totalData.gap < 0 ? '-' : '+'}${formatCurrencyIndonesia(Math.abs(totalData.gap))}
-                    </div>
-                    <div class="gap-label">Gap Total</div>
-                    <div class="ranking-info">Ranking: ${rankingData.Rank} of ${rankingData.total_salesman}</div>
-                `;
-                
-                chartWrapper.appendChild(summaryOverlay);
-                
-                // Render React component
-                ReactDOM.render(RadialBarChart, chartWrapper);
-                chartContainer.appendChild(chartWrapper);
-            }
-
-            console.log('✅ Nivo radial bar chart generated');
+            console.log('✅ Chart.js polar area chart generated');
         }
 
         // ✅ UPDATE SUMMARY CARDS DENGAN LAYOUT HORIZONTAL
@@ -1283,10 +1313,10 @@
                 updateSummaryCards(salesmanDetails.performance, salesmanDetails.TOTAL);
             }
 
-            // Generate Nivo radial bar chart
+            // Generate Chart.js polar area chart
             if (salesmanDetails.performance && salesmanDetails.TOTAL && salesmanDetails.Ranking) {
                 setTimeout(() => {
-                    generateNivoRadialBarChart(
+                    generatePolarAreaChart(
                         salesmanDetails.performance, 
                         salesmanDetails.TOTAL, 
                         salesmanDetails.Ranking
@@ -1533,11 +1563,11 @@
 
         // ✅ INITIALIZE PAGE
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 Initializing salesman detail page with Nivo radial bar chart...');
+            console.log('🚀 Initializing salesman detail page with Chart.js polar area chart...');
             
-            // Check if Nivo libraries are loaded
-            if (!window.Nivo || !window.Nivo.ResponsiveRadialBar) {
-                console.error('❌ Nivo RadialBar library not loaded');
+            // Check if Chart.js library is loaded
+            if (!window.Chart) {
+                console.error('❌ Chart.js library not loaded');
                 showError(true, 'Chart library not loaded. Please refresh the page.');
                 return;
             }
@@ -1550,7 +1580,7 @@
             loadSalesmanData();
         });
 
-        console.log('✅ Nivo radial bar chart script loaded');
+        console.log('✅ Chart.js polar area chart script loaded');
     </script>
 </body>
 </html>
