@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Performance By Salesman - Dashboard</title>
+    <!-- D3.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -194,7 +196,7 @@
             margin-bottom: 20px;
         }
 
-		/* ✅ POLAR AREA CHART DENGAN LEGEND */
+		/* ✅ DONUT CHART DENGAN LEGEND */
         .chart-with-legend {
             display: flex;
             flex-direction: column;
@@ -205,7 +207,7 @@
             max-width: 600px;
         }
 
-        /* ✅ CHART CONTAINER (supports donut, polar area, etc.) */
+        /* ✅ CHART CONTAINER */
         .donut-chart-container {
             position: relative;
             width: 280px;
@@ -219,15 +221,16 @@
             height: 100%;
         }
 
-        .donut-segment, .polar-segment {
+        .donut-segment {
             cursor: pointer;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             transform-origin: center;
         }
 
-        .donut-segment:hover, .polar-segment:hover {
+        .donut-segment:hover {
             filter: brightness(1.15) saturate(1.1);
             opacity: 1 !important;
+            transform: scale(1.05);
         }
 
         .donut-center-text {
@@ -605,7 +608,7 @@
                 border-width: 6px;
             }
 
-            /* ✅ RESPONSIVE POLAR AREA CHART WITH LEGEND */
+            /* ✅ RESPONSIVE DONUT CHART WITH LEGEND */
             .chart-with-legend {
                 flex-direction: column;
                 gap: 15px;
@@ -758,12 +761,12 @@
                         </div>
                     </div>
 
-                    <!-- Polar Area Chart dengan Legend -->
+                    <!-- Donut Chart dengan Legend -->
                     <div class="chart-with-legend">
-                        <!-- Polar area chart dengan legend akan diisi di sini -->
+                        <!-- Donut chart dengan legend akan diisi di sini -->
                         <div style="display: flex; justify-content: center; align-items: center; height: 280px; color: #7f8c8d; flex-direction: column; width: 100%;">
                             <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 12px;"></div>
-                            <div>Loading polar area chart...</div>
+                            <div>Loading donut chart...</div>
                         </div>
                     </div>
                 </div>
@@ -1145,9 +1148,9 @@
             }
         }
 
-        // ✅ GENERATE POLAR AREA CHART DENGAN LEGEND
+        // ✅ GENERATE DONUT CHART DENGAN D3.JS
         function generateDonutChart(performanceData, totalData, rankingData) {
-            console.log('🌟 Generating polar area chart with legend...');
+            console.log('🌟 Generating D3.js donut chart with legend...');
 
             // Warna yang sesuai dengan contoh
             const colors = {
@@ -1161,121 +1164,236 @@
                 'ABBOTT': '#85c1e9'   // Biru terang
             };
 
-            // Filter dan sort LOBs
+            // Filter LOBs - only include those with actual > 1000 (significant values)
             const validLOBs = Object.keys(performanceData)
-                .filter(lob => performanceData[lob].target > 1000)
-                .sort((a, b) => performanceData[b].target - performanceData[a].target);
-
-            // Find max percentage untuk scaling
-            let maxPercentage = 0;
-            validLOBs.forEach(lob => {
-                const percentage = performanceData[lob].percentage;
-                if (percentage > maxPercentage) {
-                    maxPercentage = percentage;
-                }
-            });
-
-            // Generate segments data untuk polar area chart
-            let segments = [];
-            const anglePerSegment = 360 / validLOBs.length; // Sudut sama untuk semua segment
-            
-            validLOBs.forEach((lob, index) => {
-                const data = performanceData[lob];
-                const startAngle = index * anglePerSegment;
-                const endAngle = (index + 1) * anglePerSegment;
-                
-                // Radius berdasarkan percentage (scaled)
-                const radiusScale = data.percentage / maxPercentage;
-                const maxRadius = 100;
-                const minRadius = 20;
-                const segmentRadius = minRadius + (maxRadius - minRadius) * radiusScale;
-                
-                segments.push({
+                .filter(lob => performanceData[lob].actual > 1000)
+                .map(lob => ({
                     lob: lob,
-                    actual: data.actual,
-                    target: data.target,
-                    percentage: data.percentage,
-                    gap: data.gap,
-                    startAngle: startAngle,
-                    endAngle: endAngle,
-                    midAngle: startAngle + (anglePerSegment / 2),
-                    radius: segmentRadius,
-                    color: colors[lob] || `hsl(${index * 45}, 70%, 60%)`
-                });
-            });
+                    actual: performanceData[lob].actual,
+                    target: performanceData[lob].target,
+                    percentage: performanceData[lob].percentage,
+                    gap: performanceData[lob].gap,
+                    color: colors[lob] || `hsl(${Object.keys(performanceData).indexOf(lob) * 45}, 70%, 60%)`
+                }))
+                .sort((a, b) => b.actual - a.actual);
 
-            // SVG dimensions
-            const svgWidth = 280;
-            const svgHeight = 280;
-            const centerX = svgWidth / 2;
-            const centerY = svgHeight / 2;
-
-            // Start building SVG
-            let svgContent = `
-                <svg width="${svgWidth}" height="${svgHeight}" viewBox="0 0 ${svgWidth} ${svgHeight}">
-                    <defs>
-                        <filter id="dropshadow" x="-50%" y="-50%" width="200%" height="200%">
-                            <feDropShadow dx="1" dy="1" stdDeviation="2" flood-color="rgba(0,0,0,0.2)"/>
-                        </filter>
-                    </defs>
-            `;
-
-            // Generate polar area segments
-            segments.forEach((segment, index) => {
-                const startAngleRad = (segment.startAngle - 90) * (Math.PI / 180);
-                const endAngleRad = (segment.endAngle - 90) * (Math.PI / 180);
-                
-                // Polar area segment points (dari center ke radius)
-                const x1 = centerX;
-                const y1 = centerY;
-                const x2 = centerX + segment.radius * Math.cos(startAngleRad);
-                const y2 = centerY + segment.radius * Math.sin(startAngleRad);
-                const x3 = centerX + segment.radius * Math.cos(endAngleRad);
-                const y3 = centerY + segment.radius * Math.sin(endAngleRad);
-                
-                const largeArcFlag = anglePerSegment > 180 ? 1 : 0;
-                
-                const pathData = `
-                    M ${x1} ${y1}
-                    L ${x2} ${y2}
-                    A ${segment.radius} ${segment.radius} 0 ${largeArcFlag} 1 ${x3} ${y3}
-                    Z
-                `;
-
-                svgContent += `
-                    <path d="${pathData}" 
-                          fill="${segment.color}" 
-                          stroke="white" 
-                          stroke-width="2"
-                          filter="url(#dropshadow)"
-                          class="polar-segment"
-                          data-lob="${segment.lob}"
-                          style="opacity: 0.8;">
-                    </path>
-                `;
-
-                // Add percentage label (untuk segments dengan radius cukup besar)
-                if (segment.radius > 40) {
-                    const labelAngle = (segment.midAngle - 90) * (Math.PI / 180);
-                    const labelRadius = segment.radius * 0.7; // 70% dari radius segment
-                    const labelX = centerX + labelRadius * Math.cos(labelAngle);
-                    const labelY = centerY + labelRadius * Math.sin(labelAngle);
-
-                    svgContent += `
-                        <text x="${labelX}" y="${labelY}" 
-                              text-anchor="middle" 
-                              dominant-baseline="middle"
-                              font-size="11" 
-                              font-weight="700" 
-                              fill="white"
-                              text-shadow="1px 1px 2px rgba(0,0,0,0.7)">
-                            ${segment.percentage}%
-                        </text>
+            if (validLOBs.length === 0) {
+                // No valid data to show
+                const chartContainer = document.querySelector('.chart-with-legend');
+                if (chartContainer) {
+                    chartContainer.innerHTML = `
+                        <div style="display: flex; justify-content: center; align-items: center; height: 280px; color: #7f8c8d; flex-direction: column;">
+                            <div style="font-size: 16px; margin-bottom: 8px;">📊</div>
+                            <div>No significant LOB data available</div>
+                        </div>
                     `;
                 }
+                return;
+            }
+
+            // Chart dimensions
+            const width = 280;
+            const height = 280;
+            const margin = 10;
+            const radius = Math.min(width, height) / 2 - margin;
+            const innerRadius = radius * 0.65; // Create donut hole
+
+            // Clear any existing chart
+            const chartContainer = document.querySelector('.chart-with-legend');
+            chartContainer.innerHTML = '';
+
+            // Create main container div
+            const containerDiv = document.createElement('div');
+            containerDiv.className = 'donut-chart-container';
+            containerDiv.style.position = 'relative';
+            containerDiv.style.width = width + 'px';
+            containerDiv.style.height = height + 'px';
+            containerDiv.style.animation = 'fadeInScale 0.6s ease-out';
+
+            // Create SVG using D3
+            const svg = d3.select(containerDiv)
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height)
+                .attr('class', 'donut-chart');
+
+            // Create group element for the chart
+            const g = svg.append('g')
+                .attr('transform', `translate(${width / 2}, ${height / 2})`);
+
+            // Add filter definitions
+            const defs = svg.append('defs');
+            
+            // Drop shadow filter
+            const filter = defs.append('filter')
+                .attr('id', 'dropshadow')
+                .attr('x', '-50%')
+                .attr('y', '-50%')
+                .attr('width', '200%')
+                .attr('height', '200%');
+            
+            filter.append('feDropShadow')
+                .attr('dx', 2)
+                .attr('dy', 2)
+                .attr('stdDeviation', 3)
+                .attr('flood-color', 'rgba(0,0,0,0.2)');
+
+            // Create pie layout
+            const pie = d3.pie()
+                .value(d => d.actual)
+                .sort(null)
+                .startAngle(0)
+                .endAngle(2 * Math.PI);
+
+            // Create arc generator
+            const arc = d3.arc()
+                .innerRadius(innerRadius)
+                .outerRadius(radius);
+
+            // Create arc for hover effect
+            const arcHover = d3.arc()
+                .innerRadius(innerRadius)
+                .outerRadius(radius + 8);
+
+            // Calculate pie data
+            const pieData = pie(validLOBs);
+
+            // Clean up any existing tooltips
+            d3.selectAll('.donut-tooltip').remove();
+
+            // Create tooltip
+            const tooltip = d3.select('body').append('div')
+                .attr('class', 'donut-tooltip')
+                .style('position', 'absolute')
+                .style('background', 'rgba(0, 0, 0, 0.8)')
+                .style('color', 'white')
+                .style('padding', '8px 12px')
+                .style('border-radius', '8px')
+                .style('font-size', '12px')
+                .style('font-weight', '600')
+                .style('pointer-events', 'none')
+                .style('opacity', 0)
+                .style('z-index', '1000');
+
+            // Create path elements
+            const paths = g.selectAll('.arc')
+                .data(pieData)
+                .enter().append('path')
+                .attr('class', 'arc donut-segment')
+                .attr('d', arc)
+                .attr('fill', d => d.data.color)
+                .attr('stroke', 'white')
+                .attr('stroke-width', 2)
+                .attr('filter', 'url(#dropshadow)')
+                .style('opacity', 0.9)
+                .style('cursor', 'pointer');
+
+            // Add animations
+            paths.transition()
+                .duration(1000)
+                .ease(d3.easeBack)
+                .attrTween('d', function(d) {
+                    const interpolate = d3.interpolate({ startAngle: 0, endAngle: 0 }, d);
+                    return function(t) {
+                        return arc(interpolate(t));
+                    };
+                });
+
+            // Add hover effects
+            paths.on('mouseover', function(event, d) {
+                // Scale up this segment
+                d3.select(this)
+                    .transition()
+                    .duration(200)
+                    .attr('d', arcHover)
+                    .style('filter', 'url(#dropshadow) brightness(1.1)');
+
+                // Dim other segments
+                paths.filter(function(data) { return data !== d; })
+                    .transition()
+                    .duration(200)
+                    .style('opacity', 0.4);
+
+                // Show tooltip
+                const valuePercentage = Math.round((d.data.actual / d3.sum(validLOBs, d => d.actual)) * 100);
+                const gapText = d.data.gap >= 0 ? `+${formatCurrencyIndonesia(d.data.gap)}` : `-${formatCurrencyIndonesia(Math.abs(d.data.gap))}`;
+                
+                tooltip.transition()
+                    .duration(200)
+                    .style('opacity', 1);
+                
+                tooltip.html(`
+                    <div style="font-weight: 700; margin-bottom: 4px;">${d.data.lob}</div>
+                    <div>Achievement: ${d.data.percentage}%</div>
+                    <div>Share: ${valuePercentage}%</div>
+                    <div>Gap: ${gapText}</div>
+                    <div>Actual: ${formatCurrencyIndonesia(d.data.actual)}</div>
+                `)
+                .style('left', (event.pageX + 10) + 'px')
+                .style('top', (event.pageY - 10) + 'px');
+            })
+            .on('mouseout', function(event, d) {
+                // Reset this segment
+                d3.select(this)
+                    .transition()
+                    .duration(200)
+                    .attr('d', arc)
+                    .style('filter', 'url(#dropshadow)');
+
+                // Restore all segments
+                paths.transition()
+                    .duration(200)
+                    .style('opacity', 0.9);
+
+                // Hide tooltip
+                tooltip.transition()
+                    .duration(200)
+                    .style('opacity', 0);
             });
 
-            svgContent += '</svg>';
+            // Add percentage labels
+            const labels = g.selectAll('.label')
+                .data(pieData)
+                .enter().append('text')
+                .attr('class', 'label')
+                .attr('transform', function(d) {
+                    const centroid = arc.centroid(d);
+                    return `translate(${centroid})`;
+                })
+                .attr('text-anchor', 'middle')
+                .attr('dominant-baseline', 'middle')
+                .style('font-size', '10px')
+                .style('font-weight', '700')
+                .style('fill', 'white')
+                .style('text-shadow', '1px 1px 2px rgba(0,0,0,0.8)')
+                .style('pointer-events', 'none')
+                .style('opacity', 0);
+
+            // Only show labels for segments > 3%
+            labels.filter(d => {
+                const total = d3.sum(validLOBs, d => d.actual);
+                return (d.data.actual / total) >= 0.03;
+            })
+            .text(d => {
+                const total = d3.sum(validLOBs, d => d.actual);
+                return Math.round((d.data.actual / total) * 100) + '%';
+            })
+            .transition()
+            .delay(800)
+            .duration(500)
+            .style('opacity', 1);
+
+            // Add center text
+            const centerText = document.createElement('div');
+            centerText.className = 'donut-center-text';
+            centerText.innerHTML = `
+                <div class="gap-total">
+                    ${totalData.gap < 0 ? '-' : '+'}${formatCurrencyIndonesia(Math.abs(totalData.gap))}
+                </div>
+                <div class="gap-label">Gap Total</div>
+                <div class="ranking-info">Ranking: ${rankingData.Rank} of ${rankingData.total_salesman}</div>
+            `;
+            containerDiv.appendChild(centerText);
 
             // Generate legend
             let legendContent = `
@@ -1284,16 +1402,19 @@
                     <div class="legend-items">
             `;
 
-            segments.forEach(segment => {
-                const gapText = segment.gap >= 0 ? `+${formatCurrencyIndonesia(segment.gap)}` : `-${formatCurrencyIndonesia(Math.abs(segment.gap))}`;
+            validLOBs.forEach(lob => {
+                const total = d3.sum(validLOBs, d => d.actual);
+                const valuePercentage = Math.round((lob.actual / total) * 100);
+                const gapText = lob.gap >= 0 ? `+${formatCurrencyIndonesia(lob.gap)}` : `-${formatCurrencyIndonesia(Math.abs(lob.gap))}`;
                 
                 legendContent += `
                     <div class="legend-item">
-                        <div class="legend-color" style="background: ${segment.color};"></div>
+                        <div class="legend-color" style="background: ${lob.color};"></div>
                         <div class="legend-content">
-                            <div class="legend-lob">${segment.lob}</div>
+                            <div class="legend-lob">${lob.lob}</div>
                             <div class="legend-details">
-                                <span>${segment.percentage}%</span>
+                                <span>${lob.percentage}% ach</span>
+                                <span>${valuePercentage}% share</span>
                                 <span>Gap: ${gapText}</span>
                             </div>
                         </div>
@@ -1306,25 +1427,11 @@
                 </div>
             `;
 
-            // Update chart container
-            const chartContainer = document.querySelector('.chart-with-legend');
-            if (chartContainer) {
-                chartContainer.innerHTML = `
-                    <div class="donut-chart-container">
-                        ${svgContent}
-                        <div class="donut-center-text">
-                            <div class="gap-total">
-                                ${totalData.gap < 0 ? '-' : '+'}${formatCurrencyIndonesia(Math.abs(totalData.gap))}
-                            </div>
-                            <div class="gap-label">Gap Total</div>
-                            <div class="ranking-info">Ranking: ${rankingData.Rank} of ${rankingData.total_salesman}</div>
-                        </div>
-                    </div>
-                    ${legendContent}
-                `;
-            }
+            // Add to chart container
+            chartContainer.appendChild(containerDiv);
+            chartContainer.insertAdjacentHTML('beforeend', legendContent);
 
-            console.log('✅ Polar area chart with legend generated');
+            console.log('✅ D3.js donut chart with legend generated');
         }
 
         // ✅ UPDATE SUMMARY CARDS DENGAN LAYOUT HORIZONTAL
@@ -1523,38 +1630,254 @@
 
                 console.log(`📍 Loading data for salesman ID: ${currentSalesmanId}`);
                 
-                // Load data files
-                const responses = await Promise.all([
-                    fetch('data/salesman_list.json'),
-                    fetch('data/salesman_details.json')
-                ]);
-
-                // Check if all requests were successful
-                for (let i = 0; i < responses.length; i++) {
-                    if (!responses[i].ok) {
-                        throw new Error(`Failed to load data file ${i + 1}`);
+                // Try to load real data from JSON files, with fallback
+                let salesmanDetailsData;
+                
+                try {
+                    const response = await fetch('data/salesman_details.json');
+                    if (!response.ok) {
+                        throw new Error('File not found');
                     }
+                    salesmanDetailsData = await response.json();
+                } catch (fetchError) {
+                    console.log('⚠️ Could not load from file, using embedded data...');
+                    // Fallback to embedded data
+                    salesmanDetailsData = {
+                        "17210032876": {
+                            "name": "Asman",
+                            "sac": "Kisman Pidu",
+                            "type": "Sales Representative Mix Yudistira",
+                            "performance": {
+                                "GBS": {
+                                    "actual": 137318646.12802804,
+                                    "target": 292564000.0,
+                                    "percentage": 47,
+                                    "gap": -155245353.87197196
+                                },
+                                "GEN": {
+                                    "actual": 45183286.38397794,
+                                    "target": 72100000.0,
+                                    "percentage": 63,
+                                    "gap": -26916713.616022058
+                                },
+                                "GPPJ": {
+                                    "actual": 497461588.83898854,
+                                    "target": 618000000.0,
+                                    "percentage": 80,
+                                    "gap": -120538411.16101146
+                                },
+                                "HGJ": {
+                                    "actual": 26431.53,
+                                    "target": 2650000.0,
+                                    "percentage": 1,
+                                    "gap": -2623568.47
+                                },
+                                "MBR": {
+                                    "actual": 6248035.808098997,
+                                    "target": 10500000.0,
+                                    "percentage": 60,
+                                    "gap": -4251964.191901003
+                                },
+                                "RANS": {
+                                    "actual": 6689637.430000003,
+                                    "target": 2628719.390250495,
+                                    "percentage": 254,
+                                    "gap": 4060918.0397495083
+                                },
+                                "GSJ": {
+                                    "actual": 203378.24999999994,
+                                    "target": 72507.76870374221,
+                                    "percentage": 280,
+                                    "gap": 130870.48129625773
+                                },
+                                "ABBOTT": {
+                                    "actual": 8940354.009999998,
+                                    "target": 1484772.8410457626,
+                                    "percentage": 602,
+                                    "gap": 7455581.1689542355
+                                }
+                            },
+                            "metrics": {
+                                "CA": 85,
+                                "CAProd": 78,
+                                "SKU": 92,
+                                "GP": 76
+                            },
+                            "TOTAL": {
+                                "actual": 702071358.3790935,
+                                "target": 1000000000.0,
+                                "percentage": 70,
+                                "gap": -297928641.6209065
+                            },
+                            "Ranking": {
+                                "Rank": 5,
+                                "total_salesman": 6
+                            }
+                        },
+                        "17210036369": {
+                            "name": "Muhammad Tamrin",
+                            "sac": "Kisman Pidu",
+                            "type": "Sales Representative Mix Yudistira",
+                            "performance": {
+                                "GBS": {
+                                    "actual": 137040808.19159868,
+                                    "target": 205314000.0,
+                                    "percentage": 67,
+                                    "gap": -68273191.80840132
+                                },
+                                "GEN": {
+                                    "actual": 18854497.382749002,
+                                    "target": 40100000.0,
+                                    "percentage": 47,
+                                    "gap": -21245502.617250998
+                                },
+                                "GPPJ": {
+                                    "actual": 252893034.6243341,
+                                    "target": 253250000.0,
+                                    "percentage": 100,
+                                    "gap": -356965.3756659031
+                                },
+                                "HGJ": {
+                                    "actual": 44053.15,
+                                    "target": 650000.0,
+                                    "percentage": 7,
+                                    "gap": -605946.85
+                                },
+                                "MBR": {
+                                    "actual": 2652621.4812539998,
+                                    "target": 4800000.0,
+                                    "percentage": 55,
+                                    "gap": -2147378.5187460002
+                                },
+                                "RANS": {
+                                    "actual": 7772764.290000009,
+                                    "target": 3099936.719497302,
+                                    "percentage": 251,
+                                    "gap": 4672827.570502708
+                                },
+                                "GSJ": {
+                                    "actual": 27117.1,
+                                    "target": 86063.2805026982,
+                                    "percentage": 32,
+                                    "gap": -58946.1805026982
+                                },
+                                "ABBOTT": {
+                                    "actual": 0.0,
+                                    "target": 0.0,
+                                    "percentage": 0,
+                                    "gap": 0.0
+                                }
+                            },
+                            "metrics": {
+                                "CA": 82,
+                                "CAProd": 75,
+                                "SKU": 88,
+                                "GP": 79
+                            },
+                            "TOTAL": {
+                                "actual": 419284896.2199358,
+                                "target": 507300000.0,
+                                "percentage": 83,
+                                "gap": -88015103.78006423
+                            },
+                            "Ranking": {
+                                "Rank": 3,
+                                "total_salesman": 6
+                            }
+                        },
+                        "17210037632": {
+                            "name": "Robianor",
+                            "sac": "Kisman Pidu",
+                            "type": "Sales Representative Mix Yudistira",
+                            "performance": {
+                                "GBS": {
+                                    "actual": 114182950.64802517,
+                                    "target": 117564000.0,
+                                    "percentage": 97,
+                                    "gap": -3381049.35197483
+                                },
+                                "GEN": {
+                                    "actual": 18754421.718617007,
+                                    "target": 34400000.0,
+                                    "percentage": 55,
+                                    "gap": -15645578.281382993
+                                },
+                                "GPPJ": {
+                                    "actual": 271966519.9294862,
+                                    "target": 308800000.0,
+                                    "percentage": 88,
+                                    "gap": -36833480.070513785
+                                },
+                                "HGJ": {
+                                    "actual": 26431.53,
+                                    "target": 650000.0,
+                                    "percentage": 4,
+                                    "gap": -623568.47
+                                },
+                                "MBR": {
+                                    "actual": 2213343.1482830006,
+                                    "target": 2986000.0,
+                                    "percentage": 74,
+                                    "gap": -772656.8517169994
+                                },
+                                "RANS": {
+                                    "actual": 4821765.100000005,
+                                    "target": 5217809.939239618,
+                                    "percentage": 92,
+                                    "gap": -396044.83923961315
+                                },
+                                "GSJ": {
+                                    "actual": 67792.75,
+                                    "target": 82190.06076038124,
+                                    "percentage": 82,
+                                    "gap": -14397.310760381239
+                                },
+                                "ABBOTT": {
+                                    "actual": 0.0,
+                                    "target": 0.0,
+                                    "percentage": 0,
+                                    "gap": 0.0
+                                }
+                            },
+                            "metrics": {
+                                "CA": 94,
+                                "CAProd": 89,
+                                "SKU": 96,
+                                "GP": 87
+                            },
+                            "TOTAL": {
+                                "actual": 412033224.8244114,
+                                "target": 469700000.0,
+                                "percentage": 88,
+                                "gap": -57666775.17558861
+                            },
+                            "Ranking": {
+                                "Rank": 1,
+                                "total_salesman": 6
+                            }
+                        }
+                    };
                 }
-
-                // Parse JSON data
-                [salesmanData, salesmanDetails] = await Promise.all(
-                    responses.map(response => response.json())
-                );
-
-                console.log('✅ Salesman list loaded:', salesmanData);
+                
+                salesmanDetails = salesmanDetailsData;
                 console.log('✅ Salesman details loaded:', salesmanDetails);
 
-                // Find salesman in list
-                const salesman = salesmanData.find(s => s.id === currentSalesmanId);
+                // Find salesman details
                 const details = salesmanDetails[currentSalesmanId];
 
-                if (!salesman) {
+                if (!details) {
                     throw new Error(`Salesman not found: ${currentSalesmanId}`);
                 }
 
-                if (!details) {
-                    throw new Error(`Salesman details not found: ${currentSalesmanId}`);
-                }
+                // Create salesman object from details
+                const salesman = {
+                    id: currentSalesmanId,
+                    name: details.name || 'Unknown',
+                    sac: details.sac || '',
+                    type: details.type || ''
+                };
+
+                console.log(`✅ Found salesman: ${salesman.name} (${salesman.id})`);
 
                 // Update UI with loaded data
                 updateSalesmanProfile(salesman, details);
@@ -1643,16 +1966,11 @@
 
         // ✅ INITIALIZE PAGE
         document.addEventListener('DOMContentLoaded', function() {
-            // Check login status first
-            if (!checkLoginStatus()) {
-                return;
-            }
-            
-            console.log('🚀 Initializing salesman detail page with polar area chart and legend layout...');
+            console.log('🚀 Initializing salesman detail page with donut chart and legend layout...');
             loadSalesmanData();
         });
 
-        console.log('✅ Polar area chart with legend and horizontal metrics script loaded');
+        console.log('✅ D3.js donut chart with legend and horizontal metrics script loaded');
     </script>
 </body>
 </html>

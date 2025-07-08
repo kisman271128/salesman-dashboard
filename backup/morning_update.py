@@ -331,9 +331,9 @@ class SalesmanDashboardUpdater:
             salesman_list = []
             
             for _, row in performance_df.iterrows():
-                if pd.notna(row.get('NIK', '')) and pd.notna(row.get('Nama Salesman', '')):
-                    nik = str(int(float(row['NIK']))) if pd.notna(row['NIK']) else ''
-                    name = str(row['Nama Salesman']).strip()
+                if pd.notna(row.get('szEmployeeId', '')) and pd.notna(row.get('szname', '')):
+                    nik = str(int(float(row['szEmployeeId']))) if pd.notna(row['szEmployeeId']) else ''
+                    name = str(row['szname']).strip()
                     
                     if nik and name:
                         # Calculate achievement
@@ -345,7 +345,7 @@ class SalesmanDashboardUpdater:
                         status = self.determine_status(achievement)
                         
                         salesman_data = {
-                            'id': nik,  # NIK as login ID
+                            'id': nik,  # szEmployeeId as login ID
                             'name': name,
                             'achievement': f"{self.safe_percentage(achievement)}%",
                             'actual': self.format_currency_indonesia(actual),
@@ -356,13 +356,13 @@ class SalesmanDashboardUpdater:
                         }
                         
                         salesman_list.append(salesman_data)
-                        self.safe_log('info', f"✅ Added salesman: NIK {salesman_data['id']} - {salesman_data['name']} - {salesman_data['achievement']}", 
-                                    f"[OK] Added salesman: NIK {salesman_data['id']} - {salesman_data['name']} - {salesman_data['achievement']}")
+                        self.safe_log('info', f"✅ Added salesman: szEmployeeId {salesman_data['id']} - {salesman_data['name']} - {salesman_data['achievement']}", 
+                                    f"[OK] Added salesman: szEmployeeId {salesman_data['id']} - {salesman_data['name']} - {salesman_data['achievement']}")
             
             # Sort by rank
             salesman_list.sort(key=lambda x: x['rank'] if x['rank'] > 0 else 999)
             
-            self.safe_log('info', f"✅ Processed {len(salesman_list)} salesman with NIK authentication", f"[OK] Processed {len(salesman_list)} salesman with NIK authentication")
+            self.safe_log('info', f"✅ Processed {len(salesman_list)} salesman with szEmployeeId authentication", f"[OK] Processed {len(salesman_list)} salesman with szEmployeeId authentication")
             
             return salesman_list
             
@@ -382,27 +382,29 @@ class SalesmanDashboardUpdater:
             return 'Extra Effort'
 
     def process_salesman_detail(self, sheets):
-        """Process detailed salesman data with NIK mapping"""
+        """Process detailed salesman data with szEmployeeId mapping + TOTAL & Ranking"""
         try:
-            self.safe_log('info', "🔄 Processing salesman details with NIK mapping...", "Processing salesman details with NIK mapping...")
+            self.safe_log('info', "🔄 Processing salesman details with szEmployeeId mapping + TOTAL & Ranking...", "Processing salesman details with szEmployeeId mapping + TOTAL & Ranking...")
             
             lob_df = sheets['d.salesmanlob']
             process_df = sheets['d.salesmanproses'] 
+            performance_df = sheets['d.performance']  # Add performance sheet for TOTAL & Ranking
             
             self.safe_log('info', f"LOB columns: {list(lob_df.columns)}")
+            self.safe_log('info', f"Performance columns: {list(performance_df.columns)}")
             
             salesman_details = {}
             
-            # Process LOB performance by NIK
+            # Process LOB performance by szEmployeeId
             for _, row in lob_df.iterrows():
-                if pd.notna(row.get('NIK', '')) and pd.notna(row.get('LOB', '')):
-                    nik = str(int(float(row['NIK']))) if pd.notna(row['NIK']) else ''
+                if pd.notna(row.get('szEmployeeId', '')) and pd.notna(row.get('LOB', '')):
+                    nik = str(int(float(row['szEmployeeId']))) if pd.notna(row['szEmployeeId']) else ''
                     lob_name = str(row['LOB']).strip()
                     
                     if nik and lob_name:
                         if nik not in salesman_details:
                             salesman_details[nik] = {
-                                'name': str(row.get('Nama Salesman', '')).strip(),
+                                'name': str(row.get('szname', '')).strip(),
                                 'sac': str(row.get('Nama SAC', '')).strip(),
                                 'type': str(row.get('Tipe Salesman', '')).strip(),
                                 'performance': {},
@@ -414,22 +416,26 @@ class SalesmanDashboardUpdater:
                         target = self.safe_float(row.get('Target', 1))
                         achievement = (actual / target * 100) if target > 0 else 0
                         
+                        # Calculate gap (Actual - Target)
+                        gap = actual - target
+                        
                         # Store data in format expected by HTML
                         salesman_details[nik]['performance'][lob_name] = {
                             'actual': actual,
                             'target': target,
-                            'percentage': int(round(achievement))
+                            'percentage': int(round(achievement)),
+                            'gap': gap
                         }
                         
-                        self.safe_log('info', f"✅ Added performance for NIK {nik}, LOB {lob_name}: {self.safe_percentage(achievement)}%", 
-                                    f"[OK] Added performance for NIK {nik}, LOB {lob_name}: {self.safe_percentage(achievement)}%")
+                        self.safe_log('info', f"✅ Added performance for szEmployeeId {nik}, LOB {lob_name}: {self.safe_percentage(achievement)}%, Gap: {self.format_currency_indonesia(gap)}", 
+                                    f"[OK] Added performance for szEmployeeId {nik}, LOB {lob_name}: {self.safe_percentage(achievement)}%, Gap: {self.format_currency_indonesia(gap)}")
             
             # Process additional metrics
             self.safe_log('info', f"Process columns: {list(process_df.columns)}")
             
             for _, row in process_df.iterrows():
-                if pd.notna(row.get('NIK', '')):
-                    nik = str(int(float(row['NIK']))) if pd.notna(row['NIK']) else ''
+                if pd.notna(row.get('szEmployeeId', '')):
+                    nik = str(int(float(row['szEmployeeId']))) if pd.notna(row['szEmployeeId']) else ''
                     
                     if nik and nik in salesman_details:
                         # Calculate key process metrics
@@ -453,17 +459,57 @@ class SalesmanDashboardUpdater:
                             'GP': int(round((gp_food + gp_others) / 2)) if (gp_food + gp_others) > 0 else 0
                         }
                         
-                        self.safe_log('info', f"✅ Added metrics for NIK {nik}: CA:{ca}%, GP:{(gp_food + gp_others) / 2:.1f}%", 
-                                    f"[OK] Added metrics for NIK {nik}: CA:{ca}%, GP:{(gp_food + gp_others) / 2:.1f}%")
+                        self.safe_log('info', f"✅ Added metrics for szEmployeeId {nik}: CA:{ca}%, GP:{(gp_food + gp_others) / 2:.1f}%", 
+                                    f"[OK] Added metrics for szEmployeeId {nik}: CA:{ca}%, GP:{(gp_food + gp_others) / 2:.1f}%")
             
-            self.safe_log('info', f"✅ Processed details for {len(salesman_details)} salesman with NIK keys", f"[OK] Processed details for {len(salesman_details)} salesman with NIK keys")
+            # 🆕 NEW: Add TOTAL and Ranking from d.performance sheet
+            self.safe_log('info', "🎯 Adding TOTAL and Ranking data from d.performance...", "[TARGET] Adding TOTAL and Ranking data from d.performance...")
+            
+            # Get total salesman count for ranking context
+            total_salesman_count = len([nik for nik in salesman_details.keys() if nik])
+            
+            for _, row in performance_df.iterrows():
+                if pd.notna(row.get('szEmployeeId', '')):
+                    nik = str(int(float(row['szEmployeeId']))) if pd.notna(row['szEmployeeId']) else ''
+                    
+                    if nik and nik in salesman_details:
+                        # Get TOTAL performance data from d.performance
+                        total_actual = self.safe_float(row.get('Actual', 0))
+                        total_target = self.safe_float(row.get('Target', 1))
+                        total_achievement = (total_actual / total_target * 100) if total_target > 0 else 0
+                        total_gap = total_actual - total_target
+                        
+                        # Add TOTAL section
+                        salesman_details[nik]['TOTAL'] = {
+                            'actual': total_actual,
+                            'target': total_target,
+                            'percentage': int(round(total_achievement)),
+                            'gap': total_gap
+                        }
+                        
+                        # Get ranking information
+                        rank = int(row.get('Rank', 0)) if pd.notna(row.get('Rank')) else 0
+                        
+                        # Add Ranking section
+                        salesman_details[nik]['Ranking'] = {
+                            'Rank': rank,
+                            'total_salesman': total_salesman_count
+                        }
+                        
+                        self.safe_log('info', f"✅ Added TOTAL for szEmployeeId {nik}: Actual={self.format_currency_indonesia(total_actual)}, Target={self.format_currency_indonesia(total_target)}, Achievement={total_achievement:.1f}%, Gap={self.format_currency_indonesia(total_gap)}", 
+                                    f"[OK] Added TOTAL for szEmployeeId {nik}: Achievement={total_achievement:.1f}%, Rank={rank}/{total_salesman_count}")
+                        
+                        self.safe_log('info', f"✅ Added Ranking for szEmployeeId {nik}: Rank {rank} of {total_salesman_count} salesman", 
+                                    f"[OK] Added Ranking for szEmployeeId {nik}: Rank {rank} of {total_salesman_count}")
+            
+            self.safe_log('info', f"✅ Processed details for {len(salesman_details)} salesman with szEmployeeId keys + Gap field + TOTAL + Ranking", f"[OK] Processed details for {len(salesman_details)} salesman with szEmployeeId keys + Gap field + TOTAL + Ranking")
             
             return salesman_details
             
         except Exception as e:
             self.safe_log('error', f"Error processing salesman details: {str(e)}")
             return {}
-
+            
     def generate_chart_data(self, sheets):
         """🔧 FIXED: Generate chart data dengan format Indonesia Rb/Jt/M"""
         try:
@@ -685,7 +731,7 @@ class SalesmanDashboardUpdater:
     def generate_json_files(self, sheets):
         """Generate all JSON files with complete data"""
         try:
-            self.safe_log('info', "🔄 Processing Excel data to JSON with format Indonesia Rb/Jt/M...", "Processing Excel data to JSON with format Indonesia...")
+            self.safe_log('info', "🔄 Processing Excel data to JSON with format Indonesia Rb/Jt/M + Gap field...", "Processing Excel data to JSON with format Indonesia + Gap field...")
             
             # Process all data
             dashboard_data = self.process_dashboard_data(sheets)
@@ -712,7 +758,7 @@ class SalesmanDashboardUpdater:
             details_file = os.path.join(self.data_dir, 'salesman_details.json')
             with open(details_file, 'w', encoding='utf-8') as f:
                 json.dump(salesman_details, f, indent=2, ensure_ascii=False)
-            self.safe_log('info', f"✅ Saved: {details_file} with format Indonesia", f"[OK] Saved: {details_file} with format Indonesia")
+            self.safe_log('info', f"✅ Saved: {details_file} with format Indonesia + Gap field", f"[OK] Saved: {details_file} with format Indonesia + Gap field")
             
             # Generate and save chart data
             chart_data = self.generate_chart_data(sheets)
@@ -722,8 +768,8 @@ class SalesmanDashboardUpdater:
                     json.dump(chart_data, f, indent=2, ensure_ascii=False)
                 self.safe_log('info', f"✅ Saved: {chart_file} with format Indonesia", f"[OK] Saved: {chart_file} with format Indonesia")
             
-            self.safe_log('info', f"🎉 Generated 4 JSON files with Indonesia format (Rb/Jt/M)!", f"[SUCCESS] Generated 4 JSON files with Indonesia format!")
-            self.safe_log('info', "📋 Files updated with Rb/Jt/M format:", "[LIST] Files updated with Rb/Jt/M format:")
+            self.safe_log('info', f"🎉 Generated 4 JSON files with Indonesia format (Rb/Jt/M) + Gap field!", f"[SUCCESS] Generated 4 JSON files with Indonesia format + Gap field!")
+            self.safe_log('info', "📋 Files updated with Rb/Jt/M format + Gap field:", "[LIST] Files updated with Rb/Jt/M format + Gap field:")
             
             files = ['dashboard.json', 'salesman_list.json', 'salesman_details.json', 'chart_data.json']
             for file in files:
@@ -749,7 +795,7 @@ class SalesmanDashboardUpdater:
                 return False
             
             # Git commit
-            commit_message = f"Morning update: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - FIXED format Indonesia Rb/Jt/M & vs metrics display"
+            commit_message = f"Morning update: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - FIXED format Indonesia Rb/Jt/M, vs metrics display & added Gap field"
             result = subprocess.run(['git', 'commit', '-m', commit_message], 
                                   capture_output=True, text=True, cwd='.')
             
@@ -811,18 +857,20 @@ class SalesmanDashboardUpdater:
    💰 Indonesian Number Format - FIXED Rb/Jt/M display
    📈 vs Metrics Display - FIXED vs LM/3LM/LY showing
    🎯 Chart Stats Format - FIXED proper Rb/Jt/M format
-   🔐 NIK Login - All salesman + admin access
+   📊 Gap Field Added - FIXED Gap calculation (Actual - Target) for each LOB
+   🔐 szEmployeeId Login - All salesman + admin access
    🧭 Modern Navigation - Updated 4 & 5 icon menus
 
 🔑 Login Credentials:
    Admin: admin / admin123
-   Salesman: [NIK] / sales123
+   Salesman: [szEmployeeId] / sales123
 
-💡 Format Indonesia:
+💡 Format Indonesia + Data Enhancement:
    • < 1K = angka langsung (500)
    • 1K-999K = Rb (500Rb) 
    • 1Jt-999Jt = Jt (50.5Jt)
    • ≥1M = M (1.5M)
+   • Gap = Actual - Target (untuk analisis performance)
 =======================================================
 """
             
@@ -838,23 +886,25 @@ class SalesmanDashboardUpdater:
 
 def main():
     """Main function - Fixed Indonesia Format"""
-    print("🚀 SALESMAN DASHBOARD UPDATER v2.3 - INDONESIA FORMAT FIXED")
-    print("=" * 70)
-    print("Running with INDONESIA FORMAT FIXES:")
+    print("🚀 SALESMAN DASHBOARD UPDATER v2.4 - INDONESIA FORMAT + GAP FIELD")
+    print("=" * 75)
+    print("Running with INDONESIA FORMAT FIXES & GAP FIELD:")
     print("✅ FIXED format Rb/Jt/M sesuai standar Indonesia")
     print("✅ FIXED vs metrics display (vs LM/3LM/LY)")
-    print("✅ FIXED chart stats dengan format yang benar") 
+    print("✅ FIXED chart stats dengan format yang benar")
+    print("✅ ADDED Gap field (Actual - Target) untuk setiap LOB") 
     print("✅ Enhanced number formatting untuk semua section")
     print("=" * 70)
     
-    print("\n🌅 MORNING BATCH UPDATE - INDONESIA FORMAT")
-    print("=" * 55)
-    print("🚀 Version 2.3 - INDONESIA FORMAT FIXES:")
+    print("\n🌅 MORNING BATCH UPDATE - INDONESIA FORMAT + GAP FIELD")
+    print("=" * 60)
+    print("🚀 Version 2.4 - INDONESIA FORMAT & GAP FIELD FIXES:")
     print("   ✅ FIXED Rb untuk < 1 juta (contoh: 500Rb)")
     print("   ✅ FIXED Jt untuk 1-999 juta (contoh: 50.5Jt)")
     print("   ✅ FIXED M untuk ≥ 1 miliar (contoh: 1.5M)")
     print("   ✅ FIXED vs metrics yang tidak muncul")
     print("   ✅ FIXED chart stats format Indonesia")
+    print("   ✅ ADDED Gap field untuk setiap LOB performance")
     print("=" * 55)
     
     # Create updater and run
@@ -862,8 +912,8 @@ def main():
     success = updater.run_morning_update()
     
     if success:
-        print("\n✅ INDONESIA FORMAT UPDATE SUCCESSFUL!")
-        print("🌐 Dashboard dengan format Rb/Jt/M yang benar")
+        print("\n✅ INDONESIA FORMAT + GAP FIELD UPDATE SUCCESSFUL!")
+        print("🌐 Dashboard dengan format Rb/Jt/M yang benar + Gap field")
         print("📱 URL: https://kisman271128.github.io/salesman-dashboard")
         sys.exit(0)
     else:
