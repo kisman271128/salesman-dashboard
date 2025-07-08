@@ -1,559 +1,1585 @@
-# Debug & Fixed Version - Morning Update
-import sys
-import os
-import logging
-import json
-import pandas as pd
-from datetime import datetime, timedelta
-import subprocess
-import traceback
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Desktop - Salesman App</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-# Fix encoding untuk Windows console
-if sys.platform == "win32":
-    import codecs
-    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.detach())
-    sys.stderr = codecs.getwriter('utf-8')(sys.stderr.detach())
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            color: #2c3e50;
+            overflow-x: hidden;
+        }
 
-class SalesmanDashboardUpdater:
-    def __init__(self, excel_file="DbaseSalesmanWebApp.xlsx"):
-        self.excel_file = excel_file
-        self.data_dir = "data"
-        
-        # Setup directories
-        if not os.path.exists(self.data_dir):
-            os.makedirs(self.data_dir)
-        
-        # Setup logging dengan encoding yang aman
-        log_format = '%(asctime)s - %(levelname)s - %(message)s'
-        
-        # Setup file handler dengan UTF-8
-        file_handler = logging.FileHandler('morning_update_debug.log', encoding='utf-8')
-        file_handler.setFormatter(logging.Formatter(log_format))
-        
-        # Setup console handler dengan fallback untuk emoji
-        console_handler = logging.StreamHandler()
-        console_handler.setFormatter(logging.Formatter(log_format))
-        
-        # Configure logger
-        logging.basicConfig(
-            level=logging.INFO,
-            handlers=[file_handler, console_handler],
-            format=log_format,
-            force=True  # Force reconfiguration
-        )
-        
-        self.logger = logging.getLogger(__name__)
+        .desktop-container {
+            display: flex;
+            min-height: 100vh;
+        }
 
-    def check_excel_file(self):
-        """🔍 STEP 1: Check if Excel file exists and is accessible"""
-        print("\n" + "="*60)
-        print("🔍 STEP 1: CHECKING EXCEL FILE")
-        print("="*60)
-        
-        if not os.path.exists(self.excel_file):
-            print(f"❌ ERROR: Excel file tidak ditemukan: {self.excel_file}")
-            print(f"📁 Current directory: {os.getcwd()}")
-            print(f"📋 Files in current directory:")
-            for file in os.listdir('.'):
-                if file.endswith(('.xlsx', '.xls')):
-                    print(f"   📊 {file}")
-            return False
-        
-        # Check file size
-        file_size = os.path.getsize(self.excel_file)
-        print(f"✅ Excel file found: {self.excel_file}")
-        print(f"📏 File size: {file_size:,} bytes")
-        
-        if file_size == 0:
-            print("❌ ERROR: Excel file is empty!")
-            return False
-        
-        # Check file modification time
-        mod_time = datetime.fromtimestamp(os.path.getmtime(self.excel_file))
-        print(f"📅 Last modified: {mod_time.strftime('%Y-%m-%d %H:%M:%S')}")
-        
-        return True
+        /* ✅ SIDEBAR NAVIGATION */
+        .sidebar {
+            width: 280px;
+            background: linear-gradient(180deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 0;
+            box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
+            position: fixed;
+            height: 100vh;
+            z-index: 1000;
+            overflow-y: auto;
+        }
 
-    def check_excel_sheets(self):
-        """🔍 STEP 2: Check Excel sheets and structure"""
-        print("\n" + "="*60)
-        print("🔍 STEP 2: CHECKING EXCEL SHEETS")
-        print("="*60)
-        
-        try:
-            # Try different engines
-            engines = ['openpyxl', 'xlrd', None]
-            xl_file = None
-            
-            for engine in engines:
-                try:
-                    print(f"🔧 Trying engine: {engine}")
-                    xl_file = pd.ExcelFile(self.excel_file, engine=engine)
-                    print(f"✅ Success with engine: {engine}")
-                    break
-                except Exception as e:
-                    print(f"❌ Failed with engine {engine}: {str(e)}")
-                    continue
-            
-            if xl_file is None:
-                print("❌ ERROR: Cannot read Excel file with any engine!")
-                return False, None
-            
-            # Get available sheets
-            available_sheets = xl_file.sheet_names
-            print(f"\n📋 Available sheets ({len(available_sheets)}):")
-            for i, sheet in enumerate(available_sheets, 1):
-                print(f"   {i}. {sheet}")
-            
-            # Check required sheets
-            required_sheets = ['d.dashboard', 'd.performance', 'd.salesmanlob', 'd.salesmanproses', 'd.soharian']
-            print(f"\n🎯 Required sheets:")
-            missing_sheets = []
-            
-            for sheet in required_sheets:
-                if sheet in available_sheets:
-                    print(f"   ✅ {sheet}")
-                else:
-                    print(f"   ❌ {sheet} - MISSING!")
-                    missing_sheets.append(sheet)
-            
-            if missing_sheets:
-                print(f"\n⚠️  WARNING: {len(missing_sheets)} required sheets missing!")
-                print("💡 Suggestions for missing sheets:")
-                for missing in missing_sheets:
-                    similar = [s for s in available_sheets if missing.lower().replace('d.', '') in s.lower()]
-                    if similar:
-                        print(f"   {missing} -> Maybe: {similar}")
-            
-            return True, xl_file
-            
-        except Exception as e:
-            print(f"❌ ERROR checking Excel sheets: {str(e)}")
-            traceback.print_exc()
-            return False, None
+        .sidebar-header {
+            padding: 30px 25px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
 
-    def inspect_sheet_data(self, xl_file, sheet_name, max_rows=5):
-        """🔍 STEP 3: Inspect sheet data structure"""
-        try:
-            print(f"\n📊 INSPECTING SHEET: {sheet_name}")
-            print("-" * 50)
-            
-            df = pd.read_excel(xl_file, sheet_name=sheet_name)
-            
-            print(f"📏 Dimensions: {df.shape[0]} rows x {df.shape[1]} columns")
-            print(f"📋 Columns: {list(df.columns)}")
-            
-            # Check for empty data
-            if df.empty:
-                print("⚠️  Sheet is empty!")
-                return df
-            
-            # Show sample data
-            print(f"\n📝 Sample data (first {min(max_rows, len(df))} rows):")
-            for i in range(min(max_rows, len(df))):
-                print(f"Row {i + 1}:")
-                for col in df.columns:
-                    value = df.iloc[i][col]
-                    print(f"   {col}: {value} ({type(value).__name__})")
-                print()
-            
-            # Check for null values
-            null_counts = df.isnull().sum()
-            if null_counts.any():
-                print("🔍 Null value counts:")
-                for col, count in null_counts.items():
-                    if count > 0:
-                        print(f"   {col}: {count}")
-            
-            return df
-            
-        except Exception as e:
-            print(f"❌ ERROR inspecting sheet {sheet_name}: {str(e)}")
-            return None
+        .company-logo {
+            font-size: 24px;
+            font-weight: 800;
+            margin-bottom: 8px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
 
-    def debug_data_processing(self):
-        """🔍 STEP 4: Debug the complete data processing"""
-        print("\n" + "="*60)
-        print("🔍 STEP 4: DEBUG DATA PROCESSING")
-        print("="*60)
-        
-        # Check Excel file
-        if not self.check_excel_file():
-            return False
-        
-        # Check Excel sheets
-        success, xl_file = self.check_excel_sheets()
-        if not success:
-            return False
-        
-        # Read and inspect each sheet
-        sheets = {}
-        required_sheets = ['d.dashboard', 'd.performance', 'd.salesmanlob', 'd.salesmanproses', 'd.soharian']
-        
-        for sheet_name in required_sheets:
-            if sheet_name in xl_file.sheet_names:
-                df = self.inspect_sheet_data(xl_file, sheet_name)
-                if df is not None:
-                    sheets[sheet_name] = df
-            else:
-                print(f"⚠️  Skipping missing sheet: {sheet_name}")
-        
-        if not sheets:
-            print("❌ ERROR: No sheets could be processed!")
-            return False
-        
-        print(f"\n✅ Successfully loaded {len(sheets)} sheets")
-        return sheets
+        .company-subtitle {
+            font-size: 14px;
+            opacity: 0.9;
+            font-weight: 400;
+        }
 
-    def test_json_generation(self, sheets):
-        """🔍 STEP 5: Test JSON generation with detailed logging"""
-        print("\n" + "="*60)
-        print("🔍 STEP 5: TESTING JSON GENERATION")
-        print("="*60)
-        
-        try:
-            # Test dashboard processing
-            if 'd.dashboard' in sheets:
-                print("\n🎯 Testing dashboard processing...")
-                dashboard_data = self.process_dashboard_data_debug(sheets)
-                if dashboard_data:
-                    print(f"✅ Dashboard processed: {len(dashboard_data.get('lob_cards', []))} LOB cards")
-                else:
-                    print("❌ Dashboard processing failed")
-            
-            # Test salesman list processing
-            if 'd.performance' in sheets:
-                print("\n👥 Testing salesman list processing...")
-                salesman_list = self.process_salesman_data_debug(sheets)
-                if salesman_list:
-                    print(f"✅ Salesman list processed: {len(salesman_list)} salesman")
-                else:
-                    print("❌ Salesman list processing failed")
-            
-            # Test chart data processing
-            if 'd.soharian' in sheets:
-                print("\n📈 Testing chart data processing...")
-                chart_data = self.generate_chart_data_debug(sheets)
-                if chart_data:
-                    print(f"✅ Chart data processed: {len(chart_data.get('so_data', []))} data points")
-                else:
-                    print("❌ Chart data processing failed")
-            
-            return True
-            
-        except Exception as e:
-            print(f"❌ ERROR in JSON generation test: {str(e)}")
-            traceback.print_exc()
-            return False
+        .sidebar-nav {
+            padding: 30px 0;
+        }
 
-    def process_dashboard_data_debug(self, sheets):
-        """Debug version of dashboard processing"""
-        try:
-            dashboard_df = sheets['d.dashboard']
-            print(f"📊 Dashboard sheet shape: {dashboard_df.shape}")
-            print(f"📋 Dashboard columns: {list(dashboard_df.columns)}")
-            
-            # Show first few rows
-            print("📝 First 3 rows:")
-            for i in range(min(3, len(dashboard_df))):
-                row = dashboard_df.iloc[i]
-                lob_value = row.get('LOB', 'N/A')
-                actual_value = row.get('Actual', 'N/A')
-                bp_value = row.get('BP', 'N/A')
-                print(f"   Row {i+1}: LOB={lob_value}, Actual={actual_value}, BP={bp_value}")
-            
-            # Process LOB cards
-            lob_cards = []
-            for index, row in dashboard_df.iterrows():
-                lob_name = str(row.get('LOB', '')).strip()
-                if lob_name and lob_name.upper() != 'TOTAL':
-                    actual = self.safe_float(row.get('Actual', 0))
-                    bp = self.safe_float(row.get('BP', 1))
-                    achievement = (actual / bp * 100) if bp > 0 else 0
-                    
-                    lob_card = {
-                        'name': lob_name,
-                        'achievement': f"{int(round(achievement))}%",
-                        'actual': self.format_currency_indonesia(actual),
-                        'target': self.format_currency_indonesia(bp),
-                        'gap': self.format_currency_indonesia(abs(actual - bp)),
-                        'vs_bp': f"+{int(round(achievement))}%",
-                        'vs_ly': "+0%",
-                        'vs_3lm': "+0%",
-                        'vs_lm': "+0%"
-                    }
-                    lob_cards.append(lob_card)
-                    print(f"✅ Processed LOB: {lob_name} - {achievement:.1f}%")
-            
-            return {
-                'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                'depo_name': 'Depo Tanjung',
-                'region_name': 'Region Kalimantan',
-                'lob_cards': lob_cards
+        .nav-item {
+            display: flex;
+            align-items: center;
+            padding: 18px 25px;
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border-left: 4px solid transparent;
+        }
+
+        .nav-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border-left-color: #667eea;
+            transform: translateX(5px);
+        }
+
+        .nav-item.active {
+            background: rgba(102, 126, 234, 0.2);
+            color: white;
+            border-left-color: #667eea;
+        }
+
+        .nav-icon {
+            font-size: 20px;
+            margin-right: 15px;
+            width: 25px;
+        }
+
+        .nav-label {
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        .sidebar-footer {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 25px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .user-details h4 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .user-details p {
+            font-size: 12px;
+            opacity: 0.7;
+        }
+
+        /* ✅ MAIN CONTENT AREA */
+        .main-content {
+            flex: 1;
+            margin-left: 280px;
+            padding: 0;
+            background: transparent;
+        }
+
+        .top-header {
+            background: white;
+            padding: 25px 40px;
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 500;
+        }
+
+        .header-left h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .header-left p {
+            font-size: 16px;
+            color: #7f8c8d;
+            font-weight: 500;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 25px;
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 30px;
+        }
+
+        .header-stat {
+            text-align: center;
+            padding: 15px 20px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            border-radius: 12px;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            min-width: 120px;
+        }
+
+        .header-stat-value {
+            font-size: 22px;
+            font-weight: 800;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .header-stat-label {
+            font-size: 12px;
+            color: #7f8c8d;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .refresh-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .refresh-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        /* ✅ DESKTOP CONTENT LAYOUT */
+        .desktop-content {
+            padding: 40px;
+            max-width: none;
+        }
+
+        /* ✅ IMPROVED LOB CARDS GRID FOR DESKTOP */
+        .cards-section {
+            margin-bottom: 40px;
+        }
+
+        .section-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .section-icon {
+            font-size: 28px;
+        }
+
+        .desktop-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+
+        .desktop-lob-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            cursor: pointer;
+        }
+
+        .desktop-lob-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.12);
+        }
+
+        .desktop-lob-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: var(--card-color, linear-gradient(135deg, #667eea, #764ba2));
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }
+
+        .lob-name-desktop {
+            font-size: 20px;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 8px;
+        }
+
+        .lob-values {
+            text-align: right;
+        }
+
+        .achievement-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 700;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .financial-info {
+            display: flex;
+            justify-content: space-between;
+            margin: 20px 0;
+            padding: 20px;
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 12px;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .financial-item {
+            text-align: center;
+            flex: 1;
+        }
+
+        .financial-label {
+            font-size: 12px;
+            color: #7f8c8d;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .financial-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: #2c3e50;
+        }
+
+        .vs-metrics-desktop {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .vs-metric-desktop {
+            text-align: center;
+            padding: 12px;
+            background: white;
+            border-radius: 10px;
+            border: 2px solid rgba(102, 126, 234, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .vs-metric-desktop:hover {
+            border-color: rgba(102, 126, 234, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .vs-label-desktop {
+            font-size: 12px;
+            color: #7f8c8d;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .vs-value-desktop {
+            font-size: 16px;
+            font-weight: 700;
+            color: #2c3e50;
+        }
+
+        /* ✅ DASHBOARD LAYOUT WITH CHART AND TABLE */
+        .dashboard-layout {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        /* ✅ DESKTOP CHART SECTION */
+        .desktop-chart-section {
+            background: white;
+            border-radius: 20px;
+            padding: 35px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .chart-header-desktop {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .chart-title-desktop {
+            font-size: 24px;
+            font-weight: 700;
+            color: #2c3e50;
+        }
+
+        .chart-period-desktop {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            border-radius: 25px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #667eea;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .desktop-chart-container {
+            height: 400px;
+            position: relative;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.02), rgba(118, 75, 162, 0.02));
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .chart-legend-desktop {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 25px;
+            padding: 20px;
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 15px;
+        }
+
+        .legend-item-desktop {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .legend-color-desktop {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .chart-stats-desktop {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 20px;
+        }
+
+        .chart-stat-desktop {
+            text-align: center;
+            padding: 20px 15px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
+            border-radius: 15px;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .chart-stat-desktop:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.15);
+        }
+
+        .stat-value-desktop {
+            font-size: 20px;
+            font-weight: 800;
+            color: #667eea;
+            margin-bottom: 8px;
+        }
+
+        .stat-label-desktop {
+            font-size: 12px;
+            color: #7f8c8d;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* ✅ DESKTOP SALESMAN TABLE */
+        .desktop-salesman-section {
+            background: white;
+            border-radius: 20px;
+            padding: 35px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .salesman-header-desktop {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .salesman-title-desktop {
+            font-size: 24px;
+            font-weight: 700;
+            color: #2c3e50;
+        }
+
+        .salesman-count {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            border-radius: 25px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #667eea;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .salesman-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+        }
+
+        .salesman-table th {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px 15px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .salesman-table td {
+            padding: 20px 15px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .salesman-table tr:hover td {
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .rank-column {
+            text-align: center;
+            font-weight: 700;
+            color: #667eea;
+            font-size: 16px;
+        }
+
+        .salesman-name-column {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .salesman-avatar-table {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 16px;
+            border: 3px solid white;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+        }
+
+        .salesman-info-table h4 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 3px;
+        }
+
+        .salesman-info-table p {
+            font-size: 13px;
+            color: #7f8c8d;
+        }
+
+        .achievement-column {
+            text-align: center;
+        }
+
+        .achievement-circle {
+            display: inline-block;
+            padding: 10px 15px;
+            border-radius: 25px;
+            font-weight: 700;
+            font-size: 14px;
+            color: white;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .status-column {
+            text-align: center;
+        }
+
+        .status-badge {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-badge.excellent {
+            background: rgba(39, 174, 96, 0.1);
+            color: #27ae60;
+            border: 1px solid rgba(39, 174, 96, 0.3);
+        }
+
+        .status-badge.very-good {
+            background: rgba(41, 128, 185, 0.1);
+            color: #2980b9;
+            border: 1px solid rgba(41, 128, 185, 0.3);
+        }
+
+        .status-badge.good {
+            background: rgba(243, 156, 18, 0.1);
+            color: #f39c12;
+            border: 1px solid rgba(243, 156, 18, 0.3);
+        }
+
+        .status-badge.extra-effort {
+            background: rgba(231, 76, 60, 0.1);
+            color: #e74c3c;
+            border: 1px solid rgba(231, 76, 60, 0.3);
+        }
+
+        .action-column {
+            text-align: center;
+        }
+
+        .view-detail-btn {
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .view-detail-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        /* ✅ LOADING AND ERROR STATES */
+        .loading-spinner-desktop {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 400px;
+            flex-direction: column;
+            background: white;
+            border-radius: 20px;
+            margin: 40px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        }
+
+        .spinner-desktop {
+            width: 60px;
+            height: 60px;
+            border: 6px solid #f3f3f3;
+            border-top: 6px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        .error-message-desktop {
+            background: rgba(231, 76, 60, 0.1);
+            border: 2px solid rgba(231, 76, 60, 0.3);
+            color: #e74c3c;
+            padding: 30px;
+            border-radius: 20px;
+            margin: 40px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(231, 76, 60, 0.1);
+        }
+
+        .error-message-desktop h3 {
+            font-size: 24px;
+            margin-bottom: 15px;
+        }
+
+        .error-message-desktop p {
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+
+        .retry-btn {
+            padding: 15px 30px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .retry-btn:hover {
+            background: #c0392b;
+            transform: translateY(-2px);
+        }
+
+        /* ✅ RESPONSIVE FOR TABLETS */
+        @media (max-width: 1024px) {
+            .sidebar {
+                width: 250px;
             }
             
-        except Exception as e:
-            print(f"❌ Error in dashboard processing: {str(e)}")
-            traceback.print_exc()
-            return None
-
-    def process_salesman_data_debug(self, sheets):
-        """Debug version of salesman processing"""
-        try:
-            performance_df = sheets['d.performance']
-            print(f"👥 Performance sheet shape: {performance_df.shape}")
-            print(f"📋 Performance columns: {list(performance_df.columns)}")
+            .main-content {
+                margin-left: 250px;
+            }
             
-            salesman_list = []
-            for index, row in performance_df.iterrows():
-                nik = str(row.get('NIK', '')).strip()
-                name = str(row.get('Nama Salesman', '')).strip()
+            .desktop-content {
+                padding: 30px;
+            }
+            
+            .dashboard-layout {
+                grid-template-columns: 1fr;
+                gap: 30px;
+            }
+            
+            .desktop-cards-grid {
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 20px;
+            }
+            
+            .chart-stats-desktop {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        /* ✅ MOBILE RESPONSIVE */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+            
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+            
+            .top-header {
+                padding: 20px;
+            }
+            
+            .header-stats {
+                display: none;
+            }
+            
+            .desktop-content {
+                padding: 20px;
+            }
+            
+            .desktop-cards-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .chart-stats-desktop {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .salesman-table {
+                font-size: 12px;
+            }
+            
+            .salesman-table th,
+            .salesman-table td {
+                padding: 15px 10px;
+            }
+        }
+
+        /* ✅ ANIMATIONS */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in {
+            animation: fadeInUp 0.6s ease-out forwards;
+        }
+
+        /* ✅ CARD COLORS */
+        .card-color-0 { --card-color: linear-gradient(135deg, #ae2012, #bb3e03); }
+        .card-color-1 { --card-color: linear-gradient(135deg, #bb3e03, #ca6702); }
+        .card-color-2 { --card-color: linear-gradient(135deg, #ca6702, #ee9b00); }
+        .card-color-3 { --card-color: linear-gradient(135deg, #ee9b00, #a3b18a); }
+        .card-color-4 { --card-color: linear-gradient(135deg, #a3b18a, #94d2bd); }
+        .card-color-5 { --card-color: linear-gradient(135deg, #94d2bd, #0a9396); }
+        .card-color-6 { --card-color: linear-gradient(135deg, #0a9396, #005f73); }
+        .card-color-7 { --card-color: linear-gradient(135deg, #005f73, #001219); }
+        .card-color-8 { --card-color: linear-gradient(135deg, #667eea, #764ba2); }
+    </style>
+</head>
+<body>
+    <div class="desktop-container">
+        <!-- ✅ SIDEBAR NAVIGATION -->
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="company-logo">SALESMAN APP</div>
+                <div class="company-subtitle">Dashboard Management</div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <div class="nav-item active" onclick="showDashboard()">
+                    <div class="nav-icon">🏠</div>
+                    <div class="nav-label">Dashboard</div>
+                </div>
+                <div class="nav-item" onclick="showActivity()">
+                    <div class="nav-icon">📊</div>
+                    <div class="nav-label">Activity</div>
+                </div>
+                <div class="nav-item" onclick="showInsentif()">
+                    <div class="nav-icon">💰</div>
+                    <div class="nav-label">Insentif</div>
+                </div>
+                <div class="nav-item" onclick="showReports()">
+                    <div class="nav-icon">📈</div>
+                    <div class="nav-label">Reports</div>
+                </div>
+                <div class="nav-item" onclick="showSettings()">
+                    <div class="nav-icon">⚙️</div>
+                    <div class="nav-label">Settings</div>
+                </div>
+                <div class="nav-item" onclick="logout()">
+                    <div class="nav-icon">🚪</div>
+                    <div class="nav-label">Logout</div>
+                </div>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="user-avatar" id="userAvatar">A</div>
+                    <div class="user-details">
+                        <h4 id="userName">Admin User</h4>
+                        <p id="userRole">Administrator</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ✅ MAIN CONTENT -->
+        <div class="main-content">
+            <!-- ✅ TOP HEADER -->
+            <div class="top-header">
+                <div class="header-left">
+                    <h1 id="depoName">Dashboard</h1>
+                    <p id="regionName">Loading region information...</p>
+                </div>
+                <div class="header-right">
+                    <div class="header-stats" id="headerStats">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                    <button class="refresh-btn" onclick="loadDashboardData()">
+                        🔄 Refresh
+                    </button>
+                </div>
+            </div>
+
+            <!-- ✅ DESKTOP CONTENT -->
+            <div class="desktop-content">
+                <!-- Loading State -->
+                <div class="loading-spinner-desktop" id="loadingSpinner">
+                    <div class="spinner-desktop"></div>
+                    <div style="font-size: 18px; font-weight: 600; color: #667eea;">Loading dashboard data...</div>
+                </div>
+
+                <!-- Error State -->
+                <div class="error-message-desktop" id="errorMessage" style="display: none;">
+                    <h3>📡 Data Loading Error</h3>
+                    <p>Unable to load dashboard data. Please check your connection or contact administrator.</p>
+                    <button class="retry-btn" onclick="loadDashboardData()">Retry Loading</button>
+                </div>
+
+                <!-- ✅ LOB CARDS SECTION -->
+                <div class="cards-section" id="cardsSection" style="display: none;">
+                    <h2 class="section-title">
+                        <span class="section-icon">📊</span>
+                        Line of Business Performance
+                    </h2>
+                    <div class="desktop-cards-grid" id="desktopCardsGrid">
+                        <!-- Cards will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- ✅ DASHBOARD LAYOUT -->
+                <div class="dashboard-layout" id="dashboardLayout" style="display: none;">
+                    <!-- ✅ CHART SECTION -->
+                    <div class="desktop-chart-section">
+                        <div class="chart-header-desktop">
+                            <h2 class="chart-title-desktop">📈 Trend SO & DO Harian vs Target</h2>
+                            <div class="chart-period-desktop" id="chartPeriod">Loading...</div>
+                        </div>
+                        
+                        <div class="chart-legend-desktop">
+                            <div class="legend-item-desktop">
+                                <div class="legend-color-desktop" style="background: linear-gradient(135deg, #667eea, #764ba2);"></div>
+                                <span>SO Actual</span>
+                            </div>
+                            <div class="legend-item-desktop">
+                                <div class="legend-color-desktop" style="background: linear-gradient(135deg, #f093fb, #f5576c);"></div>
+                                <span>DO Actual</span>
+                            </div>
+                            <div class="legend-item-desktop">
+                                <div class="legend-color-desktop" style="background: linear-gradient(135deg, #43e97b, #38f9d7); border-radius: 50%;"></div>
+                                <span>Target Harian</span>
+                            </div>
+                        </div>
+
+                        <div class="desktop-chart-container">
+                            <svg id="desktopChartSvg" style="width: 100%; height: 100%;">
+                                <!-- Chart will be generated by JavaScript -->
+                                <defs>
+                                    <linearGradient id="gradientSO" x1="0%" y1="0%" x2="0%" y2="100%">
+                                        <stop offset="0%" style="stop-color:#667eea;stop-opacity:0.3" />
+                                        <stop offset="100%" style="stop-color:#667eea;stop-opacity:0" />
+                                    </linearGradient>
+                                    <linearGradient id="gradientDO" x1="0%" y1="0%" x2="0%" y2="100%">
+                                        <stop offset="0%" style="stop-color:#f093fb;stop-opacity:0.3" />
+                                        <stop offset="100%" style="stop-color:#f093fb;stop-opacity:0" />
+                                    </linearGradient>
+                                </defs>
+                            </svg>
+                        </div>
+
+                        <div class="chart-stats-desktop" id="chartStatsDesktop">
+                            <!-- Stats will be populated by JavaScript -->
+                        </div>
+                    </div>
+
+                    <!-- ✅ SALESMAN TABLE -->
+                    <div class="desktop-salesman-section">
+                        <div class="salesman-header-desktop">
+                            <h2 class="salesman-title-desktop">👥 Ranking Salesman</h2>
+                            <div class="salesman-count" id="salesmanCount">Loading...</div>
+                        </div>
+                        
+                        <table class="salesman-table">
+                            <thead>
+                                <tr>
+                                    <th>Rank</th>
+                                    <th>Salesman</th>
+                                    <th>Achievement</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="salesmanTableBody">
+                                <!-- Rows will be populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let dashboardData = null;
+        let salesmanData = null;
+        let chartData = null;
+
+        // ✅ FORMAT CURRENCY INDONESIA FUNCTION
+        function formatCurrencyIndonesia(value) {
+            try {
+                const val = parseFloat(value);
                 
-                if nik and name:
-                    actual = self.safe_float(row.get('Actual', 0))
-                    target = self.safe_float(row.get('Target', 1))
-                    achievement = (actual / target * 100) if target > 0 else 0
-                    
-                    salesman_data = {
-                        'id': nik,
-                        'name': name,
-                        'achievement': f"{int(round(achievement))}%",
-                        'actual': self.format_currency_indonesia(actual),
-                        'target': self.format_currency_indonesia(target),
-                        'rank': int(row.get('Rank', 0)) if pd.notna(row.get('Rank')) else 0,
-                        'type': str(row.get('Tipe Salesman', 'Sales')).strip(),
-                        'status': self.determine_status(achievement)
-                    }
-                    salesman_list.append(salesman_data)
-                    print(f"✅ Processed salesman: {name} - {achievement:.1f}%")
-            
-            return salesman_list
-            
-        except Exception as e:
-            print(f"❌ Error in salesman processing: {str(e)}")
-            traceback.print_exc()
-            return []
-
-    def generate_chart_data_debug(self, sheets):
-        """Debug version of chart data generation"""
-        try:
-            so_df = sheets['d.soharian']
-            print(f"📈 SO Harian sheet shape: {so_df.shape}")
-            print(f"📋 SO Harian columns: {list(so_df.columns)}")
-            
-            # Show first few rows
-            print("📝 First 3 rows:")
-            for i in range(min(3, len(so_df))):
-                row = so_df.iloc[i]
-                print(f"   Row {i+1}: {dict(row)}")
-            
-            # Process chart data
-            so_data = []
-            do_data = []
-            target_data = []
-            labels = []
-            
-            for index, row in so_df.iterrows():
-                if pd.notna(row.get('Tgl')):
-                    so_value = int(self.safe_float(row.get('SO', 0)))
-                    do_value = int(self.safe_float(row.get('DO', 0)))
-                    target_value = int(self.safe_float(row.get('Target', 0)))
-                    
-                    so_data.append(so_value)
-                    do_data.append(do_value)
-                    target_data.append(target_value)
-                    
-                    # Format label
-                    date_val = row['Tgl']
-                    if hasattr(date_val, 'strftime'):
-                        day_label = date_val.strftime('%d')
-                    else:
-                        day_label = str(date_val).split('-')[-1] if '-' in str(date_val) else str(date_val)
-                    labels.append(day_label)
-            
-            print(f"📊 Processed {len(so_data)} data points")
-            
-            return {
-                'period': 'Juli 2025',
-                'so_data': so_data,
-                'do_data': do_data,
-                'target_data': target_data,
-                'labels': labels,
-                'stats': {
-                    'avg_target': self.format_currency_indonesia(sum(target_data) / len(target_data)) if target_data else "0",
-                    'avg_so': self.format_currency_indonesia(sum(so_data) / len(so_data)) if so_data else "0",
-                    'avg_do': self.format_currency_indonesia(sum(do_data) / len(do_data)) if do_data else "0",
-                    'total_hk': len(so_data),
-                    'sisa_hk_do': 0,
-                    'gap_total': "0"
+                if (val >= 1000000000) {  // >= 1 Miliar
+                    return (val / 1000000000).toFixed(1) + 'M';
+                } else if (val >= 1000000) {  // >= 1 Juta, < 1 Miliar  
+                    return (val / 1000000).toFixed(1) + 'Jt';
+                } else if (val >= 1000) {  // >= 1 Ribu, < 1 Juta
+                    return Math.round(val / 1000) + 'Rb';
+                } else {  // < 1 Ribu
+                    return Math.round(val).toString();
                 }
+            } catch {
+                return "0";
+            }
+        }
+
+        // Check if user is logged in
+        function checkLoginStatus() {
+            const isLoggedIn = sessionStorage.getItem('isLoggedIn');
+            if (!isLoggedIn) {
+                window.location.href = 'index.html';
+                return false;
             }
             
-        except Exception as e:
-            print(f"❌ Error in chart data generation: {str(e)}")
-            traceback.print_exc()
-            return None
+            // Update user info in sidebar
+            const currentUser = sessionStorage.getItem('currentUser') || 'Admin';
+            document.getElementById('userName').textContent = currentUser;
+            document.getElementById('userAvatar').textContent = currentUser.charAt(0).toUpperCase();
+            
+            return true;
+        }
 
-    def write_json_files_debug(self, sheets):
-        """🔍 STEP 6: Write JSON files with detailed logging"""
-        print("\n" + "="*60)
-        print("🔍 STEP 6: WRITING JSON FILES")
-        print("="*60)
-        
-        try:
-            # Process data
-            dashboard_data = self.process_dashboard_data_debug(sheets)
-            salesman_list = self.process_salesman_data_debug(sheets)
-            chart_data = self.generate_chart_data_debug(sheets)
-            
-            # Write files
-            files_written = []
-            
-            # Dashboard
-            if dashboard_data:
-                dashboard_file = os.path.join(self.data_dir, 'dashboard.json')
-                with open(dashboard_file, 'w', encoding='utf-8') as f:
-                    json.dump(dashboard_data, f, indent=2, ensure_ascii=False)
-                files_written.append('dashboard.json')
-                print(f"✅ Written: dashboard.json ({len(dashboard_data.get('lob_cards', []))} LOB cards)")
-            
-            # Salesman list
-            if salesman_list:
-                list_file = os.path.join(self.data_dir, 'salesman_list.json')
-                with open(list_file, 'w', encoding='utf-8') as f:
-                    json.dump(salesman_list, f, indent=2, ensure_ascii=False)
-                files_written.append('salesman_list.json')
-                print(f"✅ Written: salesman_list.json ({len(salesman_list)} salesman)")
-            
-            # Chart data
-            if chart_data:
-                chart_file = os.path.join(self.data_dir, 'chart_data.json')
-                with open(chart_file, 'w', encoding='utf-8') as f:
-                    json.dump(chart_data, f, indent=2, ensure_ascii=False)
-                files_written.append('chart_data.json')
-                print(f"✅ Written: chart_data.json ({len(chart_data.get('so_data', []))} data points)")
-            
-            # Create minimal salesman details if needed
-            details_file = os.path.join(self.data_dir, 'salesman_details.json')
-            minimal_details = {}
-            if salesman_list:
-                for salesman in salesman_list:
-                    minimal_details[salesman['id']] = {
-                        'name': salesman['name'],
-                        'type': salesman['type'],
-                        'performance': {},
-                        'TOTAL': {
-                            'actual': 0,
-                            'target': 1,
-                            'percentage': int(salesman['achievement'].replace('%', '')),
-                            'gap': 0
-                        }
+        // ✅ LOAD DASHBOARD DATA
+        async function loadDashboardData() {
+            try {
+                showLoading(true);
+                hideError();
+
+                console.log('🔄 Loading desktop dashboard data...');
+                
+                // Load all data files
+                const responses = await Promise.all([
+                    fetch('data/dashboard.json'),
+                    fetch('data/salesman_list.json'),
+                    fetch('data/chart_data.json')
+                ]);
+
+                // Check if all requests were successful
+                for (let i = 0; i < responses.length; i++) {
+                    if (!responses[i].ok) {
+                        throw new Error(`Failed to load data file ${i + 1}`);
                     }
-            
-            with open(details_file, 'w', encoding='utf-8') as f:
-                json.dump(minimal_details, f, indent=2, ensure_ascii=False)
-            files_written.append('salesman_details.json')
-            print(f"✅ Written: salesman_details.json (minimal structure)")
-            
-            print(f"\n🎉 Successfully written {len(files_written)} JSON files!")
-            return True
-            
-        except Exception as e:
-            print(f"❌ ERROR writing JSON files: {str(e)}")
-            traceback.print_exc()
-            return False
+                }
 
-    # Helper methods
-    def safe_float(self, value):
-        """Safely convert value to float"""
-        try:
-            if pd.isna(value):
-                return 0.0
-            if isinstance(value, str):
-                value = value.replace(',', '').replace('(', '-').replace(')', '').replace('%', '')
-            return float(value)
-        except:
-            return 0.0
+                // Parse JSON data
+                [dashboardData, salesmanData, chartData] = await Promise.all(
+                    responses.map(response => response.json())
+                );
 
-    def format_currency_indonesia(self, value):
-        """Format currency dengan format Indonesia yang benar (Rb/Jt/M)"""
-        try:
-            val = float(value)
-            if val >= 1000000000:  # >= 1 Miliar
-                return f"{val/1000000000:.1f}M"
-            elif val >= 1000000:  # >= 1 Juta, < 1 Miliar  
-                return f"{val/1000000:.1f}Jt"
-            elif val >= 1000:  # >= 1 Ribu, < 1 Juta
-                return f"{val/1000:.0f}Rb"
-            else:  # < 1 Ribu
-                return f"{val:.0f}"
-        except:
-            return "0"
+                console.log('✅ Desktop dashboard data loaded');
 
-    def determine_status(self, achievement):
-        """Determine performance status based on achievement"""
-        if achievement >= 100:
-            return 'Excellent'
-        elif achievement >= 90:
-            return 'Very Good'
-        elif achievement >= 70:
-            return 'Good'
-        else:
-            return 'Extra Effort'
+                // Update UI with loaded data
+                updateDesktopHeader(dashboardData);
+                updateDesktopLOBCards(dashboardData.lob_cards);
+                updateDesktopSalesmanTable(salesmanData);
+                updateDesktopChart(chartData);
 
-    def run_debug_update(self):
-        """Run the complete debug process"""
-        print("🚀 MORNING UPDATE DEBUG MODE")
-        print("="*80)
-        print("This will help identify why JSON files are not updating")
-        print("="*80)
-        
-        try:
-            # Step-by-step debugging
-            sheets = self.debug_data_processing()
-            if not sheets:
-                print("\n❌ FAILED: Could not process Excel data")
-                return False
-            
-            # Test JSON generation
-            if not self.test_json_generation(sheets):
-                print("\n❌ FAILED: JSON generation test failed")
-                return False
-            
-            # Write JSON files
-            if not self.write_json_files_debug(sheets):
-                print("\n❌ FAILED: Could not write JSON files")
-                return False
-            
-            print("\n" + "="*60)
-            print("🎉 DEBUG COMPLETE - JSON FILES UPDATED!")
-            print("="*60)
-            print("📁 Check the data/ directory for updated JSON files")
-            print("📋 Files should now contain the latest data from Excel")
-            
-            return True
-            
-        except Exception as e:
-            print(f"\n❌ FATAL ERROR: {str(e)}")
-            traceback.print_exc()
-            return False
+                showLoading(false);
+                showMainContent(true);
 
-def main():
-    """Main debug function"""
-    print("🔧 SALESMAN DASHBOARD UPDATER - DEBUG MODE")
-    print("="*70)
-    print("🎯 This will help diagnose why JSON files are not updating")
-    print("="*70)
-    
-    updater = SalesmanDashboardUpdater()
-    success = updater.run_debug_update()
-    
-    if success:
-        print("\n✅ DEBUG SUCCESSFUL - Try running the regular update now")
-    else:
-        print("\n❌ DEBUG FAILED - Check the detailed output above")
-    
-    input("\nPress Enter to exit...")
+            } catch (error) {
+                console.error('❌ Error loading desktop dashboard data:', error);
+                showLoading(false);
+                showError(true);
+            }
+        }
 
-if __name__ == "__main__":
-    main()
+        // ✅ UPDATE DESKTOP HEADER
+        function updateDesktopHeader(data) {
+            document.getElementById('depoName').textContent = data.depo_name || 'Dashboard';
+            document.getElementById('regionName').textContent = data.region_name || 'Loading region information...';
+            
+            // Calculate summary stats
+            const totalLOB = data.lob_cards.length;
+            const avgAchievement = data.lob_cards.reduce((sum, lob) => 
+                sum + parseInt(lob.achievement.replace('%', '')), 0) / totalLOB;
+            
+            document.getElementById('headerStats').innerHTML = `
+                <div class="header-stat">
+                    <div class="header-stat-value">${totalLOB}</div>
+                    <div class="header-stat-label">Total LOB</div>
+                </div>
+                <div class="header-stat">
+                    <div class="header-stat-value">${Math.round(avgAchievement)}%</div>
+                    <div class="header-stat-label">Avg Achievement</div>
+                </div>
+                <div class="header-stat">
+                    <div class="header-stat-value">${data.last_updated ? new Date(data.last_updated).toLocaleDateString('id-ID') : 'Today'}</div>
+                    <div class="header-stat-label">Last Updated</div>
+                </div>
+            `;
+        }
+
+        // ✅ UPDATE DESKTOP LOB CARDS
+        function updateDesktopLOBCards(lobCards) {
+            const cardsGrid = document.getElementById('desktopCardsGrid');
+            cardsGrid.innerHTML = '';
+
+            lobCards.forEach((lob, index) => {
+                const card = createDesktopLOBCard(lob, index);
+                cardsGrid.appendChild(card);
+            });
+
+            console.log('✅ Generated', lobCards.length, 'desktop LOB cards');
+        }
+
+        // ✅ CREATE DESKTOP LOB CARD
+        function createDesktopLOBCard(lob, index) {
+            const card = document.createElement('div');
+            card.className = `desktop-lob-card card-color-${index % 9} fade-in`;
+            card.style.animationDelay = `${index * 0.1}s`;
+            
+            card.innerHTML = `
+                <div class="card-header">
+                    <div>
+                        <div class="lob-name-desktop">${lob.name}</div>
+                    </div>
+                    <div class="lob-values">
+                        <div class="achievement-badge">${lob.achievement}</div>
+                    </div>
+                </div>
+                
+                <div class="financial-info">
+                    <div class="financial-item">
+                        <div class="financial-label">Actual</div>
+                        <div class="financial-value">${lob.actual}</div>
+                    </div>
+                    <div class="financial-item">
+                        <div class="financial-label">Target</div>
+                        <div class="financial-value">${lob.target}</div>
+                    </div>
+                    <div class="financial-item">
+                        <div class="financial-label">Gap</div>
+                        <div class="financial-value">${lob.gap}</div>
+                    </div>
+                </div>
+                
+                <div class="vs-metrics-desktop">
+                    <div class="vs-metric-desktop">
+                        <div class="vs-label-desktop">vs LM</div>
+                        <div class="vs-value-desktop">${lob.vs_lm || '0%'}</div>
+                    </div>
+                    <div class="vs-metric-desktop">
+                        <div class="vs-label-desktop">vs 3LM</div>
+                        <div class="vs-value-desktop">${lob.vs_3lm || '0%'}</div>
+                    </div>
+                    <div class="vs-metric-desktop">
+                        <div class="vs-label-desktop">vs LY</div>
+                        <div class="vs-value-desktop">${lob.vs_ly || '0%'}</div>
+                    </div>
+                </div>
+            `;
+
+            card.addEventListener('click', () => {
+                console.log(`Clicked on ${lob.name} LOB`);
+                // Add navigation logic here if needed
+            });
+
+            return card;
+        }
+
+        // ✅ UPDATE DESKTOP CHART
+        function updateDesktopChart(chartData) {
+            console.log('🎨 Updating desktop chart with data:', chartData);
+            
+            if (!chartData || !chartData.so_data || !chartData.do_data) {
+                console.warn('No chart data available');
+                return;
+            }
+
+            // Update period
+            const chartPeriodElement = document.getElementById('chartPeriod');
+            if (chartPeriodElement && chartData.period) {
+                chartPeriodElement.textContent = chartData.period;
+            }
+
+            // Wait for DOM to be ready then generate chart
+            setTimeout(() => {
+                generateDesktopSVGChart(chartData);
+            }, 100);
+
+            // Update chart stats
+            updateDesktopChartStats(chartData.stats);
+        }
+
+        // ✅ GENERATE DESKTOP SVG CHART
+        function generateDesktopSVGChart(data) {
+            const svg = document.getElementById('desktopChartSvg');
+            const container = document.querySelector('.desktop-chart-container');
+            
+            if (!svg || !container || !data.so_data.length) {
+                console.error('❌ Desktop chart elements not found or no data');
+                return;
+            }
+            
+            // Chart dimensions for desktop
+            const containerRect = container.getBoundingClientRect();
+            const containerWidth = containerRect.width - 40; // Account for padding
+            const containerHeight = 360; // Fixed height for desktop
+            const margin = { top: 30, right: 30, bottom: 60, left: 60 };
+            const chartWidth = containerWidth - margin.left - margin.right;
+            const chartHeight = containerHeight - margin.top - margin.bottom;
+
+            // Set SVG dimensions
+            svg.setAttribute('width', containerWidth);
+            svg.setAttribute('height', containerHeight);
+            svg.setAttribute('viewBox', `0 0 ${containerWidth} ${containerHeight}`);
+
+            // Clear existing content except defs
+            const existingDefs = svg.querySelector('defs');
+            svg.innerHTML = '';
+            if (existingDefs) {
+                svg.appendChild(existingDefs);
+            }
+
+            // Find max value for scaling
+            const maxSO = Math.max(...data.so_data);
+            const maxDO = Math.max(...data.do_data);
+            const maxTarget = Math.max(...data.target_data);
+            const maxValue = Math.max(maxSO, maxDO, maxTarget) * 1.1;
+
+            if (maxValue === 0) {
+                console.warn('⚠️ No data to display in desktop chart');
+                return;
+            }
+
+            // Create scales
+            const xScale = (i) => (i / Math.max(data.so_data.length - 1, 1)) * chartWidth + margin.left;
+            const yScale = (value) => chartHeight - (value / maxValue) * chartHeight + margin.top;
+
+            // Draw grid lines
+            const gridGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            for (let i = 0; i <= 5; i++) {
+                const y = margin.top + (i / 5) * chartHeight;
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', margin.left);
+                line.setAttribute('y1', y);
+                line.setAttribute('x2', margin.left + chartWidth);
+                line.setAttribute('y2', y);
+                line.setAttribute('stroke', 'rgba(102, 126, 234, 0.1)');
+                line.setAttribute('stroke-width', '1');
+                gridGroup.appendChild(line);
+                
+                // Y-axis labels
+                const value = (maxValue / 5) * (5 - i);
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', margin.left - 10);
+                text.setAttribute('y', y + 5);
+                text.setAttribute('text-anchor', 'end');
+                text.setAttribute('font-size', '12');
+                text.setAttribute('fill', '#7f8c8d');
+                text.textContent = formatCurrencyIndonesia(value);
+                gridGroup.appendChild(text);
+            }
+            svg.appendChild(gridGroup);
+
+            // Create path strings for lines
+            let soPath = '';
+            let doPath = '';
+            let targetPath = '';
+
+            data.so_data.forEach((value, i) => {
+                const x = xScale(i);
+                const y = yScale(value);
+                const command = i === 0 ? 'M' : 'L';
+                soPath += `${command} ${x} ${y} `;
+            });
+
+            data.do_data.forEach((value, i) => {
+                const x = xScale(i);
+                const y = yScale(value);
+                const command = i === 0 ? 'M' : 'L';
+                doPath += `${command} ${x} ${y} `;
+            });
+
+            data.target_data.forEach((value, i) => {
+                const x = xScale(i);
+                const y = yScale(value);
+                const command = i === 0 ? 'M' : 'L';
+                targetPath += `${command} ${x} ${y} `;
+            });
+
+            // Draw lines with better styling for desktop
+            if (soPath) {
+                const soLine = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                soLine.setAttribute('d', soPath);
+                soLine.setAttribute('stroke', '#667eea');
+                soLine.setAttribute('stroke-width', '4');
+                soLine.setAttribute('fill', 'none');
+                soLine.setAttribute('stroke-linecap', 'round');
+                soLine.setAttribute('filter', 'drop-shadow(0 3px 6px rgba(102, 126, 234, 0.3))');
+                svg.appendChild(soLine);
+            }
+
+            if (doPath) {
+                const doLine = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                doLine.setAttribute('d', doPath);
+                doLine.setAttribute('stroke', '#f093fb');
+                doLine.setAttribute('stroke-width', '4');
+                doLine.setAttribute('fill', 'none');
+                doLine.setAttribute('stroke-linecap', 'round');
+                doLine.setAttribute('filter', 'drop-shadow(0 3px 6px rgba(240, 147, 251, 0.3))');
+                svg.appendChild(doLine);
+            }
+
+            if (targetPath) {
+                const targetLine = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                targetLine.setAttribute('d', targetPath);
+                targetLine.setAttribute('stroke', '#43e97b');
+                targetLine.setAttribute('stroke-width', '3');
+                targetLine.setAttribute('stroke-dasharray', '8,4');
+                targetLine.setAttribute('fill', 'none');
+                targetLine.setAttribute('filter', 'drop-shadow(0 3px 6px rgba(67, 233, 123, 0.3))');
+                svg.appendChild(targetLine);
+            }
+
+            // Draw points with larger size for desktop
+            data.so_data.forEach((value, i) => {
+                if (value > 0) {
+                    const point = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                    point.setAttribute('cx', xScale(i));
+                    point.setAttribute('cy', yScale(value));
+                    point.setAttribute('r', '6');
+                    point.setAttribute('fill', 'white');
+                    point.setAttribute('stroke', '#667eea');
+                    point.setAttribute('stroke-width', '3');
+                    point.style.cursor = 'pointer';
+                    svg.appendChild(point);
+                }
+            });
+
+            data.do_data.forEach((value, i) => {
+                if (value > 0) {
+                    const point = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                    point.setAttribute('cx', xScale(i));
+                    point.setAttribute('cy', yScale(value));
+                    point.setAttribute('r', '6');
+                    point.setAttribute('fill', 'white');
+                    point.setAttribute('stroke', '#f093fb');
+                    point.setAttribute('stroke-width', '3');
+                    point.style.cursor = 'pointer';
+                    svg.appendChild(point);
+                }
+            });
+
+            // Draw X-axis labels
+            data.labels.forEach((label, i) => {
+                if (i % 3 === 0 || i === data.labels.length - 1) {
+                    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    text.setAttribute('x', xScale(i));
+                    text.setAttribute('y', containerHeight - 20);
+                    text.setAttribute('text-anchor', 'middle');
+                    text.setAttribute('font-size', '12');
+                    text.setAttribute('fill', '#7f8c8d');
+                    text.textContent = label;
+                    svg.appendChild(text);
+                }
+            });
+
+            console.log('✅ Desktop SVG chart generated successfully');
+        }
+
+        // ✅ UPDATE DESKTOP CHART STATS
+        function updateDesktopChartStats(stats) {
+            const chartStatsElement = document.getElementById('chartStatsDesktop');
+            if (!chartStatsElement) return;
+            
+            // Format stats if they're still raw numbers
+            let avgSO = stats.avg_so;
+            let avgDO = stats.avg_do;
+            let avgTarget = stats.avg_target;
+            let gapTotal = stats.gap_total;
+            
+            if (typeof avgSO === 'number') {
+                avgSO = formatCurrencyIndonesia(avgSO);
+            }
+            if (typeof avgDO === 'number') {
+                avgDO = formatCurrencyIndonesia(avgDO);
+            }
+            if (typeof avgTarget === 'number') {
+                avgTarget = formatCurrencyIndonesia(avgTarget);
+            }
+            
+            chartStatsElement.innerHTML = `
+                <div class="chart-stat-desktop">
+                    <div class="stat-value-desktop">${avgSO}</div>
+                    <div class="stat-label-desktop">Avg SO/Hari</div>
+                </div>
+                <div class="chart-stat-desktop">
+                    <div class="stat-value-desktop">${avgDO}</div>
+                    <div class="stat-label-desktop">Avg DO/Hari</div>
+                </div>
+                <div class="chart-stat-desktop">
+                    <div class="stat-value-desktop">${avgTarget}</div>
+                    <div class="stat-label-desktop">Target/Hari</div>
+                </div>
+                <div class="chart-stat-desktop">
+                    <div class="stat-value-desktop">${stats.total_hk || 0}</div>
+                    <div class="stat-label-desktop">Total HK</div>
+                </div>
+                <div class="chart-stat-desktop">
+                    <div class="stat-value-desktop">${stats.sisa_hk_do || 0}</div>
+                    <div class="stat-label-desktop">Sisa HK DO</div>
+                </div>
+                <div class="chart-stat-desktop">
+                    <div class="stat-value-desktop">${gapTotal || '0'}</div>
+                    <div class="stat-label-desktop">Gap Total</div>
+                </div>
+            `;
+            
+            console.log('✅ Desktop chart stats updated');
+        }
+
+        // ✅ UPDATE DESKTOP SALESMAN TABLE
+        function updateDesktopSalesmanTable(salesmanList) {
+            const tableBody = document.getElementById('salesmanTableBody');
+            const salesmanCount = document.getElementById('salesmanCount');
+            
+            tableBody.innerHTML = '';
+            salesmanCount.textContent = `${salesmanList.length} Salesman`;
+
+            salesmanList.forEach((salesman, index) => {
+                const row = createDesktopSalesmanRow(salesman, index);
+                tableBody.appendChild(row);
+            });
+
+            console.log('✅ Desktop salesman table updated');
+        }
+
+        // ✅ CREATE DESKTOP SALESMAN ROW
+        function createDesktopSalesmanRow(salesman, index) {
+            const row = document.createElement('tr');
+            row.style.animationDelay = `${index * 0.05}s`;
+            row.className = 'fade-in';
+            
+            const statusClass = getStatusClass(salesman.status);
+            
+            row.innerHTML = `
+                <td class="rank-column">${salesman.rank}</td>
+                <td class="salesman-name-column">
+                    <div class="salesman-avatar-table" data-nik="${salesman.id}">
+                        <img src="photos/${salesman.id}.jpg" 
+                             alt="${salesman.name}" 
+                             style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;"
+                             onerror="this.style.display='none'; this.parentElement.textContent='${salesman.name.charAt(0).toUpperCase()}';">
+                    </div>
+                    <div class="salesman-info-table">
+                        <h4>${salesman.name}</h4>
+                        <p>${salesman.type}</p>
+                    </div>
+                </td>
+                <td class="achievement-column">
+                    <div class="achievement-circle">${salesman.achievement}</div>
+                </td>
+                <td class="status-column">
+                    <div class="status-badge ${statusClass}">${salesman.status}</div>
+                </td>
+                <td class="action-column">
+                    <button class="view-detail-btn" onclick="openSalesmanDetail('${salesman.id}')">
+                        View Detail
+                    </button>
+                </td>
+            `;
+
+            return row;
+        }
+
+        // Get status CSS class
+        function getStatusClass(status) {
+            switch (status) {
+                case 'Extra Effort': return 'extra-effort';
+                case 'Good': return 'good';
+                case 'Very Good': return 'very-good';
+                case 'Excellent': return 'excellent';
+                default: return 'good';
+            }
+        }
+
+        // ✅ NAVIGATION FUNCTIONS
+        function openSalesmanDetail(salesmanId) {
+            console.log(`🚀 Navigating to salesman detail: ${salesmanId}`);
+            window.location.href = `salesman-detail.html?id=${salesmanId}`;
+        }
+
+        function showDashboard() {
+            // Already on dashboard
+            console.log('Already on dashboard');
+        }
+
+        function showActivity() {
+            alert('🔜 Activity module coming soon!');
+        }
+
+        function showInsentif() {
+            alert('🔜 Insentif module coming soon!');
+        }
+
+        function showReports() {
+            alert('🔜 Reports module coming soon!');
+        }
+
+        function showSettings() {
+            alert('🔜 Settings module coming soon!');
+        }
+
+        function logout() {
+            if (confirm('Apakah Anda yakin ingin logout?')) {
+                sessionStorage.removeItem('isLoggedIn');
+                sessionStorage.removeItem('currentUser');
+                window.location.href = 'index.html';
+            }
+        }
+
+        // ✅ UI CONTROL FUNCTIONS
+        function showLoading(show) {
+            document.getElementById('loadingSpinner').style.display = show ? 'flex' : 'none';
+        }
+
+        function showError(show) {
+            document.getElementById('errorMessage').style.display = show ? 'block' : 'none';
+        }
+
+        function hideError() {
+            showError(false);
+        }
+
+        function showMainContent(show) {
+            const elements = ['cardsSection', 'dashboardLayout'];
+            elements.forEach(id => {
+                document.getElementById(id).style.display = show ? 'block' : 'none';
+            });
+        }
+
+        // Auto-refresh data every 10 minutes for desktop
+        function startAutoRefresh() {
+            setInterval(() => {
+                console.log('🔄 Auto-refreshing desktop data...');
+                loadDashboardData();
+            }, 10 * 60 * 1000);
+        }
+
+        // ✅ INITIALIZE DESKTOP DASHBOARD
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!checkLoginStatus()) {
+                return;
+            }
+
+            console.log('🚀 Initializing desktop dashboard...');
+            loadDashboardData();
+            startAutoRefresh();
+            console.log('✅ Desktop dashboard initialized');
+        });
+
+        // Handle window resize for chart
+        window.addEventListener('resize', () => {
+            if (chartData) {
+                setTimeout(() => {
+                    generateDesktopSVGChart(chartData);
+                }, 300);
+            }
+        });
+
+        // Handle offline/online status
+        window.addEventListener('online', () => {
+            console.log('📡 Connection restored - refreshing desktop data');
+            loadDashboardData();
+        });
+
+        window.addEventListener('offline', () => {
+            console.log('📡 Connection lost - using cached data');
+        });
+    </script>
+</body>
+</html>
