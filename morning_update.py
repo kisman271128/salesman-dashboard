@@ -331,9 +331,9 @@ class SalesmanDashboardUpdater:
             salesman_list = []
             
             for _, row in performance_df.iterrows():
-                if pd.notna(row.get('NIK', '')) and pd.notna(row.get('Nama Salesman', '')):
-                    nik = str(int(float(row['NIK']))) if pd.notna(row['NIK']) else ''
-                    name = str(row['Nama Salesman']).strip()
+                if pd.notna(row.get('szEmployeeId', '')) and pd.notna(row.get('szname', '')):
+                    nik = str(int(float(row['szEmployeeId']))) if pd.notna(row['szEmployeeId']) else ''
+                    name = str(row['szname']).strip()
                     
                     if nik and name:
                         # Calculate achievement
@@ -345,7 +345,7 @@ class SalesmanDashboardUpdater:
                         status = self.determine_status(achievement)
                         
                         salesman_data = {
-                            'id': nik,  # NIK as login ID
+                            'id': nik,  # szEmployeeId as login ID
                             'name': name,
                             'achievement': f"{self.safe_percentage(achievement)}%",
                             'actual': self.format_currency_indonesia(actual),
@@ -356,13 +356,13 @@ class SalesmanDashboardUpdater:
                         }
                         
                         salesman_list.append(salesman_data)
-                        self.safe_log('info', f"✅ Added salesman: NIK {salesman_data['id']} - {salesman_data['name']} - {salesman_data['achievement']}", 
-                                    f"[OK] Added salesman: NIK {salesman_data['id']} - {salesman_data['name']} - {salesman_data['achievement']}")
+                        self.safe_log('info', f"✅ Added salesman: szEmployeeId {salesman_data['id']} - {salesman_data['name']} - {salesman_data['achievement']}", 
+                                    f"[OK] Added salesman: szEmployeeId {salesman_data['id']} - {salesman_data['name']} - {salesman_data['achievement']}")
             
             # Sort by rank
             salesman_list.sort(key=lambda x: x['rank'] if x['rank'] > 0 else 999)
             
-            self.safe_log('info', f"✅ Processed {len(salesman_list)} salesman with NIK authentication", f"[OK] Processed {len(salesman_list)} salesman with NIK authentication")
+            self.safe_log('info', f"✅ Processed {len(salesman_list)} salesman with szEmployeeId authentication", f"[OK] Processed {len(salesman_list)} salesman with szEmployeeId authentication")
             
             return salesman_list
             
@@ -382,9 +382,9 @@ class SalesmanDashboardUpdater:
             return 'Extra Effort'
 
     def process_salesman_detail(self, sheets):
-        """Process detailed salesman data with NIK mapping + TOTAL & Ranking"""
+        """Process detailed salesman data with szEmployeeId mapping + TOTAL & Ranking"""
         try:
-            self.safe_log('info', "🔄 Processing salesman details with NIK mapping + TOTAL & Ranking...", "Processing salesman details with NIK mapping + TOTAL & Ranking...")
+            self.safe_log('info', "🔄 Processing salesman details with szEmployeeId mapping + TOTAL & Ranking...", "Processing salesman details with szEmployeeId mapping + TOTAL & Ranking...")
             
             lob_df = sheets['d.salesmanlob']
             process_df = sheets['d.salesmanproses'] 
@@ -395,16 +395,16 @@ class SalesmanDashboardUpdater:
             
             salesman_details = {}
             
-            # Process LOB performance by NIK
+            # Process LOB performance by szEmployeeId
             for _, row in lob_df.iterrows():
-                if pd.notna(row.get('NIK', '')) and pd.notna(row.get('LOB', '')):
-                    nik = str(int(float(row['NIK']))) if pd.notna(row['NIK']) else ''
+                if pd.notna(row.get('szEmployeeId', '')) and pd.notna(row.get('LOB', '')):
+                    nik = str(int(float(row['szEmployeeId']))) if pd.notna(row['szEmployeeId']) else ''
                     lob_name = str(row['LOB']).strip()
                     
                     if nik and lob_name:
                         if nik not in salesman_details:
                             salesman_details[nik] = {
-                                'name': str(row.get('Nama Salesman', '')).strip(),
+                                'name': str(row.get('szname', '')).strip(),
                                 'sac': str(row.get('Nama SAC', '')).strip(),
                                 'type': str(row.get('Tipe Salesman', '')).strip(),
                                 'performance': {},
@@ -427,15 +427,15 @@ class SalesmanDashboardUpdater:
                             'gap': gap
                         }
                         
-                        self.safe_log('info', f"✅ Added performance for NIK {nik}, LOB {lob_name}: {self.safe_percentage(achievement)}%, Gap: {self.format_currency_indonesia(gap)}", 
-                                    f"[OK] Added performance for NIK {nik}, LOB {lob_name}: {self.safe_percentage(achievement)}%, Gap: {self.format_currency_indonesia(gap)}")
+                        self.safe_log('info', f"✅ Added performance for szEmployeeId {nik}, LOB {lob_name}: {self.safe_percentage(achievement)}%, Gap: {self.format_currency_indonesia(gap)}", 
+                                    f"[OK] Added performance for szEmployeeId {nik}, LOB {lob_name}: {self.safe_percentage(achievement)}%, Gap: {self.format_currency_indonesia(gap)}")
             
             # Process additional metrics
             self.safe_log('info', f"Process columns: {list(process_df.columns)}")
             
             for _, row in process_df.iterrows():
-                if pd.notna(row.get('NIK', '')):
-                    nik = str(int(float(row['NIK']))) if pd.notna(row['NIK']) else ''
+                if pd.notna(row.get('szEmployeeId', '')):
+                    nik = str(int(float(row['szEmployeeId']))) if pd.notna(row['szEmployeeId']) else ''
                     
                     if nik and nik in salesman_details:
                         # Calculate key process metrics
@@ -459,8 +459,8 @@ class SalesmanDashboardUpdater:
                             'GP': int(round((gp_food + gp_others) / 2)) if (gp_food + gp_others) > 0 else 0
                         }
                         
-                        self.safe_log('info', f"✅ Added metrics for NIK {nik}: CA:{ca}%, GP:{(gp_food + gp_others) / 2:.1f}%", 
-                                    f"[OK] Added metrics for NIK {nik}: CA:{ca}%, GP:{(gp_food + gp_others) / 2:.1f}%")
+                        self.safe_log('info', f"✅ Added metrics for szEmployeeId {nik}: CA:{ca}%, GP:{(gp_food + gp_others) / 2:.1f}%", 
+                                    f"[OK] Added metrics for szEmployeeId {nik}: CA:{ca}%, GP:{(gp_food + gp_others) / 2:.1f}%")
             
             # 🆕 NEW: Add TOTAL and Ranking from d.performance sheet
             self.safe_log('info', "🎯 Adding TOTAL and Ranking data from d.performance...", "[TARGET] Adding TOTAL and Ranking data from d.performance...")
@@ -469,8 +469,8 @@ class SalesmanDashboardUpdater:
             total_salesman_count = len([nik for nik in salesman_details.keys() if nik])
             
             for _, row in performance_df.iterrows():
-                if pd.notna(row.get('NIK', '')):
-                    nik = str(int(float(row['NIK']))) if pd.notna(row['NIK']) else ''
+                if pd.notna(row.get('szEmployeeId', '')):
+                    nik = str(int(float(row['szEmployeeId']))) if pd.notna(row['szEmployeeId']) else ''
                     
                     if nik and nik in salesman_details:
                         # Get TOTAL performance data from d.performance
@@ -496,13 +496,13 @@ class SalesmanDashboardUpdater:
                             'total_salesman': total_salesman_count
                         }
                         
-                        self.safe_log('info', f"✅ Added TOTAL for NIK {nik}: Actual={self.format_currency_indonesia(total_actual)}, Target={self.format_currency_indonesia(total_target)}, Achievement={total_achievement:.1f}%, Gap={self.format_currency_indonesia(total_gap)}", 
-                                    f"[OK] Added TOTAL for NIK {nik}: Achievement={total_achievement:.1f}%, Rank={rank}/{total_salesman_count}")
+                        self.safe_log('info', f"✅ Added TOTAL for szEmployeeId {nik}: Actual={self.format_currency_indonesia(total_actual)}, Target={self.format_currency_indonesia(total_target)}, Achievement={total_achievement:.1f}%, Gap={self.format_currency_indonesia(total_gap)}", 
+                                    f"[OK] Added TOTAL for szEmployeeId {nik}: Achievement={total_achievement:.1f}%, Rank={rank}/{total_salesman_count}")
                         
-                        self.safe_log('info', f"✅ Added Ranking for NIK {nik}: Rank {rank} of {total_salesman_count} salesman", 
-                                    f"[OK] Added Ranking for NIK {nik}: Rank {rank} of {total_salesman_count}")
+                        self.safe_log('info', f"✅ Added Ranking for szEmployeeId {nik}: Rank {rank} of {total_salesman_count} salesman", 
+                                    f"[OK] Added Ranking for szEmployeeId {nik}: Rank {rank} of {total_salesman_count}")
             
-            self.safe_log('info', f"✅ Processed details for {len(salesman_details)} salesman with NIK keys + Gap field + TOTAL + Ranking", f"[OK] Processed details for {len(salesman_details)} salesman with NIK keys + Gap field + TOTAL + Ranking")
+            self.safe_log('info', f"✅ Processed details for {len(salesman_details)} salesman with szEmployeeId keys + Gap field + TOTAL + Ranking", f"[OK] Processed details for {len(salesman_details)} salesman with szEmployeeId keys + Gap field + TOTAL + Ranking")
             
             return salesman_details
             
@@ -858,12 +858,12 @@ class SalesmanDashboardUpdater:
    📈 vs Metrics Display - FIXED vs LM/3LM/LY showing
    🎯 Chart Stats Format - FIXED proper Rb/Jt/M format
    📊 Gap Field Added - FIXED Gap calculation (Actual - Target) for each LOB
-   🔐 NIK Login - All salesman + admin access
+   🔐 szEmployeeId Login - All salesman + admin access
    🧭 Modern Navigation - Updated 4 & 5 icon menus
 
 🔑 Login Credentials:
    Admin: admin / admin123
-   Salesman: [NIK] / sales123
+   Salesman: [szEmployeeId] / sales123
 
 💡 Format Indonesia + Data Enhancement:
    • < 1K = angka langsung (500)
