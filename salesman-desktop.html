@@ -1,0 +1,1468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detail Kinerja Salesman - Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            color: #2c3e50;
+            overflow-x: hidden;
+        }
+
+        .desktop-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* ✅ SIDEBAR NAVIGATION */
+        .sidebar {
+            width: 260px;
+            background: linear-gradient(180deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 0;
+            box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
+            position: fixed;
+            height: 100vh;
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .sidebar-header {
+            padding: 24px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .company-logo {
+            font-size: 20px;
+            font-weight: 800;
+            margin-bottom: 6px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .company-subtitle {
+            font-size: 12px;
+            opacity: 0.9;
+            font-weight: 400;
+        }
+
+        .sidebar-nav {
+            padding: 20px 0;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            padding: 14px 20px;
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border-left: 3px solid transparent;
+        }
+
+        .nav-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border-left-color: #667eea;
+            transform: translateX(3px);
+        }
+
+        .nav-item.active {
+            background: rgba(102, 126, 234, 0.2);
+            color: white;
+            border-left-color: #667eea;
+        }
+
+        .nav-icon {
+            font-size: 18px;
+            margin-right: 12px;
+            width: 22px;
+        }
+
+        .nav-label {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        /* ✅ MAIN CONTENT */
+        .main-content {
+            flex: 1;
+            margin-left: 260px;
+            height: 100vh;
+            overflow-y: auto;
+            background: transparent;
+        }
+
+        .detail-header {
+            background: white;
+            padding: 20px 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #e2e8f0;
+            flex-shrink: 0;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .back-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: none;
+            padding: 10px 14px;
+            border-radius: 10px;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            transform: translateX(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .salesman-info h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 4px;
+        }
+
+        .salesman-info p {
+            font-size: 14px;
+            color: #7f8c8d;
+            font-weight: 500;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .ranking-badge {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .refresh-btn {
+            background: #f8fafc;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .refresh-btn:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        /* ✅ DASHBOARD CONTENT */
+        .dashboard-content {
+            padding: 24px 30px;
+            height: calc(100vh - 80px);
+            overflow-y: auto;
+        }
+
+        /* ✅ ACHIEVEMENT CARDS ROW */
+        .achievement-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .achievement-card {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e2e8f0;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .achievement-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--card-color, linear-gradient(135deg, #667eea, #764ba2));
+        }
+
+        .achievement-card.total { --card-color: linear-gradient(135deg, #2c3e50, #3498db); }
+        .achievement-card.main { --card-color: linear-gradient(135deg, #27ae60, #2ecc71); }
+        .achievement-card.others { --card-color: linear-gradient(135deg, #f39c12, #e67e22); }
+        .achievement-card.gap { --card-color: linear-gradient(135deg, #e74c3c, #c0392b); }
+
+        .achievement-value {
+            font-size: 32px;
+            font-weight: 800;
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+
+        .achievement-label {
+            font-size: 14px;
+            color: #64748b;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .achievement-detail {
+            font-size: 12px;
+            color: #94a3b8;
+        }
+
+        /* ✅ MAIN GRID LAYOUT */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        /* ✅ RADIAL BAR CHARTS SECTION */
+        .radial-section {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e2e8f0;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .radial-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .radial-item {
+            text-align: center;
+            position: relative;
+        }
+
+        .radial-chart {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 16px;
+            position: relative;
+        }
+
+        .radial-progress {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            position: relative;
+            background: conic-gradient(
+                var(--progress-color) 0deg,
+                var(--progress-color) calc(var(--percentage) * 3.6deg),
+                #f1f5f9 calc(var(--percentage) * 3.6deg),
+                #f1f5f9 360deg
+            );
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .radial-progress::before {
+            content: '';
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            background: white;
+            border-radius: 50%;
+            box-shadow: inset 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .radial-value {
+            position: absolute;
+            font-size: 16px;
+            font-weight: 800;
+            color: #1e293b;
+            z-index: 2;
+        }
+
+        .radial-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+
+        .radial-details {
+            font-size: 11px;
+            color: #64748b;
+        }
+
+        /* ✅ RADIAL BAR COLORS */
+        .radial-1 { --progress-color: #1e6b52; }
+        .radial-2 { --progress-color: #52a373; }
+        .radial-3 { --progress-color: #a4b847; }
+        .radial-4 { --progress-color: #f4d03f; }
+        .radial-5 { --progress-color: #5dade2; }
+        .radial-6 { --progress-color: #af7ac5; }
+
+        /* ✅ PROCESS METRICS SECTION */
+        .process-section {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e2e8f0;
+        }
+
+        .process-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .process-item {
+            text-align: center;
+            padding: 16px;
+            background: #f8fafc;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            transition: all 0.3s ease;
+        }
+
+        .process-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .semi-circle-container {
+            position: relative;
+            width: 100px;
+            height: 50px;
+            margin: 0 auto 12px;
+        }
+
+        .semi-circle {
+            width: 100px;
+            height: 50px;
+            border: 6px solid #f1f5f9;
+            border-bottom: none;
+            border-radius: 50px 50px 0 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .semi-circle::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 6px solid;
+            border-bottom: none;
+            border-radius: 50px 50px 0 0;
+            transform-origin: center bottom;
+            transition: transform 1s ease-out;
+        }
+
+        .semi-circle.ca::before {
+            border-color: #e74c3c transparent transparent transparent;
+            transform: rotate(calc(var(--percentage) * 1.8deg));
+        }
+
+        .semi-circle.ca-prod::before {
+            border-color: #f39c12 transparent transparent transparent;
+            transform: rotate(calc(var(--percentage) * 1.8deg));
+        }
+
+        .semi-circle.gp::before {
+            border-color: #27ae60 transparent transparent transparent;
+            transform: rotate(calc(var(--percentage) * 1.8deg));
+        }
+
+        .semi-circle.sku::before {
+            border-color: #3498db transparent transparent transparent;
+            transform: rotate(calc(var(--percentage) * 1.8deg));
+        }
+
+        .process-value {
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 14px;
+            font-weight: 700;
+            background: white;
+            padding: 4px 8px;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            color: #1e293b;
+        }
+
+        .process-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+
+        .process-details {
+            font-size: 11px;
+            color: #64748b;
+        }
+
+        /* ✅ TABLES SECTION */
+        .tables-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        .table-section {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e2e8f0;
+        }
+
+        .table-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .data-table th {
+            background: #f8fafc;
+            color: #475569;
+            font-weight: 600;
+            padding: 12px 8px;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .data-table td {
+            padding: 10px 8px;
+            text-align: center;
+            border: 1px solid #f1f5f9;
+            font-size: 11px;
+            vertical-align: middle;
+        }
+
+        .data-table tr:nth-child(even) {
+            background: #f8fafc;
+        }
+
+        .data-table tr:hover {
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .data-table .lob-name {
+            font-weight: 600;
+            color: #1e293b;
+            text-align: left;
+        }
+
+        .achievement-cell {
+            font-weight: 600;
+        }
+
+        .achievement-excellent { color: #059669; }
+        .achievement-good { color: #f59e0b; }
+        .achievement-poor { color: #dc2626; }
+
+        .gap-positive { color: #059669; font-weight: 600; }
+        .gap-negative { color: #dc2626; font-weight: 600; }
+
+        /* ✅ LOADING AND ERROR STATES */
+        .loading-spinner {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 300px;
+            flex-direction: column;
+            background: white;
+            border-radius: 16px;
+            margin: 24px 30px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 16px;
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            color: #dc2626;
+            padding: 24px;
+            border-radius: 16px;
+            margin: 24px 30px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(239, 68, 68, 0.1);
+        }
+
+        /* ✅ SCROLLBAR STYLING */
+        .table-container::-webkit-scrollbar,
+        .dashboard-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .table-container::-webkit-scrollbar-track,
+        .dashboard-content::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 3px;
+        }
+
+        .table-container::-webkit-scrollbar-thumb,
+        .dashboard-content::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+
+        .table-container::-webkit-scrollbar-thumb:hover,
+        .dashboard-content::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* ✅ ANIMATIONS */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes radialFill {
+            from { --percentage: 0; }
+            to { --percentage: var(--target-percentage); }
+        }
+
+        .fade-in {
+            animation: fadeInUp 0.6s ease-out forwards;
+        }
+
+        .radial-progress {
+            animation: radialFill 1.5s ease-out forwards;
+        }
+
+        /* ✅ RESPONSIVE */
+        @media (max-width: 1400px) {
+            .radial-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .achievement-row {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 1200px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .tables-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+            
+            .dashboard-content {
+                padding: 16px;
+            }
+            
+            .achievement-row {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
+            }
+            
+            .radial-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .process-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="desktop-container">
+        <!-- ✅ SIDEBAR NAVIGATION -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="company-logo">SALESMAN APP</div>
+                <div class="company-subtitle">Manajemen Dashboard</div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <div class="nav-item" onclick="goHome()">
+                    <div class="nav-icon">🏠</div>
+                    <div class="nav-label">Dashboard</div>
+                </div>
+                <div class="nav-item" onclick="showActivity()">
+                    <div class="nav-icon">📊</div>
+                    <div class="nav-label">Aktivitas</div>
+                </div>
+                <div class="nav-item" onclick="showInsentif()">
+                    <div class="nav-icon">💰</div>
+                    <div class="nav-label">Insentif</div>
+                </div>
+                <div class="nav-item" onclick="showReports()">
+                    <div class="nav-icon">📈</div>
+                    <div class="nav-label">Laporan</div>
+                </div>
+                <div class="nav-item active" onclick="showProfile()">
+                    <div class="nav-icon">👤</div>
+                    <div class="nav-label">Profil</div>
+                </div>
+                <div class="nav-item" onclick="logout()">
+                    <div class="nav-icon">🚪</div>
+                    <div class="nav-label">Keluar</div>
+                </div>
+            </nav>
+        </div>
+
+        <!-- ✅ MAIN CONTENT -->
+        <div class="main-content">
+            <!-- ✅ DETAIL HEADER -->
+            <div class="detail-header">
+                <div class="header-left">
+                    <a href="dashboard-desktop.html" class="back-btn">←</a>
+                    <div class="salesman-info">
+                        <h1 id="salesmanName">Memuat...</h1>
+                        <p id="salesmanType">Detail Kinerja Salesman</p>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="ranking-badge" id="rankingBadge">Peringkat: Memuat...</div>
+                    <button class="refresh-btn" onclick="loadSalesmanData()">
+                        🔄 Perbarui
+                    </button>
+                </div>
+            </div>
+
+            <!-- ✅ LOADING STATE -->
+            <div class="loading-spinner" id="loadingSpinner">
+                <div class="spinner"></div>
+                <div style="font-size: 14px; font-weight: 600; color: #667eea;">Memuat data salesman...</div>
+            </div>
+
+            <!-- ✅ ERROR STATE -->
+            <div class="error-message" id="errorMessage" style="display: none;">
+                <h3>📡 Kesalahan Memuat Data</h3>
+                <p>Tidak dapat memuat data salesman. Silakan periksa koneksi Anda.</p>
+                <button class="refresh-btn" onclick="loadSalesmanData()" style="margin-top: 12px;">Coba Lagi</button>
+            </div>
+
+            <!-- ✅ DASHBOARD CONTENT -->
+            <div class="dashboard-content" id="dashboardContent" style="display: none;">
+                <!-- ✅ ACHIEVEMENT CARDS ROW -->
+                <div class="achievement-row">
+                    <div class="achievement-card total fade-in">
+                        <div class="achievement-value" id="totalAchievement">0%</div>
+                        <div class="achievement-label">Pencapaian Total</div>
+                        <div class="achievement-detail">Target keseluruhan</div>
+                    </div>
+                    <div class="achievement-card main fade-in" style="animation-delay: 0.1s;">
+                        <div class="achievement-value" id="mainAchievement">0%</div>
+                        <div class="achievement-label">GPPJ + GEN</div>
+                        <div class="achievement-detail">LOB utama</div>
+                    </div>
+                    <div class="achievement-card others fade-in" style="animation-delay: 0.2s;">
+                        <div class="achievement-value" id="othersAchievement">0%</div>
+                        <div class="achievement-label">GBS + Lainnya</div>
+                        <div class="achievement-detail">LOB pendukung</div>
+                    </div>
+                    <div class="achievement-card gap fade-in" style="animation-delay: 0.3s;">
+                        <div class="achievement-value" id="totalGap">0</div>
+                        <div class="achievement-label">Gap Total</div>
+                        <div class="achievement-detail">Selisih target</div>
+                    </div>
+                </div>
+
+                <!-- ✅ MAIN GRID -->
+                <div class="main-grid">
+                    <!-- ✅ RADIAL BAR CHARTS SECTION -->
+                    <div class="radial-section fade-in" style="animation-delay: 0.4s;">
+                        <div class="section-header">
+                            <h3 class="section-title">
+                                <span>📊</span>
+                                Kinerja LOB - Radial Chart
+                            </h3>
+                        </div>
+                        <div class="radial-grid" id="radialGrid">
+                            <!-- Will be populated by JavaScript -->
+                        </div>
+                    </div>
+
+                    <!-- ✅ PROCESS METRICS SECTION -->
+                    <div class="process-section fade-in" style="animation-delay: 0.5s;">
+                        <div class="section-header">
+                            <h3 class="section-title">
+                                <span>⚡</span>
+                                Metrik Proses
+                            </h3>
+                        </div>
+                        <div class="process-grid">
+                            <div class="process-item">
+                                <div class="semi-circle-container">
+                                    <div class="semi-circle ca" style="--percentage: 0"></div>
+                                    <div class="process-value">0%</div>
+                                </div>
+                                <div class="process-label">CA (Customer Active)</div>
+                                <div class="process-details">Pelanggan aktif</div>
+                            </div>
+                            
+                            <div class="process-item">
+                                <div class="semi-circle-container">
+                                    <div class="semi-circle ca-prod" style="--percentage: 0"></div>
+                                    <div class="process-value">0%</div>
+                                </div>
+                                <div class="process-label">CA Produktif</div>
+                                <div class="process-details">CA yang produktif</div>
+                            </div>
+                            
+                            <div class="process-item">
+                                <div class="semi-circle-container">
+                                    <div class="semi-circle gp" style="--percentage: 0"></div>
+                                    <div class="process-value">0%</div>
+                                </div>
+                                <div class="process-label">GP (Gross Profit)</div>
+                                <div class="process-details">Margin keuntungan</div>
+                            </div>
+                            
+                            <div class="process-item">
+                                <div class="semi-circle-container">
+                                    <div class="semi-circle sku" style="--percentage: 0"></div>
+                                    <div class="process-value">0%</div>
+                                </div>
+                                <div class="process-label">SKU Terjual</div>
+                                <div class="process-details">Variasi produk</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ✅ TABLES GRID -->
+                <div class="tables-grid">
+                    <!-- ✅ SALES BY CHANNEL TABLE -->
+                    <div class="table-section fade-in" style="animation-delay: 0.6s;">
+                        <h3 class="table-title">
+                            <span>🛒</span>
+                            Penjualan per Channel
+                        </h3>
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Channel</th>
+                                        <th>Target</th>
+                                        <th>Aktual</th>
+                                        <th>Pencapaian</th>
+                                        <th>Gap</th>
+                                        <th>vs BL</th>
+                                        <th>vs TL</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="channelTableBody">
+                                    <!-- Will be populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- ✅ PERFORMANCE ANALYSIS TABLE -->
+                    <div class="table-section fade-in" style="animation-delay: 0.7s;">
+                        <h3 class="table-title">
+                            <span>📈</span>
+                            Analisis Kinerja LOB
+                        </h3>
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>LOB</th>
+                                        <th>Target</th>
+                                        <th>Aktual</th>
+                                        <th>Pencapaian</th>
+                                        <th>Gap</th>
+                                        <th>Share</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="lobTableBody">
+                                    <!-- Will be populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let salesmanData = null;
+        let salesmanDetails = null;
+        let currentSalesmanId = null;
+
+        // ✅ FORMAT CURRENCY INDONESIA
+        function formatCurrencyIndonesia(value) {
+            try {
+                const val = Math.abs(parseFloat(value));
+                
+                if (val >= 1000000000) {
+                    return `${(val/1000000000).toFixed(1)}M`;
+                } else if (val >= 1000000) {
+                    return `${(val/1000000).toFixed(1)}Jt`;
+                } else if (val >= 1000) {
+                    return `${(val/1000).toFixed(0)}Rb`;
+                } else {
+                    return `${val.toFixed(0)}`;
+                }
+            } catch {
+                return "0";
+            }
+        }
+
+        // Check login status
+        function checkLoginStatus() {
+            const isLoggedIn = sessionStorage.getItem('isLoggedIn');
+            if (!isLoggedIn) {
+                window.location.href = 'index.html';
+                return false;
+            }
+            return true;
+        }
+
+        // Get URL parameter
+        function getUrlParameter(name) {
+            name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+            var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+            var results = regex.exec(location.search);
+            return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+        }
+
+        // ✅ GENERATE RADIAL BAR CHARTS
+        function generateRadialCharts(performanceData) {
+            console.log('🎨 Generating radial bar charts...');
+            
+            const radialGrid = document.getElementById('radialGrid');
+            radialGrid.innerHTML = '';
+
+            // Colors for different LOBs
+            const colors = [
+                '#1e6b52', '#52a373', '#a4b847', 
+                '#f4d03f', '#5dade2', '#af7ac5'
+            ];
+
+            // Filter and sort LOBs by actual value
+            const validLOBs = Object.keys(performanceData)
+                .filter(lob => performanceData[lob].actual > 1000)
+                .map(lob => ({
+                    lob: lob,
+                    actual: performanceData[lob].actual,
+                    target: performanceData[lob].target,
+                    percentage: performanceData[lob].percentage,
+                    gap: performanceData[lob].gap
+                }))
+                .sort((a, b) => b.actual - a.actual)
+                .slice(0, 6); // Take top 6 LOBs
+
+            validLOBs.forEach((lobData, index) => {
+                const radialItem = document.createElement('div');
+                radialItem.className = 'radial-item fade-in';
+                radialItem.style.animationDelay = `${0.5 + index * 0.1}s`;
+                
+                const gapText = lobData.gap >= 0 ? 
+                    `+${formatCurrencyIndonesia(lobData.gap)}` : 
+                    `-${formatCurrencyIndonesia(Math.abs(lobData.gap))}`;
+                
+                radialItem.innerHTML = `
+                    <div class="radial-chart">
+                        <div class="radial-progress radial-${index + 1}" 
+                             style="--percentage: ${lobData.percentage}; --progress-color: ${colors[index]};">
+                            <div class="radial-value">${lobData.percentage}%</div>
+                        </div>
+                    </div>
+                    <div class="radial-label">${lobData.lob}</div>
+                    <div class="radial-details">
+                        ${formatCurrencyIndonesia(lobData.actual)} / ${formatCurrencyIndonesia(lobData.target)}
+                        <br>Gap: ${gapText}
+                    </div>
+                `;
+                
+                radialGrid.appendChild(radialItem);
+            });
+
+            console.log('✅ Radial bar charts generated');
+        }
+
+        // ✅ UPDATE ACHIEVEMENT CARDS
+        function updateAchievementCards(performanceData, totalData) {
+            // Calculate main LOBs (GPPJ + GEN)
+            const mainLOBs = ['GPPJ', 'GEN'];
+            let mainTotal = { actual: 0, target: 0, gap: 0 };
+            mainLOBs.forEach(lob => {
+                if (performanceData[lob]) {
+                    mainTotal.actual += performanceData[lob].actual;
+                    mainTotal.target += performanceData[lob].target;
+                    mainTotal.gap += performanceData[lob].gap;
+                }
+            });
+            const mainAchievement = mainTotal.target > 0 ? (mainTotal.actual / mainTotal.target * 100) : 0;
+
+            // Calculate others
+            const otherLOBs = ['GBS', 'MBR', 'RANS', 'HGJ', 'GSJ', 'ABBOTT'];
+            let othersTotal = { actual: 0, target: 0, gap: 0 };
+            otherLOBs.forEach(lob => {
+                if (performanceData[lob]) {
+                    othersTotal.actual += performanceData[lob].actual;
+                    othersTotal.target += performanceData[lob].target;
+                    othersTotal.gap += performanceData[lob].gap;
+                }
+            });
+            const othersAchievement = othersTotal.target > 0 ? (othersTotal.actual / othersTotal.target * 100) : 0;
+
+            // Update cards
+            document.getElementById('totalAchievement').textContent = `${totalData ? totalData.percentage : 0}%`;
+            document.getElementById('mainAchievement').textContent = `${Math.round(mainAchievement)}%`;
+            document.getElementById('othersAchievement').textContent = `${Math.round(othersAchievement)}%`;
+            
+            const gapText = totalData.gap >= 0 ? 
+                `+${formatCurrencyIndonesia(totalData.gap)}` : 
+                `-${formatCurrencyIndonesia(Math.abs(totalData.gap))}`;
+            document.getElementById('totalGap').textContent = gapText;
+
+            console.log('✅ Achievement cards updated');
+        }
+
+        // ✅ UPDATE PROCESS METRICS
+        function updateProcessMetrics(metricsData) {
+            const metrics = ['CA', 'CAProd', 'GP', 'SKU'];
+            
+            metrics.forEach((metric, index) => {
+                const value = metricsData[metric] || 0;
+                const semiCircle = document.querySelectorAll('.semi-circle')[index];
+                const processValue = document.querySelectorAll('.process-value')[index];
+                
+                if (semiCircle && processValue) {
+                    semiCircle.style.setProperty('--percentage', value);
+                    processValue.textContent = `${value}%`;
+                }
+            });
+
+            console.log('✅ Process metrics updated');
+        }
+
+        // ✅ UPDATE TABLES
+        function updateTables(performanceData) {
+            // Update channel table (dummy data for demo)
+            const channelTableBody = document.getElementById('channelTableBody');
+            channelTableBody.innerHTML = `
+                <tr>
+                    <td class="lob-name">Wholesaler</td>
+                    <td>1.8M</td>
+                    <td>1.3M</td>
+                    <td class="achievement-cell achievement-good">72%</td>
+                    <td class="gap-negative">-500Jt</td>
+                    <td>5%</td>
+                    <td>8%</td>
+                </tr>
+                <tr>
+                    <td class="lob-name">Retail</td>
+                    <td>500Jt</td>
+                    <td>400Jt</td>
+                    <td class="achievement-cell achievement-good">80%</td>
+                    <td class="gap-negative">-100Jt</td>
+                    <td>3%</td>
+                    <td>6%</td>
+                </tr>
+                <tr>
+                    <td class="lob-name">MTI</td>
+                    <td>200Jt</td>
+                    <td>150Jt</td>
+                    <td class="achievement-cell achievement-poor">75%</td>
+                    <td class="gap-negative">-50Jt</td>
+                    <td>2%</td>
+                    <td>4%</td>
+                </tr>
+            `;
+
+            // Update LOB analysis table
+            const lobTableBody = document.getElementById('lobTableBody');
+            lobTableBody.innerHTML = '';
+            
+            // Calculate total for share calculation
+            const totalActual = Object.values(performanceData).reduce((sum, lob) => sum + lob.actual, 0);
+            
+            // Sort LOBs by target value
+            const sortedLOBs = Object.keys(performanceData)
+                .filter(lob => performanceData[lob].target > 1000)
+                .sort((a, b) => performanceData[b].target - performanceData[a].target);
+
+            sortedLOBs.forEach(lob => {
+                const data = performanceData[lob];
+                const share = totalActual > 0 ? ((data.actual / totalActual) * 100).toFixed(1) : 0;
+                const achievementClass = data.percentage >= 100 ? 'achievement-excellent' : 
+                                       data.percentage >= 80 ? 'achievement-good' : 'achievement-poor';
+                const gapClass = data.gap >= 0 ? 'gap-positive' : 'gap-negative';
+                const gapText = data.gap >= 0 ? `+${formatCurrencyIndonesia(data.gap)}` : `-${formatCurrencyIndonesia(Math.abs(data.gap))}`;
+                const status = data.percentage >= 100 ? 'Excellent' : data.percentage >= 80 ? 'Good' : 'Perlu Fokus';
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="lob-name">${lob}</td>
+                    <td>${formatCurrencyIndonesia(data.target)}</td>
+                    <td>${formatCurrencyIndonesia(data.actual)}</td>
+                    <td class="achievement-cell ${achievementClass}">${data.percentage}%</td>
+                    <td class="${gapClass}">${gapText}</td>
+                    <td>${share}%</td>
+                    <td class="achievement-cell ${achievementClass}">${status}</td>
+                `;
+                lobTableBody.appendChild(row);
+            });
+
+            console.log('✅ Tables updated');
+        }
+
+        // ✅ LOAD SALESMAN DATA
+        async function loadSalesmanData() {
+            try {
+                showLoading(true);
+                hideError();
+
+                console.log('🔄 Memuat data salesman...');
+                
+                currentSalesmanId = getUrlParameter('id');
+                
+                if (!currentSalesmanId) {
+                    throw new Error('ID salesman tidak ditemukan');
+                }
+
+                console.log(`📍 Memuat data untuk salesman ID: ${currentSalesmanId}`);
+                
+                // Load embedded data (fallback)
+                const salesmanDetailsData = {
+                    "17210032876": {
+                        "name": "Asman",
+                        "sac": "Kisman Pidu",
+                        "type": "Sales Representative Mix Yudistira",
+                        "performance": {
+                            "GBS": {
+                                "actual": 137318646.12802804,
+                                "target": 292564000.0,
+                                "percentage": 47,
+                                "gap": -155245353.87197196
+                            },
+                            "GEN": {
+                                "actual": 45183286.38397794,
+                                "target": 72100000.0,
+                                "percentage": 63,
+                                "gap": -26916713.616022058
+                            },
+                            "GPPJ": {
+                                "actual": 497461588.83898854,
+                                "target": 618000000.0,
+                                "percentage": 80,
+                                "gap": -120538411.16101146
+                            },
+                            "HGJ": {
+                                "actual": 26431.53,
+                                "target": 2650000.0,
+                                "percentage": 1,
+                                "gap": -2623568.47
+                            },
+                            "MBR": {
+                                "actual": 6248035.808098997,
+                                "target": 10500000.0,
+                                "percentage": 60,
+                                "gap": -4251964.191901003
+                            },
+                            "RANS": {
+                                "actual": 6689637.430000003,
+                                "target": 2628719.390250495,
+                                "percentage": 254,
+                                "gap": 4060918.0397495083
+                            },
+                            "GSJ": {
+                                "actual": 203378.24999999994,
+                                "target": 72507.76870374221,
+                                "percentage": 280,
+                                "gap": 130870.48129625773
+                            },
+                            "ABBOTT": {
+                                "actual": 8940354.009999998,
+                                "target": 1484772.8410457626,
+                                "percentage": 602,
+                                "gap": 7455581.1689542355
+                            }
+                        },
+                        "metrics": {
+                            "CA": 85,
+                            "CAProd": 78,
+                            "SKU": 92,
+                            "GP": 76
+                        },
+                        "TOTAL": {
+                            "actual": 702071358.3790935,
+                            "target": 1000000000.0,
+                            "percentage": 70,
+                            "gap": -297928641.6209065
+                        },
+                        "Ranking": {
+                            "Rank": 5,
+                            "total_salesman": 6
+                        }
+                    },
+                    "17210036369": {
+                        "name": "Muhammad Tamrin",
+                        "sac": "Kisman Pidu", 
+                        "type": "Sales Representative Mix Yudistira",
+                        "performance": {
+                            "GBS": {
+                                "actual": 137040808.19159868,
+                                "target": 205314000.0,
+                                "percentage": 67,
+                                "gap": -68273191.80840132
+                            },
+                            "GEN": {
+                                "actual": 18854497.382749002,
+                                "target": 40100000.0,
+                                "percentage": 47,
+                                "gap": -21245502.617250998
+                            },
+                            "GPPJ": {
+                                "actual": 252893034.6243341,
+                                "target": 253250000.0,
+                                "percentage": 100,
+                                "gap": -356965.3756659031
+                            },
+                            "HGJ": {
+                                "actual": 44053.15,
+                                "target": 650000.0,
+                                "percentage": 7,
+                                "gap": -605946.85
+                            },
+                            "MBR": {
+                                "actual": 2652621.4812539998,
+                                "target": 4800000.0,
+                                "percentage": 55,
+                                "gap": -2147378.5187460002
+                            },
+                            "RANS": {
+                                "actual": 7772764.290000009,
+                                "target": 3099936.719497302,
+                                "percentage": 251,
+                                "gap": 4672827.570502708
+                            },
+                            "GSJ": {
+                                "actual": 27117.1,
+                                "target": 86063.2805026982,
+                                "percentage": 32,
+                                "gap": -58946.1805026982
+                            },
+                            "ABBOTT": {
+                                "actual": 0.0,
+                                "target": 0.0,
+                                "percentage": 0,
+                                "gap": 0.0
+                            }
+                        },
+                        "metrics": {
+                            "CA": 82,
+                            "CAProd": 75,
+                            "SKU": 88,
+                            "GP": 79
+                        },
+                        "TOTAL": {
+                            "actual": 419284896.2199358,
+                            "target": 507300000.0,
+                            "percentage": 83,
+                            "gap": -88015103.78006423
+                        },
+                        "Ranking": {
+                            "Rank": 3,
+                            "total_salesman": 6
+                        }
+                    },
+                    "17210037632": {
+                        "name": "Robianor",
+                        "sac": "Kisman Pidu",
+                        "type": "Sales Representative Mix Yudistira",
+                        "performance": {
+                            "GBS": {
+                                "actual": 114182950.64802517,
+                                "target": 117564000.0,
+                                "percentage": 97,
+                                "gap": -3381049.35197483
+                            },
+                            "GEN": {
+                                "actual": 18754421.718617007,
+                                "target": 34400000.0,
+                                "percentage": 55,
+                                "gap": -15645578.281382993
+                            },
+                            "GPPJ": {
+                                "actual": 271966519.9294862,
+                                "target": 308800000.0,
+                                "percentage": 88,
+                                "gap": -36833480.070513785
+                            },
+                            "HGJ": {
+                                "actual": 26431.53,
+                                "target": 650000.0,
+                                "percentage": 4,
+                                "gap": -623568.47
+                            },
+                            "MBR": {
+                                "actual": 2213343.1482830006,
+                                "target": 2986000.0,
+                                "percentage": 74,
+                                "gap": -772656.8517169994
+                            },
+                            "RANS": {
+                                "actual": 4821765.100000005,
+                                "target": 5217809.939239618,
+                                "percentage": 92,
+                                "gap": -396044.83923961315
+                            },
+                            "GSJ": {
+                                "actual": 67792.75,
+                                "target": 82190.06076038124,
+                                "percentage": 82,
+                                "gap": -14397.310760381239
+                            },
+                            "ABBOTT": {
+                                "actual": 0.0,
+                                "target": 0.0,
+                                "percentage": 0,
+                                "gap": 0.0
+                            }
+                        },
+                        "metrics": {
+                            "CA": 94,
+                            "CAProd": 89,
+                            "SKU": 96,
+                            "GP": 87
+                        },
+                        "TOTAL": {
+                            "actual": 412033224.8244114,
+                            "target": 469700000.0,
+                            "percentage": 88,
+                            "gap": -57666775.17558861
+                        },
+                        "Ranking": {
+                            "Rank": 1,
+                            "total_salesman": 6
+                        }
+                    }
+                };
+                
+                salesmanDetails = salesmanDetailsData;
+                console.log('✅ Data salesman berhasil dimuat:', salesmanDetails);
+
+                const details = salesmanDetails[currentSalesmanId];
+
+                if (!details) {
+                    throw new Error(`Salesman tidak ditemukan: ${currentSalesmanId}`);
+                }
+
+                const salesman = {
+                    id: currentSalesmanId,
+                    name: details.name || 'Tidak Diketahui',
+                    sac: details.sac || '',
+                    type: details.type || ''
+                };
+
+                console.log(`✅ Salesman ditemukan: ${salesman.name} (${salesman.id})`);
+
+                updateSalesmanProfile(salesman, details);
+                updateAchievementCards(details.performance, details.TOTAL);
+                generateRadialCharts(details.performance);
+                updateProcessMetrics(details.metrics);
+                updateTables(details.performance);
+                
+                showLoading(false);
+                showMainContent(true);
+
+            } catch (error) {
+                console.error('❌ Kesalahan memuat data salesman:', error);
+                showLoading(false);
+                showError(true, error.message);
+            }
+        }
+
+        // ✅ UPDATE SALESMAN PROFILE
+        function updateSalesmanProfile(salesman, details) {
+            document.getElementById('salesmanName').textContent = salesman.name;
+            document.getElementById('salesmanType').textContent = salesman.type || 'Sales Representative';
+            document.getElementById('rankingBadge').textContent = 
+                `Peringkat: ${details.Ranking.Rank} dari ${details.Ranking.total_salesman}`;
+            
+            document.title = `${salesman.name} - Detail Kinerja`;
+            
+            console.log(`✅ Profil diperbarui untuk ${salesman.name}`);
+        }
+
+        // ✅ NAVIGATION FUNCTIONS
+        function goHome() {
+            window.location.href = 'dashboard-desktop.html';
+        }
+
+        function showActivity() {
+            alert('🔜 Modul Aktivitas segera hadir!');
+        }
+
+        function showInsentif() {
+            alert('🔜 Modul Insentif segera hadir!');
+        }
+
+        function showReports() {
+            alert('🔜 Modul Laporan segera hadir!');
+        }
+
+        function showProfile() {
+            const currentUser = sessionStorage.getItem('currentUser');
+            alert(`👤 Profil: ${currentUser}\n🔜 Modul profil segera hadir!`);
+        }
+
+        function logout() {
+            if (confirm('Apakah Anda yakin ingin keluar?')) {
+                sessionStorage.removeItem('isLoggedIn');
+                sessionStorage.removeItem('currentUser');
+                window.location.href = 'index.html';
+            }
+        }
+
+        // ✅ UI CONTROL FUNCTIONS
+        function showLoading(show) {
+            document.getElementById('loadingSpinner').style.display = show ? 'flex' : 'none';
+        }
+
+        function showError(show, message = '') {
+            const errorElement = document.getElementById('errorMessage');
+            if (show) {
+                errorElement.style.display = 'block';
+                if (message) {
+                    errorElement.querySelector('p').textContent = message;
+                }
+            } else {
+                errorElement.style.display = 'none';
+            }
+        }
+
+        function hideError() {
+            showError(false);
+        }
+
+        function showMainContent(show) {
+            document.getElementById('dashboardContent').style.display = show ? 'block' : 'none';
+        }
+
+        // ✅ INITIALIZE PAGE
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!checkLoginStatus()) {
+                return;
+            }
+
+            console.log('🚀 Menginisialisasi halaman detail salesman desktop...');
+            loadSalesmanData();
+            console.log('✅ Halaman detail salesman desktop berhasil diinisialisasi');
+        });
+    </script>
+</body>
+</html>
