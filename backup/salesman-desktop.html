@@ -4,12 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Detail Kinerja Salesman - Dashboard</title>
-    <!-- Nivo RadialBar CDN -->
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@nivo/core@0.84.0/dist/nivo-core.umd.js"></script>
-    <script src="https://unpkg.com/@nivo/radial-bar@0.84.0/dist/nivo-radial-bar.umd.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -263,7 +257,7 @@
             margin-bottom: 24px;
         }
 
-        /* ✅ NIVO RADIAL BAR SECTION */
+        /* ✅ RADIAL BAR CHARTS SECTION */
         .radial-section {
             background: white;
             border-radius: 16px;
@@ -288,10 +282,78 @@
             gap: 8px;
         }
 
-        .nivo-radial-container {
-            height: 400px;
-            width: 100%;
+        .radial-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
         }
+
+        .radial-item {
+            text-align: center;
+            position: relative;
+        }
+
+        .radial-chart {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 16px;
+            position: relative;
+        }
+
+        .radial-progress {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            position: relative;
+            background: conic-gradient(
+                var(--progress-color) 0deg,
+                var(--progress-color) calc(var(--percentage) * 3.6deg),
+                #f1f5f9 calc(var(--percentage) * 3.6deg),
+                #f1f5f9 360deg
+            );
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .radial-progress::before {
+            content: '';
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            background: white;
+            border-radius: 50%;
+            box-shadow: inset 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .radial-value {
+            position: absolute;
+            font-size: 16px;
+            font-weight: 800;
+            color: #1e293b;
+            z-index: 2;
+        }
+
+        .radial-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+
+        .radial-details {
+            font-size: 11px;
+            color: #64748b;
+        }
+
+        /* ✅ RADIAL BAR COLORS */
+        .radial-1 { --progress-color: #1e6b52; }
+        .radial-2 { --progress-color: #52a373; }
+        .radial-3 { --progress-color: #a4b847; }
+        .radial-4 { --progress-color: #f4d03f; }
+        .radial-5 { --progress-color: #5dade2; }
+        .radial-6 { --progress-color: #af7ac5; }
 
         /* ✅ PROCESS METRICS SECTION */
         .process-section {
@@ -518,6 +580,29 @@
             box-shadow: 0 4px 20px rgba(239, 68, 68, 0.1);
         }
 
+        /* ✅ SCROLLBAR STYLING */
+        .table-container::-webkit-scrollbar,
+        .dashboard-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .table-container::-webkit-scrollbar-track,
+        .dashboard-content::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 3px;
+        }
+
+        .table-container::-webkit-scrollbar-thumb,
+        .dashboard-content::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+
+        .table-container::-webkit-scrollbar-thumb:hover,
+        .dashboard-content::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
         /* ✅ ANIMATIONS */
         @keyframes spin {
             0% { transform: rotate(0deg); }
@@ -529,12 +614,25 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
+        @keyframes radialFill {
+            from { --percentage: 0; }
+            to { --percentage: var(--target-percentage); }
+        }
+
         .fade-in {
             animation: fadeInUp 0.6s ease-out forwards;
         }
 
+        .radial-progress {
+            animation: radialFill 1.5s ease-out forwards;
+        }
+
         /* ✅ RESPONSIVE */
         @media (max-width: 1400px) {
+            .radial-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
             .achievement-row {
                 grid-template-columns: repeat(2, 1fr);
             }
@@ -567,6 +665,10 @@
             .achievement-row {
                 grid-template-columns: repeat(2, 1fr);
                 gap: 12px;
+            }
+            
+            .radial-grid {
+                grid-template-columns: repeat(2, 1fr);
             }
             
             .process-grid {
@@ -672,7 +774,7 @@
 
                 <!-- ✅ MAIN GRID -->
                 <div class="main-grid">
-                    <!-- ✅ NIVO RADIAL BAR SECTION -->
+                    <!-- ✅ RADIAL BAR CHARTS SECTION -->
                     <div class="radial-section fade-in" style="animation-delay: 0.4s;">
                         <div class="section-header">
                             <h3 class="section-title">
@@ -680,8 +782,8 @@
                                 Kinerja LOB - Radial Chart
                             </h3>
                         </div>
-                        <div class="nivo-radial-container" id="nivoRadialChart">
-                            <!-- Nivo RadialBar will be rendered here -->
+                        <div class="radial-grid" id="radialGrid">
+                            <!-- Will be populated by JavaScript -->
                         </div>
                     </div>
 
@@ -700,7 +802,7 @@
                                     <div class="process-value">0%</div>
                                 </div>
                                 <div class="process-label">CA (Customer Active)</div>
-                                <div class="process-details">Loading...</div>
+                                <div class="process-details">Pelanggan aktif</div>
                             </div>
                             
                             <div class="process-item">
@@ -709,7 +811,7 @@
                                     <div class="process-value">0%</div>
                                 </div>
                                 <div class="process-label">CA Produktif</div>
-                                <div class="process-details">Loading...</div>
+                                <div class="process-details">CA yang produktif</div>
                             </div>
                             
                             <div class="process-item">
@@ -718,7 +820,7 @@
                                     <div class="process-value">0%</div>
                                 </div>
                                 <div class="process-label">GP (Gross Profit)</div>
-                                <div class="process-details">Loading...</div>
+                                <div class="process-details">Margin keuntungan</div>
                             </div>
                             
                             <div class="process-item">
@@ -727,7 +829,7 @@
                                     <div class="process-value">0%</div>
                                 </div>
                                 <div class="process-label">SKU Terjual</div>
-                                <div class="process-details">Loading...</div>
+                                <div class="process-details">Variasi produk</div>
                             </div>
                         </div>
                     </div>
@@ -791,14 +893,10 @@
         </div>
     </div>
 
-    <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
-        const { ResponsiveRadialBar } = NivoRadialBar;
-
+    <script>
         // Global variables
         let salesmanData = null;
         let salesmanDetails = null;
-        let salesmanProcessData = null;
         let currentSalesmanId = null;
 
         // ✅ FORMAT CURRENCY INDONESIA
@@ -820,159 +918,6 @@
             }
         }
 
-        // ✅ PARSE JSONL DATA (JSON Lines)
-        function parseJSONL(jsonlString) {
-            return jsonlString.trim().split('\n').map(line => JSON.parse(line));
-        }
-
-        // ✅ NIVO RADIAL BAR COMPONENT
-        function NivoRadialChart({ data }) {
-            if (!data || data.length === 0) {
-                return (
-                    <div style={{
-                        height: '400px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#7f8c8d',
-                        flexDirection: 'column'
-                    }}>
-                        <div style={{ fontSize: '48px', marginBottom: '16px' }}>📊</div>
-                        <div>Tidak ada data LOB yang tersedia</div>
-                    </div>
-                );
-            }
-
-            return (
-                <div style={{ height: '400px' }}>
-                    <ResponsiveRadialBar
-                        data={data}
-                        valueFormat=">-.0f"
-                        padding={0.4}
-                        cornerRadius={2}
-                        margin={{ top: 40, right: 120, bottom: 40, left: 40 }}
-                        radialAxisStart={{ tickSize: 5, tickPadding: 5, tickRotation: 0 }}
-                        circularAxisOuter={{ tickSize: 5, tickPadding: 12, tickRotation: 0 }}
-                        legends={[
-                            {
-                                anchor: 'right',
-                                direction: 'column',
-                                justify: false,
-                                translateX: 80,
-                                translateY: 0,
-                                itemsSpacing: 6,
-                                itemDirection: 'left-to-right',
-                                itemWidth: 100,
-                                itemHeight: 18,
-                                itemTextColor: '#999',
-                                symbolSize: 18,
-                                symbolShape: 'square',
-                                effects: [
-                                    {
-                                        on: 'hover',
-                                        style: {
-                                            itemTextColor: '#000'
-                                        }
-                                    }
-                                ]
-                            }
-                        ]}
-                        theme={{
-                            background: 'transparent',
-                            textColor: '#2c3e50',
-                            fontSize: 11,
-                            axis: {
-                                domain: {
-                                    line: {
-                                        stroke: '#777777',
-                                        strokeWidth: 1
-                                    }
-                                },
-                                legend: {
-                                    text: {
-                                        fontSize: 12,
-                                        fill: '#333333'
-                                    }
-                                },
-                                ticks: {
-                                    line: {
-                                        stroke: '#777777',
-                                        strokeWidth: 1
-                                    },
-                                    text: {
-                                        fontSize: 11,
-                                        fill: '#333333'
-                                    }
-                                }
-                            },
-                            grid: {
-                                line: {
-                                    stroke: '#dddddd',
-                                    strokeWidth: 1
-                                }
-                            }
-                        }}
-                        colors={{ scheme: 'category10' }}
-                        borderWidth={1}
-                        borderColor={{ from: 'color', modifiers: [['darker', 0.2]] }}
-                    />
-                </div>
-            );
-        }
-
-        // ✅ GENERATE NIVO RADIAL BAR DATA
-        function generateNivoRadialData(performanceData) {
-            console.log('🎨 Generating Nivo radial bar data...');
-            
-            // Filter and sort LOBs by actual value
-            const validLOBs = Object.keys(performanceData)
-                .filter(lob => performanceData[lob].actual > 0 || performanceData[lob].target > 0)
-                .map(lob => ({
-                    lob: lob,
-                    actual: performanceData[lob].actual,
-                    target: performanceData[lob].target,
-                    percentage: performanceData[lob].percentage,
-                    gap: performanceData[lob].gap
-                }))
-                .sort((a, b) => b.actual - a.actual)
-                .slice(0, 6); // Take top 6 LOBs
-
-            if (validLOBs.length === 0) {
-                return [];
-            }
-
-            // Transform data for Nivo format
-            const nivoData = validLOBs.map(lobData => ({
-                id: lobData.lob,
-                data: [
-                    {
-                        x: 'Achievement',
-                        y: Math.min(lobData.percentage, 150) // Cap at 150% for better visualization
-                    },
-                    {
-                        x: 'Target',
-                        y: 100
-                    }
-                ]
-            }));
-
-            console.log('✅ Nivo radial data generated:', nivoData);
-            return nivoData;
-        }
-
-        // ✅ RENDER NIVO RADIAL CHART
-        function renderNivoRadialChart(performanceData) {
-            const nivoData = generateNivoRadialData(performanceData);
-            const container = document.getElementById('nivoRadialChart');
-            
-            if (!container) return;
-
-            ReactDOM.render(
-                React.createElement(NivoRadialChart, { data: nivoData }),
-                container
-            );
-        }
-
         // Check login status
         function checkLoginStatus() {
             const isLoggedIn = sessionStorage.getItem('isLoggedIn');
@@ -989,6 +934,74 @@
             var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
             var results = regex.exec(location.search);
             return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+        }
+
+        // ✅ GENERATE RADIAL BAR CHARTS
+        function generateRadialCharts(performanceData) {
+            console.log('🎨 Generating radial bar charts...');
+            
+            const radialGrid = document.getElementById('radialGrid');
+            radialGrid.innerHTML = '';
+
+            // Colors for different LOBs
+            const colors = [
+                '#1e6b52', '#52a373', '#a4b847', 
+                '#f4d03f', '#5dade2', '#af7ac5'
+            ];
+
+            // Filter and sort LOBs by actual value - include LOBs with target > 0 or actual > 0
+            const validLOBs = Object.keys(performanceData)
+                .filter(lob => performanceData[lob].actual > 0 || performanceData[lob].target > 0)
+                .map(lob => ({
+                    lob: lob,
+                    actual: performanceData[lob].actual,
+                    target: performanceData[lob].target,
+                    percentage: performanceData[lob].percentage,
+                    gap: performanceData[lob].gap
+                }))
+                .sort((a, b) => b.actual - a.actual)
+                .slice(0, 6); // Take top 6 LOBs
+
+            if (validLOBs.length === 0) {
+                radialGrid.innerHTML = `
+                    <div style="grid-column: span 3; text-align: center; color: #64748b; padding: 40px;">
+                        <div style="font-size: 48px; margin-bottom: 16px;">📊</div>
+                        <div>Tidak ada data LOB yang tersedia</div>
+                    </div>
+                `;
+                return;
+            }
+
+            validLOBs.forEach((lobData, index) => {
+                const radialItem = document.createElement('div');
+                radialItem.className = 'radial-item fade-in';
+                radialItem.style.animationDelay = `${0.5 + index * 0.1}s`;
+                
+                const gapText = lobData.gap >= 0 ? 
+                    `+${formatCurrencyIndonesia(lobData.gap)}` : 
+                    `-${formatCurrencyIndonesia(Math.abs(lobData.gap))}`;
+                
+                // Ensure percentage is not more than 100 for visual display
+                const displayPercentage = Math.min(lobData.percentage, 100);
+                
+                radialItem.innerHTML = `
+                    <div class="radial-chart">
+                        <div class="radial-progress radial-${index + 1}" 
+                             style="--percentage: ${displayPercentage}; --progress-color: ${colors[index]};">
+                            <div class="radial-value">${lobData.percentage}%</div>
+                        </div>
+                    </div>
+                    <div class="radial-label">${lobData.lob}</div>
+                    <div class="radial-details">
+                        ${formatCurrencyIndonesia(lobData.actual)} / ${formatCurrencyIndonesia(lobData.target)}
+                        <br>Gap: ${gapText}
+                    </div>
+                `;
+                
+                radialGrid.appendChild(radialItem);
+            });
+
+            console.log('✅ Radial bar charts generated');
         }
 
         // ✅ UPDATE ACHIEVEMENT CARDS
@@ -1030,52 +1043,22 @@
             console.log('✅ Achievement cards updated');
         }
 
-        // ✅ UPDATE PROCESS METRICS WITH REAL DATA
-        function updateProcessMetrics(processData) {
-            if (!processData) {
-                console.log('⚠️ No process data available');
-                return;
-            }
-
-            // CA (Customer Active) - from Ach_CA
-            const caPercentage = Math.round((processData.Ach_CA || 0) * 100);
-            const caDetails = `${processData.A_CA || 0} / ${processData['T.CR'] || 0}`;
-
-            // CA Produktif - from Ach_CAProdAll
-            const caProdPercentage = Math.round((processData.Ach_CAProdAll || 0) * 100);
-            const caProdDetails = `W:${processData['A.CAProdW'] || 0} R:${processData['A.CAProdR'] || 0} M:${processData['A.CAProdM'] || 0}`;
-
-            // GP - average of GPFood and GPOthers achievement
-            const gpFoodAch = processData.Ach_GPFood || 0;
-            const gpOthersAch = processData.Ach_GPOthers || 0;
-            const gpPercentage = Math.round(((gpFoodAch + gpOthersAch) / 2) * 100);
-            const gpDetails = `Food: ${Math.round(gpFoodAch * 100)}% Others: ${Math.round(gpOthersAch * 100)}%`;
-
-            // SKU - from Ach_AvgSKU
-            const skuPercentage = Math.round((processData.Ach_AvgSKU || 0) * 100);
-            const skuDetails = `Avg: ${(processData['A.AvgSKU'] || 0).toFixed(1)} / ${processData['T.AvgSKU'] || 0}`;
-
-            // Update the UI
-            const metrics = [
-                { percentage: caPercentage, details: caDetails },
-                { percentage: caProdPercentage, details: caProdDetails },
-                { percentage: gpPercentage, details: gpDetails },
-                { percentage: skuPercentage, details: skuDetails }
-            ];
+        // ✅ UPDATE PROCESS METRICS
+        function updateProcessMetrics(metricsData) {
+            const metrics = ['CA', 'CAProd', 'GP', 'SKU'];
             
             metrics.forEach((metric, index) => {
+                const value = metricsData[metric] || 0;
                 const semiCircle = document.querySelectorAll('.semi-circle')[index];
                 const processValue = document.querySelectorAll('.process-value')[index];
-                const processDetails = document.querySelectorAll('.process-details')[index];
                 
-                if (semiCircle && processValue && processDetails) {
-                    semiCircle.style.setProperty('--percentage', Math.min(metric.percentage, 100));
-                    processValue.textContent = `${metric.percentage}%`;
-                    processDetails.textContent = metric.details;
+                if (semiCircle && processValue) {
+                    semiCircle.style.setProperty('--percentage', value);
+                    processValue.textContent = `${value}%`;
                 }
             });
 
-            console.log('✅ Process metrics updated with real data');
+            console.log('✅ Process metrics updated');
         }
 
         // ✅ UPDATE TABLES
@@ -1176,8 +1159,9 @@
 
                 console.log(`📍 Memuat data untuk salesman ID: ${currentSalesmanId}`);
                 
-                // Load salesman details
+                // Try to load real data from JSON file, with fallback to embedded data
                 let salesmanDetailsData;
+                
                 try {
                     const response = await fetch('data/salesman_details.json');
                     if (!response.ok) {
@@ -1187,86 +1171,486 @@
                     console.log('✅ Data berhasil dimuat dari file salesman_details.json');
                 } catch (fetchError) {
                     console.log('⚠️ Tidak dapat memuat dari file, menggunakan data embedded...');
-                    // Fallback to embedded data
+                    // Fallback to embedded data - FIXED: Remove redefinition
                     salesmanDetailsData = {
                         "17210032876": {
                             "name": "Asman",
                             "sac": "Kisman Pidu",
                             "type": "nan",
                             "performance": {
-                                "GBS": { "actual": 58657026.029395, "target": 377080000.0, "percentage": 16, "gap": -318422973.970605 },
-                                "GEN": { "actual": 16880720.160514995, "target": 69821000.0, "percentage": 24, "gap": -52940279.839485005 },
-                                "GPPJ": { "actual": 138413048.45488098, "target": 620150000.0, "percentage": 22, "gap": -481736951.54511905 },
-                                "HGJ": { "actual": 176211.71, "target": 1521000.0, "percentage": 12, "gap": -1344788.29 },
-                                "MBR": { "actual": 3081457.6032419996, "target": 11351000.0, "percentage": 27, "gap": -8269542.396758 },
-                                "RANS": { "actual": 1709879.1500000004, "target": 0.0, "percentage": 0, "gap": 1709879.1500000004 },
-                                "GSJ": { "actual": 0.0, "target": 0.0, "percentage": 0, "gap": 0.0 },
-                                "ABBOTT": { "actual": 0.0, "target": 0.0, "percentage": 0, "gap": 0.0 }
+                                "GBS": {
+                                    "actual": 58657026.029395,
+                                    "target": 377080000.0,
+                                    "percentage": 16,
+                                    "gap": -318422973.970605
+                                },
+                                "GEN": {
+                                    "actual": 16880720.160514995,
+                                    "target": 69821000.0,
+                                    "percentage": 24,
+                                    "gap": -52940279.839485005
+                                },
+                                "GPPJ": {
+                                    "actual": 138413048.45488098,
+                                    "target": 620150000.0,
+                                    "percentage": 22,
+                                    "gap": -481736951.54511905
+                                },
+                                "HGJ": {
+                                    "actual": 176211.71,
+                                    "target": 1521000.0,
+                                    "percentage": 12,
+                                    "gap": -1344788.29
+                                },
+                                "MBR": {
+                                    "actual": 3081457.6032419996,
+                                    "target": 11351000.0,
+                                    "percentage": 27,
+                                    "gap": -8269542.396758
+                                },
+                                "RANS": {
+                                    "actual": 1709879.1500000004,
+                                    "target": 0.0,
+                                    "percentage": 0,
+                                    "gap": 1709879.1500000004
+                                },
+                                "GSJ": {
+                                    "actual": 0.0,
+                                    "target": 0.0,
+                                    "percentage": 0,
+                                    "gap": 0.0
+                                },
+                                "ABBOTT": {
+                                    "actual": 0.0,
+                                    "target": 0.0,
+                                    "percentage": 0,
+                                    "gap": 0.0
+                                }
                             },
-                            "metrics": { "CA": 1, "CAProd": 1, "SKU": 1, "GP": 0 },
-                            "TOTAL": { "actual": 218918343.108033, "target": 1100000000.0, "percentage": 20, "gap": -881081656.891967 },
-                            "Ranking": { "Rank": 5, "total_salesman": 7 }
+                            "metrics": {
+                                "CA": 1,
+                                "CAProd": 1,
+                                "SKU": 1,
+                                "GP": 0
+                            },
+                            "TOTAL": {
+                                "actual": 218918343.108033,
+                                "target": 1100000000.0,
+                                "percentage": 20,
+                                "gap": -881081656.891967
+                            },
+                            "Ranking": {
+                                "Rank": 5,
+                                "total_salesman": 7
+                            }
+                        },
+                        "17210036369": {
+                            "name": "Muhammad Tamrin",
+                            "sac": "Kisman Pidu",
+                            "type": "nan",
+                            "performance": {
+                                "GBS": {
+                                    "actual": 9791260.562035998,
+                                    "target": 201967000.0,
+                                    "percentage": 5,
+                                    "gap": -192175739.437964
+                                },
+                                "GEN": {
+                                    "actual": 5472972.5322360005,
+                                    "target": 35545000.0,
+                                    "percentage": 15,
+                                    "gap": -30072027.467763998
+                                },
+                                "GPPJ": {
+                                    "actual": 54952581.389524,
+                                    "target": 305714000.0,
+                                    "percentage": 18,
+                                    "gap": -250761418.61047602
+                                },
+                                "HGJ": {
+                                    "actual": 0.0,
+                                    "target": 774000.0,
+                                    "percentage": 0,
+                                    "gap": -774000.0
+                                },
+                                "MBR": {
+                                    "actual": 1445932.383602,
+                                    "target": 10221000.0,
+                                    "percentage": 14,
+                                    "gap": -8775067.616398
+                                },
+                                "RANS": {
+                                    "actual": 945808.8700000001,
+                                    "target": 0.0,
+                                    "percentage": 0,
+                                    "gap": 945808.8700000001
+                                },
+                                "GSJ": {
+                                    "actual": 0.0,
+                                    "target": 0.0,
+                                    "percentage": 0,
+                                    "gap": 0.0
+                                },
+                                "ABBOTT": {
+                                    "actual": 0.0,
+                                    "target": 0.0,
+                                    "percentage": 0,
+                                    "gap": 0.0
+                                }
+                            },
+                            "metrics": {
+                                "CA": 1,
+                                "CAProd": 0,
+                                "SKU": 0,
+                                "GP": 0
+                            },
+                            "TOTAL": {
+                                "actual": 72608555.737398,
+                                "target": 560000000.0,
+                                "percentage": 13,
+                                "gap": -487391444.262602
+                            },
+                            "Ranking": {
+                                "Rank": 7,
+                                "total_salesman": 7
+                            }
+                        },
+                        "17210037632": {
+                            "name": "Robianor",
+                            "sac": "Kisman Pidu",
+                            "type": "nan",
+                            "performance": {
+                                "GBS": {
+                                    "actual": 26680415.091485,
+                                    "target": 181682000.0,
+                                    "percentage": 15,
+                                    "gap": -155001584.908515
+                                },
+                                "GEN": {
+                                    "actual": 7465045.0862,
+                                    "target": 29941000.0,
+                                    "percentage": 25,
+                                    "gap": -22475954.9138
+                                },
+                                "GPPJ": {
+                                    "actual": 82698432.72426997,
+                                    "target": 300701000.0,
+                                    "percentage": 28,
+                                    "gap": -218002567.27573
+                                },
+                                "HGJ": {
+                                    "actual": 22202.7,
+                                    "target": 833000.0,
+                                    "percentage": 3,
+                                    "gap": -810797.3
+                                },
+                                "MBR": {
+                                    "actual": 2757528.739635,
+                                    "target": 10674000.0,
+                                    "percentage": 26,
+                                    "gap": -7916471.260365
+                                },
+                                "RANS": {
+                                    "actual": 1609719.5,
+                                    "target": 0.0,
+                                    "percentage": 0,
+                                    "gap": 1609719.5
+                                },
+                                "GSJ": {
+                                    "actual": 0.0,
+                                    "target": 0.0,
+                                    "percentage": 0,
+                                    "gap": 0.0
+                                },
+                                "ABBOTT": {
+                                    "actual": 0.0,
+                                    "target": 0.0,
+                                    "percentage": 0,
+                                    "gap": 0.0
+                                }
+                            },
+                            "metrics": {
+                                "CA": 1,
+                                "CAProd": 0,
+                                "SKU": 1,
+                                "GP": 0
+                            },
+                            "TOTAL": {
+                                "actual": 121233343.84158999,
+                                "target": 530000000.0,
+                                "percentage": 23,
+                                "gap": -408766656.15841
+                            },
+                            "Ranking": {
+                                "Rank": 4,
+                                "total_salesman": 7
+                            }
+                        },
+                        "17210037713": {
+                            "name": "Rahmani",
+                            "sac": "Kisman Pidu",
+                            "type": "nan",
+                            "performance": {
+                                "GBS": {
+                                    "actual": 21967296.350158,
+                                    "target": 184996000.0,
+                                    "percentage": 12,
+                                    "gap": -163028703.649842
+                                },
+                                "GEN": {
+                                    "actual": 6090179.470434999,
+                                    "target": 33958000.0,
+                                    "percentage": 18,
+                                    "gap": -27867820.529565
+                                },
+                                "GPPJ": {
+                                    "actual": 75717103.43453097,
+                                    "target": 300020000.0,
+                                    "percentage": 25,
+                                    "gap": -224302896.56546903
+                                },
+                                "HGJ": {
+                                    "actual": 0.0,
+                                    "target": 740000.0,
+                                    "percentage": 0,
+                                    "gap": -740000.0
+                                },
+                                "MBR": {
+                                    "actual": 1189753.0981949999,
+                                    "target": 5521000.0,
+                                    "percentage": 22,
+                                    "gap": -4331246.901805
+                                },
+                                "RANS": {
+                                    "actual": 1198026.9100000001,
+                                    "target": 0.0,
+                                    "percentage": 0,
+                                    "gap": 1198026.9100000001
+                                },
+                                "GSJ": {
+                                    "actual": 0.0,
+                                    "target": 0.0,
+                                    "percentage": 0,
+                                    "gap": 0.0
+                                },
+                                "ABBOTT": {
+                                    "actual": 0.0,
+                                    "target": 0.0,
+                                    "percentage": 0,
+                                    "gap": 0.0
+                                }
+                            },
+                            "metrics": {
+                                "CA": 1,
+                                "CAProd": 1,
+                                "SKU": 0,
+                                "GP": 0
+                            },
+                            "TOTAL": {
+                                "actual": 106162359.26331897,
+                                "target": 535000000.0,
+                                "percentage": 20,
+                                "gap": -428837640.73668104
+                            },
+                            "Ranking": {
+                                "Rank": 6,
+                                "total_salesman": 7
+                            }
                         },
                         "17210037897": {
                             "name": "Hindra",
-                            "sac": "Kisman Pidu", 
+                            "sac": "Kisman Pidu",
                             "type": "nan",
                             "performance": {
-                                "GBS": { "actual": 30868376.96229201, "target": 147119000.0, "percentage": 21, "gap": -116250623.03770798 },
-                                "GEN": { "actual": 4808422.8389099995, "target": 25389000.0, "percentage": 19, "gap": -20580577.16109 },
-                                "GPPJ": { "actual": 61173508.075308, "target": 215510000.0, "percentage": 28, "gap": -154336491.924692 },
-                                "HGJ": { "actual": 0.0, "target": 553000.0, "percentage": 0, "gap": -553000.0 },
-                                "MBR": { "actual": 1325386.416483, "target": 7301000.0, "percentage": 18, "gap": -5975613.583517 },
-                                "RANS": { "actual": 1537402.5100000002, "target": 0.0, "percentage": 0, "gap": 1537402.5100000002 },
-                                "GSJ": { "actual": 0.0, "target": 0.0, "percentage": 0, "gap": 0.0 },
-                                "ABBOTT": { "actual": 0.0, "target": 0.0, "percentage": 0, "gap": 0.0 }
+                                "GBS": {
+                                    "actual": 30868376.96229201,
+                                    "target": 147119000.0,
+                                    "percentage": 21,
+                                    "gap": -116250623.03770798
+                                },
+                                "GEN": {
+                                    "actual": 4808422.8389099995,
+                                    "target": 25389000.0,
+                                    "percentage": 19,
+                                    "gap": -20580577.16109
+                                },
+                                "GPPJ": {
+                                    "actual": 61173508.075308,
+                                    "target": 215510000.0,
+                                    "percentage": 28,
+                                    "gap": -154336491.924692
+                                },
+                                "HGJ": {
+                                    "actual": 0.0,
+                                    "target": 553000.0,
+                                    "percentage": 0,
+                                    "gap": -553000.0
+                                },
+                                "MBR": {
+                                    "actual": 1325386.416483,
+                                    "target": 7301000.0,
+                                    "percentage": 18,
+                                    "gap": -5975613.583517
+                                },
+                                "RANS": {
+                                    "actual": 1537402.5100000002,
+                                    "target": 0.0,
+                                    "percentage": 0,
+                                    "gap": 1537402.5100000002
+                                },
+                                "GSJ": {
+                                    "actual": 0.0,
+                                    "target": 0.0,
+                                    "percentage": 0,
+                                    "gap": 0.0
+                                },
+                                "ABBOTT": {
+                                    "actual": 0.0,
+                                    "target": 0.0,
+                                    "percentage": 0,
+                                    "gap": 0.0
+                                }
                             },
-                            "metrics": { "CA": 1, "CAProd": 1, "SKU": 1, "GP": 0 },
-                            "TOTAL": { "actual": 99713096.80299303, "target": 400000000.0, "percentage": 25, "gap": -300286903.19700694 },
-                            "Ranking": { "Rank": 3, "total_salesman": 7 }
+                            "metrics": {
+                                "CA": 1,
+                                "CAProd": 1,
+                                "SKU": 1,
+                                "GP": 0
+                            },
+                            "TOTAL": {
+                                "actual": 99713096.80299303,
+                                "target": 400000000.0,
+                                "percentage": 25,
+                                "gap": -300286903.19700694
+                            },
+                            "Ranking": {
+                                "Rank": 3,
+                                "total_salesman": 7
+                            }
                         },
                         "17210038077": {
                             "name": "Sopian Sauri",
                             "sac": "Kisman Pidu",
                             "type": "nan",
                             "performance": {
-                                "GBS": { "actual": 18354772.691199016, "target": 63992000.0, "percentage": 29, "gap": -45637227.30880098 },
-                                "GEN": { "actual": 0.0, "target": 0.0, "percentage": 0, "gap": 0.0 },
-                                "GPPJ": { "actual": 12782880.782343024, "target": 20390000.0, "percentage": 63, "gap": -7607119.217656976 },
-                                "HGJ": { "actual": 402211.69000000006, "target": 248000.0, "percentage": 162, "gap": 154211.69000000006 },
-                                "MBR": { "actual": 1634350.3223339997, "target": 3558000.0, "percentage": 46, "gap": -1923649.6776660003 },
-                                "RANS": { "actual": 5321114.580000002, "target": 0.0, "percentage": 0, "gap": 5321114.580000002 },
-                                "GSJ": { "actual": 0.0, "target": 0.0, "percentage": 0, "gap": 0.0 },
-                                "ABBOTT": { "actual": 0.0, "target": 0.0, "percentage": 0, "gap": 0.0 }
+                                "GBS": {
+                                    "actual": 18354772.691199016,
+                                    "target": 63992000.0,
+                                    "percentage": 29,
+                                    "gap": -45637227.30880098
+                                },
+                                "GEN": {
+                                    "actual": 0.0,
+                                    "target": 0.0,
+                                    "percentage": 0,
+                                    "gap": 0.0
+                                },
+                                "GPPJ": {
+                                    "actual": 12782880.782343024,
+                                    "target": 20390000.0,
+                                    "percentage": 63,
+                                    "gap": -7607119.217656976
+                                },
+                                "HGJ": {
+                                    "actual": 402211.69000000006,
+                                    "target": 248000.0,
+                                    "percentage": 162,
+                                    "gap": 154211.69000000006
+                                },
+                                "MBR": {
+                                    "actual": 1634350.3223339997,
+                                    "target": 3558000.0,
+                                    "percentage": 46,
+                                    "gap": -1923649.6776660003
+                                },
+                                "RANS": {
+                                    "actual": 5321114.580000002,
+                                    "target": 0.0,
+                                    "percentage": 0,
+                                    "gap": 5321114.580000002
+                                },
+                                "GSJ": {
+                                    "actual": 0.0,
+                                    "target": 0.0,
+                                    "percentage": 0,
+                                    "gap": 0.0
+                                },
+                                "ABBOTT": {
+                                    "actual": 0.0,
+                                    "target": 0.0,
+                                    "percentage": 0,
+                                    "gap": 0.0
+                                }
                             },
-                            "metrics": { "CA": 0, "CAProd": 0, "SKU": 1, "GP": 0 },
-                            "TOTAL": { "actual": 38495330.065876044, "target": 90065000.0, "percentage": 43, "gap": -51569669.934123956 },
-                            "Ranking": { "Rank": 1, "total_salesman": 7 }
+                            "metrics": {
+                                "CA": 0,
+                                "CAProd": 0,
+                                "SKU": 1,
+                                "GP": 0
+                            },
+                            "TOTAL": {
+                                "actual": 38495330.065876044,
+                                "target": 90065000.0,
+                                "percentage": 43,
+                                "gap": -51569669.934123956
+                            },
+                            "Ranking": {
+                                "Rank": 1,
+                                "total_salesman": 7
+                            }
+                        },
+                        "17210041467": {
+                            "name": "Doli Purnama Sari",
+                            "sac": "Kisman Pidu",
+                            "type": "nan",
+                            "performance": {
+                                "GBS": {
+                                    "actual": 0.0,
+                                    "target": 0.0,
+                                    "percentage": 0,
+                                    "gap": 0.0
+                                },
+                                "GEN": {
+                                    "actual": 3910775.798816,
+                                    "target": 19607000.0,
+                                    "percentage": 20,
+                                    "gap": -15696224.201184
+                                },
+                                "GPPJ": {
+                                    "actual": 48211512.023607865,
+                                    "target": 140393000.0,
+                                    "percentage": 34,
+                                    "gap": -92181487.97639214
+                                }
+                            },
+                            "metrics": {
+                                "CA": 1,
+                                "CAProd": 0,
+                                "SKU": 1,
+                                "GP": 0
+                            },
+                            "TOTAL": {
+                                "actual": 52122287.82242387,
+                                "target": 160000000.0,
+                                "percentage": 33,
+                                "gap": -107877712.17757612
+                            },
+                            "Ranking": {
+                                "Rank": 2,
+                                "total_salesman": 7
+                            }
                         }
                     };
                 }
                 
-                // Load process data
-                let processData = null;
-                try {
-                    const processResponse = await fetch('data/d.salesmanproses.json');
-                    if (processResponse.ok) {
-                        const processText = await processResponse.text();
-                        const allProcessData = parseJSONL(processText);
-                        processData = allProcessData.find(p => p.szEmployeeId == currentSalesmanId);
-                        console.log('✅ Process data loaded:', processData);
-                    }
-                } catch (processError) {
-                    console.log('⚠️ Could not load process data:', processError);
-                }
-                
                 salesmanDetails = salesmanDetailsData;
-                salesmanProcessData = processData;
+                console.log('✅ Salesman details loaded:', salesmanDetails);
 
                 let details = salesmanDetails[currentSalesmanId];
 
                 if (!details) {
                     console.warn(`⚠️ Salesman ${currentSalesmanId} tidak ditemukan, menggunakan data default...`);
+                    // Fallback ke salesman pertama yang tersedia
                     const firstAvailableId = Object.keys(salesmanDetails)[0];
                     currentSalesmanId = firstAvailableId;
                     details = salesmanDetails[firstAvailableId];
@@ -1275,6 +1659,7 @@
                         throw new Error('Tidak ada data salesman yang tersedia');
                     }
                     
+                    // Update URL parameter untuk konsistensi
                     const url = new URL(window.location);
                     url.searchParams.set('id', currentSalesmanId);
                     window.history.replaceState({}, '', url);
@@ -1291,13 +1676,8 @@
 
                 updateSalesmanProfile(salesman, details);
                 updateAchievementCards(details.performance, details.TOTAL);
-                
-                // Render Nivo radial chart
-                renderNivoRadialChart(details.performance);
-                
-                // Update process metrics with real data
-                updateProcessMetrics(processData);
-                
+                generateRadialCharts(details.performance);
+                updateProcessMetrics(details.metrics);
                 updateTables(details.performance);
                 
                 showLoading(false);
@@ -1383,7 +1763,7 @@
                 return;
             }
 
-            console.log('🚀 Menginisialisasi halaman detail salesman desktop dengan Nivo RadialBar...');
+            console.log('🚀 Menginisialisasi halaman detail salesman desktop...');
             loadSalesmanData();
             console.log('✅ Halaman detail salesman desktop berhasil diinisialisasi');
         });
