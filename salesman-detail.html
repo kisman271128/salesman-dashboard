@@ -4,12 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Performance By Salesman - Dashboard</title>
-    <!-- Nivo RadialBar CDN -->
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@nivo/core@0.84.0/dist/nivo-core.umd.js"></script>
-    <script src="https://unpkg.com/@nivo/radial-bar@0.84.0/dist/nivo-radial-bar.umd.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Chart.js CDN for reliable charting -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -200,12 +196,13 @@
             margin-bottom: 20px;
         }
 
-        /* ✅ NIVO RADIAL CHART CONTAINER */
-        .nivo-radial-container {
+        /* ✅ CHART.JS RADIAL CHART CONTAINER */
+        .chart-container {
             height: 350px;
             width: 100%;
             margin: 20px 0;
             animation: fadeInScale 0.6s ease-out;
+            position: relative;
         }
 
         /* ✅ HORIZONTAL METRICS */
@@ -492,7 +489,7 @@
                 border-width: 6px;
             }
 
-            .nivo-radial-container {
+            .chart-container {
                 height: 300px;
             }
             
@@ -516,7 +513,7 @@
         }
 
         @media (max-width: 360px) {
-            .nivo-radial-container {
+            .chart-container {
                 height: 280px;
             }
             
@@ -587,13 +584,9 @@
                         </div>
                     </div>
 
-                    <!-- Nivo Radial Chart -->
-                    <div class="nivo-radial-container" id="nivoRadialChart">
-                        <!-- Loading placeholder -->
-                        <div style="display: flex; justify-content: center; align-items: center; height: 100%; color: #7f8c8d; flex-direction: column;">
-                            <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 12px;"></div>
-                            <div>Loading chart...</div>
-                        </div>
+                    <!-- Chart.js Radial Chart -->
+                    <div class="chart-container" id="chartContainer">
+                        <canvas id="radialChart"></canvas>
                     </div>
                 </div>
 
@@ -949,15 +942,13 @@
         </div>
     </div>
 
-    <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
-        const { ResponsiveRadialBar } = NivoRadialBar;
-
+    <script>
         // Global variables
         let salesmanData = null;
         let salesmanDetails = null;
         let salesmanProcessData = null;
         let currentSalesmanId = null;
+        let radialChart = null;
 
         // ✅ FORMAT CURRENCY INDONESIA (Rb/Jt/M)
         function formatCurrencyIndonesia(value) {
@@ -983,105 +974,18 @@
             return jsonlString.trim().split('\n').map(line => JSON.parse(line));
         }
 
-        // ✅ NIVO RADIAL BAR COMPONENT FOR MOBILE
-        function NivoRadialChart({ data }) {
-            if (!data || data.length === 0) {
-                return (
-                    <div style={{
-                        height: '100%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#7f8c8d',
-                        flexDirection: 'column'
-                    }}>
-                        <div style={{ fontSize: '32px', marginBottom: '12px' }}>📊</div>
-                        <div>No LOB data available</div>
-                    </div>
-                );
+        // ✅ GENERATE CHART.JS RADIAL BAR CHART FOR MOBILE
+        function generateRadialChart(performanceData) {
+            console.log('🎨 Generating mobile Chart.js radial bar chart...');
+            
+            const ctx = document.getElementById('radialChart');
+            if (!ctx) return;
+
+            // Destroy existing chart if it exists
+            if (radialChart) {
+                radialChart.destroy();
             }
 
-            return (
-                <div style={{ height: '100%' }}>
-                    <ResponsiveRadialBar
-                        data={data}
-                        valueFormat=">-.0f"
-                        padding={0.3}
-                        cornerRadius={2}
-                        margin={{ top: 20, right: 80, bottom: 20, left: 20 }}
-                        radialAxisStart={{ tickSize: 5, tickPadding: 5, tickRotation: 0 }}
-                        circularAxisOuter={{ tickSize: 5, tickPadding: 8, tickRotation: 0 }}
-                        legends={[
-                            {
-                                anchor: 'right',
-                                direction: 'column',
-                                justify: false,
-                                translateX: 60,
-                                translateY: 0,
-                                itemsSpacing: 4,
-                                itemDirection: 'left-to-right',
-                                itemWidth: 80,
-                                itemHeight: 14,
-                                itemTextColor: '#999',
-                                symbolSize: 12,
-                                symbolShape: 'square',
-                                effects: [
-                                    {
-                                        on: 'hover',
-                                        style: {
-                                            itemTextColor: '#000'
-                                        }
-                                    }
-                                ]
-                            }
-                        ]}
-                        theme={{
-                            background: 'transparent',
-                            textColor: '#2c3e50',
-                            fontSize: 10,
-                            axis: {
-                                domain: {
-                                    line: {
-                                        stroke: '#777777',
-                                        strokeWidth: 1
-                                    }
-                                },
-                                legend: {
-                                    text: {
-                                        fontSize: 10,
-                                        fill: '#333333'
-                                    }
-                                },
-                                ticks: {
-                                    line: {
-                                        stroke: '#777777',
-                                        strokeWidth: 1
-                                    },
-                                    text: {
-                                        fontSize: 9,
-                                        fill: '#333333'
-                                    }
-                                }
-                            },
-                            grid: {
-                                line: {
-                                    stroke: '#dddddd',
-                                    strokeWidth: 1
-                                }
-                            }
-                        }}
-                        colors={{ scheme: 'category10' }}
-                        borderWidth={1}
-                        borderColor={{ from: 'color', modifiers: [['darker', 0.2]] }}
-                    />
-                </div>
-            );
-        }
-
-        // ✅ GENERATE NIVO RADIAL BAR DATA
-        function generateNivoRadialData(performanceData) {
-            console.log('🎨 Generating mobile Nivo radial bar data...');
-            
             // Filter and sort LOBs by actual value
             const validLOBs = Object.keys(performanceData)
                 .filter(lob => performanceData[lob].actual > 0 || performanceData[lob].target > 0)
@@ -1096,39 +1000,85 @@
                 .slice(0, 5); // Take top 5 LOBs for mobile
 
             if (validLOBs.length === 0) {
-                return [];
+                document.getElementById('chartContainer').innerHTML = `
+                    <div style="display: flex; justify-content: center; align-items: center; height: 350px; color: #7f8c8d; flex-direction: column;">
+                        <div style="font-size: 32px; margin-bottom: 12px;">📊</div>
+                        <div>No LOB data available</div>
+                    </div>
+                `;
+                return;
             }
 
-            // Transform data for Nivo format
-            const nivoData = validLOBs.map(lobData => ({
-                id: lobData.lob,
-                data: [
-                    {
-                        x: 'Achievement',
-                        y: Math.min(lobData.percentage, 150) // Cap at 150% for better visualization
+            // Prepare data for Chart.js polar area chart
+            const labels = validLOBs.map(lob => lob.lob);
+            const data = validLOBs.map(lob => lob.percentage);
+            const colors = [
+                '#1e6b52', '#52a373', '#a4b847', 
+                '#f4d03f', '#5dade2'
+            ];
+
+            radialChart = new Chart(ctx, {
+                type: 'polarArea',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Achievement %',
+                        data: data,
+                        backgroundColor: colors.slice(0, validLOBs.length).map(color => color + '80'),
+                        borderColor: colors.slice(0, validLOBs.length),
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 15,
+                                usePointStyle: true,
+                                font: {
+                                    size: 11
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const lobData = validLOBs[context.dataIndex];
+                                    const gapText = lobData.gap >= 0 ? 
+                                        `+${formatCurrencyIndonesia(lobData.gap)}` : 
+                                        `-${formatCurrencyIndonesia(Math.abs(lobData.gap))}`;
+                                    return [
+                                        `${context.label}: ${context.parsed}%`,
+                                        `Actual: ${formatCurrencyIndonesia(lobData.actual)}`,
+                                        `Target: ${formatCurrencyIndonesia(lobData.target)}`,
+                                        `Gap: ${gapText}`
+                                    ];
+                                }
+                            }
+                        }
                     },
-                    {
-                        x: 'Target',
-                        y: 100
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            max: Math.max(100, Math.max(...data)),
+                            ticks: {
+                                stepSize: 25,
+                                font: {
+                                    size: 9
+                                }
+                            },
+                            grid: {
+                                color: '#e2e8f0'
+                            }
+                        }
                     }
-                ]
-            }));
+                }
+            });
 
-            console.log('✅ Mobile Nivo radial data generated:', nivoData);
-            return nivoData;
-        }
-
-        // ✅ RENDER NIVO RADIAL CHART
-        function renderNivoRadialChart(performanceData) {
-            const nivoData = generateNivoRadialData(performanceData);
-            const container = document.getElementById('nivoRadialChart');
-            
-            if (!container) return;
-
-            ReactDOM.render(
-                React.createElement(NivoRadialChart, { data: nivoData }),
-                container
-            );
+            console.log('✅ Mobile Chart.js radial chart generated');
         }
 
         // ✅ UPDATE SUMMARY CARDS DENGAN LAYOUT HORIZONTAL
@@ -1409,9 +1359,9 @@
             // Update summary cards
             updateSummaryCards(salesmanDetails.performance, salesmanDetails.TOTAL);
 
-            // Generate Nivo radial chart
+            // Generate Chart.js radial chart
             if (salesmanDetails.performance && salesmanDetails.TOTAL && salesmanDetails.Ranking) {
-                renderNivoRadialChart(salesmanDetails.performance);
+                generateRadialChart(salesmanDetails.performance);
             }
 
             console.log('✅ Sales tab updated with real data');
@@ -1492,11 +1442,11 @@
                 return;
             }
 
-            console.log('🚀 Initializing mobile salesman detail page with Nivo RadialBar...');
+            console.log('🚀 Initializing mobile salesman detail page with Chart.js RadialBar...');
             loadSalesmanData();
         });
 
-        console.log('✅ Mobile Nivo RadialBar script loaded');
+        console.log('✅ Mobile Chart.js RadialBar script loaded');
     </script>
 </body>
 </html>
