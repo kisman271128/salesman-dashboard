@@ -253,7 +253,7 @@
         }
 
         .metric-title {
-            font-size: 10px;
+            font-size: 12px;
             color: #64748b;
             font-weight: 700;
             text-transform: uppercase;
@@ -1368,33 +1368,19 @@
             console.log('✅ Achievement metrics updated with 9 cards');
         }
 
-        // ✅ UPDATE LOB CARDS with Total Card
+        // ✅ UPDATE LOB CARDS - Use total_data from dashboard.json
         function updateLOBCards(lobCards) {
             const lobGrid = document.getElementById('lobGrid');
             lobGrid.innerHTML = '';
 
-            // Calculate totals for Total card
-            const totalActual = lobCards.reduce((sum, lob) => {
-                const actualValue = parseFloat(lob.actual.replace(/[^\d.-]/g, ''));
-                return sum + actualValue;
-            }, 0);
-            
-            const totalTarget = lobCards.reduce((sum, lob) => {
-                const targetValue = parseFloat(lob.target.replace(/[^\d.-]/g, ''));
-                return sum + targetValue;
-            }, 0);
-
-            const totalGap = totalTarget - totalActual;
-            const totalAchievement = totalTarget > 0 ? (totalActual / totalTarget * 100) : 0;
-
-            // Create Total card first
-            const totalCard = {
+            // Use total_data from dashboard.json instead of calculating
+            const totalCard = dashboardData.total_data || {
                 name: "TOTAL",
-                achievement: Math.round(totalAchievement) + "%",
-                actual: formatCurrencyIndonesia(totalActual),
-                target: formatCurrencyIndonesia(totalTarget),
-                gap: formatCurrencyIndonesia(Math.abs(totalGap)),
-                vs_lm: "0%", // You can calculate these if you have previous period data
+                achievement: "0%",
+                actual: "0",
+                target: "0",
+                gap: "0",
+                vs_lm: "0%",
                 vs_3lm: "0%",
                 vs_ly: "0%"
             };
@@ -1408,7 +1394,7 @@
                 lobGrid.appendChild(card);
             });
 
-            console.log('✅ Generated', lobCards.length + 1, 'LOB cards (including Total)');
+            console.log('✅ Generated', lobCards.length + 1, 'LOB cards (including Total from dashboard.json)');
         }
 
         // ✅ CREATE LOB CARD - Updated to handle Total card
@@ -1467,22 +1453,26 @@
             return card;
         }
 
-        // ✅ INITIALIZE MAP
+        // ✅ INITIALIZE MAP - Optimized for faster loading
         function initializeMap() {
             if (map) {
                 map.remove();
             }
 
-            // Center on South Kalimantan (approximate center of the data points)
-            const centerLat = -2.1;
-            const centerLng = 115.3;
+            // Create map without initial view (will be set after GeoJSON loads)
+            map = L.map('mapContainer', {
+                zoomControl: true,
+                attributionControl: false,
+                maxZoom: 15
+            });
 
-            map = L.map('mapContainer').setView([centerLat, centerLng], 9);
-
-            // Add tile layer
+            // Add optimized tile layer for faster loading
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap contributors',
-                maxZoom: 18
+                maxZoom: 15,
+                tileSize: 256,
+                updateWhenZooming: false, // Faster performance
+                updateWhenIdle: true
             }).addTo(map);
 
             // Add map control event listeners
@@ -1495,13 +1485,13 @@
                 });
             });
 
-            console.log('✅ Map initialized');
+            console.log('✅ Map initialized with optimized settings');
         }
 
-        // ✅ UPDATE MAP LAYERS (using GeoJSON polygons)
+        // ✅ UPDATE MAP LAYERS - Optimized for faster loading and focus on GeoJSON area
         function updateMapLayers() {
-            if (!map || !geoJsonData || !areaData) {
-                console.warn('Map, GeoJSON, or area data not ready');
+            if (!map || !geoJsonData) {
+                console.warn('Map or GeoJSON data not ready');
                 return;
             }
 
@@ -1510,133 +1500,89 @@
                 map.removeLayer(geojsonLayer);
             }
 
-            // Create data lookup map for faster searching
+            // Create data lookup map for faster searching (only if areaData exists)
             const dataLookup = {};
-            areaData.forEach(area => {
-                const key = `${area.Kecamatan.toLowerCase()}_${area.Kabupaten.toLowerCase()}`;
-                dataLookup[key] = area;
-            });
-
-            // Function to get color based on metric and value
-            function getColor(value, metric) {
-                if (metric === 'achievement') {
-                    const ach = value * 100;
-                    if (ach >= 80) return '#059669';
-                    else if (ach >= 60) return '#f59e0b';
-                    else if (ach >= 40) return '#fb7185';
-                    else return '#ef4444';
-                } else if (metric === 'actual') {
-                    const maxActual = Math.max(...areaData.map(a => a.Actual));
-                    const ratio = value / maxActual;
-                    return `hsl(${120 * ratio}, 70%, 50%)`;
-                } else if (metric === 'gap') {
-                    return value >= 0 ? '#059669' : '#ef4444';
-                }
-                return '#667eea';
+            if (areaData && areaData.length > 0) {
+                areaData.forEach(area => {
+                    const key = `${area.Kecamatan.toLowerCase()}_${area.Kabupaten.toLowerCase()}`;
+                    dataLookup[key] = area;
+                });
             }
 
-            // Function to get fill opacity based on metric and value
-            function getFillOpacity(value, metric) {
-                if (metric === 'achievement') {
-                    return Math.max(0.3, Math.min(0.8, value));
-                } else if (metric === 'actual') {
-                    const maxActual = Math.max(...areaData.map(a => a.Actual));
-                    return Math.max(0.3, Math.min(0.8, value / maxActual));
-                } else if (metric === 'gap') {
-                    const maxGap = Math.max(...areaData.map(a => Math.abs(a.Gap)));
-                    return Math.max(0.3, Math.min(0.8, Math.abs(value) / maxGap));
-                }
-                return 0.6;
-            }
-
-            // Style function for each feature
+            // Optimized style function
             function style(feature) {
-                const kecamatan = feature.properties.NAMOBJ || feature.properties.name || feature.properties.Kecamatan;
-                const kabupaten = feature.properties.WADMKK || feature.properties.kabupaten || feature.properties.Kabupaten;
-                
-                // Try multiple combinations to find matching data
-                let matchingData = null;
-                if (kecamatan && kabupaten) {
-                    const key1 = `${kecamatan.toLowerCase()}_${kabupaten.toLowerCase()}`;
-                    const key2 = `${kecamatan.toLowerCase()}_${kabupaten.replace(/kabupaten\s*/i, '').toLowerCase()}`;
-                    matchingData = dataLookup[key1] || dataLookup[key2];
+                // Default style for faster rendering
+                let fillColor = '#e2e8f0';
+                let fillOpacity = 0.3;
+
+                // Only apply data-driven styling if areaData is available
+                if (areaData && areaData.length > 0) {
+                    const kecamatan = feature.properties.NAMOBJ || feature.properties.name || feature.properties.Kecamatan;
+                    const kabupaten = feature.properties.WADMKK || feature.properties.kabupaten || feature.properties.Kabupaten;
                     
-                    // Try partial matching if exact match fails
-                    if (!matchingData) {
-                        for (const [key, data] of Object.entries(dataLookup)) {
-                            if (key.includes(kecamatan.toLowerCase()) || 
-                                data.Kecamatan.toLowerCase().includes(kecamatan.toLowerCase())) {
-                                matchingData = data;
-                                break;
+                    if (kecamatan && kabupaten) {
+                        const key1 = `${kecamatan.toLowerCase()}_${kabupaten.toLowerCase()}`;
+                        const matchingData = dataLookup[key1];
+                        
+                        if (matchingData) {
+                            let value;
+                            if (currentMapMetric === 'achievement') value = matchingData.Ach;
+                            else if (currentMapMetric === 'actual') value = matchingData.Actual;
+                            else if (currentMapMetric === 'gap') value = matchingData.Gap;
+
+                            if (value !== undefined) {
+                                if (currentMapMetric === 'achievement') {
+                                    const ach = value * 100;
+                                    if (ach >= 80) fillColor = '#059669';
+                                    else if (ach >= 60) fillColor = '#f59e0b';
+                                    else if (ach >= 40) fillColor = '#fb7185';
+                                    else fillColor = '#ef4444';
+                                    fillOpacity = Math.max(0.4, Math.min(0.8, value));
+                                } else if (currentMapMetric === 'gap') {
+                                    fillColor = value >= 0 ? '#059669' : '#ef4444';
+                                    fillOpacity = 0.6;
+                                } else {
+                                    fillColor = '#667eea';
+                                    fillOpacity = 0.6;
+                                }
                             }
                         }
                     }
                 }
 
-                if (matchingData) {
-                    let value;
-                    if (currentMapMetric === 'achievement') value = matchingData.Ach;
-                    else if (currentMapMetric === 'actual') value = matchingData.Actual;
-                    else if (currentMapMetric === 'gap') value = matchingData.Gap;
-
-                    return {
-                        fillColor: getColor(value, currentMapMetric),
-                        weight: 2,
-                        opacity: 1,
-                        color: 'white',
-                        dashArray: '',
-                        fillOpacity: getFillOpacity(value, currentMapMetric)
-                    };
-                }
-
-                // Default style for areas without data
                 return {
-                    fillColor: '#e2e8f0',
-                    weight: 2,
-                    opacity: 1,
+                    fillColor: fillColor,
+                    weight: 1,
+                    opacity: 0.8,
                     color: 'white',
-                    dashArray: '3',
-                    fillOpacity: 0.3
+                    fillOpacity: fillOpacity
                 };
             }
 
-            // Function to handle mouse events
+            // Simplified onEachFeature for better performance
             function onEachFeature(feature, layer) {
                 const kecamatan = feature.properties.NAMOBJ || feature.properties.name || feature.properties.Kecamatan;
                 const kabupaten = feature.properties.WADMKK || feature.properties.kabupaten || feature.properties.Kabupaten;
                 
-                // Find matching data
-                let matchingData = null;
-                if (kecamatan && kabupaten) {
-                    const key1 = `${kecamatan.toLowerCase()}_${kabupaten.toLowerCase()}`;
-                    const key2 = `${kecamatan.toLowerCase()}_${kabupaten.replace(/kabupaten\s*/i, '').toLowerCase()}`;
-                    matchingData = dataLookup[key1] || dataLookup[key2];
-                    
-                    if (!matchingData) {
-                        for (const [key, data] of Object.entries(dataLookup)) {
-                            if (key.includes(kecamatan.toLowerCase()) || 
-                                data.Kecamatan.toLowerCase().includes(kecamatan.toLowerCase())) {
-                                matchingData = data;
-                                break;
-                            }
-                        }
-                    }
-                }
+                // Simple popup
+                let popupContent = `
+                    <div class="custom-popup">
+                        <div class="popup-header">
+                            ${kecamatan || 'Unknown'}, ${kabupaten || 'Unknown'}
+                        </div>
+                `;
 
-                // Create popup content
-                let popupContent;
-                if (matchingData) {
-                    popupContent = `
-                        <div class="custom-popup">
-                            <div class="popup-header">
-                                ${matchingData.Kecamatan}, ${matchingData.Kabupaten}
-                            </div>
+                // Add data if available
+                if (areaData && areaData.length > 0) {
+                    const key1 = `${kecamatan.toLowerCase()}_${kabupaten.toLowerCase()}`;
+                    const matchingData = dataLookup[key1];
+                    
+                    if (matchingData) {
+                        popupContent += `
                             <div class="popup-content">
                                 <div class="popup-metric">
                                     <span class="popup-metric-label">Achievement:</span>
-                                    <span class="popup-metric-value ${matchingData.Ach >= 0.8 ? 'positive' : matchingData.Ach >= 0.5 ? '' : 'negative'}">
-                                        ${formatPercentage(matchingData.Ach)}
-                                    </span>
+                                    <span class="popup-metric-value">${formatPercentage(matchingData.Ach)}</span>
                                 </div>
                                 <div class="popup-metric">
                                     <span class="popup-metric-label">Actual:</span>
@@ -1646,79 +1592,66 @@
                                     <span class="popup-metric-label">Target:</span>
                                     <span class="popup-metric-value">${formatCurrency(matchingData.Target)}</span>
                                 </div>
-                                <div class="popup-metric">
-                                    <span class="popup-metric-label">Gap:</span>
-                                    <span class="popup-metric-value ${matchingData.Gap < 0 ? 'negative' : 'positive'}">
-                                        ${formatCurrency(Math.abs(matchingData.Gap))}
-                                    </span>
-                                </div>
-                                <div class="popup-metric">
-                                    <span class="popup-metric-label">vs Last Year:</span>
-                                    <span class="popup-metric-value ${matchingData['vs LY'] >= 0 ? 'positive' : 'negative'}">
-                                        ${formatPercentage(matchingData['vs LY'])}
-                                    </span>
-                                </div>
-                                <div class="popup-metric">
-                                    <span class="popup-metric-label">vs Last Month:</span>
-                                    <span class="popup-metric-value ${matchingData['vs LM'] >= 0 ? 'positive' : 'negative'}">
-                                        ${formatPercentage(matchingData['vs LM'])}
-                                    </span>
-                                </div>
                             </div>
-                        </div>
-                    `;
-                } else {
-                    popupContent = `
-                        <div class="custom-popup">
-                            <div class="popup-header">
-                                ${kecamatan || 'Unknown'}, ${kabupaten || 'Unknown'}
-                            </div>
+                        `;
+                    } else {
+                        popupContent += `
                             <div class="popup-content">
                                 <div class="popup-metric">
                                     <span class="popup-metric-label">Status:</span>
                                     <span class="popup-metric-value">No data available</span>
                                 </div>
                             </div>
+                        `;
+                    }
+                } else {
+                    popupContent += `
+                        <div class="popup-content">
+                            <div class="popup-metric">
+                                <span class="popup-metric-label">Status:</span>
+                                <span class="popup-metric-value">Loading data...</span>
+                            </div>
                         </div>
                     `;
                 }
 
+                popupContent += '</div>';
                 layer.bindPopup(popupContent);
 
-                // Add hover effects
+                // Simplified hover effects
                 layer.on({
                     mouseover: function(e) {
                         const layer = e.target;
                         layer.setStyle({
-                            weight: 3,
+                            weight: 2,
                             color: '#667eea',
-                            dashArray: '',
                             fillOpacity: 0.9
                         });
-                        layer.bringToFront();
                     },
                     mouseout: function(e) {
                         geojsonLayer.resetStyle(e.target);
-                    },
-                    click: function(e) {
-                        map.fitBounds(e.target.getBounds());
                     }
                 });
             }
 
-            // Add GeoJSON layer to map
+            // Add GeoJSON layer to map with optimized settings
             geojsonLayer = L.geoJSON(geoJsonData, {
                 style: style,
                 onEachFeature: onEachFeature
             }).addTo(map);
 
-            // Fit map to show all polygons
-            map.fitBounds(geojsonLayer.getBounds());
+            // Fit map to GeoJSON bounds for faster focus
+            if (geojsonLayer.getBounds().isValid()) {
+                map.fitBounds(geojsonLayer.getBounds(), {
+                    padding: [10, 10],
+                    maxZoom: 12
+                });
+            }
 
             // Update legend
             updateMapLegend();
 
-            console.log('✅ Map layers updated with GeoJSON polygons for metric:', currentMapMetric);
+            console.log('✅ Map layers updated and focused on GeoJSON area');
         }
 
         // ✅ UPDATE MAP LEGEND
