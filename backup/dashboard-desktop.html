@@ -5,6 +5,8 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>Dashboard Desktop - Salesman App</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <style>
         * {
             margin: 0;
@@ -27,9 +29,9 @@
 
         /* ✅ SIDEBAR NAVIGATION */
         .sidebar {
-    background: rgba(44, 62, 80, 0.8);
-    backdrop-filter: blur(10px);
-    transition: all 0.3s ease;
+            background: rgba(44, 62, 80, 0.95);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
             width: 260px;
             background: linear-gradient(180deg, #2c3e50 0%, #34495e 100%);
             color: white;
@@ -181,20 +183,21 @@
         }
 
         .refresh-btn {
-            background: linear-gradient(135deg, #667eea, #764ba2);
+            background: linear-gradient(135deg, #43e97b, #38f9d7);
             color: white;
             border: none;
             padding: 10px 20px;
-            border-radius: 8px;
+            border-radius: 10px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
             font-size: 14px;
+            box-shadow: 0 4px 12px rgba(67, 233, 123, 0.3);
         }
 
         .refresh-btn:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            transform: translateY(-2px) scale(1.03);
+            box-shadow: 0 6px 20px rgba(67, 233, 123, 0.4);
         }
 
         /* ✅ DASHBOARD CONTENT */
@@ -223,13 +226,13 @@
         }
 
         .metric-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
         }
 
         .metric-header {
             display: flex;
-            justify-content: between;
+            justify-content: space-between;
             align-items: flex-start;
             margin-bottom: 12px;
         }
@@ -265,12 +268,26 @@
             color: #dc2626;
         }
 
-        /* ✅ MAIN DASHBOARD GRID */
+        /* ✅ MAIN DASHBOARD GRID - Modified for map */
         .dashboard-grid {
             display: grid;
-            grid-template-columns: 2fr 1fr;
+            grid-template-columns: 1fr 1fr;
             gap: 24px;
-            height: calc(100vh - 180px);
+            height: calc(100vh - 200px);
+        }
+
+        /* ✅ LEFT COLUMN */
+        .left-column {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* ✅ RIGHT COLUMN */
+        .right-column {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
         }
 
         /* ✅ COMPACT LOB CARDS */
@@ -281,6 +298,7 @@
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
             border: 1px solid #e2e8f0;
             overflow: hidden;
+            flex: 1;
         }
 
         .section-header {
@@ -301,9 +319,9 @@
 
         .lob-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
             gap: 16px;
-            max-height: 300px;
+            max-height: 350px;
             overflow-y: auto;
             padding-right: 8px;
         }
@@ -330,8 +348,8 @@
         }
 
         .lob-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
             border-color: #667eea;
         }
 
@@ -345,6 +363,7 @@
         .lob-card.color-6 { --card-color: linear-gradient(135deg, #fd79a8, #fdcb6e); }
         .lob-card.color-7 { --card-color: linear-gradient(135deg, #e17055, #81ecec); }
         .lob-card.color-8 { --card-color: linear-gradient(135deg, #00b894, #00cec9); }
+        .lob-card.color-total { --card-color: linear-gradient(135deg, #667eea, #764ba2); }
 
         .lob-header {
             display: flex;
@@ -425,94 +444,67 @@
             color: #1e293b;
         }
 
-        /* ✅ CHART SECTION */
-        .chart-section {
+        /* ✅ MAP SECTION */
+        .map-section {
             background: white;
             border-radius: 12px;
             padding: 24px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
             border: 1px solid #e2e8f0;
-            margin-bottom: 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
         }
 
-        .chart-header {
+        .map-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 20px;
         }
 
-        .chart-title {
-            font-size: 16px;
+        .map-title {
+            font-size: 18px;
             font-weight: 700;
             color: #1e293b;
-        }
-
-        .chart-period {
-            background: #f1f5f9;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            color: #475569;
-        }
-
-        .chart-container {
-            height: 200px;
-            background: #f8fafc;
-            border-radius: 8px;
-            padding: 16px;
-            border: 1px solid #e2e8f0;
-            margin-bottom: 16px;
-        }
-
-        .chart-legend {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            margin-bottom: 16px;
-        }
-
-        .legend-item {
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
+        }
+
+        .map-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .map-control-btn {
+            padding: 6px 12px;
+            border: 1px solid #e2e8f0;
+            background: white;
+            border-radius: 6px;
             font-size: 12px;
             font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
         }
 
-        .legend-color {
-            width: 12px;
-            height: 12px;
-            border-radius: 2px;
-        }
-
-        .chart-stats {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 12px;
-        }
-
-        .chart-stat {
-            text-align: center;
-            padding: 12px;
+        .map-control-btn:hover {
             background: #f8fafc;
+            border-color: #667eea;
+        }
+
+        .map-control-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        #mapContainer {
+            flex: 1;
             border-radius: 8px;
+            overflow: hidden;
             border: 1px solid #e2e8f0;
-        }
-
-        .chart-stat-value {
-            font-size: 14px;
-            font-weight: 700;
-            color: #667eea;
-            margin-bottom: 4px;
-        }
-
-        .chart-stat-label {
-            font-size: 10px;
-            color: #64748b;
-            font-weight: 600;
-            text-transform: uppercase;
+            min-height: 300px;
         }
 
         /* ✅ SALESMAN SECTION */
@@ -524,7 +516,7 @@
             border: 1px solid #e2e8f0;
             display: flex;
             flex-direction: column;
-            height: 100%;
+            flex: 1;
         }
 
         .salesman-header {
@@ -552,7 +544,7 @@
         .salesman-table-container {
             flex: 1;
             overflow-y: auto;
-            max-height: calc(100vh - 400px);
+            max-height: calc(100vh - 500px);
         }
 
         .salesman-table {
@@ -693,6 +685,59 @@
             border-color: #667eea;
         }
 
+        /* ✅ MAP CUSTOM STYLES */
+        .custom-popup {
+            max-width: 280px;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .popup-header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 12px 16px;
+            margin: -12px -16px 12px -16px;
+            border-radius: 8px 8px 0 0;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .popup-content {
+            display: grid;
+            gap: 8px;
+        }
+
+        .popup-metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .popup-metric:last-child {
+            border-bottom: none;
+        }
+
+        .popup-metric-label {
+            font-size: 12px;
+            color: #64748b;
+            font-weight: 600;
+        }
+
+        .popup-metric-value {
+            font-size: 12px;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .popup-metric-value.positive {
+            color: #059669;
+        }
+
+        .popup-metric-value.negative {
+            color: #dc2626;
+        }
+
         /* ✅ LOADING AND ERROR STATES */
         .loading-spinner {
             display: flex;
@@ -760,22 +805,19 @@
         }
 
         /* ✅ RESPONSIVE */
-        @media (max-width: 1200px) {
+        @media (max-width: 1400px) {
             .dashboard-grid {
                 grid-template-columns: 1fr;
                 height: auto;
             }
             
-            .salesman-table-container {
-                max-height: 400px;
+            .lob-grid {
+                grid-template-columns: repeat(2, 1fr);
             }
         }
 
         @media (max-width: 768px) {
             .sidebar {
-    background: rgba(44, 62, 80, 0.8);
-    backdrop-filter: blur(10px);
-    transition: all 0.3s ease;
                 transform: translateX(-100%);
                 transition: transform 0.3s ease;
             }
@@ -792,38 +834,7 @@
                 grid-template-columns: 1fr;
             }
         }
-    
-.metric-card,
-.lob-card,
-.view-btn,
-.nav-item {
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.metric-card:hover,
-.lob-card:hover {
-    transform: scale(1.02);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
-}
-
-.refresh-btn {
-    background: linear-gradient(135deg, #43e97b, #38f9d7);
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 10px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    font-size: 14px;
-    box-shadow: 0 4px 12px rgba(67, 233, 123, 0.3);
-}
-
-.refresh-btn:hover {
-    transform: translateY(-2px) scale(1.03);
-    box-shadow: 0 6px 20px rgba(67, 233, 123, 0.4);
-}
-</style>
+    </style>
 </head>
 <body>
 <div class="desktop-container">
@@ -905,7 +916,7 @@
 <!-- ✅ DASHBOARD GRID -->
 <div class="dashboard-grid">
 <!-- ✅ LEFT COLUMN -->
-<div>
+<div class="left-column">
 <!-- ✅ LOB SECTION -->
 <div class="lob-section">
 <div class="section-header">
@@ -918,37 +929,7 @@
 <!-- Will be populated by JavaScript -->
 </div>
 </div>
-<!-- ✅ CHART SECTION -->
-<div class="chart-section">
-<div class="chart-header">
-<h3 class="chart-title">📈 Tren SO &amp; DO vs Target</h3>
-<div class="chart-period" id="chartPeriod">Memuat...</div>
-</div>
-<div class="chart-legend">
-<div class="legend-item">
-<div class="legend-color" style="background: linear-gradient(135deg, #667eea, #764ba2);"></div>
-<span>SO Aktual</span>
-</div>
-<div class="legend-item">
-<div class="legend-color" style="background: linear-gradient(135deg, #f093fb, #f5576c);"></div>
-<span>DO Aktual</span>
-</div>
-<div class="legend-item">
-<div class="legend-color" style="background: linear-gradient(135deg, #43e97b, #38f9d7); border-radius: 50%;"></div>
-<span>Target</span>
-</div>
-</div>
-<div class="chart-container">
-<svg id="chartSvg" style="width: 100%; height: 100%;">
-<!-- Chart will be generated by JavaScript -->
-</svg>
-</div>
-<div class="chart-stats" id="chartStats">
-<!-- Will be populated by JavaScript -->
-</div>
-</div>
-</div>
-<!-- ✅ RIGHT COLUMN - SALESMAN SECTION -->
+<!-- ✅ SALESMAN SECTION -->
 <div class="salesman-section">
 <div class="salesman-header">
 <h3 class="salesman-title">👥 Peringkat Salesman</h3>
@@ -972,6 +953,24 @@
 </div>
 </div>
 </div>
+<!-- ✅ RIGHT COLUMN - MAP SECTION -->
+<div class="right-column">
+<div class="map-section">
+<div class="map-header">
+<h3 class="map-title">
+<span>🗺️</span>
+                                    Peta Area Kecamatan
+                                </h3>
+<div class="map-controls">
+<button class="map-control-btn active" data-metric="achievement">Achievement</button>
+<button class="map-control-btn" data-metric="actual">Actual</button>
+<button class="map-control-btn" data-metric="gap">Gap</button>
+</div>
+</div>
+<div id="mapContainer"></div>
+</div>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -981,6 +980,10 @@
         let dashboardData = null;
         let salesmanData = null;
         let chartData = null;
+        let areaData = null;
+        let map = null;
+        let markersLayer = null;
+        let currentMapMetric = 'achievement';
 
         // ✅ FORMAT CURRENCY FUNCTION
         function formatCurrencyIndonesia(value) {
@@ -999,6 +1002,20 @@
             } catch {
                 return "0";
             }
+        }
+
+        function formatCurrency(value) {
+            if (typeof value === 'number') {
+                return formatCurrencyIndonesia(value);
+            }
+            return value || "0";
+        }
+
+        function formatPercentage(value) {
+            if (typeof value === 'number') {
+                return (value * 100).toFixed(1) + '%';
+            }
+            return value || "0%";
         }
 
         // Check login status
@@ -1027,7 +1044,8 @@
                 const responses = await Promise.all([
                     fetch('data/dashboard.json'),
                     fetch('data/salesman_list.json'),
-                    fetch('data/chart_data.json')
+                    fetch('data/chart_data.json'),
+                    fetch('data/d.area.json')
                 ]);
 
                 for (let i = 0; i < responses.length; i++) {
@@ -1037,16 +1055,22 @@
                 }
 
                 [dashboardData, salesmanData, chartData] = await Promise.all(
-                    responses.map(response => response.json())
+                    responses.slice(0, 3).map(response => response.json())
                 );
 
+                // Load area data (it's in JSONL format)
+                const areaText = await responses[3].text();
+                areaData = areaText.trim().split('\n').map(line => JSON.parse(line));
+
                 console.log('✅ Dashboard data loaded');
+                console.log('✅ Area data loaded:', areaData.length, 'records');
 
                 updateHeader(dashboardData);
                 updateMetricsRow(dashboardData);
                 updateLOBCards(dashboardData.lob_cards);
                 updateSalesmanTable(salesmanData);
-                updateChart(chartData);
+                initializeMap();
+                updateMapMarkers();
 
                 showLoading(false);
                 showMainContent(true);
@@ -1068,7 +1092,7 @@
         function updateMetricsRow(data) {
             const metricsRow = document.getElementById('metricsRow');
             
-            // Calculate summary metrics
+            // Calculate summary metrics including totals
             const totalLOB = data.lob_cards.length;
             const avgAchievement = data.lob_cards.reduce((sum, lob) => 
                 sum + parseInt(lob.achievement.replace('%', '')), 0) / totalLOB;
@@ -1082,6 +1106,8 @@
                 const targetValue = parseFloat(lob.target.replace(/[^\d.-]/g, ''));
                 return sum + targetValue;
             }, 0);
+
+            const totalGap = totalTarget - totalActual;
 
             metricsRow.innerHTML = `
                 <div class="metric-card fade-in">
@@ -1113,39 +1139,75 @@
                 </div>
                 <div class="metric-card fade-in" style="animation-delay: 0.3s;">
                     <div class="metric-header">
-                        <div class="metric-title">Total Target</div>
+                        <div class="metric-title">Total Gap</div>
                     </div>
-                    <div class="metric-value">${formatCurrencyIndonesia(totalTarget)}</div>
-                    <div class="metric-change">
-                        📊 Target Bulanan
+                    <div class="metric-value">${formatCurrencyIndonesia(Math.abs(totalGap))}</div>
+                    <div class="metric-change ${totalGap < 0 ? 'negative' : 'positive'}">
+                        ${totalGap < 0 ? '↘' : '↗'} dari Target
                     </div>
                 </div>
             `;
         }
 
-        // ✅ UPDATE LOB CARDS
+        // ✅ UPDATE LOB CARDS with Total Card
         function updateLOBCards(lobCards) {
             const lobGrid = document.getElementById('lobGrid');
             lobGrid.innerHTML = '';
 
+            // Calculate totals for Total card
+            const totalActual = lobCards.reduce((sum, lob) => {
+                const actualValue = parseFloat(lob.actual.replace(/[^\d.-]/g, ''));
+                return sum + actualValue;
+            }, 0);
+            
+            const totalTarget = lobCards.reduce((sum, lob) => {
+                const targetValue = parseFloat(lob.target.replace(/[^\d.-]/g, ''));
+                return sum + targetValue;
+            }, 0);
+
+            const totalGap = totalTarget - totalActual;
+            const totalAchievement = totalTarget > 0 ? (totalActual / totalTarget * 100) : 0;
+
+            // Create Total card first
+            const totalCard = {
+                name: "TOTAL",
+                achievement: Math.round(totalAchievement) + "%",
+                actual: formatCurrencyIndonesia(totalActual),
+                target: formatCurrencyIndonesia(totalTarget),
+                gap: formatCurrencyIndonesia(Math.abs(totalGap)),
+                vs_lm: "0%", // You can calculate these if you have previous period data
+                vs_3lm: "0%",
+                vs_ly: "0%"
+            };
+
+            const totalCardElement = createLOBCard(totalCard, 'total', true);
+            lobGrid.appendChild(totalCardElement);
+
+            // Add individual LOB cards
             lobCards.forEach((lob, index) => {
                 const card = createLOBCard(lob, index);
                 lobGrid.appendChild(card);
             });
 
-            console.log('✅ Generated', lobCards.length, 'LOB cards');
+            console.log('✅ Generated', lobCards.length + 1, 'LOB cards (including Total)');
         }
 
-        // ✅ CREATE LOB CARD
-        function createLOBCard(lob, index) {
+        // ✅ CREATE LOB CARD - Updated to handle Total card
+        function createLOBCard(lob, index, isTotal = false) {
             const card = document.createElement('div');
-            card.className = `lob-card color-${index % 9} fade-in`;
-            card.style.animationDelay = `${index * 0.05}s`;
+            card.className = `lob-card ${isTotal ? 'color-total' : `color-${index % 9}`} fade-in`;
+            card.style.animationDelay = `${(isTotal ? 0 : index + 1) * 0.05}s`;
+            
+            if (isTotal) {
+                card.style.order = '-1'; // Make Total card appear first
+                card.style.background = 'linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1))';
+                card.style.border = '2px solid #667eea';
+            }
             
             card.innerHTML = `
                 <div class="lob-header">
-                    <div class="lob-name">${lob.name}</div>
-                    <div class="achievement-badge">${lob.achievement}</div>
+                    <div class="lob-name">${isTotal ? '📊 ' + lob.name : lob.name}</div>
+                    <div class="achievement-badge" style="${isTotal ? 'background: linear-gradient(135deg, #43e97b, #38f9d7);' : ''}">${lob.achievement}</div>
                 </div>
                 
                 <div class="lob-metrics">
@@ -1186,215 +1248,139 @@
             return card;
         }
 
-        // ✅ UPDATE CHART
-        function updateChart(chartData) {
-            console.log('🎨 Updating chart with data:', chartData);
-            
-            if (!chartData || !chartData.so_data || !chartData.do_data) {
-                console.warn('No chart data available');
-                return;
+        // ✅ INITIALIZE MAP
+        function initializeMap() {
+            if (map) {
+                map.remove();
             }
 
-            const chartPeriodElement = document.getElementById('chartPeriod');
-            if (chartPeriodElement && chartData.period) {
-                chartPeriodElement.textContent = chartData.period;
-            }
+            // Center on South Kalimantan (approximate center of the data points)
+            const centerLat = -2.1;
+            const centerLng = 115.3;
 
-            setTimeout(() => {
-                generateSVGChart(chartData);
-            }, 100);
+            map = L.map('mapContainer').setView([centerLat, centerLng], 9);
 
-            updateChartStats(chartData.stats);
+            // Add tile layer
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 18
+            }).addTo(map);
+
+            // Create markers layer group
+            markersLayer = L.layerGroup().addTo(map);
+
+            // Add map control event listeners
+            document.querySelectorAll('.map-control-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.map-control-btn').forEach(b => b.classList.remove('active'));
+                    e.target.classList.add('active');
+                    currentMapMetric = e.target.getAttribute('data-metric');
+                    updateMapMarkers();
+                });
+            });
+
+            console.log('✅ Map initialized');
         }
 
-        // ✅ GENERATE SVG CHART
-        function generateSVGChart(data) {
-            const svg = document.getElementById('chartSvg');
-            const container = document.querySelector('.chart-container');
-            
-            if (!svg || !container || !data.so_data.length) {
-                console.error('❌ Chart elements not found or no data');
-                return;
-            }
-            
-            const containerRect = container.getBoundingClientRect();
-            const containerWidth = containerRect.width - 32;
-            const containerHeight = 168;
-            const margin = { top: 20, right: 20, bottom: 40, left: 40 };
-            const chartWidth = containerWidth - margin.left - margin.right;
-            const chartHeight = containerHeight - margin.top - margin.bottom;
-
-            svg.setAttribute('width', containerWidth);
-            svg.setAttribute('height', containerHeight);
-            svg.setAttribute('viewBox', `0 0 ${containerWidth} ${containerHeight}`);
-            svg.innerHTML = '';
-
-            const maxSO = Math.max(...data.so_data);
-            const maxDO = Math.max(...data.do_data);
-            const maxTarget = Math.max(...data.target_data);
-            const maxValue = Math.max(maxSO, maxDO, maxTarget) * 1.1;
-
-            if (maxValue === 0) {
-                console.warn('⚠️ No data to display in chart');
+        // ✅ UPDATE MAP MARKERS
+        function updateMapMarkers() {
+            if (!map || !markersLayer || !areaData) {
+                console.warn('Map or area data not ready');
                 return;
             }
 
-            const xScale = (i) => (i / Math.max(data.so_data.length - 1, 1)) * chartWidth + margin.left;
-            const yScale = (value) => chartHeight - (value / maxValue) * chartHeight + margin.top;
+            // Clear existing markers
+            markersLayer.clearLayers();
 
-            // Grid lines
-            for (let i = 0; i <= 4; i++) {
-                const y = margin.top + (i / 4) * chartHeight;
-                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                line.setAttribute('x1', margin.left);
-                line.setAttribute('y1', y);
-                line.setAttribute('x2', margin.left + chartWidth);
-                line.setAttribute('y2', y);
-                line.setAttribute('stroke', '#e2e8f0');
-                line.setAttribute('stroke-width', '1');
-                svg.appendChild(line);
-            }
+            // Add markers for each area
+            areaData.forEach((area, index) => {
+                if (area.Latitude && area.Longitude) {
+                    const lat = parseFloat(area.Latitude);
+                    const lng = parseFloat(area.Longitude);
 
-            // Draw lines
-            let soPath = '';
-            let doPath = '';
-            let targetPath = '';
+                    // Determine marker color based on metric
+                    let markerColor = '#667eea';
+                    let markerSize = 8;
 
-            data.so_data.forEach((value, i) => {
-                const x = xScale(i);
-                const y = yScale(value);
-                const command = i === 0 ? 'M' : 'L';
-                soPath += `${command} ${x} ${y} `;
-            });
+                    if (currentMapMetric === 'achievement') {
+                        const ach = area.Ach * 100;
+                        if (ach >= 80) markerColor = '#059669';
+                        else if (ach >= 60) markerColor = '#f59e0b';
+                        else if (ach >= 40) markerColor = '#ef4444';
+                        else markerColor = '#dc2626';
+                        markerSize = Math.max(6, Math.min(15, ach / 5));
+                    } else if (currentMapMetric === 'actual') {
+                        const actual = area.Actual;
+                        const maxActual = Math.max(...areaData.map(a => a.Actual));
+                        const ratio = actual / maxActual;
+                        markerSize = Math.max(6, ratio * 15);
+                        markerColor = `hsl(${120 * ratio}, 70%, 50%)`;
+                    } else if (currentMapMetric === 'gap') {
+                        const gap = area.Gap;
+                        if (gap >= 0) markerColor = '#059669';
+                        else markerColor = '#ef4444';
+                        markerSize = Math.max(6, Math.min(15, Math.abs(gap) / 10000000));
+                    }
 
-            data.do_data.forEach((value, i) => {
-                const x = xScale(i);
-                const y = yScale(value);
-                const command = i === 0 ? 'M' : 'L';
-                doPath += `${command} ${x} ${y} `;
-            });
+                    // Create custom marker
+                    const marker = L.circleMarker([lat, lng], {
+                        radius: markerSize,
+                        fillColor: markerColor,
+                        color: '#ffffff',
+                        weight: 2,
+                        opacity: 1,
+                        fillOpacity: 0.8
+                    });
 
-            data.target_data.forEach((value, i) => {
-                const x = xScale(i);
-                const y = yScale(value);
-                const command = i === 0 ? 'M' : 'L';
-                targetPath += `${command} ${x} ${y} `;
-            });
+                    // Create popup content
+                    const popupContent = `
+                        <div class="custom-popup">
+                            <div class="popup-header">
+                                ${area.Kecamatan}, ${area.Kabupaten}
+                            </div>
+                            <div class="popup-content">
+                                <div class="popup-metric">
+                                    <span class="popup-metric-label">Achievement:</span>
+                                    <span class="popup-metric-value ${area.Ach >= 0.8 ? 'positive' : area.Ach >= 0.5 ? '' : 'negative'}">
+                                        ${formatPercentage(area.Ach)}
+                                    </span>
+                                </div>
+                                <div class="popup-metric">
+                                    <span class="popup-metric-label">Actual:</span>
+                                    <span class="popup-metric-value">${formatCurrency(area.Actual)}</span>
+                                </div>
+                                <div class="popup-metric">
+                                    <span class="popup-metric-label">Target:</span>
+                                    <span class="popup-metric-value">${formatCurrency(area.Target)}</span>
+                                </div>
+                                <div class="popup-metric">
+                                    <span class="popup-metric-label">Gap:</span>
+                                    <span class="popup-metric-value ${area.Gap < 0 ? 'negative' : 'positive'}">
+                                        ${formatCurrency(Math.abs(area.Gap))}
+                                    </span>
+                                </div>
+                                <div class="popup-metric">
+                                    <span class="popup-metric-label">vs Last Year:</span>
+                                    <span class="popup-metric-value ${area['vs LY'] >= 0 ? 'positive' : 'negative'}">
+                                        ${formatPercentage(area['vs LY'])}
+                                    </span>
+                                </div>
+                                <div class="popup-metric">
+                                    <span class="popup-metric-label">vs Last Month:</span>
+                                    <span class="popup-metric-value ${area['vs LM'] >= 0 ? 'positive' : 'negative'}">
+                                        ${formatPercentage(area['vs LM'])}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
 
-            // Add paths
-            if (soPath) {
-                const soLine = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                soLine.setAttribute('d', soPath);
-                soLine.setAttribute('stroke', '#667eea');
-                soLine.setAttribute('stroke-width', '2');
-                soLine.setAttribute('fill', 'none');
-                svg.appendChild(soLine);
-            }
-
-            if (doPath) {
-                const doLine = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                doLine.setAttribute('d', doPath);
-                doLine.setAttribute('stroke', '#f093fb');
-                doLine.setAttribute('stroke-width', '2');
-                doLine.setAttribute('fill', 'none');
-                svg.appendChild(doLine);
-            }
-
-            if (targetPath) {
-                const targetLine = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                targetLine.setAttribute('d', targetPath);
-                targetLine.setAttribute('stroke', '#43e97b');
-                targetLine.setAttribute('stroke-width', '2');
-                targetLine.setAttribute('stroke-dasharray', '4,2');
-                targetLine.setAttribute('fill', 'none');
-                svg.appendChild(targetLine);
-            }
-
-            // Add points
-            data.so_data.forEach((value, i) => {
-                if (value > 0) {
-                    const point = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                    point.setAttribute('cx', xScale(i));
-                    point.setAttribute('cy', yScale(value));
-                    point.setAttribute('r', '3');
-                    point.setAttribute('fill', '#667eea');
-                    svg.appendChild(point);
+                    marker.bindPopup(popupContent);
+                    markersLayer.addLayer(marker);
                 }
             });
 
-            // Add X-axis labels with dates
-            if (data.labels && data.labels.length > 0) {
-                data.labels.forEach((label, i) => {
-                    // Show every 2nd or 3rd label to avoid crowding
-                    if (i % 2 === 0 || i === data.labels.length - 1) {
-                        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                        text.setAttribute('x', xScale(i));
-                        text.setAttribute('y', containerHeight - 15);
-                        text.setAttribute('text-anchor', 'middle');
-                        text.setAttribute('font-size', '10');
-                        text.setAttribute('fill', '#64748b');
-                        // Format date if it looks like a date
-                        let displayLabel = label;
-                        if (label.includes('/') || label.includes('-')) {
-                            // Assume it's a date and format it nicely
-                            try {
-                                const date = new Date(label);
-                                if (!isNaN(date.getTime())) {
-                                    displayLabel = date.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit' });
-                                }
-                            } catch (e) {
-                                // Keep original label if date parsing fails
-                            }
-                        }
-                        text.textContent = displayLabel;
-                        svg.appendChild(text);
-                    }
-                });
-            }
-
-            console.log('✅ Grafik SVG berhasil dibuat');
-        }
-
-        // ✅ UPDATE CHART STATS
-        function updateChartStats(stats) {
-            const chartStatsElement = document.getElementById('chartStats');
-            if (!chartStatsElement) return;
-            
-            let avgSO = stats.avg_so;
-            let avgDO = stats.avg_do;
-            let avgTarget = stats.avg_target;
-            let gapTotal = stats.gap_total;
-            
-            if (typeof avgSO === 'number') {
-                avgSO = formatCurrencyIndonesia(avgSO);
-            }
-            if (typeof avgDO === 'number') {
-                avgDO = formatCurrencyIndonesia(avgDO);
-            }
-            if (typeof avgTarget === 'number') {
-                avgTarget = formatCurrencyIndonesia(avgTarget);
-            }
-            
-            chartStatsElement.innerHTML = `
-                <div class="chart-stat">
-                    <div class="chart-stat-value">${avgSO}</div>
-                    <div class="chart-stat-label">Rata SO/Hari</div>
-                </div>
-                <div class="chart-stat">
-                    <div class="chart-stat-value">${avgDO}</div>
-                    <div class="chart-stat-label">Rata DO/Hari</div>
-                </div>
-                <div class="chart-stat">
-                    <div class="chart-stat-value">${avgTarget}</div>
-                    <div class="chart-stat-label">Target/Hari</div>
-                </div>
-                <div class="chart-stat">
-                    <div class="chart-stat-value">${gapTotal || '0'}</div>
-                    <div class="chart-stat-label">Total Gap</div>
-                </div>
-            `;
-            
-            console.log('✅ Chart stats updated');
+            console.log('✅ Map markers updated for metric:', currentMapMetric);
         }
 
         // ✅ UPDATE SALESMAN TABLE
@@ -1525,11 +1511,11 @@
             console.log('✅ Dashboard initialized');
         });
 
-        // Handle window resize for chart
+        // Handle window resize for map
         window.addEventListener('resize', () => {
-            if (chartData) {
+            if (map) {
                 setTimeout(() => {
-                    generateSVGChart(chartData);
+                    map.invalidateSize();
                 }, 300);
             }
         });

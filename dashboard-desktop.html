@@ -475,6 +475,7 @@
         .map-controls {
             display: flex;
             gap: 8px;
+            align-items: center;
         }
 
         .map-control-btn {
@@ -499,12 +500,48 @@
             border-color: #667eea;
         }
 
+        .map-legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 12px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e2e8f0;
+            font-size: 11px;
+            z-index: 1000;
+            min-width: 120px;
+        }
+
+        .legend-title {
+            font-weight: 700;
+            margin-bottom: 8px;
+            font-size: 12px;
+            color: #1e293b;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 12px;
+            border-radius: 2px;
+            border: 1px solid #fff;
+        }
+
         #mapContainer {
             flex: 1;
             border-radius: 8px;
             overflow: hidden;
             border: 1px solid #e2e8f0;
             min-height: 300px;
+            position: relative;
         }
 
         /* ✅ SALESMAN SECTION */
@@ -967,7 +1004,31 @@
 <button class="map-control-btn" data-metric="gap">Gap</button>
 </div>
 </div>
-<div id="mapContainer"></div>
+                <div id="mapContainer">
+                    <div class="map-legend" id="mapLegend">
+                        <div class="legend-title">Achievement</div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #059669;"></div>
+                            <span>≥ 80%</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #65a30d;"></div>
+                            <span>60-80%</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #f59e0b;"></div>
+                            <span>40-60%</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #f97316;"></div>
+                            <span>20-40%</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #dc2626;"></div>
+                            <span>&lt; 20%</span>
+                        </div>
+                    </div>
+                </div>
 </div>
 </div>
 </div>
@@ -981,8 +1042,9 @@
         let salesmanData = null;
         let chartData = null;
         let areaData = null;
+        let geoJsonData = null;
         let map = null;
-        let markersLayer = null;
+        let geoJsonLayer = null;
         let currentMapMetric = 'achievement';
 
         // ✅ FORMAT CURRENCY FUNCTION
@@ -1045,7 +1107,8 @@
                     fetch('data/dashboard.json'),
                     fetch('data/salesman_list.json'),
                     fetch('data/chart_data.json'),
-                    fetch('data/d.area.json')
+                    fetch('data/d.area.json'),
+                    fetch('data/kecamatan.geojson') // Add your GeoJSON file here
                 ]);
 
                 for (let i = 0; i < responses.length; i++) {
@@ -1062,15 +1125,19 @@
                 const areaText = await responses[3].text();
                 areaData = areaText.trim().split('\n').map(line => JSON.parse(line));
 
+                // Load GeoJSON data
+                geoJsonData = await responses[4].json();
+
                 console.log('✅ Dashboard data loaded');
                 console.log('✅ Area data loaded:', areaData.length, 'records');
+                console.log('✅ GeoJSON data loaded:', geoJsonData.features.length, 'features');
 
                 updateHeader(dashboardData);
                 updateMetricsRow(dashboardData);
                 updateLOBCards(dashboardData.lob_cards);
                 updateSalesmanTable(salesmanData);
                 initializeMap();
-                updateMapMarkers();
+                updateMapPolygons();
 
                 showLoading(false);
                 showMainContent(true);
@@ -1266,121 +1333,280 @@
                 maxZoom: 18
             }).addTo(map);
 
-            // Create markers layer group
-            markersLayer = L.layerGroup().addTo(map);
-
             // Add map control event listeners
             document.querySelectorAll('.map-control-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     document.querySelectorAll('.map-control-btn').forEach(b => b.classList.remove('active'));
                     e.target.classList.add('active');
                     currentMapMetric = e.target.getAttribute('data-metric');
-                    updateMapMarkers();
+                    updateMapPolygons();
                 });
             });
 
             console.log('✅ Map initialized');
         }
 
-        // ✅ UPDATE MAP MARKERS
-        function updateMapMarkers() {
-            if (!map || !markersLayer || !areaData) {
-                console.warn('Map or area data not ready');
+        // ✅ GET DATA FOR KECAMATAN
+        function getKecamatanData(kecamatanName, kabupatenName) {
+            // Try to find exact match first
+            let data = areaData.find(area => 
+                area.Kecamatan.toLowerCase() === kecamatanName.toLowerCase() && 
+                area.Kabupaten.toLowerCase() === kabupatenName.toLowerCase()
+            );
+            
+            // If not found, try partial match on kecamatan name
+            if (!data) {
+                data = areaData.find(area => 
+                    area.Kecamatan.toLowerCase().includes(kecamatanName.toLowerCase()) ||
+                    kecamatanName.toLowerCase().includes(area.Kecamatan.toLowerCase())
+                );
+            }
+            
+            return data;
+        }
+
+        // ✅ GET COLOR FOR VALUE
+        function getColorForValue(value, metric) {
+            switch (metric) {
+                case 'achievement':
+                    if (value >= 0.8) return '#059669'; // Green
+                    if (value >= 0.6) return '#65a30d'; // Light Green  
+                    if (value >= 0.4) return '#f59e0b'; // Yellow
+                    if (value >= 0.2) return '#f97316'; // Orange
+                    return '#dc2626'; // Red
+                    
+                case 'actual':
+                    const maxActual = Math.max(...areaData.map(a => a.Actual));
+                    const ratio = value / maxActual;
+                    if (ratio >= 0.8) return '#059669';
+                    if (ratio >= 0.6) return '#65a30d';
+                    if (ratio >= 0.4) return '#f59e0b';
+                    if (ratio >= 0.2) return '#f97316';
+                    return '#dc2626';
+                    
+                case 'gap':
+                    if (value >= 0) return '#059669'; // Positive gap (above target)
+                    return '#dc2626'; // Negative gap (below target)
+                    
+                default:
+                    return '#667eea';
+            }
+        }
+
+        // ✅ UPDATE MAP POLYGONS
+        function updateMapPolygons() {
+            if (!map || !geoJsonData || !areaData) {
+                console.warn('Map, GeoJSON, or area data not ready');
                 return;
             }
 
-            // Clear existing markers
-            markersLayer.clearLayers();
+            // Remove existing layer
+            if (geoJsonLayer) {
+                map.removeLayer(geoJsonLayer);
+            }
 
-            // Add markers for each area
-            areaData.forEach((area, index) => {
-                if (area.Latitude && area.Longitude) {
-                    const lat = parseFloat(area.Latitude);
-                    const lng = parseFloat(area.Longitude);
-
-                    // Determine marker color based on metric
-                    let markerColor = '#667eea';
-                    let markerSize = 8;
-
-                    if (currentMapMetric === 'achievement') {
-                        const ach = area.Ach * 100;
-                        if (ach >= 80) markerColor = '#059669';
-                        else if (ach >= 60) markerColor = '#f59e0b';
-                        else if (ach >= 40) markerColor = '#ef4444';
-                        else markerColor = '#dc2626';
-                        markerSize = Math.max(6, Math.min(15, ach / 5));
-                    } else if (currentMapMetric === 'actual') {
-                        const actual = area.Actual;
-                        const maxActual = Math.max(...areaData.map(a => a.Actual));
-                        const ratio = actual / maxActual;
-                        markerSize = Math.max(6, ratio * 15);
-                        markerColor = `hsl(${120 * ratio}, 70%, 50%)`;
-                    } else if (currentMapMetric === 'gap') {
-                        const gap = area.Gap;
-                        if (gap >= 0) markerColor = '#059669';
-                        else markerColor = '#ef4444';
-                        markerSize = Math.max(6, Math.min(15, Math.abs(gap) / 10000000));
+            // Create new GeoJSON layer
+            geoJsonLayer = L.geoJSON(geoJsonData, {
+                style: function(feature) {
+                    const kecamatanName = feature.properties.NAMOBJ || feature.properties.NAME || feature.properties.name;
+                    const kabupatenName = feature.properties.KABKOT || feature.properties.KABUPATEN || feature.properties.kabupaten;
+                    
+                    const data = getKecamatanData(kecamatanName, kabupatenName);
+                    
+                    let fillColor = '#cccccc'; // Default gray for no data
+                    let fillOpacity = 0.3;
+                    
+                    if (data) {
+                        fillOpacity = 0.7;
+                        switch (currentMapMetric) {
+                            case 'achievement':
+                                fillColor = getColorForValue(data.Ach, 'achievement');
+                                break;
+                            case 'actual':
+                                fillColor = getColorForValue(data.Actual, 'actual');
+                                break;
+                            case 'gap':
+                                fillColor = getColorForValue(data.Gap, 'gap');
+                                break;
+                        }
                     }
-
-                    // Create custom marker
-                    const marker = L.circleMarker([lat, lng], {
-                        radius: markerSize,
-                        fillColor: markerColor,
-                        color: '#ffffff',
+                    
+                    return {
+                        fillColor: fillColor,
                         weight: 2,
                         opacity: 1,
-                        fillOpacity: 0.8
-                    });
-
+                        color: '#ffffff',
+                        fillOpacity: fillOpacity
+                    };
+                },
+                onEachFeature: function(feature, layer) {
+                    const kecamatanName = feature.properties.NAMOBJ || feature.properties.NAME || feature.properties.name;
+                    const kabupatenName = feature.properties.KABKOT || feature.properties.KABUPATEN || feature.properties.kabupaten;
+                    
+                    const data = getKecamatanData(kecamatanName, kabupatenName);
+                    
                     // Create popup content
-                    const popupContent = `
+                    let popupContent = `
                         <div class="custom-popup">
                             <div class="popup-header">
-                                ${area.Kecamatan}, ${area.Kabupaten}
+                                ${kecamatanName}${kabupatenName ? ', ' + kabupatenName : ''}
                             </div>
+                    `;
+                    
+                    if (data) {
+                        popupContent += `
                             <div class="popup-content">
                                 <div class="popup-metric">
                                     <span class="popup-metric-label">Achievement:</span>
-                                    <span class="popup-metric-value ${area.Ach >= 0.8 ? 'positive' : area.Ach >= 0.5 ? '' : 'negative'}">
-                                        ${formatPercentage(area.Ach)}
+                                    <span class="popup-metric-value ${data.Ach >= 0.8 ? 'positive' : data.Ach >= 0.5 ? '' : 'negative'}">
+                                        ${formatPercentage(data.Ach)}
                                     </span>
                                 </div>
                                 <div class="popup-metric">
                                     <span class="popup-metric-label">Actual:</span>
-                                    <span class="popup-metric-value">${formatCurrency(area.Actual)}</span>
+                                    <span class="popup-metric-value">${formatCurrency(data.Actual)}</span>
                                 </div>
                                 <div class="popup-metric">
                                     <span class="popup-metric-label">Target:</span>
-                                    <span class="popup-metric-value">${formatCurrency(area.Target)}</span>
+                                    <span class="popup-metric-value">${formatCurrency(data.Target)}</span>
                                 </div>
                                 <div class="popup-metric">
                                     <span class="popup-metric-label">Gap:</span>
-                                    <span class="popup-metric-value ${area.Gap < 0 ? 'negative' : 'positive'}">
-                                        ${formatCurrency(Math.abs(area.Gap))}
+                                    <span class="popup-metric-value ${data.Gap < 0 ? 'negative' : 'positive'}">
+                                        ${formatCurrency(Math.abs(data.Gap))}
                                     </span>
                                 </div>
                                 <div class="popup-metric">
                                     <span class="popup-metric-label">vs Last Year:</span>
-                                    <span class="popup-metric-value ${area['vs LY'] >= 0 ? 'positive' : 'negative'}">
-                                        ${formatPercentage(area['vs LY'])}
+                                    <span class="popup-metric-value ${data['vs LY'] >= 0 ? 'positive' : 'negative'}">
+                                        ${formatPercentage(data['vs LY'])}
                                     </span>
                                 </div>
                                 <div class="popup-metric">
                                     <span class="popup-metric-label">vs Last Month:</span>
-                                    <span class="popup-metric-value ${area['vs LM'] >= 0 ? 'positive' : 'negative'}">
-                                        ${formatPercentage(area['vs LM'])}
+                                    <span class="popup-metric-value ${data['vs LM'] >= 0 ? 'positive' : 'negative'}">
+                                        ${formatPercentage(data['vs LM'])}
                                     </span>
                                 </div>
                             </div>
+                        `;
+                    } else {
+                        popupContent += `
+                            <div class="popup-content">
+                                <div class="popup-metric">
+                                    <span class="popup-metric-label" style="color: #666;">No data available</span>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    
+                    popupContent += `</div>`;
+                    
+                    layer.bindPopup(popupContent);
+                    
+                    // Add hover effects
+                    layer.on({
+                        mouseover: function(e) {
+                            const layer = e.target;
+                            layer.setStyle({
+                                weight: 3,
+                                opacity: 1,
+                                fillOpacity: 0.9
+                            });
+                        },
+                        mouseout: function(e) {
+                            geoJsonLayer.resetStyle(e.target);
+                        }
+                    });
+                }
+            }).addTo(map);
+
+            // Fit map to GeoJSON bounds
+            if (geoJsonLayer.getBounds().isValid()) {
+                map.fitBounds(geoJsonLayer.getBounds(), { padding: [20, 20] });
+            }
+
+            console.log('✅ Map polygons updated for metric:', currentMapMetric);
+            updateMapLegend();
+        }
+
+        // ✅ UPDATE MAP LEGEND
+        function updateMapLegend() {
+            const legend = document.getElementById('mapLegend');
+            if (!legend) return;
+
+            let legendContent = '';
+            switch (currentMapMetric) {
+                case 'achievement':
+                    legendContent = `
+                        <div class="legend-title">Achievement</div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #059669;"></div>
+                            <span>≥ 80%</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #65a30d;"></div>
+                            <span>60-80%</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #f59e0b;"></div>
+                            <span>40-60%</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #f97316;"></div>
+                            <span>20-40%</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #dc2626;"></div>
+                            <span>&lt; 20%</span>
                         </div>
                     `;
-
-                    marker.bindPopup(popupContent);
-                    markersLayer.addLayer(marker);
-                }
-            });
-
-            console.log('✅ Map markers updated for metric:', currentMapMetric);
+                    break;
+                case 'actual':
+                    legendContent = `
+                        <div class="legend-title">Actual Value</div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #059669;"></div>
+                            <span>Very High</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #65a30d;"></div>
+                            <span>High</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #f59e0b;"></div>
+                            <span>Medium</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #f97316;"></div>
+                            <span>Low</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #dc2626;"></div>
+                            <span>Very Low</span>
+                        </div>
+                    `;
+                    break;
+                case 'gap':
+                    legendContent = `
+                        <div class="legend-title">Gap Analysis</div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #059669;"></div>
+                            <span>Above Target</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #dc2626;"></div>
+                            <span>Below Target</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #cccccc;"></div>
+                            <span>No Data</span>
+                        </div>
+                    `;
+                    break;
+            }
+            
+            legend.innerHTML = legendContent;
         }
 
         // ✅ UPDATE SALESMAN TABLE
@@ -1516,6 +1742,10 @@
             if (map) {
                 setTimeout(() => {
                     map.invalidateSize();
+                    // Refit bounds if GeoJSON layer exists
+                    if (geoJsonLayer && geoJsonLayer.getBounds().isValid()) {
+                        map.fitBounds(geoJsonLayer.getBounds(), { padding: [20, 20] });
+                    }
                 }, 300);
             }
         });
