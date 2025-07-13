@@ -1209,9 +1209,12 @@
                     }
                 }
 
-                [dashboardData, salesmanData, chartData, , , depoData] = await Promise.all(
-                    responses.slice(0, 3).concat(responses.slice(5)).map(response => response.json())
-                );
+                // Load JSON data
+                [dashboardData, salesmanData, chartData] = await Promise.all([
+                    responses[0].json(),
+                    responses[1].json(),
+                    responses[2].json()
+                ]);
 
                 // Load area data (it's in JSONL format)
                 const areaText = await responses[3].text();
@@ -1219,6 +1222,9 @@
 
                 // Load GeoJSON data
                 geoJsonData = await responses[4].json();
+
+                // Load depot process data
+                depoData = await responses[5].json();
 
                 console.log('✅ Dashboard data loaded');
                 console.log('✅ Area data loaded:', areaData.length, 'records');
@@ -1251,6 +1257,13 @@
         // ✅ NEW: UPDATE ACHIEVEMENT METRICS - 9 Cards
         function updateAchievementMetrics(data) {
             const metricsRow = document.getElementById('metricsRow');
+            
+            // Check if data is available
+            if (!data) {
+                console.error('❌ Depot data is not available');
+                metricsRow.innerHTML = '<div class="error-message">Data achievement tidak tersedia</div>';
+                return;
+            }
             
             // Define the 9 achievement metrics
             const achievementMetrics = [
