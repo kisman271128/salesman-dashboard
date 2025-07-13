@@ -1205,16 +1205,14 @@
 
                 for (let i = 0; i < responses.length; i++) {
                     if (!responses[i].ok) {
-                        throw new Error(`Failed to load data file ${i + 1}`);
+                        throw new Error(`Failed to load data file ${i + 1}: ${responses[i].status}`);
                     }
                 }
 
-                // Load JSON data
-                [dashboardData, salesmanData, chartData] = await Promise.all([
-                    responses[0].json(),
-                    responses[1].json(),
-                    responses[2].json()
-                ]);
+                // Load JSON data with proper error handling
+                dashboardData = await responses[0].json();
+                salesmanData = await responses[1].json();
+                chartData = await responses[2].json();
 
                 // Load area data (it's in JSONL format)
                 const areaText = await responses[3].text();
@@ -1226,10 +1224,19 @@
                 // Load depot process data
                 depoData = await responses[5].json();
 
-                console.log('✅ Dashboard data loaded');
+                console.log('✅ Dashboard data loaded:', dashboardData);
                 console.log('✅ Area data loaded:', areaData.length, 'records');
-                console.log('✅ GeoJSON data loaded:', geoJsonData.features.length, 'features');
+                console.log('✅ GeoJSON data loaded:', geoJsonData.features?.length || 0, 'features');
                 console.log('✅ Depot data loaded:', depoData);
+
+                // Verify depoData has required fields
+                if (depoData && typeof depoData === 'object') {
+                    console.log('✅ Depot data keys:', Object.keys(depoData));
+                    console.log('✅ Ach_CR value:', depoData.Ach_CR);
+                } else {
+                    console.error('❌ Depot data is invalid:', depoData);
+                    throw new Error('Invalid depot data format');
+                }
 
                 updateHeader(dashboardData);
                 updateAchievementMetrics(depoData); // New function for achievement metrics
@@ -1258,10 +1265,21 @@
         function updateAchievementMetrics(data) {
             const metricsRow = document.getElementById('metricsRow');
             
+            console.log('🔍 updateAchievementMetrics called with data:', data);
+            
             // Check if data is available
-            if (!data) {
-                console.error('❌ Depot data is not available');
-                metricsRow.innerHTML = '<div class="error-message">Data achievement tidak tersedia</div>';
+            if (!data || typeof data !== 'object') {
+                console.error('❌ Depot data is not available or invalid:', data);
+                metricsRow.innerHTML = `
+                    <div class="metric-card indicator-red">
+                        <div class="metric-header">
+                            <div class="metric-title">Error</div>
+                            <div class="metric-indicator">🔴</div>
+                        </div>
+                        <div class="metric-value">N/A</div>
+                        <div class="metric-status">Data achievement tidak tersedia</div>
+                    </div>
+                `;
                 return;
             }
             
@@ -1317,6 +1335,8 @@
             let cardsHTML = '';
             
             achievementMetrics.forEach((metric, index) => {
+                console.log(`🔍 Processing metric: ${metric.key}, value: ${data[metric.key]}`);
+                
                 const achievement = data[metric.key] || 0;
                 const indicator = getAchievementIndicator(achievement);
                 const percentage = (achievement * 100).toFixed(1);
