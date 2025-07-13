@@ -163,9 +163,9 @@ class SalesmanDashboardUpdater:
         return True
 
     def process_dashboard_data(self, sheets):
-        """🔧 SUPER FIXED: Process dashboard data with ALL metrics properly"""
+        """🔧 SUPER FIXED: Process dashboard data with ALL metrics properly + TOTAL card"""
         try:
-            self.safe_log('info', "🔄 Processing dashboard data with all metrics...", "Processing dashboard data with all metrics...")
+            self.safe_log('info', "🔄 Processing dashboard data with all metrics + Total...", "Processing dashboard data with all metrics + Total...")
             
             dashboard_df = sheets['d.dashboard']
             self.safe_log('info', f"Dashboard columns: {list(dashboard_df.columns)}")
@@ -175,14 +175,11 @@ class SalesmanDashboardUpdater:
             
             # Process LOB cards with all vs metrics
             lob_cards = []
+            total_data = None  # ✅ NEW: Store TOTAL data separately
             
             for index, row in dashboard_df.iterrows():
                 if pd.notna(row.get('LOB', '')) and row.get('LOB', '').strip() != '':
                     lob_name = str(row['LOB']).strip()
-                    
-                    # Skip TOTAL row for individual LOB cards
-                    if lob_name.upper() == 'TOTAL':
-                        continue
                     
                     self.safe_log('info', f"🎯 Processing LOB: {lob_name}")
                     
@@ -211,6 +208,23 @@ class SalesmanDashboardUpdater:
                     vs_3lm = self.parse_percentage_value(vs_3lm_raw)
                     vs_lm = self.parse_percentage_value(vs_lm_raw)
                     
+                    # ✅ NEW: Handle TOTAL row separately
+                    if lob_name.upper() == 'TOTAL':
+                        total_data = {
+                            'name': 'TOTAL',
+                            'achievement': f"{self.safe_percentage(achievement)}%",
+                            'actual': self.format_currency_indonesia(actual),
+                            'target': self.format_currency_indonesia(bp),
+                            'gap': self.format_currency_indonesia(abs(gap)),
+                            'vs_bp': f"{'+' if vs_bp >= 0 else ''}{vs_bp}%",
+                            'vs_ly': f"{'+' if vs_ly >= 0 else ''}{vs_ly}%", 
+                            'vs_3lm': f"{'+' if vs_3lm >= 0 else ''}{vs_3lm}%",
+                            'vs_lm': f"{'+' if vs_lm >= 0 else ''}{vs_lm}%"
+                        }
+                        self.safe_log('info', f"✅ Stored TOTAL data: {total_data['achievement']}, Actual: {total_data['actual']}, Target: {total_data['target']}, Gap: {total_data['gap']}", 
+                                    f"[OK] Stored TOTAL data: {total_data['achievement']}, Actual: {total_data['actual']}")
+                        continue  # Skip adding TOTAL to individual LOB cards
+                    
                     # 🔧 DEBUGGING: Log found values
                     self.safe_log('info', f"DEBUG {lob_name}:")
                     self.safe_log('info', f"  Actual: {actual_raw} -> {actual}")
@@ -237,14 +251,25 @@ class SalesmanDashboardUpdater:
                     self.safe_log('info', f"✅ Added LOB: {lob_card['name']} - Ach:{lob_card['achievement']}, vs LM:{lob_card['vs_lm']}, vs 3LM:{lob_card['vs_3lm']}, vs LY:{lob_card['vs_ly']}", 
                                 f"[OK] Added LOB: {lob_card['name']} - Ach:{lob_card['achievement']}, vs LM:{lob_card['vs_lm']}, vs 3LM:{lob_card['vs_3lm']}, vs LY:{lob_card['vs_ly']}")
             
-            self.safe_log('info', f"✅ Processed {len(lob_cards)} LOB cards with all metrics", f"[OK] Processed {len(lob_cards)} LOB cards with all metrics")
+            self.safe_log('info', f"✅ Processed {len(lob_cards)} LOB cards + TOTAL data with all metrics", f"[OK] Processed {len(lob_cards)} LOB cards + TOTAL data with all metrics")
             
-            return {
+            # ✅ NEW: Include total_data in return
+            result = {
                 'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 'depo_name': 'Depo Tanjung',
                 'region_name': 'Region Kalimantan',
                 'lob_cards': lob_cards
             }
+            
+            # ✅ NEW: Add total_data if available
+            if total_data:
+                result['total_data'] = total_data
+                self.safe_log('info', f"✅ Added TOTAL data to result: {total_data['name']} - {total_data['achievement']}", 
+                            f"[OK] Added TOTAL data to result: {total_data['name']} - {total_data['achievement']}")
+            else:
+                self.safe_log('warning', "⚠️ No TOTAL data found in dashboard")
+            
+            return result
             
         except Exception as e:
             self.safe_log('error', f"Error processing dashboard data: {str(e)}")
