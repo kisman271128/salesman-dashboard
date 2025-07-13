@@ -208,20 +208,33 @@
             background: #f8fafc;
         }
 
-        /* ✅ METRICS CARDS ROW */
+        /* ✅ METRICS CARDS ROW - Modified for 9 cards */
         .metrics-row {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
             margin-bottom: 24px;
         }
 
         .metric-card {
             background: white;
             border-radius: 12px;
-            padding: 20px;
+            padding: 18px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
             border: 1px solid #e2e8f0;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--indicator-color, #e2e8f0);
             transition: all 0.3s ease;
         }
 
@@ -238,33 +251,63 @@
         }
 
         .metric-title {
-            font-size: 13px;
+            font-size: 12px;
             color: #64748b;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            line-height: 1.3;
+        }
+
+        .metric-indicator {
+            font-size: 16px;
+            margin-left: 8px;
         }
 
         .metric-value {
-            font-size: 24px;
+            font-size: 22px;
             font-weight: 700;
             color: #1e293b;
             margin-bottom: 8px;
         }
 
-        .metric-change {
-            font-size: 12px;
+        .metric-status {
+            font-size: 11px;
             font-weight: 600;
             display: flex;
             align-items: center;
             gap: 4px;
+            padding: 4px 8px;
+            border-radius: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        .metric-change.positive {
+        /* Color classes for achievement indicators */
+        .indicator-green {
+            --indicator-color: #059669;
+        }
+
+        .indicator-green .metric-status {
+            background: rgba(5, 150, 105, 0.1);
             color: #059669;
         }
 
-        .metric-change.negative {
+        .indicator-yellow {
+            --indicator-color: #f59e0b;
+        }
+
+        .indicator-yellow .metric-status {
+            background: rgba(245, 158, 11, 0.1);
+            color: #d97706;
+        }
+
+        .indicator-red {
+            --indicator-color: #ef4444;
+        }
+
+        .indicator-red .metric-status {
+            background: rgba(239, 68, 68, 0.1);
             color: #dc2626;
         }
 
@@ -865,6 +908,12 @@
             }
         }
 
+        @media (max-width: 1200px) {
+            .metrics-row {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
         @media (max-width: 768px) {
             .sidebar {
                 transform: translateX(-100%);
@@ -980,7 +1029,7 @@
 </div>
 <!-- Main Dashboard Content -->
 <div id="dashboardContent" style="display: none;">
-<!-- ✅ METRICS ROW -->
+<!-- ✅ ACHIEVEMENT METRICS ROW - 9 Cards -->
 <div class="metrics-row" id="metricsRow">
 <!-- Will be populated by JavaScript -->
 </div>
@@ -1060,6 +1109,7 @@
         let chartData = null;
         let areaData = null;
         let geoJsonData = null;
+        let depoData = null; // New variable for depot process data
         let map = null;
         let geojsonLayer = null;
         let currentMapMetric = 'achievement';
@@ -1097,6 +1147,30 @@
             return value || "0%";
         }
 
+        // ✅ NEW: Get achievement indicator
+        function getAchievementIndicator(achievement) {
+            const percentage = achievement * 100;
+            if (percentage >= 100) {
+                return {
+                    emoji: '🟢',
+                    class: 'indicator-green',
+                    status: 'Target Tercapai'
+                };
+            } else if (percentage >= 80) {
+                return {
+                    emoji: '🟡',
+                    class: 'indicator-yellow',
+                    status: 'Mendekati Target'
+                };
+            } else {
+                return {
+                    emoji: '🔴',
+                    class: 'indicator-red',
+                    status: 'Perlu Peningkatan'
+                };
+            }
+        }
+
         // Check login status
         function checkLoginStatus() {
             const isLoggedIn = sessionStorage.getItem('isLoggedIn');
@@ -1112,7 +1186,7 @@
             return true;
         }
 
-        // ✅ LOAD DASHBOARD DATA
+        // ✅ LOAD DASHBOARD DATA - Modified to include depot data
         async function loadDashboardData() {
             try {
                 showLoading(true);
@@ -1125,7 +1199,8 @@
                     fetch('data/salesman_list.json'),
                     fetch('data/chart_data.json'),
                     fetch('data/d.area.json'),
-                    fetch('data/kecamatan.geojson') // Add your GeoJSON file here
+                    fetch('data/kecamatan.geojson'),
+                    fetch('data/d.depoproses.json') // Add depot process data
                 ]);
 
                 for (let i = 0; i < responses.length; i++) {
@@ -1134,8 +1209,8 @@
                     }
                 }
 
-                [dashboardData, salesmanData, chartData] = await Promise.all(
-                    responses.slice(0, 3).map(response => response.json())
+                [dashboardData, salesmanData, chartData, , , depoData] = await Promise.all(
+                    responses.slice(0, 3).concat(responses.slice(5)).map(response => response.json())
                 );
 
                 // Load area data (it's in JSONL format)
@@ -1148,9 +1223,10 @@
                 console.log('✅ Dashboard data loaded');
                 console.log('✅ Area data loaded:', areaData.length, 'records');
                 console.log('✅ GeoJSON data loaded:', geoJsonData.features.length, 'features');
+                console.log('✅ Depot data loaded:', depoData);
 
                 updateHeader(dashboardData);
-                updateMetricsRow(dashboardData);
+                updateAchievementMetrics(depoData); // New function for achievement metrics
                 updateLOBCards(dashboardData.lob_cards);
                 updateSalesmanTable(salesmanData);
                 initializeMap();
@@ -1172,65 +1248,82 @@
             document.getElementById('regionName').textContent = data.region_name || 'Memuat informasi wilayah...';
         }
 
-        // ✅ UPDATE METRICS ROW
-        function updateMetricsRow(data) {
+        // ✅ NEW: UPDATE ACHIEVEMENT METRICS - 9 Cards
+        function updateAchievementMetrics(data) {
             const metricsRow = document.getElementById('metricsRow');
             
-            // Calculate summary metrics including totals
-            const totalLOB = data.lob_cards.length;
-            const avgAchievement = data.lob_cards.reduce((sum, lob) => 
-                sum + parseInt(lob.achievement.replace('%', '')), 0) / totalLOB;
-            
-            const totalActual = data.lob_cards.reduce((sum, lob) => {
-                const actualValue = parseFloat(lob.actual.replace(/[^\d.-]/g, ''));
-                return sum + actualValue;
-            }, 0);
-            
-            const totalTarget = data.lob_cards.reduce((sum, lob) => {
-                const targetValue = parseFloat(lob.target.replace(/[^\d.-]/g, ''));
-                return sum + targetValue;
-            }, 0);
+            // Define the 9 achievement metrics
+            const achievementMetrics = [
+                {
+                    key: 'Ach_CR',
+                    title: 'Customer Register',
+                    shortTitle: 'Customer Register'
+                },
+                {
+                    key: 'Ach_CA',
+                    title: 'Customer Active',
+                    shortTitle: 'Customer Active'
+                },
+                {
+                    key: 'Ach_PC',
+                    title: 'Plan Call',
+                    shortTitle: 'Plan Call'
+                },
+                {
+                    key: 'Ach_AC',
+                    title: 'Actual Call',
+                    shortTitle: 'Actual Call'
+                },
+                {
+                    key: 'Ach_EC',
+                    title: 'Effective Call',
+                    shortTitle: 'Effective Call'
+                },
+                {
+                    key: 'Ach_AvgSKU',
+                    title: 'Average SKU',
+                    shortTitle: 'Average SKU'
+                },
+                {
+                    key: 'Ach_CAProdAll',
+                    title: 'CA Prod',
+                    shortTitle: 'CA Prod'
+                },
+                {
+                    key: 'Ach_GPFood',
+                    title: 'GP Food',
+                    shortTitle: 'GP Food'
+                },
+                {
+                    key: 'Ach_GPOthers',
+                    title: 'GP Others',
+                    shortTitle: 'GP Others'
+                }
+            ];
 
-            const totalGap = totalTarget - totalActual;
+            let cardsHTML = '';
+            
+            achievementMetrics.forEach((metric, index) => {
+                const achievement = data[metric.key] || 0;
+                const indicator = getAchievementIndicator(achievement);
+                const percentage = (achievement * 100).toFixed(1);
 
-            metricsRow.innerHTML = `
-                <div class="metric-card fade-in">
-                    <div class="metric-header">
-                        <div class="metric-title">Total LOB</div>
+                cardsHTML += `
+                    <div class="metric-card ${indicator.class} fade-in" style="animation-delay: ${index * 0.1}s;">
+                        <div class="metric-header">
+                            <div class="metric-title">${metric.shortTitle}</div>
+                            <div class="metric-indicator">${indicator.emoji}</div>
+                        </div>
+                        <div class="metric-value">${percentage}%</div>
+                        <div class="metric-status">
+                            ${indicator.status}
+                        </div>
                     </div>
-                    <div class="metric-value">${totalLOB}</div>
-                    <div class="metric-change positive">
-                        ↗ Lini Aktif
-                    </div>
-                </div>
-                <div class="metric-card fade-in" style="animation-delay: 0.1s;">
-                    <div class="metric-header">
-                        <div class="metric-title">Rata-rata Pencapaian</div>
-                    </div>
-                    <div class="metric-value">${Math.round(avgAchievement)}%</div>
-                    <div class="metric-change ${avgAchievement >= 80 ? 'positive' : 'negative'}">
-                        ${avgAchievement >= 80 ? '↗' : '↘'} vs Target
-                    </div>
-                </div>
-                <div class="metric-card fade-in" style="animation-delay: 0.2s;">
-                    <div class="metric-header">
-                        <div class="metric-title">Total Aktual</div>
-                    </div>
-                    <div class="metric-value">${formatCurrencyIndonesia(totalActual)}</div>
-                    <div class="metric-change positive">
-                        ↗ Periode Ini
-                    </div>
-                </div>
-                <div class="metric-card fade-in" style="animation-delay: 0.3s;">
-                    <div class="metric-header">
-                        <div class="metric-title">Total Gap</div>
-                    </div>
-                    <div class="metric-value">${formatCurrencyIndonesia(Math.abs(totalGap))}</div>
-                    <div class="metric-change ${totalGap < 0 ? 'negative' : 'positive'}">
-                        ${totalGap < 0 ? '↘' : '↗'} dari Target
-                    </div>
-                </div>
-            `;
+                `;
+            });
+
+            metricsRow.innerHTML = cardsHTML;
+            console.log('✅ Achievement metrics updated with 9 cards');
         }
 
         // ✅ UPDATE LOB CARDS with Total Card
