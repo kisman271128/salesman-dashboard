@@ -253,7 +253,7 @@
         }
 
         .metric-title {
-            font-size: 12px;
+            font-size: 10px;
             color: #64748b;
             font-weight: 700;
             text-transform: uppercase;
@@ -1226,18 +1226,35 @@
                 salesmanData = await responses[1].json();
                 chartData = await responses[2].json();
 
-                // Load area data (it's in JSONL format)
+                // Load area data (it's in JSONL format) with validation
                 const areaText = await responses[3].text();
-                areaData = areaText.trim().split('\n').map(line => JSON.parse(line));
+                if (areaText && areaText.trim()) {
+                    try {
+                        areaData = areaText.trim().split('\n').map(line => JSON.parse(line));
+                        console.log('✅ Area data loaded:', areaData.length, 'records');
+                    } catch (error) {
+                        console.warn('⚠️ Error parsing area data:', error);
+                        areaData = [];
+                    }
+                } else {
+                    console.warn('⚠️ Area data file is empty');
+                    areaData = [];
+                }
 
-                // Load GeoJSON data
-                geoJsonData = await responses[4].json();
+                // Load GeoJSON data with validation
+                const geoJsonResponse = await responses[4];
+                geoJsonData = await geoJsonResponse.json();
+                
+                // Validate GeoJSON structure
+                if (!geoJsonData || !geoJsonData.features || !Array.isArray(geoJsonData.features)) {
+                    console.warn('⚠️ Invalid GeoJSON structure, using fallback');
+                    geoJsonData = { type: "FeatureCollection", features: [] };
+                }
 
                 // Load depot process data
                 depoData = await responses[5].json();
 
                 console.log('✅ Dashboard data loaded:', dashboardData);
-                console.log('✅ Area data loaded:', areaData.length, 'records');
                 console.log('✅ GeoJSON data loaded:', geoJsonData.features?.length || 0, 'features');
                 console.log('✅ Depot data loaded:', depoData);
 
@@ -1502,11 +1519,20 @@
 
             // Create data lookup map for faster searching (only if areaData exists)
             const dataLookup = {};
-            if (areaData && areaData.length > 0) {
-                areaData.forEach(area => {
-                    const key = `${area.Kecamatan.toLowerCase()}_${area.Kabupaten.toLowerCase()}`;
-                    dataLookup[key] = area;
-                });
+            if (areaData && Array.isArray(areaData) && areaData.length > 0) {
+                try {
+                    areaData.forEach(area => {
+                        if (area.Kecamatan && area.Kabupaten) {
+                            const key = `${area.Kecamatan.toLowerCase()}_${area.Kabupaten.toLowerCase()}`;
+                            dataLookup[key] = area;
+                        }
+                    });
+                    console.log('✅ Area data lookup created with', Object.keys(dataLookup).length, 'entries');
+                } catch (error) {
+                    console.warn('Error creating area data lookup:', error);
+                }
+            } else {
+                console.log('⚠️ Area data not available, using default styling');
             }
 
             // Optimized style function
@@ -1517,36 +1543,42 @@
 
                 // Only apply data-driven styling if areaData is available
                 if (areaData && areaData.length > 0) {
-                    const kecamatan = feature.properties.NAMOBJ || feature.properties.name || feature.properties.Kecamatan;
-                    const kabupaten = feature.properties.WADMKK || feature.properties.kabupaten || feature.properties.Kabupaten;
-                    
-                    if (kecamatan && kabupaten) {
-                        const key1 = `${kecamatan.toLowerCase()}_${kabupaten.toLowerCase()}`;
-                        const matchingData = dataLookup[key1];
+                    try {
+                        // Safe property access with null checks
+                        const kecamatan = feature.properties?.NAMOBJ || feature.properties?.name || feature.properties?.Kecamatan;
+                        const kabupaten = feature.properties?.WADMKK || feature.properties?.kabupaten || feature.properties?.Kabupaten;
                         
-                        if (matchingData) {
-                            let value;
-                            if (currentMapMetric === 'achievement') value = matchingData.Ach;
-                            else if (currentMapMetric === 'actual') value = matchingData.Actual;
-                            else if (currentMapMetric === 'gap') value = matchingData.Gap;
+                        if (kecamatan && kabupaten) {
+                            const key1 = `${kecamatan.toLowerCase()}_${kabupaten.toLowerCase()}`;
+                            const matchingData = dataLookup[key1];
+                            
+                            if (matchingData) {
+                                let value;
+                                if (currentMapMetric === 'achievement') value = matchingData.Ach;
+                                else if (currentMapMetric === 'actual') value = matchingData.Actual;
+                                else if (currentMapMetric === 'gap') value = matchingData.Gap;
 
-                            if (value !== undefined) {
-                                if (currentMapMetric === 'achievement') {
-                                    const ach = value * 100;
-                                    if (ach >= 80) fillColor = '#059669';
-                                    else if (ach >= 60) fillColor = '#f59e0b';
-                                    else if (ach >= 40) fillColor = '#fb7185';
-                                    else fillColor = '#ef4444';
-                                    fillOpacity = Math.max(0.4, Math.min(0.8, value));
-                                } else if (currentMapMetric === 'gap') {
-                                    fillColor = value >= 0 ? '#059669' : '#ef4444';
-                                    fillOpacity = 0.6;
-                                } else {
-                                    fillColor = '#667eea';
-                                    fillOpacity = 0.6;
+                                if (value !== undefined) {
+                                    if (currentMapMetric === 'achievement') {
+                                        const ach = value * 100;
+                                        if (ach >= 80) fillColor = '#059669';
+                                        else if (ach >= 60) fillColor = '#f59e0b';
+                                        else if (ach >= 40) fillColor = '#fb7185';
+                                        else fillColor = '#ef4444';
+                                        fillOpacity = Math.max(0.4, Math.min(0.8, value));
+                                    } else if (currentMapMetric === 'gap') {
+                                        fillColor = value >= 0 ? '#059669' : '#ef4444';
+                                        fillOpacity = 0.6;
+                                    } else {
+                                        fillColor = '#667eea';
+                                        fillOpacity = 0.6;
+                                    }
                                 }
                             }
                         }
+                    } catch (error) {
+                        console.warn('Error processing style for feature:', error);
+                        // Keep default style
                     }
                 }
 
@@ -1561,45 +1593,58 @@
 
             // Simplified onEachFeature for better performance
             function onEachFeature(feature, layer) {
-                const kecamatan = feature.properties.NAMOBJ || feature.properties.name || feature.properties.Kecamatan;
-                const kabupaten = feature.properties.WADMKK || feature.properties.kabupaten || feature.properties.Kabupaten;
+                // Safe property access with null checks
+                const kecamatan = feature.properties?.NAMOBJ || feature.properties?.name || feature.properties?.Kecamatan || 'Unknown';
+                const kabupaten = feature.properties?.WADMKK || feature.properties?.kabupaten || feature.properties?.Kabupaten || 'Unknown';
                 
                 // Simple popup
                 let popupContent = `
                     <div class="custom-popup">
                         <div class="popup-header">
-                            ${kecamatan || 'Unknown'}, ${kabupaten || 'Unknown'}
+                            ${kecamatan}, ${kabupaten}
                         </div>
                 `;
 
                 // Add data if available
-                if (areaData && areaData.length > 0) {
-                    const key1 = `${kecamatan.toLowerCase()}_${kabupaten.toLowerCase()}`;
-                    const matchingData = dataLookup[key1];
-                    
-                    if (matchingData) {
-                        popupContent += `
-                            <div class="popup-content">
-                                <div class="popup-metric">
-                                    <span class="popup-metric-label">Achievement:</span>
-                                    <span class="popup-metric-value">${formatPercentage(matchingData.Ach)}</span>
+                if (areaData && areaData.length > 0 && kecamatan !== 'Unknown' && kabupaten !== 'Unknown') {
+                    try {
+                        const key1 = `${kecamatan.toLowerCase()}_${kabupaten.toLowerCase()}`;
+                        const matchingData = dataLookup[key1];
+                        
+                        if (matchingData) {
+                            popupContent += `
+                                <div class="popup-content">
+                                    <div class="popup-metric">
+                                        <span class="popup-metric-label">Achievement:</span>
+                                        <span class="popup-metric-value">${formatPercentage(matchingData.Ach)}</span>
+                                    </div>
+                                    <div class="popup-metric">
+                                        <span class="popup-metric-label">Actual:</span>
+                                        <span class="popup-metric-value">${formatCurrency(matchingData.Actual)}</span>
+                                    </div>
+                                    <div class="popup-metric">
+                                        <span class="popup-metric-label">Target:</span>
+                                        <span class="popup-metric-value">${formatCurrency(matchingData.Target)}</span>
+                                    </div>
                                 </div>
-                                <div class="popup-metric">
-                                    <span class="popup-metric-label">Actual:</span>
-                                    <span class="popup-metric-value">${formatCurrency(matchingData.Actual)}</span>
+                            `;
+                        } else {
+                            popupContent += `
+                                <div class="popup-content">
+                                    <div class="popup-metric">
+                                        <span class="popup-metric-label">Status:</span>
+                                        <span class="popup-metric-value">No data available</span>
+                                    </div>
                                 </div>
-                                <div class="popup-metric">
-                                    <span class="popup-metric-label">Target:</span>
-                                    <span class="popup-metric-value">${formatCurrency(matchingData.Target)}</span>
-                                </div>
-                            </div>
-                        `;
-                    } else {
+                            `;
+                        }
+                    } catch (error) {
+                        console.warn('Error processing popup data:', error);
                         popupContent += `
                             <div class="popup-content">
                                 <div class="popup-metric">
                                     <span class="popup-metric-label">Status:</span>
-                                    <span class="popup-metric-value">No data available</span>
+                                    <span class="popup-metric-value">Data processing error</span>
                                 </div>
                             </div>
                         `;
@@ -1634,24 +1679,40 @@
                 });
             }
 
-            // Add GeoJSON layer to map with optimized settings
-            geojsonLayer = L.geoJSON(geoJsonData, {
-                style: style,
-                onEachFeature: onEachFeature
-            }).addTo(map);
+            // Add GeoJSON layer to map with optimized settings and error handling
+            try {
+                geojsonLayer = L.geoJSON(geoJsonData, {
+                    style: style,
+                    onEachFeature: onEachFeature
+                }).addTo(map);
 
-            // Fit map to GeoJSON bounds for faster focus
-            if (geojsonLayer.getBounds().isValid()) {
-                map.fitBounds(geojsonLayer.getBounds(), {
-                    padding: [10, 10],
-                    maxZoom: 12
-                });
+                // Fit map to GeoJSON bounds for faster focus
+                if (geojsonLayer.getBounds().isValid()) {
+                    map.fitBounds(geojsonLayer.getBounds(), {
+                        padding: [10, 10],
+                        maxZoom: 12
+                    });
+                } else {
+                    // Fallback to center view if bounds are invalid
+                    map.setView([-2.1, 115.3], 9);
+                }
+
+                // Update legend
+                updateMapLegend();
+
+                console.log('✅ Map layers updated and focused on GeoJSON area');
+            } catch (error) {
+                console.error('❌ Error creating GeoJSON layer:', error);
+                
+                // Show error message on map
+                const errorMessage = L.popup()
+                    .setLatLng([-2.1, 115.3])
+                    .setContent('Error loading map data. Please refresh the page.')
+                    .openOn(map);
+                
+                // Set fallback view
+                map.setView([-2.1, 115.3], 9);
             }
-
-            // Update legend
-            updateMapLegend();
-
-            console.log('✅ Map layers updated and focused on GeoJSON area');
         }
 
         // ✅ UPDATE MAP LEGEND
