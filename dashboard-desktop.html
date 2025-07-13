@@ -1522,12 +1522,14 @@
             if (areaData && Array.isArray(areaData) && areaData.length > 0) {
                 try {
                     areaData.forEach(area => {
-                        if (area.Kecamatan && area.Kabupaten) {
+                        if (area && area.Kecamatan && area.Kabupaten && 
+                            typeof area.Kecamatan === 'string' && typeof area.Kabupaten === 'string') {
                             const key = `${area.Kecamatan.toLowerCase()}_${area.Kabupaten.toLowerCase()}`;
                             dataLookup[key] = area;
                         }
                     });
                     console.log('✅ Area data lookup created with', Object.keys(dataLookup).length, 'entries');
+                    console.log('🔍 Sample area data keys:', Object.keys(dataLookup).slice(0, 3));
                 } catch (error) {
                     console.warn('Error creating area data lookup:', error);
                 }
@@ -1544,9 +1546,22 @@
                 // Only apply data-driven styling if areaData is available
                 if (areaData && areaData.length > 0) {
                     try {
-                        // Safe property access with null checks
-                        const kecamatan = feature.properties?.NAMOBJ || feature.properties?.name || feature.properties?.Kecamatan;
-                        const kabupaten = feature.properties?.WADMKK || feature.properties?.kabupaten || feature.properties?.Kabupaten;
+                        // Correct field mapping for GeoJSON with strict type checking:
+                        // Kecamatan = WADMKC, Kabupaten = WADMKK
+                        let kecamatan = null;
+                        let kabupaten = null;
+                        
+                        if (feature.properties) {
+                            const kecamatanRaw = feature.properties.WADMKC || feature.properties.NAMOBJ;
+                            const kabupatenRaw = feature.properties.WADMKK;
+                            
+                            if (kecamatanRaw && typeof kecamatanRaw === 'string') {
+                                kecamatan = kecamatanRaw;
+                            }
+                            if (kabupatenRaw && typeof kabupatenRaw === 'string') {
+                                kabupaten = kabupatenRaw;
+                            }
+                        }
                         
                         if (kecamatan && kabupaten) {
                             const key1 = `${kecamatan.toLowerCase()}_${kabupaten.toLowerCase()}`;
@@ -1593,9 +1608,26 @@
 
             // Simplified onEachFeature for better performance
             function onEachFeature(feature, layer) {
-                // Safe property access with null checks
-                const kecamatan = feature.properties?.NAMOBJ || feature.properties?.name || feature.properties?.Kecamatan || 'Unknown';
-                const kabupaten = feature.properties?.WADMKK || feature.properties?.kabupaten || feature.properties?.Kabupaten || 'Unknown';
+                // Correct field mapping for GeoJSON with strict type checking:
+                // Kecamatan = WADMKC, Kabupaten = WADMKK
+                let kecamatan = 'Unknown';
+                let kabupaten = 'Unknown';
+                
+                try {
+                    if (feature.properties) {
+                        const kecamatanRaw = feature.properties.WADMKC || feature.properties.NAMOBJ || feature.properties.name;
+                        const kabupatenRaw = feature.properties.WADMKK || feature.properties.kabupaten;
+                        
+                        if (kecamatanRaw && typeof kecamatanRaw === 'string') {
+                            kecamatan = kecamatanRaw;
+                        }
+                        if (kabupatenRaw && typeof kabupatenRaw === 'string') {
+                            kabupaten = kabupatenRaw;
+                        }
+                    }
+                } catch (error) {
+                    console.warn('Error reading feature properties:', error);
+                }
                 
                 // Simple popup
                 let popupContent = `
@@ -1653,8 +1685,12 @@
                     popupContent += `
                         <div class="popup-content">
                             <div class="popup-metric">
-                                <span class="popup-metric-label">Status:</span>
-                                <span class="popup-metric-value">Loading data...</span>
+                                <span class="popup-metric-label">Area:</span>
+                                <span class="popup-metric-value">Kec. ${kecamatan}</span>
+                            </div>
+                            <div class="popup-metric">
+                                <span class="popup-metric-label">Kabupaten:</span>
+                                <span class="popup-metric-value">${kabupaten}</span>
                             </div>
                         </div>
                     `;
@@ -1681,6 +1717,11 @@
 
             // Add GeoJSON layer to map with optimized settings and error handling
             try {
+                // Log first feature properties for debugging
+                if (geoJsonData.features && geoJsonData.features.length > 0) {
+                    console.log('🔍 First GeoJSON feature properties:', geoJsonData.features[0].properties);
+                }
+
                 geojsonLayer = L.geoJSON(geoJsonData, {
                     style: style,
                     onEachFeature: onEachFeature
