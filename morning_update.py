@@ -832,6 +832,8 @@ class SalesmanDashboardUpdater:
                 'index.html',  # Login page with dashboard selection
                 'dashboard.html',  # Mobile dashboard
                 'dashboard-desktop.html',  # Desktop dashboard
+                'salesman-desktop.html',  # Salesman Desktop
+                'salesman-detail.html',  # Salesman detail
                 'morning_update.py',  # Updated script
                 'README.md'  # Documentation if exists
             ]
