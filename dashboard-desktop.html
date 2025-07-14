@@ -253,7 +253,7 @@
         }
 
         .metric-title {
-            font-size: 12px;
+            font-size: 10px;
             color: #64748b;
             font-weight: 700;
             text-transform: uppercase;
@@ -918,6 +918,13 @@
                 grid-template-columns: repeat(3, 1fr);
                 gap: 8px;
             }
+            
+            .map-legend {
+                top: 12px;
+                right: 12px;
+                padding: 12px;
+                min-width: 150px;
+            }
         }
 
         @media (max-width: 768px) {
@@ -1224,62 +1231,90 @@
 
                 for (let i = 0; i < responses.length; i++) {
                     if (!responses[i].ok) {
-                        throw new Error(`Failed to load data file ${i + 1}: ${responses[i].status}`);
+                        console.warn(`❌ Failed to load data file ${i + 1}: ${responses[i].status}`);
+                        // Continue loading other files instead of stopping
                     }
                 }
 
                 // Load JSON data with proper error handling
-                dashboardData = await responses[0].json();
-                salesmanData = await responses[1].json();
-                chartData = await responses[2].json();
+                try {
+                    dashboardData = await responses[0].json();
+                } catch (error) {
+                    console.warn('⚠️ Error loading dashboard.json:', error);
+                    dashboardData = { depo_name: "Dashboard", region_name: "Loading...", lob_cards: [], total_data: {} };
+                }
+
+                try {
+                    salesmanData = await responses[1].json();
+                } catch (error) {
+                    console.warn('⚠️ Error loading salesman_list.json:', error);
+                    salesmanData = [];
+                }
+
+                try {
+                    chartData = await responses[2].json();
+                } catch (error) {
+                    console.warn('⚠️ Error loading chart_data.json:', error);
+                    chartData = {};
+                }
 
                 // Load area data (it's in JSONL format) with validation
-                const areaText = await responses[3].text();
-                if (areaText && areaText.trim()) {
-                    try {
+                try {
+                    const areaText = await responses[3].text();
+                    if (areaText && areaText.trim()) {
                         areaData = areaText.trim().split('\n').map(line => JSON.parse(line));
                         console.log('✅ Area data loaded:', areaData.length, 'records');
-                    } catch (error) {
-                        console.warn('⚠️ Error parsing area data:', error);
+                    } else {
+                        console.warn('⚠️ Area data file is empty');
                         areaData = [];
                     }
-                } else {
-                    console.warn('⚠️ Area data file is empty');
+                } catch (error) {
+                    console.warn('⚠️ Error loading area data:', error);
                     areaData = [];
                 }
 
                 // Load GeoJSON data with validation
-                const geoJsonResponse = await responses[4];
-                geoJsonData = await geoJsonResponse.json();
-                
-                // Validate GeoJSON structure
-                if (!geoJsonData || !geoJsonData.features || !Array.isArray(geoJsonData.features)) {
-                    console.warn('⚠️ Invalid GeoJSON structure, using fallback');
+                try {
+                    const geoJsonResponse = await responses[4];
+                    geoJsonData = await geoJsonResponse.json();
+                    
+                    // Validate GeoJSON structure
+                    if (!geoJsonData || !geoJsonData.features || !Array.isArray(geoJsonData.features)) {
+                        console.warn('⚠️ Invalid GeoJSON structure, using fallback');
+                        geoJsonData = { type: "FeatureCollection", features: [] };
+                    }
+                    console.log('✅ GeoJSON data loaded:', geoJsonData.features?.length || 0, 'features');
+                } catch (error) {
+                    console.warn('⚠️ Error loading GeoJSON:', error);
                     geoJsonData = { type: "FeatureCollection", features: [] };
                 }
 
                 // Load depot process data
-                depoData = await responses[5].json();
-
-                console.log('✅ Dashboard data loaded:', dashboardData);
-                console.log('✅ GeoJSON data loaded:', geoJsonData.features?.length || 0, 'features');
-                console.log('✅ Depot data loaded:', depoData);
-
-                // Verify depoData has required fields
-                if (depoData && typeof depoData === 'object') {
-                    console.log('✅ Depot data keys:', Object.keys(depoData));
-                    console.log('✅ Ach_CR value:', depoData.Ach_CR);
-                } else {
-                    console.error('❌ Depot data is invalid:', depoData);
-                    throw new Error('Invalid depot data format');
+                try {
+                    depoData = await responses[5].json();
+                    console.log('✅ Depot data loaded:', depoData);
+                    
+                    // Verify depoData has required fields
+                    if (depoData && typeof depoData === 'object') {
+                        console.log('✅ Depot data keys:', Object.keys(depoData));
+                        console.log('✅ Ach_CR value:', depoData.Ach_CR);
+                    }
+                } catch (error) {
+                    console.warn('⚠️ Error loading depot data:', error);
+                    depoData = {};
                 }
+
+                console.log('✅ Dashboard data loaded');
 
                 updateHeader(dashboardData);
                 updateAchievementMetrics(depoData); // New function for achievement metrics
                 updateLOBCards(dashboardData.lob_cards);
                 updateSalesmanTable(salesmanData);
-                initializeMap();
-                updateMapLayers();
+                
+                // Update map layers after data is loaded (map already initialized)
+                setTimeout(() => {
+                    updateMapLayers();
+                }, 500); // Small delay to ensure map container is ready
 
                 showLoading(false);
                 showMainContent(true);
@@ -1288,6 +1323,11 @@
                 console.error('❌ Error loading dashboard data:', error);
                 showLoading(false);
                 showError(true);
+                
+                // Update map layers with fallback even if data loading fails
+                setTimeout(() => {
+                    updateMapLayers();
+                }, 500);
             }
         }
 
@@ -1477,18 +1517,20 @@
             return card;
         }
 
-        // ✅ INITIALIZE MAP - Optimized for faster loading
+        // ✅ INITIALIZE MAP - Optimized for immediate display
         function initializeMap() {
             if (map) {
                 map.remove();
             }
 
-            // Create map without initial view (will be set after GeoJSON loads)
+            console.log('🗺️ Initializing map...');
+
+            // Create map with immediate fallback view
             map = L.map('mapContainer', {
                 zoomControl: true,
                 attributionControl: false,
                 maxZoom: 15
-            });
+            }).setView([-2.1, 115.3], 9); // Set initial view immediately
 
             // Add optimized tile layer for faster loading
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -1509,19 +1551,33 @@
                 });
             });
 
-            console.log('✅ Map initialized with optimized settings');
+            // Force map to refresh size
+            setTimeout(() => {
+                if (map) {
+                    map.invalidateSize();
+                }
+            }, 100);
+
+            console.log('✅ Map initialized and displayed');
         }
 
         // ✅ UPDATE MAP LAYERS - Optimized for faster loading and focus on GeoJSON area
         function updateMapLayers() {
-            if (!map || !geoJsonData) {
-                console.warn('Map or GeoJSON data not ready');
+            if (!map) {
+                console.warn('Map not ready yet');
                 return;
             }
 
             // Remove existing geojson layer
             if (geojsonLayer) {
                 map.removeLayer(geojsonLayer);
+            }
+
+            // If no GeoJSON data, just show the base map
+            if (!geoJsonData || !geoJsonData.features || geoJsonData.features.length === 0) {
+                console.log('⚠️ No GeoJSON data available, showing base map only');
+                updateMapLegend(); // Still update legend
+                return;
             }
 
             // Create data lookup map for faster searching (only if areaData exists)
@@ -1932,6 +1988,14 @@
             }
 
             console.log('🚀 Initializing dashboard...');
+            
+            // Initialize map immediately when page loads
+            setTimeout(() => {
+                initializeMap();
+                updateMapLegend(); // Show legend immediately
+            }, 100);
+            
+            // Then load data
             loadDashboardData();
             console.log('✅ Dashboard initialized');
         });
