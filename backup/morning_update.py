@@ -78,7 +78,9 @@ class SalesmanDashboardUpdater:
             '🔑': '[KEY]',
             '🌐': '[WEB]',
             '⏰': '[TIME]',
-            '⏱️': '[TIMER]'
+            '⏱️': '[TIMER]',
+            '🖥️': '[DESKTOP]',
+            '💻': '[LAPTOP]'
         }
         
         for emoji, replacement in emoji_map.items():
@@ -161,9 +163,9 @@ class SalesmanDashboardUpdater:
         return True
 
     def process_dashboard_data(self, sheets):
-        """🔧 SUPER FIXED: Process dashboard data with ALL metrics properly"""
+        """🔧 SUPER FIXED: Process dashboard data with ALL metrics properly + TOTAL card"""
         try:
-            self.safe_log('info', "🔄 Processing dashboard data with all metrics...", "Processing dashboard data with all metrics...")
+            self.safe_log('info', "🔄 Processing dashboard data with all metrics + Total...", "Processing dashboard data with all metrics + Total...")
             
             dashboard_df = sheets['d.dashboard']
             self.safe_log('info', f"Dashboard columns: {list(dashboard_df.columns)}")
@@ -173,14 +175,11 @@ class SalesmanDashboardUpdater:
             
             # Process LOB cards with all vs metrics
             lob_cards = []
+            total_data = None  # ✅ NEW: Store TOTAL data separately
             
             for index, row in dashboard_df.iterrows():
                 if pd.notna(row.get('LOB', '')) and row.get('LOB', '').strip() != '':
                     lob_name = str(row['LOB']).strip()
-                    
-                    # Skip TOTAL row for individual LOB cards
-                    if lob_name.upper() == 'TOTAL':
-                        continue
                     
                     self.safe_log('info', f"🎯 Processing LOB: {lob_name}")
                     
@@ -209,6 +208,23 @@ class SalesmanDashboardUpdater:
                     vs_3lm = self.parse_percentage_value(vs_3lm_raw)
                     vs_lm = self.parse_percentage_value(vs_lm_raw)
                     
+                    # ✅ NEW: Handle TOTAL row separately
+                    if lob_name.upper() == 'TOTAL':
+                        total_data = {
+                            'name': 'TOTAL',
+                            'achievement': f"{self.safe_percentage(achievement)}%",
+                            'actual': self.format_currency_indonesia(actual),
+                            'target': self.format_currency_indonesia(bp),
+                            'gap': self.format_currency_indonesia(abs(gap)),
+                            'vs_bp': f"{'+' if vs_bp >= 0 else ''}{vs_bp}%",
+                            'vs_ly': f"{'+' if vs_ly >= 0 else ''}{vs_ly}%", 
+                            'vs_3lm': f"{'+' if vs_3lm >= 0 else ''}{vs_3lm}%",
+                            'vs_lm': f"{'+' if vs_lm >= 0 else ''}{vs_lm}%"
+                        }
+                        self.safe_log('info', f"✅ Stored TOTAL data: {total_data['achievement']}, Actual: {total_data['actual']}, Target: {total_data['target']}, Gap: {total_data['gap']}", 
+                                    f"[OK] Stored TOTAL data: {total_data['achievement']}, Actual: {total_data['actual']}")
+                        continue  # Skip adding TOTAL to individual LOB cards
+                    
                     # 🔧 DEBUGGING: Log found values
                     self.safe_log('info', f"DEBUG {lob_name}:")
                     self.safe_log('info', f"  Actual: {actual_raw} -> {actual}")
@@ -235,14 +251,25 @@ class SalesmanDashboardUpdater:
                     self.safe_log('info', f"✅ Added LOB: {lob_card['name']} - Ach:{lob_card['achievement']}, vs LM:{lob_card['vs_lm']}, vs 3LM:{lob_card['vs_3lm']}, vs LY:{lob_card['vs_ly']}", 
                                 f"[OK] Added LOB: {lob_card['name']} - Ach:{lob_card['achievement']}, vs LM:{lob_card['vs_lm']}, vs 3LM:{lob_card['vs_3lm']}, vs LY:{lob_card['vs_ly']}")
             
-            self.safe_log('info', f"✅ Processed {len(lob_cards)} LOB cards with all metrics", f"[OK] Processed {len(lob_cards)} LOB cards with all metrics")
+            self.safe_log('info', f"✅ Processed {len(lob_cards)} LOB cards + TOTAL data with all metrics", f"[OK] Processed {len(lob_cards)} LOB cards + TOTAL data with all metrics")
             
-            return {
+            # ✅ NEW: Include total_data in return
+            result = {
                 'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 'depo_name': 'Depo Tanjung',
                 'region_name': 'Region Kalimantan',
                 'lob_cards': lob_cards
             }
+            
+            # ✅ NEW: Add total_data if available
+            if total_data:
+                result['total_data'] = total_data
+                self.safe_log('info', f"✅ Added TOTAL data to result: {total_data['name']} - {total_data['achievement']}", 
+                            f"[OK] Added TOTAL data to result: {total_data['name']} - {total_data['achievement']}")
+            else:
+                self.safe_log('warning', "⚠️ No TOTAL data found in dashboard")
+            
+            return result
             
         except Exception as e:
             self.safe_log('error', f"Error processing dashboard data: {str(e)}")
@@ -728,6 +755,41 @@ class SalesmanDashboardUpdater:
             self.safe_log('error', f"Validation error: {str(e)}")
             return False
 
+    def check_html_files(self):
+        """🆕 NEW: Check if HTML files exist and are ready for deployment"""
+        try:
+            self.safe_log('info', "🔍 Checking HTML dashboard files...", "[SEARCH] Checking HTML dashboard files...")
+            
+            # List of HTML files to check
+            html_files = [
+                'index.html',
+                'dashboard.html',
+                'dashboard-desktop.html'
+            ]
+            
+            existing_files = []
+            missing_files = []
+            
+            for file in html_files:
+                if os.path.exists(file):
+                    file_size = os.path.getsize(file)
+                    mod_time = datetime.fromtimestamp(os.path.getmtime(file))
+                    existing_files.append(file)
+                    self.safe_log('info', f"✅ Found: {file} ({file_size:,} bytes, modified: {mod_time.strftime('%Y-%m-%d %H:%M:%S')})", f"[OK] Found: {file}")
+                else:
+                    missing_files.append(file)
+                    self.safe_log('warning', f"⚠️  Missing: {file}")
+            
+            if missing_files:
+                self.safe_log('warning', f"Missing HTML files: {missing_files}")
+            
+            self.safe_log('info', f"📱 Found {len(existing_files)} HTML files for deployment", f"[MOBILE] Found {len(existing_files)} HTML files for deployment")
+            return existing_files
+            
+        except Exception as e:
+            self.safe_log('error', f"Error checking HTML files: {str(e)}")
+            return []
+
     def generate_json_files(self, sheets):
         """Generate all JSON files with complete data"""
         try:
@@ -782,11 +844,49 @@ class SalesmanDashboardUpdater:
             return False
 
     def git_push_changes(self):
-        """Push changes to GitHub"""
+        """🔧 ENHANCED: Push changes to GitHub including desktop dashboard"""
         try:
-            self.safe_log('info', "🚀 Pushing to GitHub...", "Pushing to GitHub...")
+            self.safe_log('info', "🚀 Pushing to GitHub with Mobile & Desktop dashboards...", "Pushing to GitHub with Mobile & Desktop dashboards...")
             
-            # Git add
+            # Check HTML files first
+            html_files = self.check_html_files()
+            
+            # ✅ ENHANCED: Add specific files to ensure they're included
+            files_to_add = [
+                'data/',  # All JSON data files
+                'index.html',  # Login page with dashboard selection
+                'dashboard.html',  # Mobile dashboard
+                'dashboard-desktop.html',  # Desktop dashboard
+                'salesman-desktop.html',  # Salesman Desktop
+                'salesman-detail.html',  # Salesman detail
+                'morning_update.py',  # Updated script
+                'README.md'  # Documentation if exists
+            ]
+            
+            # Add files individually with checking
+            for file_pattern in files_to_add:
+                if file_pattern.endswith('/'):
+                    # Directory
+                    if os.path.exists(file_pattern.rstrip('/')):
+                        result = subprocess.run(['git', 'add', file_pattern], 
+                                              capture_output=True, text=True, cwd='.')
+                        if result.returncode == 0:
+                            self.safe_log('info', f"✅ Added directory: {file_pattern}", f"[OK] Added directory: {file_pattern}")
+                        else:
+                            self.safe_log('warning', f"⚠️  Could not add directory: {file_pattern}")
+                else:
+                    # File
+                    if os.path.exists(file_pattern):
+                        result = subprocess.run(['git', 'add', file_pattern], 
+                                              capture_output=True, text=True, cwd='.')
+                        if result.returncode == 0:
+                            self.safe_log('info', f"✅ Added file: {file_pattern}", f"[OK] Added file: {file_pattern}")
+                        else:
+                            self.safe_log('warning', f"⚠️  Could not add file: {file_pattern}")
+                    else:
+                        self.safe_log('warning', f"⚠️  File not found: {file_pattern}")
+            
+            # Add any remaining files (fallback)
             result = subprocess.run(['git', 'add', '.'], 
                                   capture_output=True, text=True, cwd='.')
             
@@ -794,8 +894,21 @@ class SalesmanDashboardUpdater:
                 self.safe_log('error', f"Git add failed: {result.stderr}")
                 return False
             
-            # Git commit
-            commit_message = f"Morning update: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - FIXED format Indonesia Rb/Jt/M, vs metrics display & added Gap field"
+            # ✅ ENHANCED: Commit message with desktop dashboard info
+            current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            commit_message = f"""Morning update: {current_time} - ENHANCED Dashboard System
+
+📱 Mobile Dashboard (dashboard.html) - Optimized for smartphones
+💻 Desktop Dashboard (dashboard-desktop.html) - Optimized for laptops/PC
+🔧 Updated Features:
+   - Indonesian number format (Rb/Jt/M)
+   - vs metrics display (vs LM/3LM/LY)
+   - Gap field calculation (Actual - Target)
+   - Device-specific dashboard selection
+   - Enhanced user experience
+
+🔐 Login: admin/admin123 or szEmployeeId/sales123"""
+
             result = subprocess.run(['git', 'commit', '-m', commit_message], 
                                   capture_output=True, text=True, cwd='.')
             
@@ -807,12 +920,26 @@ class SalesmanDashboardUpdater:
                     self.safe_log('error', f"Git commit failed: {result.stderr}")
                     return False
             
+            # Show what was committed
+            self.safe_log('info', "📦 Committed files:", "[PACKAGE] Committed files:")
+            self.safe_log('info', f"   📱 Mobile Dashboard: dashboard.html")
+            self.safe_log('info', f"   💻 Desktop Dashboard: dashboard-desktop.html")
+            self.safe_log('info', f"   🔐 Login Page: index.html")
+            self.safe_log('info', f"   📊 Data Files: {len(os.listdir(self.data_dir))} JSON files")
+            
             # Git push
             result = subprocess.run(['git', 'push', 'origin', 'main'], 
                                   capture_output=True, text=True, cwd='.')
             
             if result.returncode == 0:
-                self.safe_log('info', "✅ Successfully pushed to GitHub!", "[OK] Successfully pushed to GitHub!")
+                self.safe_log('info', "✅ Successfully pushed to GitHub with Mobile & Desktop dashboards!", "[OK] Successfully pushed to GitHub with Mobile & Desktop dashboards!")
+                
+                # Show deployment URLs
+                self.safe_log('info', "🌐 Deployment URLs:", "[WEB] Deployment URLs:")
+                self.safe_log('info', "   🏠 Main Login: https://kisman271128.github.io/salesman-dashboard/")
+                self.safe_log('info', "   📱 Mobile: https://kisman271128.github.io/salesman-dashboard/dashboard.html")
+                self.safe_log('info', "   💻 Desktop: https://kisman271128.github.io/salesman-dashboard/dashboard-desktop.html")
+                
                 return True
             else:
                 self.safe_log('error', f"Git push failed: {result.stderr}")
@@ -851,19 +978,42 @@ class SalesmanDashboardUpdater:
 =======================================================
 🎉 MORNING UPDATE COMPLETED SUCCESSFULLY!
 ⏱️  Processing time: {duration:.2f} seconds
-📱 Dashboard URL: https://kisman271128.github.io/salesman-dashboard
 
-📊 FIXED Features:
+🌐 DEPLOYMENT URLS:
+   🏠 Main Login: https://kisman271128.github.io/salesman-dashboard/
+   📱 Mobile Dashboard: https://kisman271128.github.io/salesman-dashboard/dashboard.html
+   💻 Desktop Dashboard: https://kisman271128.github.io/salesman-dashboard/dashboard-desktop.html
+
+📊 ENHANCED FEATURES:
    💰 Indonesian Number Format - FIXED Rb/Jt/M display
    📈 vs Metrics Display - FIXED vs LM/3LM/LY showing
    🎯 Chart Stats Format - FIXED proper Rb/Jt/M format
    📊 Gap Field Added - FIXED Gap calculation (Actual - Target) for each LOB
    🔐 szEmployeeId Login - All salesman + admin access
-   🧭 Modern Navigation - Updated 4 & 5 icon menus
+   📱💻 Dual Dashboard - Mobile & Desktop optimized versions
+   🎨 Device Selection - Auto-detect with manual override
 
-🔑 Login Credentials:
+🔑 LOGIN CREDENTIALS:
    Admin: admin / admin123
    Salesman: [szEmployeeId] / sales123
+
+💡 DASHBOARD FEATURES:
+   📱 Mobile Version:
+      • Compact layout optimized for smartphones
+      • Bottom navigation for easy thumb access
+      • Touch-friendly interface elements
+      
+   💻 Desktop Version:
+      • Sidebar navigation for larger screens
+      • Multi-column layout utilizing screen space
+      • Enhanced charts and tables for detailed viewing
+      • Keyboard shortcuts support
+
+🎯 AUTO DEVICE SELECTION:
+   • < 768px width → Mobile Dashboard
+   • ≥ 1024px width → Desktop Dashboard
+   • 768-1024px → User choice (tablets)
+   • Manual override always available
 
 💡 Format Indonesia + Data Enhancement:
    • < 1K = angka langsung (500)
@@ -885,36 +1035,43 @@ class SalesmanDashboardUpdater:
             return False
 
 def main():
-    """Main function - Fixed Indonesia Format"""
-    print("🚀 SALESMAN DASHBOARD UPDATER v2.4 - INDONESIA FORMAT + GAP FIELD")
-    print("=" * 75)
-    print("Running with INDONESIA FORMAT FIXES & GAP FIELD:")
+    """Main function - Enhanced with Desktop Dashboard"""
+    print("🚀 SALESMAN DASHBOARD UPDATER v2.5 - DUAL DASHBOARD SYSTEM")
+    print("=" * 80)
+    print("Running with MOBILE & DESKTOP DASHBOARD DEPLOYMENT:")
     print("✅ FIXED format Rb/Jt/M sesuai standar Indonesia")
     print("✅ FIXED vs metrics display (vs LM/3LM/LY)")
     print("✅ FIXED chart stats dengan format yang benar")
     print("✅ ADDED Gap field (Actual - Target) untuk setiap LOB") 
     print("✅ Enhanced number formatting untuk semua section")
-    print("=" * 70)
+    print("✅ ADDED Desktop dashboard untuk laptop/PC")
+    print("✅ ADDED Device auto-detection & selection")
+    print("=" * 75)
     
-    print("\n🌅 MORNING BATCH UPDATE - INDONESIA FORMAT + GAP FIELD")
-    print("=" * 60)
-    print("🚀 Version 2.4 - INDONESIA FORMAT & GAP FIELD FIXES:")
+    print("\n🌅 MORNING BATCH UPDATE - DUAL DASHBOARD SYSTEM")
+    print("=" * 65)
+    print("🚀 Version 2.5 - MOBILE & DESKTOP DASHBOARD FIXES:")
+    print("   📱 Mobile Dashboard - Optimized untuk smartphone")
+    print("   💻 Desktop Dashboard - Optimized untuk laptop/PC")
+    print("   🎨 Device Selection - Auto-detect dengan manual override")
     print("   ✅ FIXED Rb untuk < 1 juta (contoh: 500Rb)")
     print("   ✅ FIXED Jt untuk 1-999 juta (contoh: 50.5Jt)")
     print("   ✅ FIXED M untuk ≥ 1 miliar (contoh: 1.5M)")
     print("   ✅ FIXED vs metrics yang tidak muncul")
     print("   ✅ FIXED chart stats format Indonesia")
     print("   ✅ ADDED Gap field untuk setiap LOB performance")
-    print("=" * 55)
+    print("=" * 60)
     
     # Create updater and run
     updater = SalesmanDashboardUpdater()
     success = updater.run_morning_update()
     
     if success:
-        print("\n✅ INDONESIA FORMAT + GAP FIELD UPDATE SUCCESSFUL!")
-        print("🌐 Dashboard dengan format Rb/Jt/M yang benar + Gap field")
-        print("📱 URL: https://kisman271128.github.io/salesman-dashboard")
+        print("\n✅ DUAL DASHBOARD SYSTEM UPDATE SUCCESSFUL!")
+        print("🌐 Multi-platform dashboard dengan format Rb/Jt/M yang benar")
+        print("📱 Mobile: https://kisman271128.github.io/salesman-dashboard/dashboard.html")
+        print("💻 Desktop: https://kisman271128.github.io/salesman-dashboard/dashboard-desktop.html")
+        print("🏠 Login: https://kisman271128.github.io/salesman-dashboard/")
         sys.exit(0)
     else:
         print("\n❌ UPDATE FAILED!")
