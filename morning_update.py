@@ -844,57 +844,71 @@ class SalesmanDashboardUpdater:
             return False
 
     def git_push_changes(self):
-        """🔧 ENHANCED: Push changes to GitHub including desktop dashboard"""
+        """🔧 ENHANCED: FIXED Push changes to GitHub with proper error handling"""
         try:
-            self.safe_log('info', "🚀 Pushing to GitHub with Mobile & Desktop dashboards...", "Pushing to GitHub with Mobile & Desktop dashboards...")
+            self.safe_log('info', "🚀 Pushing to GitHub with improved error handling...", "Pushing to GitHub with improved error handling...")
             
             # Check HTML files first
             html_files = self.check_html_files()
             
-            # ✅ ENHANCED: Add specific files to ensure they're included
-            files_to_add = [
-                'data/',  # All JSON data files
-                'index.html',  # Login page with dashboard selection
-                'dashboard.html',  # Mobile dashboard
-                'dashboard-desktop.html',  # Desktop dashboard
-                'salesman-desktop.html',  # Salesman Desktop
-                'salesman-detail.html',  # Salesman detail
-                'morning_update.py',  # Updated script
-                'README.md'  # Documentation if exists
-            ]
-            
-            # Add files individually with checking
-            for file_pattern in files_to_add:
-                if file_pattern.endswith('/'):
-                    # Directory
-                    if os.path.exists(file_pattern.rstrip('/')):
-                        result = subprocess.run(['git', 'add', file_pattern], 
+            # 🔧 FIXED: Check git status first
+            try:
+                status_result = subprocess.run(['git', 'status', '--porcelain'], 
                                               capture_output=True, text=True, cwd='.')
-                        if result.returncode == 0:
-                            self.safe_log('info', f"✅ Added directory: {file_pattern}", f"[OK] Added directory: {file_pattern}")
-                        else:
-                            self.safe_log('warning', f"⚠️  Could not add directory: {file_pattern}")
-                else:
-                    # File
-                    if os.path.exists(file_pattern):
-                        result = subprocess.run(['git', 'add', file_pattern], 
-                                              capture_output=True, text=True, cwd='.')
-                        if result.returncode == 0:
-                            self.safe_log('info', f"✅ Added file: {file_pattern}", f"[OK] Added file: {file_pattern}")
-                        else:
-                            self.safe_log('warning', f"⚠️  Could not add file: {file_pattern}")
-                    else:
-                        self.safe_log('warning', f"⚠️  File not found: {file_pattern}")
-            
-            # Add any remaining files (fallback)
-            result = subprocess.run(['git', 'add', '.'], 
-                                  capture_output=True, text=True, cwd='.')
-            
-            if result.returncode != 0:
-                self.safe_log('error', f"Git add failed: {result.stderr}")
+                if status_result.returncode != 0:
+                    self.safe_log('error', f"Git status failed: {status_result.stderr}")
+                    return False
+                
+                # Check if there are any changes
+                if not status_result.stdout.strip():
+                    self.safe_log('info', "No changes detected in git repository")
+                    return True
+                
+                self.safe_log('info', f"Git status output:\n{status_result.stdout}")
+                
+            except Exception as e:
+                self.safe_log('error', f"Error checking git status: {str(e)}")
                 return False
             
-            # ✅ ENHANCED: Commit message with desktop dashboard info
+            # 🔧 FIXED: Add files with better error handling
+            files_to_add = [
+                'data/',
+                'index.html',
+                'dashboard.html',
+                'dashboard-desktop.html',
+                'salesman-desktop.html',
+                'salesman-detail.html',
+                'morning_update.py',
+                'morning_update.log'
+            ]
+            
+            # Add files one by one with detailed logging
+            for file_pattern in files_to_add:
+                try:
+                    if os.path.exists(file_pattern.rstrip('/')):
+                        add_result = subprocess.run(['git', 'add', file_pattern], 
+                                                  capture_output=True, text=True, cwd='.')
+                        if add_result.returncode == 0:
+                            self.safe_log('info', f"✅ Added: {file_pattern}", f"[OK] Added: {file_pattern}")
+                        else:
+                            self.safe_log('warning', f"⚠️ Failed to add {file_pattern}: {add_result.stderr}")
+                    else:
+                        self.safe_log('warning', f"⚠️ File not found: {file_pattern}")
+                except Exception as e:
+                    self.safe_log('error', f"Error adding {file_pattern}: {str(e)}")
+            
+            # 🔧 FIXED: Check git status after adding
+            try:
+                status_after_add = subprocess.run(['git', 'status', '--porcelain'], 
+                                                 capture_output=True, text=True, cwd='.')
+                if status_after_add.returncode == 0:
+                    self.safe_log('info', f"Git status after add:\n{status_after_add.stdout}")
+                else:
+                    self.safe_log('warning', f"Could not check git status after add: {status_after_add.stderr}")
+            except Exception as e:
+                self.safe_log('warning', f"Error checking git status after add: {str(e)}")
+            
+            # 🔧 FIXED: Commit with better error handling
             current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             commit_message = f"""Morning update: {current_time} - ENHANCED Dashboard System
 
@@ -909,40 +923,58 @@ class SalesmanDashboardUpdater:
 
 🔐 Login: admin/admin123 or szEmployeeId/sales123"""
 
-            result = subprocess.run(['git', 'commit', '-m', commit_message], 
-                                  capture_output=True, text=True, cwd='.')
+            try:
+                commit_result = subprocess.run(['git', 'commit', '-m', commit_message], 
+                                              capture_output=True, text=True, cwd='.')
+                
+                if commit_result.returncode == 0:
+                    self.safe_log('info', "✅ Git commit successful", "[OK] Git commit successful")
+                    self.safe_log('info', f"Commit output: {commit_result.stdout}")
+                else:
+                    if "nothing to commit" in commit_result.stdout:
+                        self.safe_log('info', "No changes to commit - repository is up to date")
+                        return True
+                    else:
+                        self.safe_log('error', f"Git commit failed: {commit_result.stderr}")
+                        self.safe_log('error', f"Git commit stdout: {commit_result.stdout}")
+                        return False
+                        
+            except Exception as e:
+                self.safe_log('error', f"Error during git commit: {str(e)}")
+                return False
             
-            if result.returncode != 0:
-                if "nothing to commit" in result.stdout:
-                    self.safe_log('info', "No changes to commit")
+            # 🔧 FIXED: Push with better error handling
+            try:
+                push_result = subprocess.run(['git', 'push', 'origin', 'main'], 
+                                           capture_output=True, text=True, cwd='.')
+                
+                if push_result.returncode == 0:
+                    self.safe_log('info', "✅ Successfully pushed to GitHub!", "[OK] Successfully pushed to GitHub!")
+                    self.safe_log('info', f"Push output: {push_result.stdout}")
+                    
+                    # Show deployment URLs
+                    self.safe_log('info', "🌐 Deployment URLs:", "[WEB] Deployment URLs:")
+                    self.safe_log('info', "   🏠 Main Login: https://kisman271128.github.io/salesman-dashboard/")
+                    self.safe_log('info', "   📱 Mobile: https://kisman271128.github.io/salesman-dashboard/dashboard.html")
+                    self.safe_log('info', "   💻 Desktop: https://kisman271128.github.io/salesman-dashboard/dashboard-desktop.html")
+                    
                     return True
                 else:
-                    self.safe_log('error', f"Git commit failed: {result.stderr}")
+                    self.safe_log('error', f"Git push failed: {push_result.stderr}")
+                    self.safe_log('error', f"Git push stdout: {push_result.stdout}")
+                    
+                    # Try to provide more helpful error messages
+                    if "rejected" in push_result.stderr:
+                        self.safe_log('error', "Push was rejected. This might be due to authentication issues or conflicting changes.")
+                    elif "Could not resolve host" in push_result.stderr:
+                        self.safe_log('error', "Network connectivity issue. Please check your internet connection.")
+                    elif "Permission denied" in push_result.stderr:
+                        self.safe_log('error', "Permission denied. Please check your GitHub authentication.")
+                    
                     return False
-            
-            # Show what was committed
-            self.safe_log('info', "📦 Committed files:", "[PACKAGE] Committed files:")
-            self.safe_log('info', f"   📱 Mobile Dashboard: dashboard.html")
-            self.safe_log('info', f"   💻 Desktop Dashboard: dashboard-desktop.html")
-            self.safe_log('info', f"   🔐 Login Page: index.html")
-            self.safe_log('info', f"   📊 Data Files: {len(os.listdir(self.data_dir))} JSON files")
-            
-            # Git push
-            result = subprocess.run(['git', 'push', 'origin', 'main'], 
-                                  capture_output=True, text=True, cwd='.')
-            
-            if result.returncode == 0:
-                self.safe_log('info', "✅ Successfully pushed to GitHub with Mobile & Desktop dashboards!", "[OK] Successfully pushed to GitHub with Mobile & Desktop dashboards!")
-                
-                # Show deployment URLs
-                self.safe_log('info', "🌐 Deployment URLs:", "[WEB] Deployment URLs:")
-                self.safe_log('info', "   🏠 Main Login: https://kisman271128.github.io/salesman-dashboard/")
-                self.safe_log('info', "   📱 Mobile: https://kisman271128.github.io/salesman-dashboard/dashboard.html")
-                self.safe_log('info', "   💻 Desktop: https://kisman271128.github.io/salesman-dashboard/dashboard-desktop.html")
-                
-                return True
-            else:
-                self.safe_log('error', f"Git push failed: {result.stderr}")
+                    
+            except Exception as e:
+                self.safe_log('error', f"Error during git push: {str(e)}")
                 return False
                 
         except Exception as e:
@@ -1036,9 +1068,13 @@ class SalesmanDashboardUpdater:
 
 def main():
     """Main function - Enhanced with Desktop Dashboard"""
-    print("🚀 SALESMAN DASHBOARD UPDATER v2.5 - DUAL DASHBOARD SYSTEM")
+    print("🚀 SALESMAN DASHBOARD UPDATER v2.6 - FIXED GIT PUSH SYSTEM")
     print("=" * 80)
-    print("Running with MOBILE & DESKTOP DASHBOARD DEPLOYMENT:")
+    print("Running with ENHANCED GIT PUSH ERROR HANDLING:")
+    print("✅ FIXED git status checking before operations")
+    print("✅ FIXED git add with detailed logging")
+    print("✅ FIXED git commit with proper error handling")
+    print("✅ FIXED git push with comprehensive error messages")
     print("✅ FIXED format Rb/Jt/M sesuai standar Indonesia")
     print("✅ FIXED vs metrics display (vs LM/3LM/LY)")
     print("✅ FIXED chart stats dengan format yang benar")
@@ -1048,9 +1084,13 @@ def main():
     print("✅ ADDED Device auto-detection & selection")
     print("=" * 75)
     
-    print("\n🌅 MORNING BATCH UPDATE - DUAL DASHBOARD SYSTEM")
+    print("\n🌅 MORNING BATCH UPDATE - FIXED GIT PUSH SYSTEM")
     print("=" * 65)
-    print("🚀 Version 2.5 - MOBILE & DESKTOP DASHBOARD FIXES:")
+    print("🚀 Version 2.6 - ENHANCED ERROR HANDLING & DEBUGGING:")
+    print("   🔧 FIXED git status checking before operations")
+    print("   🔧 FIXED git add with individual file logging")
+    print("   🔧 FIXED git commit with detailed error messages")
+    print("   🔧 FIXED git push with network/auth error detection")
     print("   📱 Mobile Dashboard - Optimized untuk smartphone")
     print("   💻 Desktop Dashboard - Optimized untuk laptop/PC")
     print("   🎨 Device Selection - Auto-detect dengan manual override")
@@ -1067,7 +1107,7 @@ def main():
     success = updater.run_morning_update()
     
     if success:
-        print("\n✅ DUAL DASHBOARD SYSTEM UPDATE SUCCESSFUL!")
+        print("\n✅ ENHANCED DASHBOARD SYSTEM UPDATE SUCCESSFUL!")
         print("🌐 Multi-platform dashboard dengan format Rb/Jt/M yang benar")
         print("📱 Mobile: https://kisman271128.github.io/salesman-dashboard/dashboard.html")
         print("💻 Desktop: https://kisman271128.github.io/salesman-dashboard/dashboard-desktop.html")
