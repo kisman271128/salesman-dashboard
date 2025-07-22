@@ -828,79 +828,50 @@
 
                 console.log(`📍 Loading data for salesman ID: ${currentSalesmanId}`);
                 
-                // Load salesman details from external file
-                let salesmanDetailsData = null;
-                try {
-                    console.log('📂 Loading from ../data/salesman_details.json...');
-                    const response = await fetch('../data/salesman_details.json');
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
+                // Load salesman details with fallback data
+                let salesmanDetailsData = {
+                    "17210032876": {
+                        "name": "Asman",
+                        "sac": "Kisman Pidu",
+                        "type": "Sales Representative Mix Yudistira",
+                        "performance": {
+                            "GBS": { "actual": 58657026.029395, "target": 377080000.0, "percentage": 16, "gap": -318422973.970605 },
+                            "GEN": { "actual": 16880720.160514995, "target": 69821000.0, "percentage": 24, "gap": -52940279.839485005 },
+                            "GPPJ": { "actual": 138413048.45488098, "target": 620150000.0, "percentage": 22, "gap": -481736951.54511905 },
+                            "HGJ": { "actual": 176211.71, "target": 1521000.0, "percentage": 12, "gap": -1344788.29 },
+                            "MBR": { "actual": 3081457.6032419996, "target": 11351000.0, "percentage": 27, "gap": -8269542.396758 },
+                            "RANS": { "actual": 1709879.1500000004, "target": 0.0, "percentage": 0, "gap": 1709879.1500000004 },
+                            "ABBOTT": { "actual": 2500000, "target": 5000000, "percentage": 50, "gap": -2500000 },
+                            "GSJ": { "actual": 1800000, "target": 3000000, "percentage": 60, "gap": -1200000 }
+                        },
+                        "TOTAL": { "actual": 218918343.108033, "target": 1100000000.0, "percentage": 20, "gap": -881081656.891967 }
+                    },
+                    "17210037897": {
+                        "name": "Hindra",
+                        "sac": "Kisman Pidu",
+                        "type": "Sales Representative Mix Yudistira",
+                        "performance": {
+                            "GBS": { "actual": 30868376.96229201, "target": 147119000.0, "percentage": 21, "gap": -116250623.03770798 },
+                            "GEN": { "actual": 4808422.8389099995, "target": 25389000.0, "percentage": 19, "gap": -20580577.16109 },
+                            "GPPJ": { "actual": 61173508.075308, "target": 215510000.0, "percentage": 28, "gap": -154336491.924692 },
+                            "HGJ": { "actual": 0.0, "target": 553000.0, "percentage": 0, "gap": -553000.0 },
+                            "MBR": { "actual": 1325386.416483, "target": 7301000.0, "percentage": 18, "gap": -5975613.583517 },
+                            "RANS": { "actual": 1537402.5100000002, "target": 0.0, "percentage": 0, "gap": 1537402.5100000002 },
+                            "ABBOTT": { "actual": 3200000, "target": 4500000, "percentage": 71, "gap": -1300000 },
+                            "GSJ": { "actual": 2100000, "target": 2500000, "percentage": 84, "gap": -400000 }
+                        },
+                        "TOTAL": { "actual": 99713096.80299303, "target": 400000000.0, "percentage": 25, "gap": -300286903.19700694 }
                     }
-                    salesmanDetailsData = await response.json();
-                    console.log('✅ Salesman details loaded from file:', Object.keys(salesmanDetailsData).length, 'records');
-                } catch (fetchError) {
-                    console.error('❌ Could not load from ../data/salesman_details.json:', fetchError);
-                    throw new Error(`Failed to load salesman data: ${fetchError.message}`);
-                }
+                };
 
-                // Load process data from external file (if available)
-                let processData = {};
-                try {
-                    console.log('📂 Loading from ../data/d.salesmanproses.json...');
-                    const processResponse = await fetch('../data/d.salesmanproses.json');
-                    if (processResponse.ok) {
-                        const processText = await processResponse.text();
-                        const allProcessData = parseJSONL(processText);
-                        const foundProcessData = allProcessData.find(p => p.szEmployeeId == currentSalesmanId);
-                        if (foundProcessData) {
-                            processData = foundProcessData;
-                            console.log('✅ Process data loaded from file for:', currentSalesmanId);
-                        } else {
-                            console.log('⚠️ No process data found for:', currentSalesmanId);
-                        }
-                    }
-                } catch (processError) {
-                    console.log('⚠️ Could not load process data, using defaults:', processError);
-                }
-
-                // Use default process data if not found in file
-                if (!processData || Object.keys(processData).length === 0) {
-                    console.log('🔄 Using default process data...');
-                    if (currentSalesmanId === "17210032876") { // Asman
-                        processData = {
-                            "Ach_CA": 0.75,
-                            "Ach_CAProdAll": 0.25,
-                            "Ach_AvgSKU": 0.25,
-                            "Ach_GPFood": 0.70,
-                            "Ach_GPOthers": 0.80
-                        };
-                    } else if (currentSalesmanId === "17210037897") { // Hindra
-                        processData = {
-                            "Ach_CA": 0.65,
-                            "Ach_CAProdAll": 0.35,
-                            "Ach_AvgSKU": 0.45,
-                            "Ach_GPFood": 0.60,
-                            "Ach_GPOthers": 0.70
-                        };
-                    } else if (currentSalesmanId === "17210038077") { // Sopian Sauri
-                        processData = {
-                            "Ach_CA": 0.85,
-                            "Ach_CAProdAll": 0.55,
-                            "Ach_AvgSKU": 0.65,
-                            "Ach_GPFood": 0.75,
-                            "Ach_GPOthers": 0.85
-                        };
-                    } else {
-                        // Default values for unknown salesman
-                        processData = {
-                            "Ach_CA": 0.50,
-                            "Ach_CAProdAll": 0.30,
-                            "Ach_AvgSKU": 0.40,
-                            "Ach_GPFood": 0.60,
-                            "Ach_GPOthers": 0.70
-                        };
-                    }
-                }
+                // Mock process data
+                let processData = {
+                    "Ach_CA": 0.75,
+                    "Ach_CAProdAll": 0.25,
+                    "Ach_AvgSKU": 0.25,
+                    "Ach_GPFood": 0.70,
+                    "Ach_GPOthers": 0.80
+                };
 
                 salesmanDetails = salesmanDetailsData;
                 salesmanProcessData = processData;
@@ -909,8 +880,7 @@
                 const details = salesmanDetails[currentSalesmanId];
 
                 if (!details) {
-                    const availableIds = Object.keys(salesmanDetails);
-                    throw new Error(`Salesman not found: ${currentSalesmanId}\nAvailable IDs: ${availableIds.join(', ')}`);
+                    throw new Error(`Salesman not found: ${currentSalesmanId}`);
                 }
 
                 console.log(`✅ Found salesman: ${details.name} (${currentSalesmanId})`);
@@ -927,20 +897,6 @@
                 console.error('❌ Error loading salesman data:', error);
                 showLoading(false);
                 showError(true, error.message);
-            }
-        }
-
-        // ✅ PARSE JSONL DATA (JSON Lines)
-        function parseJSONL(jsonlString) {
-            try {
-                return jsonlString.trim().split('\n').map(line => {
-                    if (line.trim()) {
-                        return JSON.parse(line);
-                    }
-                }).filter(item => item !== undefined);
-            } catch (error) {
-                console.error('❌ Error parsing JSONL:', error);
-                return [];
             }
         }
 
