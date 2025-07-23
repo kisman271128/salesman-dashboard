@@ -80,7 +80,8 @@ class SalesmanDashboardUpdater:
             '⏰': '[TIME]',
             '⏱️': '[TIMER]',
             '🖥️': '[DESKTOP]',
-            '💻': '[LAPTOP]'
+            '💻': '[LAPTOP]',
+            '💸': '[INCENTIVE]'
         }
         
         for emoji, replacement in emoji_map.items():
@@ -93,8 +94,8 @@ class SalesmanDashboardUpdater:
         try:
             self.safe_log('info', "📊 Reading Excel sheets...", "Reading Excel sheets...")
             
-            # Required sheets
-            required_sheets = ['d.dashboard', 'd.performance', 'd.salesmanlob', 'd.salesmanproses', 'd.soharian']
+            # 🆕 UPDATED: Added d.insentif to required sheets
+            required_sheets = ['d.dashboard', 'd.performance', 'd.salesmanlob', 'd.salesmanproses', 'd.soharian', 'd.insentif']
             
             sheets = {}
             
@@ -124,7 +125,11 @@ class SalesmanDashboardUpdater:
                     except Exception as e:
                         self.safe_log('error', f"Failed to read sheet {sheet_name}: {str(e)}")
                 else:
-                    self.safe_log('warning', f"Sheet {sheet_name} not found in Excel file")
+                    # 🆕 SPECIAL: d.insentif is optional for backward compatibility
+                    if sheet_name == 'd.insentif':
+                        self.safe_log('warning', f"Sheet {sheet_name} not found - will be skipped (optional)")
+                    else:
+                        self.safe_log('warning', f"Sheet {sheet_name} not found in Excel file")
             
             if not sheets:
                 raise Exception("No required sheets found in Excel file")
@@ -134,6 +139,88 @@ class SalesmanDashboardUpdater:
         except Exception as e:
             self.safe_log('error', f"Error reading Excel file: {str(e)}")
             return None
+
+    # 🆕 NEW: Process incentive data from d.insentif sheet
+    def process_insentif_data(self, sheets):
+        """Process incentive data from d.insentif sheet"""
+        try:
+            self.safe_log('info', "💸 Processing incentive data...", "[INCENTIVE] Processing incentive data...")
+            
+            # Check if d.insentif sheet exists
+            if 'd.insentif' not in sheets:
+                self.safe_log('warning', "d.insentif sheet not found - skipping incentive data processing")
+                return []
+            
+            insentif_df = sheets['d.insentif']
+            self.safe_log('info', f"Incentive columns: {list(insentif_df.columns)}")
+            
+            incentive_records = []
+            
+            for _, row in insentif_df.iterrows():
+                # Check if this row has valid data (at least szEmployeeId should exist)
+                if pd.notna(row.get('szEmployeeId', '')):
+                    
+                    # Build incentive record following the exact structure from your sample
+                    incentive_record = {}
+                    
+                    # 🔧 MAIN FIELDS - Handle common fields with proper type conversion
+                    incentive_record['NIK SAC'] = self.safe_int(row.get('NIK SAC', 0))
+                    incentive_record['Nama SAC'] = str(row.get('Nama SAC', '')).strip()
+                    incentive_record['szEmployeeId'] = self.safe_int(row.get('szEmployeeId', 0))
+                    incentive_record['szname'] = str(row.get('szname', '')).strip()
+                    incentive_record['Dept'] = str(row.get('Dept', '')).strip()
+                    incentive_record['Tipe Salesman'] = str(row.get('Tipe Salesman', '')).strip()
+                    
+                    # 🔧 PERFORMANCE METRICS - Handle numeric fields
+                    incentive_record['GPPJ & GEN'] = self.safe_int(row.get('GPPJ & GEN', 0))
+                    incentive_record['GBS & OTHERS'] = self.safe_int(row.get('GBS & OTHERS', 0))
+                    incentive_record['GPPJ'] = self.safe_int(row.get('GPPJ', 0))
+                    incentive_record['GBS'] = self.safe_int(row.get('GBS', 0))
+                    incentive_record['MBR'] = self.safe_int(row.get('MBR', 0))
+                    incentive_record['HGJ'] = self.safe_int(row.get('HGJ', 0))
+                    incentive_record['OTHERS'] = self.safe_int(row.get('OTHERS', 0))
+                    incentive_record['Avg SKU'] = self.safe_int(row.get('Avg SKU', 0))
+                    incentive_record['GP'] = self.safe_int(row.get('GP', 0))
+                    
+                    # 🔧 SPECIAL FIELDS - Handle null values properly
+                    pom_value = row.get('POM')
+                    incentive_record['POM'] = None if pd.isna(pom_value) else self.safe_int(pom_value)
+                    
+                    incentive_record['AR Coll'] = self.safe_int(row.get('AR Coll', 0))
+                    
+                    # 🔧 INCENTIVE CALCULATIONS
+                    incentive_record['Insentif_sales'] = self.safe_int(row.get('Insentif_sales', 0))
+                    incentive_record['Insentif_Proses'] = self.safe_int(row.get('Insentif_Proses', 0))
+                    incentive_record['Total_Insentif'] = self.safe_int(row.get('Total_Insentif', 0))
+                    
+                    incentive_records.append(incentive_record)
+                    
+                    self.safe_log('info', f"✅ Added incentive for szEmployeeId {incentive_record['szEmployeeId']}: {incentive_record['szname']} - Sales:{incentive_record['Insentif_sales']}, Proses:{incentive_record['Insentif_Proses']}", 
+                                f"[OK] Added incentive for szEmployeeId {incentive_record['szEmployeeId']}: {incentive_record['szname']}")
+            
+            self.safe_log('info', f"✅ Processed {len(incentive_records)} incentive records", f"[OK] Processed {len(incentive_records)} incentive records")
+            
+            return incentive_records
+            
+        except Exception as e:
+            self.safe_log('error', f"Error processing incentive data: {str(e)}")
+            return []
+    
+    # 🆕 NEW: Helper method for safe integer conversion
+    def safe_int(self, value):
+        """Safely convert value to integer"""
+        try:
+            if pd.isna(value):
+                return 0
+            if isinstance(value, str):
+                # Handle empty strings
+                if value.strip() == '':
+                    return 0
+                # Handle currency strings with commas
+                value = value.replace(',', '').replace('(', '-').replace(')', '')
+            return int(float(value))
+        except:
+            return 0
 
     def debug_dashboard_data(self, dashboard_df):
         """🔧 ENHANCED: Debug function to inspect dashboard data structure"""
@@ -737,7 +824,9 @@ class SalesmanDashboardUpdater:
         try:
             self.safe_log('info', "🔍 Validating data...", "Validating data...")
             
+            # 🆕 UPDATED: d.insentif is optional
             required_sheets = ['d.dashboard', 'd.performance', 'd.salesmanlob', 'd.salesmanproses', 'd.soharian']
+            optional_sheets = ['d.insentif']
             
             for sheet_name in required_sheets:
                 if sheet_name not in sheets:
@@ -747,6 +836,13 @@ class SalesmanDashboardUpdater:
                 if sheets[sheet_name].empty:
                     self.safe_log('error', f"Sheet is empty: {sheet_name}")
                     return False
+            
+            # Check optional sheets
+            for sheet_name in optional_sheets:
+                if sheet_name in sheets:
+                    self.safe_log('info', f"✅ Optional sheet found: {sheet_name}", f"[OK] Optional sheet found: {sheet_name}")
+                else:
+                    self.safe_log('info', f"ℹ️ Optional sheet not found: {sheet_name} (will be skipped)", f"[INFO] Optional sheet not found: {sheet_name}")
             
             self.safe_log('info', "✅ Data validation passed", "[OK] Data validation passed")
             return True
@@ -791,14 +887,15 @@ class SalesmanDashboardUpdater:
             return []
 
     def generate_json_files(self, sheets):
-        """Generate all JSON files with complete data"""
+        """🆕 UPDATED: Generate all JSON files with complete data + incentive data"""
         try:
-            self.safe_log('info', "🔄 Processing Excel data to JSON with format Indonesia Rb/Jt/M + Gap field...", "Processing Excel data to JSON with format Indonesia + Gap field...")
+            self.safe_log('info', "🔄 Processing Excel data to JSON with format Indonesia Rb/Jt/M + Gap field + Incentive...", "Processing Excel data to JSON with format Indonesia + Gap field + Incentive...")
             
             # Process all data
             dashboard_data = self.process_dashboard_data(sheets)
             salesman_list = self.process_salesman_data(sheets)
             salesman_details = self.process_salesman_detail(sheets)
+            incentive_data = self.process_insentif_data(sheets)  # 🆕 NEW: Process incentive data
             
             if not dashboard_data or not salesman_list:
                 self.safe_log('error', "Failed to process required data")
@@ -830,10 +927,27 @@ class SalesmanDashboardUpdater:
                     json.dump(chart_data, f, indent=2, ensure_ascii=False)
                 self.safe_log('info', f"✅ Saved: {chart_file} with format Indonesia", f"[OK] Saved: {chart_file} with format Indonesia")
             
-            self.safe_log('info', f"🎉 Generated 4 JSON files with Indonesia format (Rb/Jt/M) + Gap field!", f"[SUCCESS] Generated 4 JSON files with Indonesia format + Gap field!")
-            self.safe_log('info', "📋 Files updated with Rb/Jt/M format + Gap field:", "[LIST] Files updated with Rb/Jt/M format + Gap field:")
+            # 🆕 NEW: Save incentive data in JSONL format (matching your sample structure)
+            if incentive_data:
+                incentive_file = os.path.join(self.data_dir, 'd.insentif.json')
+                with open(incentive_file, 'w', encoding='utf-8') as f:
+                    for record in incentive_data:
+                        # Write each record as a single line JSON (JSONL format)
+                        json.dump(record, f, ensure_ascii=False)
+                        f.write('\n')
+                self.safe_log('info', f"✅ Saved: {incentive_file} in JSONL format with {len(incentive_data)} records", f"[OK] Saved: {incentive_file} in JSONL format with {len(incentive_data)} records")
+            else:
+                self.safe_log('warning', "No incentive data to save - d.insentif.json will not be created")
+            
+            # 🆕 UPDATED: Count files generated
+            total_files = 4 + (1 if incentive_data else 0)
+            self.safe_log('info', f"🎉 Generated {total_files} JSON files with Indonesia format (Rb/Jt/M) + Gap field + Incentive!", f"[SUCCESS] Generated {total_files} JSON files with Indonesia format + Gap field + Incentive!")
+            self.safe_log('info', "📋 Files updated with Rb/Jt/M format + Gap field + Incentive:", "[LIST] Files updated with Rb/Jt/M format + Gap field + Incentive:")
             
             files = ['dashboard.json', 'salesman_list.json', 'salesman_details.json', 'chart_data.json']
+            if incentive_data:
+                files.append('d.insentif.json')
+            
             for file in files:
                 self.safe_log('info', f"   - {file}")
             
@@ -910,7 +1024,7 @@ class SalesmanDashboardUpdater:
             
             # 🔧 FIXED: Commit with better error handling
             current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            commit_message = f"""Morning update: {current_time} - ENHANCED Dashboard System
+            commit_message = f"""Morning update: {current_time} - ENHANCED Dashboard System + Incentive Support
 
 📱 Mobile Dashboard (dashboard.html) - Optimized for smartphones
 💻 Desktop Dashboard (dashboard-desktop.html) - Optimized for laptops/PC
@@ -920,6 +1034,10 @@ class SalesmanDashboardUpdater:
    - Gap field calculation (Actual - Target)
    - Device-specific dashboard selection
    - Enhanced user experience
+💸 NEW: Incentive Data Support (d.insentif.json)
+   - JSONL format for application compatibility
+   - Complete incentive calculations
+   - Sales and Process incentives
 
 🔐 Login: admin/admin123 or szEmployeeId/sales123"""
 
@@ -1021,6 +1139,7 @@ class SalesmanDashboardUpdater:
    📈 vs Metrics Display - FIXED vs LM/3LM/LY showing
    🎯 Chart Stats Format - FIXED proper Rb/Jt/M format
    📊 Gap Field Added - FIXED Gap calculation (Actual - Target) for each LOB
+   💸 Incentive Data Support - NEW d.insentif.json in JSONL format
    🔐 szEmployeeId Login - All salesman + admin access
    📱💻 Dual Dashboard - Mobile & Desktop optimized versions
    🎨 Device Selection - Auto-detect with manual override
@@ -1047,6 +1166,12 @@ class SalesmanDashboardUpdater:
    • 768-1024px → User choice (tablets)
    • Manual override always available
 
+💸 INCENTIVE DATA:
+   • d.insentif.json in JSONL format
+   • Complete incentive calculations
+   • Sales and Process incentives
+   • Application-ready structure
+
 💡 Format Indonesia + Data Enhancement:
    • < 1K = angka langsung (500)
    • 1K-999K = Rb (500Rb) 
@@ -1067,10 +1192,10 @@ class SalesmanDashboardUpdater:
             return False
 
 def main():
-    """Main function - Enhanced with Desktop Dashboard"""
-    print("🚀 SALESMAN DASHBOARD UPDATER v2.6 - FIXED GIT PUSH SYSTEM")
+    """🆕 UPDATED: Main function - Enhanced with Desktop Dashboard + Incentive Support"""
+    print("🚀 SALESMAN DASHBOARD UPDATER v2.7 - ENHANCED WITH INCENTIVE SUPPORT")
     print("=" * 80)
-    print("Running with ENHANCED GIT PUSH ERROR HANDLING:")
+    print("Running with ENHANCED FEATURES:")
     print("✅ FIXED git status checking before operations")
     print("✅ FIXED git add with detailed logging")
     print("✅ FIXED git commit with proper error handling")
@@ -1082,11 +1207,12 @@ def main():
     print("✅ Enhanced number formatting untuk semua section")
     print("✅ ADDED Desktop dashboard untuk laptop/PC")
     print("✅ ADDED Device auto-detection & selection")
+    print("✅ NEW: Incentive Data Support (d.insentif.json)")
     print("=" * 75)
     
-    print("\n🌅 MORNING BATCH UPDATE - FIXED GIT PUSH SYSTEM")
+    print("\n🌅 MORNING BATCH UPDATE - ENHANCED WITH INCENTIVE SUPPORT")
     print("=" * 65)
-    print("🚀 Version 2.6 - ENHANCED ERROR HANDLING & DEBUGGING:")
+    print("🚀 Version 2.7 - ENHANCED ERROR HANDLING & INCENTIVE SUPPORT:")
     print("   🔧 FIXED git status checking before operations")
     print("   🔧 FIXED git add with individual file logging")
     print("   🔧 FIXED git commit with detailed error messages")
@@ -1100,6 +1226,9 @@ def main():
     print("   ✅ FIXED vs metrics yang tidak muncul")
     print("   ✅ FIXED chart stats format Indonesia")
     print("   ✅ ADDED Gap field untuk setiap LOB performance")
+    print("   💸 NEW: d.insentif.json dalam format JSONL")
+    print("   💸 NEW: Complete incentive calculations")
+    print("   💸 NEW: Application-ready incentive structure")
     print("=" * 60)
     
     # Create updater and run
@@ -1109,6 +1238,7 @@ def main():
     if success:
         print("\n✅ ENHANCED DASHBOARD SYSTEM UPDATE SUCCESSFUL!")
         print("🌐 Multi-platform dashboard dengan format Rb/Jt/M yang benar")
+        print("💸 Incentive data support untuk aplikasi mobile")
         print("📱 Mobile: https://kisman271128.github.io/salesman-dashboard/dashboard.html")
         print("💻 Desktop: https://kisman271128.github.io/salesman-dashboard/dashboard-desktop.html")
         print("🏠 Login: https://kisman271128.github.io/salesman-dashboard/")
