@@ -93,8 +93,8 @@ class SalesmanDashboardUpdater:
         try:
             self.safe_log('info', "📊 Reading Excel sheets...", "Reading Excel sheets...")
             
-            # Required sheets - TAMBAH d.insentif untuk dashboard insentif
-            required_sheets = ['d.dashboard', 'd.performance', 'd.salesmanlob', 'd.salesmanproses', 'd.soharian', 'd.insentif']
+            # Required sheets
+            required_sheets = ['d.dashboard', 'd.performance', 'd.salesmanlob', 'd.salesmanproses', 'd.soharian']
             
             sheets = {}
             
@@ -124,11 +124,7 @@ class SalesmanDashboardUpdater:
                     except Exception as e:
                         self.safe_log('error', f"Failed to read sheet {sheet_name}: {str(e)}")
                 else:
-                    # d.insentif sheet optional, yang lain required
-                    if sheet_name == 'd.insentif':
-                        self.safe_log('warning', f"Optional sheet {sheet_name} not found - incentive features will be disabled")
-                    else:
-                        self.safe_log('warning', f"Required sheet {sheet_name} not found in Excel file")
+                    self.safe_log('warning', f"Sheet {sheet_name} not found in Excel file")
             
             if not sheets:
                 raise Exception("No required sheets found in Excel file")
@@ -139,60 +135,6 @@ class SalesmanDashboardUpdater:
             self.safe_log('error', f"Error reading Excel file: {str(e)}")
             return None
 
-    def process_incentive_data(self, sheets):
-        """🆕 NEW: Process incentive data dari d.insentif sheet"""
-        try:
-            self.safe_log('info', "💰 Processing incentive data...", "[MONEY] Processing incentive data...")
-            
-            if 'd.insentif' not in sheets:
-                self.safe_log('warning', "d.insentif sheet not found - skipping incentive data processing")
-                return []
-            
-            incentive_df = sheets['d.insentif']
-            self.safe_log('info', f"Incentive columns: {list(incentive_df.columns)}")
-            
-            incentive_data = []
-            
-            for _, row in incentive_df.iterrows():
-                if pd.notna(row.get('szEmployeeId', '')) and pd.notna(row.get('szName', '')):
-                    employee_id = str(int(float(row['szEmployeeId']))) if pd.notna(row['szEmployeeId']) else ''
-                    
-                    if employee_id:
-                        incentive_record = {
-                            'szEmployeeId': employee_id,
-                            'szName': str(row.get('szName', '')).strip(),
-                            'szTipeKaryawan': str(row.get('szTipeKaryawan', '')).strip(),
-                            
-                            # Insentif Sales per LOB
-                            'InsentifGPPJ': self.safe_float(row.get('InsentifGPPJ', 0)),
-                            'InsentifGEN': self.safe_float(row.get('InsentifGEN', 0)),
-                            'InsentifGBS': self.safe_float(row.get('InsentifGBS', 0)),
-                            'InsentifMBR': self.safe_float(row.get('InsentifMBR', 0)),
-                            'InsentifHGJ': self.safe_float(row.get('InsentifHGJ', 0)),
-                            'InsentifOthers': self.safe_float(row.get('InsentifOthers', 0)),
-                            
-                            # Insentif Proses
-                            'InsentifAvgSKU': self.safe_float(row.get('InsentifAvgSKU', 0)),
-                            'InsentifGP': self.safe_float(row.get('InsentifGP', 0)),
-                            'InsentifCAPOM': self.safe_float(row.get('InsentifCAPOM', 0)),
-                            
-                            # Penalti AR
-                            'PenaltiAR': self.safe_float(row.get('PenaltiAR', 0)),
-                            'ARPercentage': self.safe_float(row.get('ARPercentage', 100))
-                        }
-                        
-                        incentive_data.append(incentive_record)
-                        self.safe_log('info', f"✅ Added incentive for {employee_id}: {incentive_record['szName']}", 
-                                    f"[OK] Added incentive for {employee_id}: {incentive_record['szName']}")
-            
-            self.safe_log('info', f"💰 Processed {len(incentive_data)} incentive records", f"[MONEY] Processed {len(incentive_data)} incentive records")
-            return incentive_data
-            
-        except Exception as e:
-            self.safe_log('error', f"Error processing incentive data: {str(e)}")
-            return []
-
-    # [Semua method lainnya tetap sama...]
     def debug_dashboard_data(self, dashboard_df):
         """🔧 ENHANCED: Debug function to inspect dashboard data structure"""
         self.safe_log('info', "🔍 DEBUG: Inspecting dashboard data structure...")
@@ -796,7 +738,6 @@ class SalesmanDashboardUpdater:
             self.safe_log('info', "🔍 Validating data...", "Validating data...")
             
             required_sheets = ['d.dashboard', 'd.performance', 'd.salesmanlob', 'd.salesmanproses', 'd.soharian']
-            optional_sheets = ['d.insentif']  # 🆕 NEW: Optional sheet for incentive
             
             for sheet_name in required_sheets:
                 if sheet_name not in sheets:
@@ -807,13 +748,6 @@ class SalesmanDashboardUpdater:
                     self.safe_log('error', f"Sheet is empty: {sheet_name}")
                     return False
             
-            # Check optional sheets
-            for sheet_name in optional_sheets:
-                if sheet_name in sheets and not sheets[sheet_name].empty:
-                    self.safe_log('info', f"✅ Optional sheet available: {sheet_name}", f"[OK] Optional sheet available: {sheet_name}")
-                else:
-                    self.safe_log('info', f"ℹ️  Optional sheet not available: {sheet_name} - Related features will be disabled")
-            
             self.safe_log('info', "✅ Data validation passed", "[OK] Data validation passed")
             return True
             
@@ -822,17 +756,15 @@ class SalesmanDashboardUpdater:
             return False
 
     def check_html_files(self):
-        """🆕 NEW: Check if HTML files exist and are ready for deployment - UPDATED with incentive dashboard"""
+        """🆕 NEW: Check if HTML files exist and are ready for deployment"""
         try:
-            self.safe_log('info', "🔍 Checking HTML dashboard files including incentive...", "[SEARCH] Checking HTML dashboard files including incentive...")
+            self.safe_log('info', "🔍 Checking HTML dashboard files...", "[SEARCH] Checking HTML dashboard files...")
             
-            # List of HTML files to check - 🆕 ADDED dashboard_insentif_sales.html
+            # List of HTML files to check
             html_files = [
                 'index.html',
                 'dashboard.html',
-                'dashboard-desktop.html',
-                'salesman-detail.html',
-                'dashboard_insentif_sales.html'  # 🆕 NEW: Added incentive dashboard
+                'dashboard-desktop.html'
             ]
             
             existing_files = []
@@ -850,12 +782,8 @@ class SalesmanDashboardUpdater:
             
             if missing_files:
                 self.safe_log('warning', f"Missing HTML files: {missing_files}")
-                # Special note for incentive dashboard
-                if 'dashboard_insentif_sales.html' in missing_files:
-                    self.safe_log('warning', "💰 Incentive dashboard missing - salesman incentive features will not work properly")
             
-            self.safe_log('info', f"📱 Found {len(existing_files)} HTML files for deployment (including incentive: {'✅' if 'dashboard_insentif_sales.html' in existing_files else '❌'})", 
-                        f"[MOBILE] Found {len(existing_files)} HTML files for deployment")
+            self.safe_log('info', f"📱 Found {len(existing_files)} HTML files for deployment", f"[MOBILE] Found {len(existing_files)} HTML files for deployment")
             return existing_files
             
         except Exception as e:
@@ -863,15 +791,14 @@ class SalesmanDashboardUpdater:
             return []
 
     def generate_json_files(self, sheets):
-        """Generate all JSON files with complete data including incentive data"""
+        """Generate all JSON files with complete data"""
         try:
-            self.safe_log('info', "🔄 Processing Excel data to JSON with format Indonesia Rb/Jt/M + Gap field + Incentive...", "Processing Excel data to JSON with format Indonesia + Gap field + Incentive...")
+            self.safe_log('info', "🔄 Processing Excel data to JSON with format Indonesia Rb/Jt/M + Gap field...", "Processing Excel data to JSON with format Indonesia + Gap field...")
             
             # Process all data
             dashboard_data = self.process_dashboard_data(sheets)
             salesman_list = self.process_salesman_data(sheets)
             salesman_details = self.process_salesman_detail(sheets)
-            incentive_data = self.process_incentive_data(sheets)  # 🆕 NEW: Process incentive data
             
             if not dashboard_data or not salesman_list:
                 self.safe_log('error', "Failed to process required data")
@@ -895,17 +822,6 @@ class SalesmanDashboardUpdater:
                 json.dump(salesman_details, f, indent=2, ensure_ascii=False)
             self.safe_log('info', f"✅ Saved: {details_file} with format Indonesia + Gap field", f"[OK] Saved: {details_file} with format Indonesia + Gap field")
             
-            # 🆕 NEW: Save incentive data (JSONL format)
-            if incentive_data:
-                incentive_file = os.path.join(self.data_dir, 'd.insentif.json')
-                with open(incentive_file, 'w', encoding='utf-8') as f:
-                    for record in incentive_data:
-                        json.dump(record, f, ensure_ascii=False)
-                        f.write('\n')
-                self.safe_log('info', f"💰 Saved: {incentive_file} with {len(incentive_data)} incentive records", f"[MONEY] Saved: {incentive_file} with {len(incentive_data)} incentive records")
-            else:
-                self.safe_log('warning', "No incentive data to save - incentive features will be disabled")
-            
             # Generate and save chart data
             chart_data = self.generate_chart_data(sheets)
             if chart_data:
@@ -914,15 +830,10 @@ class SalesmanDashboardUpdater:
                     json.dump(chart_data, f, indent=2, ensure_ascii=False)
                 self.safe_log('info', f"✅ Saved: {chart_file} with format Indonesia", f"[OK] Saved: {chart_file} with format Indonesia")
             
-            # Count total files
-            total_files = 4 + (1 if incentive_data else 0)
-            self.safe_log('info', f"🎉 Generated {total_files} JSON files with Indonesia format (Rb/Jt/M) + Gap field + Incentive!", f"[SUCCESS] Generated {total_files} JSON files with Indonesia format + Gap field + Incentive!")
-            self.safe_log('info', "📋 Files updated with Rb/Jt/M format + Gap field + Incentive:", "[LIST] Files updated with Rb/Jt/M format + Gap field + Incentive:")
+            self.safe_log('info', f"🎉 Generated 4 JSON files with Indonesia format (Rb/Jt/M) + Gap field!", f"[SUCCESS] Generated 4 JSON files with Indonesia format + Gap field!")
+            self.safe_log('info', "📋 Files updated with Rb/Jt/M format + Gap field:", "[LIST] Files updated with Rb/Jt/M format + Gap field:")
             
             files = ['dashboard.json', 'salesman_list.json', 'salesman_details.json', 'chart_data.json']
-            if incentive_data:
-                files.append('d.insentif.json')
-            
             for file in files:
                 self.safe_log('info', f"   - {file}")
             
@@ -933,9 +844,9 @@ class SalesmanDashboardUpdater:
             return False
 
     def git_push_changes(self):
-        """🔧 ENHANCED: FIXED Push changes to GitHub with proper error handling - UPDATED for incentive"""
+        """🔧 ENHANCED: FIXED Push changes to GitHub with proper error handling"""
         try:
-            self.safe_log('info', "🚀 Pushing to GitHub with improved error handling + incentive dashboard...", "Pushing to GitHub with improved error handling + incentive dashboard...")
+            self.safe_log('info', "🚀 Pushing to GitHub with improved error handling...", "Pushing to GitHub with improved error handling...")
             
             # Check HTML files first
             html_files = self.check_html_files()
@@ -959,7 +870,7 @@ class SalesmanDashboardUpdater:
                 self.safe_log('error', f"Error checking git status: {str(e)}")
                 return False
             
-            # 🔧 FIXED: Add files with better error handling - 🆕 ADDED dashboard_insentif_sales.html
+            # 🔧 FIXED: Add files with better error handling
             files_to_add = [
                 'data/',
                 'index.html',
@@ -967,7 +878,6 @@ class SalesmanDashboardUpdater:
                 'dashboard-desktop.html',
                 'salesman-desktop.html',
                 'salesman-detail.html',
-                'dashboard_insentif_sales.html',  # 🆕 NEW: Added incentive dashboard
                 'morning_update.py',
                 'morning_update.log'
             ]
@@ -984,9 +894,6 @@ class SalesmanDashboardUpdater:
                             self.safe_log('warning', f"⚠️ Failed to add {file_pattern}: {add_result.stderr}")
                     else:
                         self.safe_log('warning', f"⚠️ File not found: {file_pattern}")
-                        # Special handling for incentive dashboard
-                        if file_pattern == 'dashboard_insentif_sales.html':
-                            self.safe_log('warning', "💰 IMPORTANT: dashboard_insentif_sales.html not found - incentive features will not work!")
                 except Exception as e:
                     self.safe_log('error', f"Error adding {file_pattern}: {str(e)}")
             
@@ -1001,26 +908,20 @@ class SalesmanDashboardUpdater:
             except Exception as e:
                 self.safe_log('warning', f"Error checking git status after add: {str(e)}")
             
-            # 🔧 FIXED: Commit with better error handling - 🆕 UPDATED commit message for incentive
+            # 🔧 FIXED: Commit with better error handling
             current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            commit_message = f"""Morning update: {current_time} - ENHANCED Dashboard System + INCENTIVE MODULE
+            commit_message = f"""Morning update: {current_time} - ENHANCED Dashboard System
 
 📱 Mobile Dashboard (dashboard.html) - Optimized for smartphones
-💻 Desktop Dashboard (dashboard-desktop.html) - Optimized for laptops/PC  
-💰 Incentive Dashboard (dashboard_insentif_sales.html) - NEW Real-time incentive tracking
-
+💻 Desktop Dashboard (dashboard-desktop.html) - Optimized for laptops/PC
 🔧 Updated Features:
    - Indonesian number format (Rb/Jt/M)
    - vs metrics display (vs LM/3LM/LY)
    - Gap field calculation (Actual - Target)
    - Device-specific dashboard selection
    - Enhanced user experience
-   - 💰 NEW: Real-time incentive calculation & display
-   - 💰 NEW: Incentive breakdown per LOB & process metrics
-   - 💰 NEW: AR penalty tracking
 
-🔐 Login: admin/admin123 or szEmployeeId/sales123
-💰 Incentive: Click "Incentive" menu from salesman detail page"""
+🔐 Login: admin/admin123 or szEmployeeId/sales123"""
 
             try:
                 commit_result = subprocess.run(['git', 'commit', '-m', commit_message], 
@@ -1051,12 +952,11 @@ class SalesmanDashboardUpdater:
                     self.safe_log('info', "✅ Successfully pushed to GitHub!", "[OK] Successfully pushed to GitHub!")
                     self.safe_log('info', f"Push output: {push_result.stdout}")
                     
-                    # Show deployment URLs - 🆕 UPDATED with incentive info
+                    # Show deployment URLs
                     self.safe_log('info', "🌐 Deployment URLs:", "[WEB] Deployment URLs:")
                     self.safe_log('info', "   🏠 Main Login: https://kisman271128.github.io/salesman-dashboard/")
                     self.safe_log('info', "   📱 Mobile: https://kisman271128.github.io/salesman-dashboard/dashboard.html")
                     self.safe_log('info', "   💻 Desktop: https://kisman271128.github.io/salesman-dashboard/dashboard-desktop.html")
-                    self.safe_log('info', "   💰 Incentive: https://kisman271128.github.io/salesman-dashboard/dashboard_insentif_sales.html?id=employeeId")
                     
                     return True
                 else:
@@ -1115,7 +1015,6 @@ class SalesmanDashboardUpdater:
    🏠 Main Login: https://kisman271128.github.io/salesman-dashboard/
    📱 Mobile Dashboard: https://kisman271128.github.io/salesman-dashboard/dashboard.html
    💻 Desktop Dashboard: https://kisman271128.github.io/salesman-dashboard/dashboard-desktop.html
-   💰 Incentive Dashboard: https://kisman271128.github.io/salesman-dashboard/dashboard_insentif_sales.html?id=employeeId
 
 📊 ENHANCED FEATURES:
    💰 Indonesian Number Format - FIXED Rb/Jt/M display
@@ -1125,7 +1024,6 @@ class SalesmanDashboardUpdater:
    🔐 szEmployeeId Login - All salesman + admin access
    📱💻 Dual Dashboard - Mobile & Desktop optimized versions
    🎨 Device Selection - Auto-detect with manual override
-   💰 NEW: Real-time Incentive Dashboard with data integration
 
 🔑 LOGIN CREDENTIALS:
    Admin: admin / admin123
@@ -1142,13 +1040,6 @@ class SalesmanDashboardUpdater:
       • Multi-column layout utilizing screen space
       • Enhanced charts and tables for detailed viewing
       • Keyboard shortcuts support
-      
-   💰 Incentive Dashboard:
-      • Real-time incentive calculation from d.insentif.json
-      • Breakdown by LOB (GPPJ, GEN, GBS, MBR, HGJ, Others)
-      • Process incentives (Avg SKU, GP, CA POM)
-      • AR penalty tracking & warnings
-      • Indonesian currency formatting (Rb/Jt/M)
 
 🎯 AUTO DEVICE SELECTION:
    • < 768px width → Mobile Dashboard
@@ -1162,7 +1053,6 @@ class SalesmanDashboardUpdater:
    • 1Jt-999Jt = Jt (50.5Jt)
    • ≥1M = M (1.5M)
    • Gap = Actual - Target (untuk analisis performance)
-   • 💰 Incentive = Real data dari d.insentif sheet
 =======================================================
 """
             
@@ -1177,10 +1067,10 @@ class SalesmanDashboardUpdater:
             return False
 
 def main():
-    """Main function - Enhanced with Desktop Dashboard + Incentive Module"""
-    print("🚀 SALESMAN DASHBOARD UPDATER v2.7 - INCENTIVE MODULE + FIXED GIT PUSH SYSTEM")
-    print("=" * 90)
-    print("Running with ENHANCED GIT PUSH ERROR HANDLING + INCENTIVE DASHBOARD:")
+    """Main function - Enhanced with Desktop Dashboard"""
+    print("🚀 SALESMAN DASHBOARD UPDATER v2.6 - FIXED GIT PUSH SYSTEM")
+    print("=" * 80)
+    print("Running with ENHANCED GIT PUSH ERROR HANDLING:")
     print("✅ FIXED git status checking before operations")
     print("✅ FIXED git add with detailed logging")
     print("✅ FIXED git commit with proper error handling")
@@ -1192,20 +1082,17 @@ def main():
     print("✅ Enhanced number formatting untuk semua section")
     print("✅ ADDED Desktop dashboard untuk laptop/PC")
     print("✅ ADDED Device auto-detection & selection")
-    print("💰 NEW: Real-time Incentive Dashboard dengan data integration")
-    print("💰 NEW: d.insentif.json processing & deployment")
-    print("=" * 85)
-    
-    print("\n🌅 MORNING BATCH UPDATE - INCENTIVE MODULE + FIXED GIT PUSH SYSTEM")
     print("=" * 75)
-    print("🚀 Version 2.7 - INCENTIVE DASHBOARD + ENHANCED ERROR HANDLING:")
+    
+    print("\n🌅 MORNING BATCH UPDATE - FIXED GIT PUSH SYSTEM")
+    print("=" * 65)
+    print("🚀 Version 2.6 - ENHANCED ERROR HANDLING & DEBUGGING:")
     print("   🔧 FIXED git status checking before operations")
     print("   🔧 FIXED git add with individual file logging")
     print("   🔧 FIXED git commit with detailed error messages")
     print("   🔧 FIXED git push with network/auth error detection")
     print("   📱 Mobile Dashboard - Optimized untuk smartphone")
     print("   💻 Desktop Dashboard - Optimized untuk laptop/PC")
-    print("   💰 Incentive Dashboard - NEW Real-time incentive tracking")
     print("   🎨 Device Selection - Auto-detect dengan manual override")
     print("   ✅ FIXED Rb untuk < 1 juta (contoh: 500Rb)")
     print("   ✅ FIXED Jt untuk 1-999 juta (contoh: 50.5Jt)")
@@ -1213,21 +1100,17 @@ def main():
     print("   ✅ FIXED vs metrics yang tidak muncul")
     print("   ✅ FIXED chart stats format Indonesia")
     print("   ✅ ADDED Gap field untuk setiap LOB performance")
-    print("   💰 NEW: Real-time incentive dari d.insentif sheet")
-    print("   💰 NEW: Incentive breakdown per LOB & process")
-    print("   💰 NEW: AR penalty tracking & warnings")
-    print("=" * 70)
+    print("=" * 60)
     
     # Create updater and run
     updater = SalesmanDashboardUpdater()
     success = updater.run_morning_update()
     
     if success:
-        print("\n✅ ENHANCED DASHBOARD + INCENTIVE SYSTEM UPDATE SUCCESSFUL!")
-        print("🌐 Multi-platform dashboard dengan format Rb/Jt/M yang benar + Incentive")
+        print("\n✅ ENHANCED DASHBOARD SYSTEM UPDATE SUCCESSFUL!")
+        print("🌐 Multi-platform dashboard dengan format Rb/Jt/M yang benar")
         print("📱 Mobile: https://kisman271128.github.io/salesman-dashboard/dashboard.html")
         print("💻 Desktop: https://kisman271128.github.io/salesman-dashboard/dashboard-desktop.html")
-        print("💰 Incentive: https://kisman271128.github.io/salesman-dashboard/dashboard_insentif_sales.html?id=employeeId")
         print("🏠 Login: https://kisman271128.github.io/salesman-dashboard/")
         sys.exit(0)
     else:
