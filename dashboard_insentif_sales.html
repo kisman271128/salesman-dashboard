@@ -25,7 +25,7 @@
     <!-- Header dengan Foto dan Info Salesman -->
     <header class="flex items-center bg-cyan-700 rounded-xl shadow p-4 mb-4">
       <div class="flex-shrink-0">
-        <img src="https://cdn-icons-png.flaticon.com/512/3048/3048122.png" alt="Foto Salesman" class="w-16 h-16 rounded-full border-4 border-white shadow-lg" />
+        <img id="salesmanPhoto" src="https://cdn-icons-png.flaticon.com/512/3048/3048122.png" alt="Foto Salesman" class="w-16 h-16 rounded-full border-4 border-white shadow-lg" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3048/3048122.png'" />
       </div>
       <div class="flex-1 ml-4">
         <h1 class="text-lg font-bold text-white" id="salesmanName">Nama Salesman</h1>
@@ -71,8 +71,8 @@
     <!-- Insentif Sales -->
     <section class="mb-4">
       <h2 class="text-sm font-semibold text-gray-700 mb-2">🛍️ Insentif Sales</h2>
-      <div class="grid grid-cols-2 gap-2" id="insentifSalesDetail">
-        <!-- Will be populated dynamically -->
+      <div id="insentifSalesDetail">
+        <!-- Will be populated dynamically based on sales type -->
       </div>
     </section>
 
@@ -137,6 +137,43 @@
         }
       }
 
+      // 🆕 NEW: Set salesman photo based on NIK
+      function setSalesmanPhoto(nikSAC) {
+        const photoElement = document.getElementById('salesmanPhoto');
+        
+        if (nikSAC) {
+          // Try to load photo from photos folder based on NIK
+          const photoPath = `photos/${nikSAC}.jpg`;
+          
+          // Create a new image to test if the photo exists
+          const testImg = new Image();
+          testImg.onload = function() {
+            // Photo exists, use it
+            photoElement.src = photoPath;
+            console.log(`✅ Photo loaded for NIK: ${nikSAC}`);
+          };
+          testImg.onerror = function() {
+            // Photo doesn't exist, try .png extension
+            const photoPngPath = `photos/${nikSAC}.png`;
+            const testImgPng = new Image();
+            testImgPng.onload = function() {
+              photoElement.src = photoPngPath;
+              console.log(`✅ PNG Photo loaded for NIK: ${nikSAC}`);
+            };
+            testImgPng.onerror = function() {
+              // Neither jpg nor png exists, use default
+              console.log(`⚠️ No photo found for NIK: ${nikSAC}, using default`);
+              photoElement.src = 'https://cdn-icons-png.flaticon.com/512/3048/3048122.png';
+            };
+            testImgPng.src = photoPngPath;
+          };
+          testImg.src = photoPath;
+        } else {
+          console.log('⚠️ No NIK provided, using default photo');
+          photoElement.src = 'https://cdn-icons-png.flaticon.com/512/3048/3048122.png';
+        }
+      }
+
       // Load JSON data from file
       async function loadJSONData() {
         try {
@@ -195,7 +232,10 @@
           document.getElementById('salesmanName').textContent = salesmanName;
           document.getElementById('salesmanType').textContent = salesmanType;
           
-          console.log(`✅ Profile updated - Name: ${salesmanName}, Type: ${salesmanType}`);
+          // 🆕 NEW: Set photo based on NIK SAC
+          setSalesmanPhoto(incentiveData["NIK SAC"]);
+          
+          console.log(`✅ Profile updated - Name: ${salesmanName}, Type: ${salesmanType}, NIK: ${incentiveData["NIK SAC"]}`);
         }
       }
 
@@ -219,65 +259,162 @@
         console.log(`✅ Summary updated - Sales: ${insentifSales}, Proses: ${insentifProses}, Penalti: ${penaltiAR}, Total: ${totalBersih}`);
       }
 
-      // Update incentive sales detail
+      // 🆕 ENHANCED: Update incentive sales detail based on sales type
       function updateIncentiveSalesDetail(incentiveData) {
         if (!incentiveData) return;
 
-        // Calculate GEN from "GPPJ & GEN" minus "GPPJ"
-        const gppjGenTotal = incentiveData["GPPJ & GEN"] || 0;
-        const gppjValue = incentiveData.GPPJ || 0;
-        const genValue = gppjGenTotal - gppjValue;
-
-        const salesDetails = [
-          { name: 'GPPJ', value: incentiveData.GPPJ || 0, color: 'green' },
-          { name: 'GEN', value: genValue, color: 'green' },
-          { name: 'GBS', value: incentiveData.GBS || 0, color: 'yellow' },
-          { name: 'OTHERS', value: incentiveData.OTHERS || 0, color: 'yellow' },
-          { name: 'MBR', value: incentiveData.MBR || 0, color: 'blue' },
-          { name: 'HGJ', value: incentiveData.HGJ || 0, color: 'blue' }
-        ];
+        const salesType = incentiveData["Tipe Salesman"] || '';
+        console.log(`🎯 Processing sales type: ${salesType}`);
 
         let html = '';
-        salesDetails.forEach(item => {
-          // Show all items, even if value is 0
-          html += `
-            <div class="bg-${item.color}-100 p-3 rounded-xl shadow">
-              <p class="text-xs font-medium">${item.name}</p>
-              <p class="text-${item.color}-700 font-bold text-sm">${formatCurrencyIDR(item.value)}</p>
+
+        if (salesType.includes('Sales Representative Retailer Bima')) {
+          // Bima: GPPJ, GBS, MBR, HGJ, OTHERS, Avg SKU (6 items in 2x3 grid)
+          // GEN and GP are disabled (silver color with "-")
+          const salesDetails = [
+            { name: 'GPPJ', value: incentiveData.GPPJ || 0, color: 'green', enabled: true },
+            { name: 'GEN', value: 0, color: 'gray', enabled: false }, // Disabled for Bima
+            { name: 'GBS', value: incentiveData.GBS || 0, color: 'yellow', enabled: true },
+            { name: 'OTHERS', value: incentiveData.OTHERS || 0, color: 'yellow', enabled: true },
+            { name: 'MBR', value: incentiveData.MBR || 0, color: 'blue', enabled: true },
+            { name: 'HGJ', value: incentiveData.HGJ || 0, color: 'blue', enabled: true }
+          ];
+
+          html = '<div class="grid grid-cols-2 gap-2">';
+          salesDetails.forEach(item => {
+            if (item.enabled) {
+              html += `
+                <div class="bg-${item.color}-100 p-3 rounded-xl shadow">
+                  <p class="text-xs font-medium">${item.name}</p>
+                  <p class="text-${item.color}-700 font-bold text-sm">${formatCurrencyIDR(item.value)}</p>
+                </div>
+              `;
+            } else {
+              html += `
+                <div class="bg-gray-100 p-3 rounded-xl shadow opacity-60">
+                  <p class="text-xs font-medium text-gray-500">${item.name}</p>
+                  <p class="text-gray-500 font-bold text-sm">-</p>
+                </div>
+              `;
+            }
+          });
+          html += '</div>';
+
+        } else if (salesType.includes('Sales Representative Mix Yudistira')) {
+          // Yudistira: Only "GPPJ & GEN" and "GBS & OTHERS" (2 large items)
+          const gppjGenValue = incentiveData["GPPJ & GEN"] || 0;
+          const gbsOthersValue = incentiveData["GBS & OTHERS"] || 0;
+
+          html = `
+            <div class="grid grid-cols-1 gap-3">
+              <div class="bg-green-100 p-4 rounded-xl shadow">
+                <p class="text-sm font-medium text-green-800">GPPJ & GEN</p>
+                <p class="text-green-700 font-bold text-xl">${formatCurrencyIDR(gppjGenValue)}</p>
+              </div>
+              <div class="bg-yellow-100 p-4 rounded-xl shadow">
+                <p class="text-sm font-medium text-yellow-800">GBS & OTHERS</p>
+                <p class="text-yellow-700 font-bold text-xl">${formatCurrencyIDR(gbsOthersValue)}</p>
+              </div>
             </div>
           `;
-        });
+
+        } else if (salesType.includes('Sales Representative Retailer Arjuna')) {
+          // Arjuna: Only "GPPJ & GEN" (1 large item)
+          const gppjGenValue = incentiveData["GPPJ & GEN"] || 0;
+
+          html = `
+            <div class="grid grid-cols-1 gap-3">
+              <div class="bg-green-100 p-5 rounded-xl shadow">
+                <p class="text-base font-medium text-green-800">GPPJ & GEN</p>
+                <p class="text-green-700 font-bold text-2xl">${formatCurrencyIDR(gppjGenValue)}</p>
+              </div>
+            </div>
+          `;
+
+        } else {
+          // Default: Show all individual components (fallback)
+          console.log('⚠️ Unknown sales type, showing default layout');
+          
+          // Calculate GEN from "GPPJ & GEN" minus "GPPJ"
+          const gppjGenTotal = incentiveData["GPPJ & GEN"] || 0;
+          const gppjValue = incentiveData.GPPJ || 0;
+          const genValue = gppjGenTotal - gppjValue;
+
+          const salesDetails = [
+            { name: 'GPPJ', value: incentiveData.GPPJ || 0, color: 'green' },
+            { name: 'GEN', value: genValue, color: 'green' },
+            { name: 'GBS', value: incentiveData.GBS || 0, color: 'yellow' },
+            { name: 'OTHERS', value: incentiveData.OTHERS || 0, color: 'yellow' },
+            { name: 'MBR', value: incentiveData.MBR || 0, color: 'blue' },
+            { name: 'HGJ', value: incentiveData.HGJ || 0, color: 'blue' }
+          ];
+
+          html = '<div class="grid grid-cols-2 gap-2">';
+          salesDetails.forEach(item => {
+            html += `
+              <div class="bg-${item.color}-100 p-3 rounded-xl shadow">
+                <p class="text-xs font-medium">${item.name}</p>
+                <p class="text-${item.color}-700 font-bold text-sm">${formatCurrencyIDR(item.value)}</p>
+              </div>
+            `;
+          });
+          html += '</div>';
+        }
 
         document.getElementById('insentifSalesDetail').innerHTML = html;
-        console.log(`✅ Sales detail updated with ${salesDetails.length} items`);
-        console.log(`📊 GPPJ: ${gppjValue}, GEN: ${genValue}, GBS: ${incentiveData.GBS}, OTHERS: ${incentiveData.OTHERS}, MBR: ${incentiveData.MBR}, HGJ: ${incentiveData.HGJ}`);
+        console.log(`✅ Sales detail updated for type: ${salesType}`);
       }
 
-      // Update incentive process detail
+      // 🆕 ENHANCED: Update incentive process detail based on sales type
       function updateIncentiveProcessDetail(incentiveData) {
         if (!incentiveData) return;
 
-        const processDetails = [
-          { name: 'Avg SKU', value: incentiveData.InsentifAvgSKU || 0, icon: '📊' },
-          { name: 'Insentif GP', value: incentiveData.InsentifGP || 0, icon: '📈' },
-          { name: 'CA POM', value: incentiveData.InsentifCAPOM || 0, icon: '🛒' }
-        ];
+        const salesType = incentiveData["Tipe Salesman"] || '';
+
+        // Process details based on actual data structure
+        let processDetails = [];
+
+        if (salesType.includes('Sales Representative Retailer Bima')) {
+          // Bima: Avg SKU (enabled), GP (disabled with silver color)
+          processDetails = [
+            { name: 'Avg SKU', value: incentiveData["Avg SKU"] || 0, icon: '📊', enabled: true },
+            { name: 'GP', value: 0, icon: '📈', enabled: false }, // Disabled for Bima
+            { name: 'POM', value: incentiveData.POM || 0, icon: '🛒', enabled: true }
+          ];
+        } else {
+          // For Mix Yudistira and Arjuna: GP enabled, other metrics as available
+          processDetails = [
+            { name: 'Avg SKU', value: incentiveData["Avg SKU"] || 0, icon: '📊', enabled: true },
+            { name: 'GP', value: incentiveData.GP || 0, icon: '📈', enabled: true },
+            { name: 'POM', value: incentiveData.POM || 0, icon: '🛒', enabled: true }
+          ];
+        }
 
         let html = '';
         processDetails.forEach(item => {
-          // Show all items, even if value is 0
-          html += `
-            <div class="bg-white p-3 shadow rounded-xl">
-              <p class="text-xs font-medium flex items-center gap-1">
-                <span>${item.icon}</span> ${item.name}
-              </p>
-              <p class="text-indigo-700 font-bold text-sm">${formatCurrencyIDR(item.value)}</p>
-            </div>
-          `;
+          if (item.enabled) {
+            html += `
+              <div class="bg-white p-3 shadow rounded-xl">
+                <p class="text-xs font-medium flex items-center gap-1">
+                  <span>${item.icon}</span> ${item.name}
+                </p>
+                <p class="text-indigo-700 font-bold text-sm">${formatCurrencyIDR(item.value)}</p>
+              </div>
+            `;
+          } else {
+            html += `
+              <div class="bg-gray-100 p-3 shadow rounded-xl opacity-60">
+                <p class="text-xs font-medium flex items-center gap-1 text-gray-500">
+                  <span>${item.icon}</span> ${item.name}
+                </p>
+                <p class="text-gray-500 font-bold text-sm">-</p>
+              </div>
+            `;
+          }
         });
 
         document.getElementById('insentifProsesDetail').innerHTML = html;
-        console.log(`✅ Process detail updated with ${processDetails.length} items`);
+        console.log(`✅ Process detail updated for type: ${salesType} with ${processDetails.length} items`);
       }
 
       // Update penalty AR section
@@ -403,7 +540,7 @@
         loadIncentiveData();
       });
 
-      console.log('✅ Incentive dashboard script loaded');
+      console.log('✅ Enhanced incentive dashboard script loaded with multi-type sales support');
     </script>
   </body>
 </html>
