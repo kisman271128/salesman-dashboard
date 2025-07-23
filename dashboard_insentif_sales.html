@@ -140,18 +140,32 @@
       // Load JSON data from file
       async function loadJSONData() {
         try {
+          console.log('📂 Fetching data/d.insentif.json...');
           const response = await fetch('data/d.insentif.json');
           if (!response.ok) {
-            throw new Error(`Failed to load incentive data: ${response.status}`);
+            throw new Error(`Failed to load incentive data: ${response.status} ${response.statusText}`);
           }
           const text = await response.text();
+          
+          if (!text.trim()) {
+            throw new Error('Incentive data file is empty');
+          }
           
           // Parse JSONL format (each line is a separate JSON object)
           insentifData = text.split('\n')
             .filter(line => line.trim())
-            .map(line => JSON.parse(line));
+            .map(line => {
+              try {
+                return JSON.parse(line);
+              } catch (parseError) {
+                console.error('❌ Error parsing line:', line, parseError);
+                return null;
+              }
+            })
+            .filter(item => item !== null);
 
           console.log(`✅ Loaded ${insentifData.length} incentive records`);
+          console.log('📊 Sample data:', insentifData[0]);
           return true;
         } catch (error) {
           console.error('❌ Error loading JSON data:', error);
@@ -169,8 +183,19 @@
       // Update salesman profile
       function updateSalesmanProfile(incentiveData) {
         if (incentiveData) {
-          document.getElementById('salesmanName').textContent = incentiveData.szName || 'Nama Salesman';
-          document.getElementById('salesmanType').textContent = incentiveData.szTipeKaryawan || 'Tipe Salesman';
+          // Handle names using correct field names from JSON
+          const salesmanName = incentiveData.szname && incentiveData.szname.trim() !== '' 
+            ? incentiveData.szname 
+            : `Salesman ${incentiveData.szEmployeeId}`;
+          
+          const salesmanType = incentiveData["Tipe Salesman"] && incentiveData["Tipe Salesman"].trim() !== '' 
+            ? incentiveData["Tipe Salesman"] 
+            : 'Sales';
+          
+          document.getElementById('salesmanName').textContent = salesmanName;
+          document.getElementById('salesmanType').textContent = salesmanType;
+          
+          console.log(`✅ Profile updated - Name: ${salesmanName}, Type: ${salesmanType}`);
         }
       }
 
@@ -178,54 +203,54 @@
       function updateSummaryCards(incentiveData) {
         if (!incentiveData) return;
 
-        // Calculate totals
-        const insentifSales = (incentiveData.InsentifGPPJ || 0) + 
-                             (incentiveData.InsentifGEN || 0) + 
-                             (incentiveData.InsentifGBS || 0) + 
-                             (incentiveData.InsentifMBR || 0) + 
-                             (incentiveData.InsentifHGJ || 0) + 
-                             (incentiveData.InsentifOthers || 0);
-
-        const insentifProses = (incentiveData.InsentifAvgSKU || 0) + 
-                              (incentiveData.InsentifGP || 0) + 
-                              (incentiveData.InsentifCAPOM || 0);
-
-        const penaltiAR = incentiveData.PenaltiAR || 0;
-        const totalBersih = insentifSales + insentifProses - Math.abs(penaltiAR);
+        // Use actual data fields from new JSON structure
+        const insentifSales = incentiveData.Insentif_sales || 0;
+        const insentifProses = incentiveData.Insentif_Proses || 0;
+        const penaltiAR = incentiveData["AR Coll"] || 0; // AR Coll might be penalty
+        const totalBersih = incentiveData.Total_Insentif || (insentifSales + insentifProses - Math.abs(penaltiAR));
 
         // Update UI
         document.getElementById('insentifSalesTotal').textContent = formatCurrencyIDR(insentifSales);
         document.getElementById('insentifProsesTotal').textContent = formatCurrencyIDR(insentifProses);
         document.getElementById('penaltiARTotal').textContent = formatCurrencyIDR(penaltiAR);
         document.getElementById('totalBersih').textContent = formatCurrencyIDR(totalBersih);
+        
+        // Debug logging
+        console.log(`✅ Summary updated - Sales: ${insentifSales}, Proses: ${insentifProses}, Penalti: ${penaltiAR}, Total: ${totalBersih}`);
       }
 
       // Update incentive sales detail
       function updateIncentiveSalesDetail(incentiveData) {
         if (!incentiveData) return;
 
+        // Calculate GEN from "GPPJ & GEN" minus "GPPJ"
+        const gppjGenTotal = incentiveData["GPPJ & GEN"] || 0;
+        const gppjValue = incentiveData.GPPJ || 0;
+        const genValue = gppjGenTotal - gppjValue;
+
         const salesDetails = [
-          { name: 'GPPJ', value: incentiveData.InsentifGPPJ || 0, color: 'green' },
-          { name: 'GEN', value: incentiveData.InsentifGEN || 0, color: 'green' },
-          { name: 'GBS', value: incentiveData.InsentifGBS || 0, color: 'yellow' },
-          { name: 'OTHERS', value: incentiveData.InsentifOthers || 0, color: 'yellow' },
-          { name: 'MBR', value: incentiveData.InsentifMBR || 0, color: 'blue' },
-          { name: 'HGJ', value: incentiveData.InsentifHGJ || 0, color: 'blue' }
+          { name: 'GPPJ', value: incentiveData.GPPJ || 0, color: 'green' },
+          { name: 'GEN', value: genValue, color: 'green' },
+          { name: 'GBS', value: incentiveData.GBS || 0, color: 'yellow' },
+          { name: 'OTHERS', value: incentiveData.OTHERS || 0, color: 'yellow' },
+          { name: 'MBR', value: incentiveData.MBR || 0, color: 'blue' },
+          { name: 'HGJ', value: incentiveData.HGJ || 0, color: 'blue' }
         ];
 
         let html = '';
         salesDetails.forEach(item => {
-          if (item.value > 0) {
-            html += `
-              <div class="bg-${item.color}-100 p-3 rounded-xl shadow">
-                <p class="text-xs font-medium">${item.name}</p>
-                <p class="text-${item.color}-700 font-bold text-sm">${formatCurrencyIDR(item.value)}</p>
-              </div>
-            `;
-          }
+          // Show all items, even if value is 0
+          html += `
+            <div class="bg-${item.color}-100 p-3 rounded-xl shadow">
+              <p class="text-xs font-medium">${item.name}</p>
+              <p class="text-${item.color}-700 font-bold text-sm">${formatCurrencyIDR(item.value)}</p>
+            </div>
+          `;
         });
 
         document.getElementById('insentifSalesDetail').innerHTML = html;
+        console.log(`✅ Sales detail updated with ${salesDetails.length} items`);
+        console.log(`📊 GPPJ: ${gppjValue}, GEN: ${genValue}, GBS: ${incentiveData.GBS}, OTHERS: ${incentiveData.OTHERS}, MBR: ${incentiveData.MBR}, HGJ: ${incentiveData.HGJ}`);
       }
 
       // Update incentive process detail
@@ -240,6 +265,7 @@
 
         let html = '';
         processDetails.forEach(item => {
+          // Show all items, even if value is 0
           html += `
             <div class="bg-white p-3 shadow rounded-xl">
               <p class="text-xs font-medium flex items-center gap-1">
@@ -251,19 +277,35 @@
         });
 
         document.getElementById('insentifProsesDetail').innerHTML = html;
+        console.log(`✅ Process detail updated with ${processDetails.length} items`);
       }
 
       // Update penalty AR section
       function updatePenaltySection(incentiveData) {
         const penaltiSection = document.getElementById('penaltiARSection');
         
-        if (incentiveData && incentiveData.PenaltiAR && incentiveData.PenaltiAR < 0) {
-          const arPercentage = incentiveData.ARPercentage || 87;
-          document.getElementById('penaltiARText').textContent = `⚠️ AR saat ini hanya ${arPercentage}%`;
-          document.getElementById('penaltiARDesc').textContent = `Penalti dikenakan sebesar ${formatCurrencyIDR(Math.abs(incentiveData.PenaltiAR))}`;
+        if (!incentiveData) {
+          console.log('⚠️ No incentive data for penalty section');
+          penaltiSection.style.display = 'none';
+          return;
+        }
+        
+        const penaltiAR = incentiveData["AR Coll"] || 0;
+        
+        console.log(`🔍 Penalty check - AR Coll: ${penaltiAR}`);
+        
+        // Show penalty section if there's AR collection penalty
+        if (penaltiAR != 0) {
+          document.getElementById('penaltiARText').textContent = `⚠️ AR Collection Issue Detected`;
+          document.getElementById('penaltiARDesc').textContent = 
+            penaltiAR < 0 
+              ? `Penalti dikenakan sebesar ${formatCurrencyIDR(Math.abs(penaltiAR))}`
+              : `Adjustment sebesar ${formatCurrencyIDR(penaltiAR)}`;
           penaltiSection.style.display = 'block';
+          console.log(`✅ Penalty section shown - AR Coll: ${formatCurrencyIDR(penaltiAR)}`);
         } else {
           penaltiSection.style.display = 'none';
+          console.log(`✅ No AR penalty - AR Coll: ${penaltiAR} (Good performance)`);
         }
       }
 
@@ -287,14 +329,21 @@
           // Load JSON data
           await loadJSONData();
           
+          // Debug: Show all available employee IDs
+          const availableIds = insentifData.map(item => item.szEmployeeId);
+          console.log(`📋 Available employee IDs: ${availableIds.join(', ')}`);
+          
           // Get salesman incentive data
           const salesmanIncentive = getSalesmanIncentiveData(currentSalesmanId);
 
           if (!salesmanIncentive) {
+            console.error(`❌ No data found for employee ID: ${currentSalesmanId}`);
+            console.log('Available data preview:', insentifData.slice(0, 3));
             throw new Error(`No incentive data found for salesman: ${currentSalesmanId}`);
           }
 
-          console.log(`✅ Found incentive data for: ${salesmanIncentive.szName || currentSalesmanId}`);
+          console.log(`✅ Found incentive data for: ${salesmanIncentive.szname || currentSalesmanId}`);
+          console.log('📊 Full incentive data:', salesmanIncentive);
 
           // Update UI
           updateSalesmanProfile(salesmanIncentive);
