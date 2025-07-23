@@ -990,7 +990,6 @@ class SalesmanDashboardUpdater:
                 'index.html',
                 'dashboard.html',
                 'dashboard-desktop.html',
-                'dashboard_insentif_sales.html',  # 🆕 NEW: Add incentive dashboard
                 'salesman-desktop.html',
                 'salesman-detail.html',
                 'morning_update.py',
@@ -1025,25 +1024,20 @@ class SalesmanDashboardUpdater:
             
             # 🔧 FIXED: Commit with better error handling
             current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            commit_message = f"""Morning update: {current_time} - ENHANCED Dashboard System + Custom Incentive Dashboard
+            commit_message = f"""Morning update: {current_time} - ENHANCED Dashboard System + Incentive Support
 
 📱 Mobile Dashboard (dashboard.html) - Optimized for smartphones
 💻 Desktop Dashboard (dashboard-desktop.html) - Optimized for laptops/PC
-💸 NEW: Custom Incentive Dashboard (dashboard_insentif_sales.html)
 🔧 Updated Features:
    - Indonesian number format (Rb/Jt/M)
    - vs metrics display (vs LM/3LM/LY)
    - Gap field calculation (Actual - Target)
    - Device-specific dashboard selection
    - Enhanced user experience
-
-💸 CUSTOM INCENTIVE FEATURES:
-   - Photo profile from photos folder based on NIK
-   - Sales Representative Mix Yudistira: 2 big metrics (GPPJ&GEN, GBS&OTHERS)
-   - Sales Representative Retailer Arjuna: 1 big metric (GPPJ&GEN only)
-   - Sales Representative Retailer Bima: Individual breakdown, GEN & GP not applicable (silver with dash)
-   - Dynamic layout based on salesman type
-   - JSONL format support for d.insentif.json
+💸 NEW: Incentive Data Support (d.insentif.json)
+   - JSONL format for application compatibility
+   - Complete incentive calculations
+   - Sales and Process incentives
 
 🔐 Login: admin/admin123 or szEmployeeId/sales123"""
 
@@ -1145,9 +1139,7 @@ class SalesmanDashboardUpdater:
    📈 vs Metrics Display - FIXED vs LM/3LM/LY showing
    🎯 Chart Stats Format - FIXED proper Rb/Jt/M format
    📊 Gap Field Added - FIXED Gap calculation (Actual - Target) for each LOB
-   💸 Custom Incentive Dashboard - NEW dashboard_insentif_sales.html
-   📸 Photo Profile Integration - Based on NIK from photos folder
-   🎨 Dynamic Layout - Customized per salesman type
+   💸 Incentive Data Support - NEW d.insentif.json in JSONL format
    🔐 szEmployeeId Login - All salesman + admin access
    📱💻 Dual Dashboard - Mobile & Desktop optimized versions
    🎨 Device Selection - Auto-detect with manual override
@@ -1174,16 +1166,11 @@ class SalesmanDashboardUpdater:
    • 768-1024px → User choice (tablets)
    • Manual override always available
 
-💸 CUSTOM INCENTIVE DASHBOARD:
-   • dashboard_insentif_sales.html - Mobile optimized
-   • Photo profiles from photos/{NIK}.jpg
-   • Dynamic layout based on salesman type:
-     - Mix Yudistira: 2 big metrics (GPPJ&GEN, GBS&OTHERS)
-     - Retailer Arjuna: 1 big metric (GPPJ&GEN only)
-     - Retailer Bima: Individual breakdown, GEN & GP N/A (silver dash)
+💸 INCENTIVE DATA:
    • d.insentif.json in JSONL format
    • Complete incentive calculations
-   • Sales and Process incentives with type-specific rules
+   • Sales and Process incentives
+   • Application-ready structure
 
 💡 Format Indonesia + Data Enhancement:
    • < 1K = angka langsung (500)
@@ -1205,8 +1192,8 @@ class SalesmanDashboardUpdater:
             return False
 
 def main():
-    """🆕 UPDATED: Main function - Enhanced with Desktop Dashboard + Custom Incentive Dashboard"""
-    print("🚀 SALESMAN DASHBOARD UPDATER v2.8 - CUSTOM INCENTIVE DASHBOARD + PHOTO INTEGRATION")
+    """🆕 UPDATED: Main function - Enhanced with Desktop Dashboard + Incentive Support"""
+    print("🚀 SALESMAN DASHBOARD UPDATER v2.7 - ENHANCED WITH INCENTIVE SUPPORT")
     print("=" * 80)
     print("Running with ENHANCED FEATURES:")
     print("✅ FIXED git status checking before operations")
@@ -1220,14 +1207,12 @@ def main():
     print("✅ Enhanced number formatting untuk semua section")
     print("✅ ADDED Desktop dashboard untuk laptop/PC")
     print("✅ ADDED Device auto-detection & selection")
-    print("✅ NEW: Custom Incentive Dashboard (dashboard_insentif_sales.html)")
-    print("✅ NEW: Photo Integration from photos folder based on NIK")
-    print("✅ NEW: Dynamic layout per salesman type")
+    print("✅ NEW: Incentive Data Support (d.insentif.json)")
     print("=" * 75)
     
-    print("\n🌅 MORNING BATCH UPDATE - CUSTOM INCENTIVE DASHBOARD + PHOTO INTEGRATION")
+    print("\n🌅 MORNING BATCH UPDATE - ENHANCED WITH INCENTIVE SUPPORT")
     print("=" * 65)
-    print("🚀 Version 2.8 - CUSTOM INCENTIVE DASHBOARD + PHOTO INTEGRATION:")
+    print("🚀 Version 2.7 - ENHANCED ERROR HANDLING & INCENTIVE SUPPORT:")
     print("   🔧 FIXED git status checking before operations")
     print("   🔧 FIXED git add with individual file logging")
     print("   🔧 FIXED git commit with detailed error messages")
@@ -1241,12 +1226,9 @@ def main():
     print("   ✅ FIXED vs metrics yang tidak muncul")
     print("   ✅ FIXED chart stats format Indonesia")
     print("   ✅ ADDED Gap field untuk setiap LOB performance")
-    print("   💸 NEW: dashboard_insentif_sales.html - Custom layout per tipe")
-    print("   📸 NEW: Photo integration from photos/{NIK}.jpg")
-    print("   🎯 NEW: Mix Yudistira - 2 big metrics (GPPJ&GEN, GBS&OTHERS)")
-    print("   🎯 NEW: Retailer Arjuna - 1 big metric (GPPJ&GEN only)")
-    print("   🎯 NEW: Retailer Bima - Individual breakdown, GEN & GP N/A")
-    print("   💾 NEW: d.insentif.json dalam format JSONL")
+    print("   💸 NEW: d.insentif.json dalam format JSONL")
+    print("   💸 NEW: Complete incentive calculations")
+    print("   💸 NEW: Application-ready incentive structure")
     print("=" * 60)
     
     # Create updater and run
@@ -1256,11 +1238,9 @@ def main():
     if success:
         print("\n✅ ENHANCED DASHBOARD SYSTEM UPDATE SUCCESSFUL!")
         print("🌐 Multi-platform dashboard dengan format Rb/Jt/M yang benar")
-        print("💸 Custom incentive dashboard dengan layout dinamis per tipe salesman")
-        print("📸 Photo profile integration berdasarkan NIK dari folder photos")
+        print("💸 Incentive data support untuk aplikasi mobile")
         print("📱 Mobile: https://kisman271128.github.io/salesman-dashboard/dashboard.html")
         print("💻 Desktop: https://kisman271128.github.io/salesman-dashboard/dashboard-desktop.html")
-        print("💸 Incentive: https://kisman271128.github.io/salesman-dashboard/dashboard_insentif_sales.html?id={NIK}")
         print("🏠 Login: https://kisman271128.github.io/salesman-dashboard/")
         sys.exit(0)
     else:
