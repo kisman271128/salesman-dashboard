@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Insentif Sales</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-100 font-sans p-4 max-w-sm mx-auto">
+    <!-- Loading State -->
+    <div class="loading-spinner" id="loadingSpinner" style="display: flex; justify-content: center; align-items: center; height: 200px; flex-direction: column;">
+      <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #0891b2; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 16px;"></div>
+      <div style="color: #64748b;">Loading data insentif...</div>
+    </div>
+
+    <!-- Error State -->
+    <div class="error-message" id="errorMessage" style="display: none; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #ef4444; padding: 16px; border-radius: 12px; margin: 20px 0; text-align: center;">
+      <h3>📡 Error Loading Data</h3>
+      <p>Tidak dapat memuat data insentif. Silakan coba lagi.</p>
+      <button onclick="loadIncentiveData()" style="margin-top: 10px; padding: 8px 16px; background: #0891b2; color: white; border: none; border-radius: 8px; cursor: pointer;">Retry</button>
+    </div>
+
+    <!-- Main Content -->
+    <div id="mainContent" style="display: none;">
+    <!-- Header dengan Foto dan Info Salesman -->
+    <header class="flex items-center bg-cyan-700 rounded-xl shadow p-4 mb-4">
+      <div class="flex-shrink-0">
+        <img src="https://cdn-icons-png.flaticon.com/512/3048/3048122.png" alt="Foto Salesman" class="w-16 h-16 rounded-full border-4 border-white shadow-lg" />
+      </div>
+      <div class="flex-1 ml-4">
+        <h1 class="text-lg font-bold text-white" id="salesmanName">Nama Salesman</h1>
+        <p class="text-sm font-medium text-white opacity-90" id="salesmanType">Tipe Salesman</p>
+      </div>
+      <div class="bg-white rounded-lg px-3 py-2 text-right">
+        <p class="text-sm font-bold text-gray-800">Insentif</p>
+        <p class="text-xs font-medium text-gray-600" id="periodInsentif">Periode<br>Juli 2025</p>
+      </div>
+    </header>
+
+    <!-- Ringkasan Total: 2 Kolom Grid -->
+    <section class="grid grid-cols-2 gap-3 mb-4">
+      <div class="bg-white shadow rounded-xl p-3 flex flex-col">
+        <p class="text-sm text-yellow-600 font-medium flex items-center gap-1">
+          <span>🏅</span> Insentif Sales
+        </p>
+        <p class="text-green-600 font-bold text-lg" id="insentifSalesTotal">Rp 0</p>
+      </div>
+
+      <div class="bg-white shadow rounded-xl p-3 flex flex-col">
+        <p class="text-sm text-gray-700 font-medium flex items-center gap-1">
+          <span>⚙️</span> Insentif Proses
+        </p>
+        <p class="text-blue-600 font-bold text-lg" id="insentifProsesTotal">Rp 0</p>
+      </div>
+
+      <div class="bg-white shadow rounded-xl p-3 flex flex-col">
+        <p class="text-sm text-red-600 font-medium flex items-center gap-1">
+          <span>⚠️</span> Penalti AR
+        </p>
+        <p class="text-red-600 font-bold text-lg" id="penaltiARTotal">Rp 0</p>
+      </div>
+
+      <div class="bg-white shadow rounded-xl p-3 flex flex-col">
+        <p class="text-sm text-indigo-700 font-medium flex items-center gap-1">
+          <span>📊</span> Total Bersih
+        </p>
+        <p class="text-indigo-700 font-bold text-lg" id="totalBersih">Rp 0</p>
+      </div>
+    </section>
+
+    <!-- Insentif Sales -->
+    <section class="mb-4">
+      <h2 class="text-sm font-semibold text-gray-700 mb-2">🛍️ Insentif Sales</h2>
+      <div class="grid grid-cols-2 gap-2" id="insentifSalesDetail">
+        <!-- Will be populated dynamically -->
+      </div>
+    </section>
+
+    <!-- Insentif Proses -->
+    <section class="mb-4">
+      <h2 class="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1">
+        ⚙️ Insentif Proses
+      </h2>
+      <div class="grid grid-cols-3 gap-3" id="insentifProsesDetail">
+        <!-- Will be populated dynamically -->
+      </div>
+    </section>
+
+    <!-- Penalti AR -->
+    <section class="mb-6" id="penaltiARSection" style="display: none;">
+      <div class="bg-red-100 border border-red-300 p-3 rounded-xl">
+        <p class="text-xs font-semibold text-red-700" id="penaltiARText">⚠️ AR saat ini hanya 87%</p>
+        <p class="text-xs text-red-700" id="penaltiARDesc">Penalti dikenakan sebesar Rp 150.000</p>
+      </div>
+    </section>
+
+    <!-- Back Button -->
+    <section class="mb-4">
+      <button onclick="goBack()" class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-medium py-3 px-4 rounded-xl transition-colors duration-200 flex items-center justify-center gap-2">
+        <span>←</span> Kembali ke Dashboard
+      </button>
+    </section>
+    </div>
+
+    <style>
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    </style>
+
+    <script>
+      // Global variables
+      let insentifData = [];
+      let currentSalesmanId = null;
+
+      // Get URL parameter
+      function getUrlParameter(name) {
+        name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+        var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+        var results = regex.exec(location.search);
+        return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+      }
+
+      // Format currency to Indonesian Rupiah
+      function formatCurrencyIDR(value) {
+        try {
+          const val = parseFloat(value) || 0;
+          return new Intl.NumberFormat('id-ID', {
+            style: 'currency',
+            currency: 'IDR',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+          }).format(val);
+        } catch {
+          return 'Rp 0';
+        }
+      }
+
+      // Load JSON data from file
+      async function loadJSONData() {
+        try {
+          const response = await fetch('data/d.insentif.json');
+          if (!response.ok) {
+            throw new Error(`Failed to load incentive data: ${response.status}`);
+          }
+          const text = await response.text();
+          
+          // Parse JSONL format (each line is a separate JSON object)
+          insentifData = text.split('\n')
+            .filter(line => line.trim())
+            .map(line => JSON.parse(line));
+
+          console.log(`✅ Loaded ${insentifData.length} incentive records`);
+          return true;
+        } catch (error) {
+          console.error('❌ Error loading JSON data:', error);
+          throw error;
+        }
+      }
+
+      // Get salesman incentive data
+      function getSalesmanIncentiveData(employeeId) {
+        return insentifData.find(item => 
+          item.szEmployeeId && item.szEmployeeId.toString() === employeeId.toString()
+        );
+      }
+
+      // Update salesman profile
+      function updateSalesmanProfile(incentiveData) {
+        if (incentiveData) {
+          document.getElementById('salesmanName').textContent = incentiveData.szName || 'Nama Salesman';
+          document.getElementById('salesmanType').textContent = incentiveData.szTipeKaryawan || 'Tipe Salesman';
+        }
+      }
+
+      // Update summary cards
+      function updateSummaryCards(incentiveData) {
+        if (!incentiveData) return;
+
+        // Calculate totals
+        const insentifSales = (incentiveData.InsentifGPPJ || 0) + 
+                             (incentiveData.InsentifGEN || 0) + 
+                             (incentiveData.InsentifGBS || 0) + 
+                             (incentiveData.InsentifMBR || 0) + 
+                             (incentiveData.InsentifHGJ || 0) + 
+                             (incentiveData.InsentifOthers || 0);
+
+        const insentifProses = (incentiveData.InsentifAvgSKU || 0) + 
+                              (incentiveData.InsentifGP || 0) + 
+                              (incentiveData.InsentifCAPOM || 0);
+
+        const penaltiAR = incentiveData.PenaltiAR || 0;
+        const totalBersih = insentifSales + insentifProses - Math.abs(penaltiAR);
+
+        // Update UI
+        document.getElementById('insentifSalesTotal').textContent = formatCurrencyIDR(insentifSales);
+        document.getElementById('insentifProsesTotal').textContent = formatCurrencyIDR(insentifProses);
+        document.getElementById('penaltiARTotal').textContent = formatCurrencyIDR(penaltiAR);
+        document.getElementById('totalBersih').textContent = formatCurrencyIDR(totalBersih);
+      }
+
+      // Update incentive sales detail
+      function updateIncentiveSalesDetail(incentiveData) {
+        if (!incentiveData) return;
+
+        const salesDetails = [
+          { name: 'GPPJ', value: incentiveData.InsentifGPPJ || 0, color: 'green' },
+          { name: 'GEN', value: incentiveData.InsentifGEN || 0, color: 'green' },
+          { name: 'GBS', value: incentiveData.InsentifGBS || 0, color: 'yellow' },
+          { name: 'OTHERS', value: incentiveData.InsentifOthers || 0, color: 'yellow' },
+          { name: 'MBR', value: incentiveData.InsentifMBR || 0, color: 'blue' },
+          { name: 'HGJ', value: incentiveData.InsentifHGJ || 0, color: 'blue' }
+        ];
+
+        let html = '';
+        salesDetails.forEach(item => {
+          if (item.value > 0) {
+            html += `
+              <div class="bg-${item.color}-100 p-3 rounded-xl shadow">
+                <p class="text-xs font-medium">${item.name}</p>
+                <p class="text-${item.color}-700 font-bold text-sm">${formatCurrencyIDR(item.value)}</p>
+              </div>
+            `;
+          }
+        });
+
+        document.getElementById('insentifSalesDetail').innerHTML = html;
+      }
+
+      // Update incentive process detail
+      function updateIncentiveProcessDetail(incentiveData) {
+        if (!incentiveData) return;
+
+        const processDetails = [
+          { name: 'Avg SKU', value: incentiveData.InsentifAvgSKU || 0, icon: '📊' },
+          { name: 'Insentif GP', value: incentiveData.InsentifGP || 0, icon: '📈' },
+          { name: 'CA POM', value: incentiveData.InsentifCAPOM || 0, icon: '🛒' }
+        ];
+
+        let html = '';
+        processDetails.forEach(item => {
+          html += `
+            <div class="bg-white p-3 shadow rounded-xl">
+              <p class="text-xs font-medium flex items-center gap-1">
+                <span>${item.icon}</span> ${item.name}
+              </p>
+              <p class="text-indigo-700 font-bold text-sm">${formatCurrencyIDR(item.value)}</p>
+            </div>
+          `;
+        });
+
+        document.getElementById('insentifProsesDetail').innerHTML = html;
+      }
+
+      // Update penalty AR section
+      function updatePenaltySection(incentiveData) {
+        const penaltiSection = document.getElementById('penaltiARSection');
+        
+        if (incentiveData && incentiveData.PenaltiAR && incentiveData.PenaltiAR < 0) {
+          const arPercentage = incentiveData.ARPercentage || 87;
+          document.getElementById('penaltiARText').textContent = `⚠️ AR saat ini hanya ${arPercentage}%`;
+          document.getElementById('penaltiARDesc').textContent = `Penalti dikenakan sebesar ${formatCurrencyIDR(Math.abs(incentiveData.PenaltiAR))}`;
+          penaltiSection.style.display = 'block';
+        } else {
+          penaltiSection.style.display = 'none';
+        }
+      }
+
+      // Load incentive data
+      async function loadIncentiveData() {
+        try {
+          showLoading(true);
+          hideError();
+
+          console.log('🔄 Loading incentive data...');
+          
+          // Get salesman ID from URL
+          currentSalesmanId = getUrlParameter('id');
+          
+          if (!currentSalesmanId) {
+            throw new Error('No salesman ID specified');
+          }
+
+          console.log(`📍 Loading incentive data for salesman ID: ${currentSalesmanId}`);
+          
+          // Load JSON data
+          await loadJSONData();
+          
+          // Get salesman incentive data
+          const salesmanIncentive = getSalesmanIncentiveData(currentSalesmanId);
+
+          if (!salesmanIncentive) {
+            throw new Error(`No incentive data found for salesman: ${currentSalesmanId}`);
+          }
+
+          console.log(`✅ Found incentive data for: ${salesmanIncentive.szName || currentSalesmanId}`);
+
+          // Update UI
+          updateSalesmanProfile(salesmanIncentive);
+          updateSummaryCards(salesmanIncentive);
+          updateIncentiveSalesDetail(salesmanIncentive);
+          updateIncentiveProcessDetail(salesmanIncentive);
+          updatePenaltySection(salesmanIncentive);
+          
+          showLoading(false);
+          showMainContent(true);
+
+        } catch (error) {
+          console.error('❌ Error loading incentive data:', error);
+          showLoading(false);
+          showError(true, error.message);
+        }
+      }
+
+      // UI control functions
+      function showLoading(show) {
+        document.getElementById('loadingSpinner').style.display = show ? 'flex' : 'none';
+      }
+
+      function showError(show, message = '') {
+        const errorElement = document.getElementById('errorMessage');
+        if (show) {
+          errorElement.style.display = 'block';
+          if (message) {
+            errorElement.querySelector('p').textContent = message;
+          }
+        } else {
+          errorElement.style.display = 'none';
+        }
+      }
+
+      function hideError() {
+        showError(false);
+      }
+
+      function showMainContent(show) {
+        document.getElementById('mainContent').style.display = show ? 'block' : 'none';
+      }
+
+      // Navigation
+      function goBack() {
+        const referrer = document.referrer;
+        if (referrer && referrer.includes('salesman-detail.html')) {
+          window.history.back();
+        } else {
+          window.location.href = `salesman-detail.html?id=${currentSalesmanId}`;
+        }
+      }
+
+      // Initialize page
+      document.addEventListener('DOMContentLoaded', function() {
+        console.log('🚀 Initializing incentive dashboard...');
+        loadIncentiveData();
+      });
+
+      console.log('✅ Incentive dashboard script loaded');
+    </script>
+  </body>
+</html>
