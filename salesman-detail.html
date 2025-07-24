@@ -289,33 +289,34 @@
         .circular-metrics {
             display: flex;
             justify-content: space-around;
-            background: linear-gradient(135deg, #667eea, #764ba2);
+            background: rgba(255, 255, 255, 0.9);
             border-radius: 20px;
-            padding: 20px 10px;
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+            padding: 20px 8px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
         }
 
         .circular-metric {
             text-align: center;
-            color: white;
+            color: #2c3e50;
         }
 
         .circular-progress {
             position: relative;
-            width: 60px;
-            height: 60px;
+            width: 55px;
+            height: 55px;
             margin: 0 auto 8px;
         }
 
         .progress-circle {
-            width: 60px;
-            height: 60px;
+            width: 55px;
+            height: 55px;
             border-radius: 50%;
             background: conic-gradient(
-                #ffffff 0deg,
-                #ffffff calc(var(--percentage) * 3.6deg),
-                rgba(255, 255, 255, 0.3) calc(var(--percentage) * 3.6deg),
-                rgba(255, 255, 255, 0.3) 360deg
+                var(--progress-color) 0deg,
+                var(--progress-color) calc(var(--percentage) * 3.6deg),
+                rgba(220, 220, 220, 0.3) calc(var(--percentage) * 3.6deg),
+                rgba(220, 220, 220, 0.3) 360deg
             );
             display: flex;
             align-items: center;
@@ -325,25 +326,38 @@
 
         .progress-circle::before {
             content: '';
-            width: 45px;
-            height: 45px;
+            width: 42px;
+            height: 42px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #667eea, #764ba2);
+            background: rgba(255, 255, 255, 0.95);
             position: absolute;
         }
 
         .circular-percentage {
             position: relative;
             z-index: 1;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 700;
-            color: white;
+            color: var(--progress-color);
         }
 
         .circular-label {
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 600;
-            opacity: 0.9;
+            color: #2c3e50;
+        }
+
+        /* Color classes for achievement levels */
+        .metric-low {
+            --progress-color: #ef4444;
+        }
+
+        .metric-medium {
+            --progress-color: #f59e0b;
+        }
+
+        .metric-high {
+            --progress-color: #10b981;
         }
 
         /* Bottom Navigation */
@@ -433,22 +447,30 @@
             }
 
             .circular-progress {
-                width: 50px;
-                height: 50px;
+                width: 45px;
+                height: 45px;
             }
 
             .progress-circle {
-                width: 50px;
-                height: 50px;
+                width: 45px;
+                height: 45px;
             }
 
             .progress-circle::before {
-                width: 38px;
-                height: 38px;
+                width: 35px;
+                height: 35px;
             }
 
             .circular-percentage {
-                font-size: 10px;
+                font-size: 9px;
+            }
+
+            .circular-label {
+                font-size: 9px;
+            }
+
+            .circular-metrics {
+                padding: 15px 6px;
             }
         }
     </style>
@@ -517,7 +539,7 @@
                 <div class="circular-metrics">
                     <div class="circular-metric">
                         <div class="circular-progress">
-                            <div class="progress-circle" id="caProgress" style="--percentage: 0">
+                            <div class="progress-circle metric-high" id="caProgress" style="--percentage: 0">
                                 <div class="circular-percentage">0%</div>
                             </div>
                         </div>
@@ -526,7 +548,7 @@
 
                     <div class="circular-metric">
                         <div class="circular-progress">
-                            <div class="progress-circle" id="caProdProgress" style="--percentage: 0">
+                            <div class="progress-circle metric-high" id="caProdProgress" style="--percentage: 0">
                                 <div class="circular-percentage">0%</div>
                             </div>
                         </div>
@@ -535,7 +557,7 @@
 
                     <div class="circular-metric">
                         <div class="circular-progress">
-                            <div class="progress-circle" id="skuProgress" style="--percentage: 0">
+                            <div class="progress-circle metric-high" id="skuProgress" style="--percentage: 0">
                                 <div class="circular-percentage">0%</div>
                             </div>
                         </div>
@@ -544,11 +566,20 @@
 
                     <div class="circular-metric">
                         <div class="circular-progress">
-                            <div class="progress-circle" id="gpProgress" style="--percentage: 0">
+                            <div class="progress-circle metric-high" id="gpProgress" style="--percentage: 0">
                                 <div class="circular-percentage">0%</div>
                             </div>
                         </div>
                         <div class="circular-label">GP</div>
+                    </div>
+
+                    <div class="circular-metric">
+                        <div class="circular-progress">
+                            <div class="progress-circle metric-high" id="arCollProgress" style="--percentage: 0">
+                                <div class="circular-percentage">0%</div>
+                            </div>
+                        </div>
+                        <div class="circular-label">AR Coll</div>
                     </div>
                 </div>
             </div>
@@ -796,7 +827,14 @@
             document.getElementById('gbsOthersPercentage').textContent = `${othersPercentage}%`;
         }
 
-        // ✅ UPDATE CIRCULAR METRICS
+        // ✅ GET METRIC COLOR CLASS BASED ON ACHIEVEMENT
+        function getMetricColorClass(percentage) {
+            if (percentage >= 100) return 'metric-high';    // Green >= 100%
+            if (percentage >= 90) return 'metric-medium';   // Yellow 90-99.99%
+            return 'metric-low';                            // Red < 90%
+        }
+
+        // ✅ ENHANCED: UPDATE CIRCULAR METRICS WITH AR_COLL AND COLOR CODING
         function updateCircularMetrics(processData) {
             if (!processData) return;
 
@@ -816,17 +854,35 @@
                 { 
                     id: 'gpProgress', 
                     percentage: Math.round(((processData.Ach_GPFood || 0) + (processData.Ach_GPOthers || 0)) / 2 * 100)
+                },
+                { 
+                    id: 'arCollProgress', 
+                    percentage: Math.round((processData.Ach_ARColl || 0) * 100)
                 }
             ];
+
+            console.log('🎯 Updating circular metrics:', metrics);
 
             metrics.forEach(metric => {
                 const element = document.getElementById(metric.id);
                 if (element) {
+                    // Update percentage value
                     element.style.setProperty('--percentage', metric.percentage);
                     const percentageElement = element.querySelector('.circular-percentage');
                     if (percentageElement) {
                         percentageElement.textContent = `${metric.percentage}%`;
                     }
+
+                    // Update color class based on achievement
+                    const colorClass = getMetricColorClass(metric.percentage);
+                    
+                    // Remove existing color classes
+                    element.classList.remove('metric-low', 'metric-medium', 'metric-high');
+                    
+                    // Add new color class
+                    element.classList.add(colorClass);
+                    
+                    console.log(`✅ Updated ${metric.id}: ${metric.percentage}% (${colorClass})`);
                 }
             });
         }
@@ -986,7 +1042,7 @@
             loadSalesmanData();
         });
 
-        console.log('✅ Enhanced salesman detail script loaded with photo and gap calculation');
+        console.log('✅ Enhanced salesman detail script loaded with photo, gap calculation, and AR Coll metrics with color coding');
     </script>
 </body>
 </html>
