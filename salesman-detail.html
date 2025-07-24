@@ -58,11 +58,21 @@
             transform: translateX(-2px);
         }
 
+        .detail-title-container {
+            text-align: center;
+            flex: 1;
+        }
+
         .detail-title {
             font-size: 18px;
             font-weight: 600;
-            text-align: center;
-            flex: 1;
+            margin-bottom: 2px;
+        }
+
+        .detail-subtitle {
+            font-size: 12px;
+            opacity: 0.9;
+            font-weight: 400;
         }
 
         .user-btn {
@@ -170,13 +180,9 @@
             height: 60px;
             border-radius: 50%;
             background: linear-gradient(135deg, #fbbf24, #f59e0b);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            color: white;
-            font-weight: bold;
+            object-fit: cover;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            border: 3px solid white;
         }
 
         /* Sales Performance Section */
@@ -203,7 +209,7 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 12px 0;
+            padding: 8px 0;
             border-bottom: 1px solid #f1f2f6;
         }
 
@@ -226,12 +232,13 @@
             font-size: 14px;
             font-weight: 600;
             color: #2c3e50;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
         }
 
         .item-target {
-            font-size: 11px;
+            font-size: 10px;
             color: #7f8c8d;
+            line-height: 1.2;
         }
 
         .progress-container {
@@ -423,7 +430,6 @@
             .salesman-avatar {
                 width: 50px;
                 height: 50px;
-                font-size: 20px;
             }
 
             .circular-progress {
@@ -451,7 +457,10 @@
     <div class="container">
         <div class="detail-header">
             <a href="dashboard.html" class="back-btn">←</a>
-            <div class="detail-title" id="salesmanTitle">Salesman A</div>
+            <div class="detail-title-container">
+                <div class="detail-title" id="salesmanTitle">Salesman A</div>
+                <div class="detail-subtitle" id="salesmanType">Sales Representative</div>
+            </div>
             <button class="user-btn">👤</button>
         </div>
 
@@ -480,7 +489,11 @@
                     </div>
                     
                     <div class="avatar-container">
-                        <div class="salesman-avatar" id="salesmanAvatar">A</div>
+                        <img id="salesmanAvatar" 
+                             src="https://cdn-icons-png.flaticon.com/512/3048/3048122.png" 
+                             alt="Foto Salesman" 
+                             class="salesman-avatar"
+                             onerror="this.src='https://cdn-icons-png.flaticon.com/512/3048/3048122.png'" />
                     </div>
                     
                     <div class="performance-card secondary">
@@ -670,18 +683,24 @@
             );
         }
 
-        // ✅ CREATE PERFORMANCE ITEM HTML
+        // ✅ ENHANCED: CREATE PERFORMANCE ITEM HTML WITH GAP CALCULATION
         function createPerformanceItemHTML(lobName, data) {
             const percentage = Math.round((data.Ach || 0) * 100);
-            const target = formatCurrencyIndonesia(data.Target || 0);
-            const actual = formatCurrencyIndonesia(data.Actual || 0);
+            const target = parseFloat(data.Target || 0);
+            const actual = parseFloat(data.Actual || 0);
+            const gap = Math.abs(actual - target);
+            
+            const targetFormatted = formatCurrencyIndonesia(target);
+            const actualFormatted = formatCurrencyIndonesia(actual);
+            const gapFormatted = formatCurrencyIndonesia(gap);
+            
             const colorClass = getProgressColorClass(percentage);
             
             return `
                 <div class="performance-item">
                     <div class="item-left">
                         <div class="item-name">${lobName}</div>
-                        <div class="item-target">T/A: ${target} / ${actual}</div>
+                        <div class="item-target">T/A: ${targetFormatted} / ${actualFormatted} - Gap ${gapFormatted}</div>
                     </div>
                     <div class="progress-container">
                         <div class="progress-bar">
@@ -719,13 +738,15 @@
                 }
             });
 
-            // Add total
+            // Add total with gap calculation
             const totalPercentage = totalTarget > 0 ? Math.round((totalActual / totalTarget) * 100) : 0;
+            const totalGap = Math.abs(totalActual - totalTarget);
+            
             html += `
                 <div class="performance-item total">
                     <div class="item-left">
                         <div class="item-name">TOTAL</div>
-                        <div class="item-target">T/A: ${formatCurrencyIndonesia(totalTarget)} / ${formatCurrencyIndonesia(totalActual)}</div>
+                        <div class="item-target">T/A: ${formatCurrencyIndonesia(totalTarget)} / ${formatCurrencyIndonesia(totalActual)} - Gap ${formatCurrencyIndonesia(totalGap)}</div>
                     </div>
                     <div class="progress-container">
                         <div class="progress-bar">
@@ -861,16 +882,44 @@
             }
         }
 
-        // ✅ UPDATE SALESMAN PROFILE
+        // ✅ ENHANCED: UPDATE SALESMAN PROFILE WITH PHOTO AND TYPE
         function updateSalesmanProfile(salesmanInfo) {
             const salesmanName = salesmanInfo.szname || 'Unknown';
+            const salesmanType = salesmanInfo['Tipe Salesman'] || 'Sales Representative';
+            
+            // Update name and type
             document.getElementById('salesmanTitle').textContent = salesmanName;
-            document.getElementById('salesmanAvatar').textContent = salesmanName.charAt(0).toUpperCase();
+            document.getElementById('salesmanType').textContent = salesmanType;
+            
+            // 🆕 NEW: Load salesman photo based on szEmployeeId
+            const szEmployeeId = salesmanInfo.szEmployeeId;
+            if (szEmployeeId) {
+                const photoPath = `photos/${szEmployeeId}.jpg`;
+                const avatarElement = document.getElementById('salesmanAvatar');
+                
+                console.log(`📸 Loading photo: ${photoPath} for ${salesmanName}`);
+                
+                // Test if photo exists
+                const img = new Image();
+                img.onload = function() {
+                    avatarElement.src = photoPath;
+                    avatarElement.alt = `Foto ${salesmanName}`;
+                    console.log(`✅ Photo loaded successfully: ${photoPath}`);
+                };
+                
+                img.onerror = function() {
+                    console.log(`⚠️ Photo not found: ${photoPath}, using default`);
+                    avatarElement.src = 'https://cdn-icons-png.flaticon.com/512/3048/3048122.png';
+                    avatarElement.alt = `Default foto untuk ${salesmanName}`;
+                };
+                
+                img.src = photoPath;
+            }
             
             // Update page title
             document.title = `${salesmanName} - Performance Dashboard`;
             
-            console.log(`✅ Profile updated for ${salesmanName}`);
+            console.log(`✅ Profile updated - Name: ${salesmanName}, Type: ${salesmanType}, Employee ID: ${szEmployeeId}`);
         }
 
         // ✅ NAVIGATION FUNCTIONS
@@ -937,7 +986,7 @@
             loadSalesmanData();
         });
 
-        console.log('✅ Updated salesman detail script loaded with incentive integration');
+        console.log('✅ Enhanced salesman detail script loaded with photo and gap calculation');
     </script>
 </body>
 </html>
