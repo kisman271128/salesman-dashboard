@@ -347,6 +347,36 @@
             color: #2c3e50;
         }
 
+        /* SKU Display - Different format */
+        .sku-display {
+            width: 55px;
+            height: 55px;
+            background: linear-gradient(135deg, #f97316, #ea580c);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 8px;
+            box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+        }
+
+        .sku-value {
+            font-size: 10px;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 2px;
+        }
+
+        .sku-strata {
+            font-size: 9px;
+            font-weight: 600;
+            color: white;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 1px 4px;
+            border-radius: 4px;
+        }
+
         /* Color classes for achievement levels */
         .metric-low {
             --progress-color: #ef4444;
@@ -472,6 +502,21 @@
             .circular-metrics {
                 padding: 15px 6px;
             }
+
+            /* SKU Display responsive */
+            .sku-display {
+                width: 45px;
+                height: 45px;
+            }
+
+            .sku-value {
+                font-size: 8px;
+            }
+
+            .sku-strata {
+                font-size: 7px;
+                padding: 1px 3px;
+            }
         }
     </style>
 </head>
@@ -556,10 +601,9 @@
                     </div>
 
                     <div class="circular-metric">
-                        <div class="circular-progress">
-                            <div class="progress-circle metric-high" id="skuProgress" style="--percentage: 0">
-                                <div class="circular-percentage">0%</div>
-                            </div>
+                        <div class="sku-display" id="skuDisplay">
+                            <div class="sku-value">SKU = 0</div>
+                            <div class="sku-strata">S-0</div>
                         </div>
                         <div class="circular-label">SKU</div>
                     </div>
@@ -834,11 +878,12 @@
             return 'metric-low';                            // Red < 90%
         }
 
-        // ✅ ENHANCED: UPDATE CIRCULAR METRICS WITH AR_COLL AND COLOR CODING
+        // ✅ ENHANCED: UPDATE CIRCULAR METRICS WITH AR_COLL AND COLOR CODING + SKU SPECIAL FORMAT
         function updateCircularMetrics(processData) {
             if (!processData) return;
 
-            const metrics = [
+            // Regular circular metrics (CA, CA Prod, GP, AR Coll)
+            const circularMetrics = [
                 { 
                     id: 'caProgress', 
                     percentage: Math.round((processData.Ach_CA || 0) * 100)
@@ -846,10 +891,6 @@
                 { 
                     id: 'caProdProgress', 
                     percentage: Math.round((processData.Ach_CAProdAll || 0) * 100)
-                },
-                { 
-                    id: 'skuProgress', 
-                    percentage: Math.round((processData.Ach_AvgSKU || 0) * 100)
                 },
                 { 
                     id: 'gpProgress', 
@@ -861,9 +902,10 @@
                 }
             ];
 
-            console.log('🎯 Updating circular metrics:', metrics);
+            console.log('🎯 Updating circular metrics:', circularMetrics);
 
-            metrics.forEach(metric => {
+            // Update regular circular metrics
+            circularMetrics.forEach(metric => {
                 const element = document.getElementById(metric.id);
                 if (element) {
                     // Update percentage value
@@ -885,6 +927,36 @@
                     console.log(`✅ Updated ${metric.id}: ${metric.percentage}% (${colorClass})`);
                 }
             });
+
+            // 🆕 SPECIAL: Update SKU display with different format
+            updateSKUDisplay(processData);
+        }
+
+        // 🆕 NEW: Update SKU display with SKU value and Strata
+        function updateSKUDisplay(processData) {
+            const skuDisplay = document.getElementById('skuDisplay');
+            if (!skuDisplay || !processData) return;
+
+            // Get SKU value from A.AvgSKU
+            const skuValue = Math.round(processData['A.AvgSKU'] || 0);
+            
+            // Get Strata value
+            const strata = processData.Strata || 0;
+            
+            // Update SKU value
+            const skuValueElement = skuDisplay.querySelector('.sku-value');
+            if (skuValueElement) {
+                skuValueElement.textContent = `SKU = ${skuValue}`;
+            }
+            
+            // Update Strata
+            const skuStrataElement = skuDisplay.querySelector('.sku-strata');
+            if (skuStrataElement) {
+                const strataDisplay = strata && strata !== '-' ? `S-${strata}` : 'S-';
+                skuStrataElement.textContent = strataDisplay;
+            }
+            
+            console.log(`✅ Updated SKU Display: SKU = ${skuValue}, Strata = ${strata}`);
         }
 
         // ✅ LOAD SALESMAN DATA
@@ -1042,7 +1114,7 @@
             loadSalesmanData();
         });
 
-        console.log('✅ Enhanced salesman detail script loaded with photo, gap calculation, and AR Coll metrics with color coding');
+        console.log('✅ Enhanced salesman detail script loaded with photo, gap calculation, AR Coll metrics with color coding, and special SKU display');
     </script>
 </body>
 </html>
