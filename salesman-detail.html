@@ -841,7 +841,7 @@
             }
         }
 
-        // ✅ FORMAT PERCENTAGE
+        // ✅ FORMAT PERCENTAGE (NOW RETURNS WHOLE NUMBERS)
         function formatPercentage(value) {
             try {
                 const val = parseFloat(value || 0);
@@ -851,11 +851,11 @@
             }
         }
 
-        // ✅ FORMAT DECIMAL VALUE
-        function formatDecimal(value, decimals = 1) {
+        // ✅ FORMAT DECIMAL VALUE (NOW RETURNS WHOLE NUMBERS)
+        function formatDecimal(value) {
             try {
                 const val = parseFloat(value || 0);
-                return val.toFixed(decimals);
+                return Math.round(val).toString();
             } catch {
                 return "0";
             }
@@ -1246,28 +1246,27 @@
 
             console.log('🎯 Updating additional metrics:', processData);
 
-            // Row 1: Basic Metrics - A.CR, A.CA, A.PC, A.AC, A.EC, A.ET
+            // Row 1: Basic Metrics - A.CR, A.CA, A.PC, A.AC, A.EC (removed A.ET)
             const row1Metrics = [
                 { label: 'A.CR', value: formatDecimal(processData['A.CR']) },
                 { label: 'A.CA', value: formatDecimal(processData['A.CA']) },
                 { label: 'A.PC', value: formatDecimal(processData['A.PC']) },
                 { label: 'A.AC', value: formatDecimal(processData['A.AC']) },
-                { label: 'A.EC', value: formatDecimal(processData['A.EC']) },
-                { label: 'A.ET', value: formatDecimal(processData['A.ET']) }
+                { label: 'A.EC', value: formatDecimal(processData['A.EC']) }
             ];
 
-            // Row 2: Comparison Metrics - EC vs PC, EC vs AC, Ach_CAProdW, A.CAProdR, Ach_CAProdM
-            const ecVsPc = processData['A.EC'] && processData['A.PC'] ? 
-                `${formatDecimal(processData['A.EC'])}/${formatDecimal(processData['A.PC'])}` : '0/0';
-            const ecVsAc = processData['A.EC'] && processData['A.AC'] ? 
-                `${formatDecimal(processData['A.EC'])}/${formatDecimal(processData['A.AC'])}` : '0/0';
+            // Row 2: Percentage Metrics - %EC vs PC, %EC vs AC, Ach_CAProdW, Ach.CAProdR, Ach_CAProdM
+            const ecVsPcPct = processData['A.EC'] && processData['A.PC'] ? 
+                `${Math.round((processData['A.EC'] / processData['A.PC']) * 100)}%` : '0%';
+            const ecVsAcPct = processData['A.EC'] && processData['A.AC'] ? 
+                `${Math.round((processData['A.EC'] / processData['A.AC']) * 100)}%` : '0%';
 
             const row2Metrics = [
-                { label: 'EC vs PC', value: ecVsPc, class: 'comparison' },
-                { label: 'EC vs AC', value: ecVsAc, class: 'comparison' },
-                { label: 'CA ProdW', value: formatPercentage(processData['Ach_CAProdW']) },
-                { label: 'CA ProdR', value: formatDecimal(processData['A.CAProdR']) },
-                { label: 'CA ProdM', value: formatPercentage(processData['Ach_CAProdM']) }
+                { label: '%EC vs PC', value: ecVsPcPct, class: 'comparison' },
+                { label: '%EC vs AC', value: ecVsAcPct, class: 'comparison' },
+                { label: 'Ach_CAProdW', value: formatPercentage(processData['Ach_CAProdW']) },
+                { label: 'Ach.CAProdR', value: formatPercentage(processData['A.CAProdR']) },
+                { label: 'Ach_CAProdM', value: formatPercentage(processData['Ach_CAProdM']) }
             ];
 
             // Row 3: GP Metrics - A.GPFood, Ach_GPFood, A.GPOthers, Ach_GPOthers
@@ -1316,11 +1315,11 @@
             return 'metric-low';                            // Red < 90%
         }
 
-        // ✅ ENHANCED: UPDATE CIRCULAR METRICS WITH REVISED GP CALCULATION
+        // ✅ ENHANCED: UPDATE CIRCULAR METRICS WITH REVISED GP CALCULATION AND AR_COLL
         function updateCircularMetrics(processData) {
             if (!processData) return;
 
-            // Regular circular metrics (CA, CA Prod, AR Coll)
+            // Regular circular metrics (CA, CA Prod, AR Coll) - Updated to use AR_Coll
             const circularMetrics = [
                 { 
                     id: 'caProgress', 
@@ -1332,7 +1331,7 @@
                 },
                 { 
                     id: 'arCollProgress', 
-                    percentage: Math.round((processData.Ach_ARColl || 0) * 100)
+                    percentage: Math.round((processData.AR_Coll || 0) * 100)
                 }
             ];
 
@@ -1360,7 +1359,7 @@
 
             console.log(`🎯 Revised GP calculation: (${aGpFood}+${aGpOthers})/(${tGpFood}+${tGpOthers}) = ${totalActualGP}/${totalTargetGP} = ${gpPercentage}%`);
 
-            console.log('🎯 Updating circular metrics:', circularMetrics);
+            console.log('🎯 Updating circular metrics with AR_Coll data:', circularMetrics);
 
             // Update regular circular metrics
             circularMetrics.forEach(metric => {
@@ -1390,7 +1389,7 @@
             updateSKUDisplay(processData);
         }
 
-        // 🆕 NEW: Update SKU display with SKU value and Strata
+        // 🆕 NEW: Update SKU display with SKU value and Strata (S0 for strata < 1)
         function updateSKUDisplay(processData) {
             const skuDisplay = document.getElementById('skuDisplay');
             if (!skuDisplay || !processData) return;
@@ -1407,14 +1406,19 @@
                 skuValueElement.textContent = `SKU = ${skuValue}`;
             }
             
-            // Update Strata
+            // Update Strata - Use S0 if strata < 1, otherwise S-{strata}
             const skuStrataElement = skuDisplay.querySelector('.sku-strata');
             if (skuStrataElement) {
-                const strataDisplay = strata && strata !== '-' ? `S-${strata}` : 'S-';
+                let strataDisplay;
+                if (strata && strata !== '-' && parseFloat(strata) >= 1) {
+                    strataDisplay = `S-${strata}`;
+                } else {
+                    strataDisplay = 'S0';
+                }
                 skuStrataElement.textContent = strataDisplay;
             }
             
-            console.log(`✅ Updated SKU Display: SKU = ${skuValue}, Strata = ${strata}`);
+            console.log(`✅ Updated SKU Display: SKU = ${skuValue}, Strata = ${strata} → Display: ${skuStrataElement ? skuStrataElement.textContent : 'N/A'}`);
         }
 
         // ✅ LOAD SALESMAN DATA
@@ -1576,11 +1580,11 @@
                 return;
             }
 
-            console.log('🚀 Initializing enhanced salesman detail page with additional metrics...');
+            console.log('🚀 Initializing enhanced salesman detail page with Produktifitas metrics...');
             loadSalesmanData();
         });
 
-        console.log('✅ Enhanced salesman detail script loaded with additional metrics and revised GP calculation');
+        console.log('✅ Enhanced salesman detail script loaded with Produktifitas metrics and AR_Coll data');
     </script>
 </body>
 </html>
