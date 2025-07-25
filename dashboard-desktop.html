@@ -198,6 +198,121 @@
             box-shadow: 0 6px 20px rgba(67, 233, 123, 0.4);
         }
 
+        /* ✅ SALESMAN SELECTOR MODAL */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: #64748b;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .modal-close:hover {
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+
+        .salesman-grid {
+            display: grid;
+            gap: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .salesman-option {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .salesman-option:hover {
+            border-color: #667eea;
+            background: #f8fafc;
+        }
+
+        .salesman-option-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .salesman-option-info h4 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 2px;
+        }
+
+        .salesman-option-info p {
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        .salesman-option-achievement {
+            margin-left: auto;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
         /* ✅ DASHBOARD CONTENT */
         .dashboard-content {
             flex: 1;
@@ -1082,6 +1197,20 @@
 </div>
 </div>
 </div>
+
+<!-- ✅ SALESMAN SELECTOR MODAL -->
+<div class="modal-overlay" id="salesmanModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">💰 Pilih Salesman untuk Insentif</h2>
+            <button class="modal-close" onclick="closeSalesmanModal()">&times;</button>
+        </div>
+        <div class="salesman-grid" id="salesmanModalGrid">
+            <!-- Will be populated by JavaScript -->
+        </div>
+    </div>
+</div>
+
 <!-- ✅ MAIN CONTENT -->
 <div class="main-content">
 <!-- ✅ TOP HEADER -->
@@ -1278,6 +1407,58 @@
             document.getElementById('userAvatar').textContent = currentUser.charAt(0).toUpperCase();
             
             return true;
+        }
+
+        // ✅ SHOW SALESMAN MODAL
+        function showSalesmanModal() {
+            if (!salesmanData || salesmanData.length === 0) {
+                alert('❌ Data salesman belum tersedia. Silakan tunggu hingga data terloda.');
+                return;
+            }
+
+            const modal = document.getElementById('salesmanModal');
+            const grid = document.getElementById('salesmanModalGrid');
+            
+            // Populate modal with salesman options
+            grid.innerHTML = '';
+            
+            salesmanData.forEach(salesman => {
+                const option = document.createElement('div');
+                option.className = 'salesman-option';
+                option.onclick = () => openSalesmanIncentive(salesman.id);
+                
+                option.innerHTML = `
+                    <div class="salesman-option-avatar">
+                        <img src="photos/${salesman.id}.jpg" 
+                             alt="${salesman.name}" 
+                             style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;"
+                             onerror="this.style.display='none'; this.parentElement.textContent='${salesman.name.charAt(0).toUpperCase()}';">
+                    </div>
+                    <div class="salesman-option-info">
+                        <h4>${salesman.name}</h4>
+                        <p>${salesman.type}</p>
+                    </div>
+                    <div class="salesman-option-achievement">${salesman.achievement}</div>
+                `;
+                
+                grid.appendChild(option);
+            });
+
+            modal.style.display = 'flex';
+            console.log('💰 Salesman selector modal opened');
+        }
+
+        // ✅ CLOSE SALESMAN MODAL
+        function closeSalesmanModal() {
+            const modal = document.getElementById('salesmanModal');
+            modal.style.display = 'none';
+        }
+
+        // ✅ OPEN SALESMAN INCENTIVE
+        function openSalesmanIncentive(salesmanId) {
+            console.log(`💰 Opening incentive page for salesman: ${salesmanId}`);
+            closeSalesmanModal();
+            window.location.href = `dashboard_insentif_sales_desktop.html?id=${salesmanId}`;
         }
 
         // ✅ LOAD DASHBOARD DATA - Enhanced with fallback data
@@ -2252,795 +2433,4 @@
 
                 // Calculate bounds for viewBox
                 let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-                let validFeatureCount = 0;
-                
-                geoJsonData.features.forEach(feature => {
-                    try {
-                        if (feature.geometry && feature.geometry.coordinates) {
-                            const coords = feature.geometry.coordinates;
-                            const flatCoords = flattenCoordinates(coords);
-                            
-                            if (flatCoords.length > 0) {
-                                flatCoords.forEach(([x, y]) => {
-                                    if (typeof x === 'number' && typeof y === 'number' && isFinite(x) && isFinite(y)) {
-                                        minX = Math.min(minX, x);
-                                        minY = Math.min(minY, y);
-                                        maxX = Math.max(maxX, x);
-                                        maxY = Math.max(maxY, y);
-                                        validFeatureCount++;
-                                    }
-                                });
-                            }
-                        }
-                    } catch (error) {
-                        console.warn('Error processing feature for bounds:', error);
-                    }
-                });
-
-                // Check if we have valid bounds
-                if (validFeatureCount === 0 || !isFinite(minX) || !isFinite(minY) || !isFinite(maxX) || !isFinite(maxY)) {
-                    console.warn('⚠️ No valid coordinates found in GeoJSON data, using demo map');
-                    showFallbackMap();
-                    return;
-                }
-
-                // Set viewBox with padding
-                const padding = 0.1;
-                const width = maxX - minX;
-                const height = maxY - minY;
-                const paddingX = width * padding;
-                const paddingY = height * padding;
-                
-                if (width > 0 && height > 0) {
-                    svgMap.setAttribute('viewBox', 
-                        `${minX - paddingX} ${minY - paddingY} ${width + 2 * paddingX} ${height + 2 * paddingY}`
-                    );
-                } else {
-                    console.warn('⚠️ Invalid map dimensions, using demo map');
-                    showFallbackMap();
-                    return;
-                }
-
-                // Render each feature
-                let renderedCount = 0;
-                geoJsonData.features.forEach((feature, index) => {
-                    try {
-                        const path = createSVGPath(feature, dataLookup, index);
-                        if (path) {
-                            svgMap.appendChild(path);
-                            renderedCount++;
-                        }
-                    } catch (error) {
-                        console.warn(`Error rendering feature ${index}:`, error);
-                    }
-                });
-
-                if (renderedCount === 0) {
-                    console.warn('⚠️ No regions could be rendered, using demo map');
-                    showFallbackMap();
-                    return;
-                }
-
-                // Update legend
-                updateMapLegend();
-                
-                console.log(`✅ GeoJSON Map rendered with ${renderedCount} valid regions out of ${geoJsonData.features.length} total features`);
-                
-            } catch (error) {
-                console.error('❌ Error rendering GeoJSON map:', error);
-                showFallbackMap();
-            }
-        }
-
-        // ✅ SHOW FALLBACK MAP - Enhanced with interactive demo regions
-        function showFallbackMap() {
-            if (!svgMap) return;
-            
-            console.log('🗺️ Showing enhanced fallback map with demo regions...');
-            
-            // Create a functional demo map with 3 interactive regions
-            svgMap.innerHTML = `
-                <!-- Background -->
-                <rect x="0" y="0" width="800" height="600" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
-                
-                <!-- Demo Region A (Excellent Achievement) -->
-                <rect x="150" y="150" width="150" height="120" fill="#059669" stroke="#1e3a8a" stroke-width="2" 
-                      class="map-region demo-region" data-region="A" rx="8" opacity="0.8"/>
-                
-                <!-- Demo Region B (Good Achievement) -->
-                <rect x="350" y="180" width="180" height="140" fill="#f59e0b" stroke="#1e3a8a" stroke-width="2" 
-                      class="map-region demo-region" data-region="B" rx="8" opacity="0.8"/>
-                
-                <!-- Demo Region C (Fair Achievement) -->
-                <rect x="200" y="350" width="160" height="130" fill="#fb7185" stroke="#1e3a8a" stroke-width="2" 
-                      class="map-region demo-region" data-region="C" rx="8" opacity="0.8"/>
-                
-                <!-- Region Labels -->
-                <text x="225" y="215" text-anchor="middle" fill="white" font-family="Inter, sans-serif" font-size="14" font-weight="600">
-                    Kecamatan A
-                </text>
-                <text x="225" y="235" text-anchor="middle" fill="white" font-family="Inter, sans-serif" font-size="11">
-                    92.1%
-                </text>
-                
-                <text x="440" y="255" text-anchor="middle" fill="white" font-family="Inter, sans-serif" font-size="14" font-weight="600">
-                    Kecamatan B
-                </text>
-                <text x="440" y="275" text-anchor="middle" fill="white" font-family="Inter, sans-serif" font-size="11">
-                    78.9%
-                </text>
-                
-                <text x="280" y="420" text-anchor="middle" fill="white" font-family="Inter, sans-serif" font-size="14" font-weight="600">
-                    Kecamatan C
-                </text>
-                <text x="280" y="440" text-anchor="middle" fill="white" font-family="Inter, sans-serif" font-size="11">
-                    85.2%
-                </text>
-                
-                <!-- Demo indicator -->
-                <text x="400" y="550" text-anchor="middle" fill="#f59e0b" font-family="Inter, sans-serif" font-size="12" font-weight="500">
-                    🧪 Mode Demo - Data Ilustrasi
-                </text>
-            `;
-            
-            svgMap.setAttribute('viewBox', '0 0 800 600');
-            
-            // Add interactive functionality to demo regions
-            addDemoRegionInteractivity();
-            
-            // Update legend for demo mode
-            updateMapLegend();
-            
-            console.log('✅ Enhanced fallback map with demo regions displayed');
-        }
-
-        // ✅ ADD DEMO REGION INTERACTIVITY - Enhanced with dynamic data
-        function addDemoRegionInteractivity() {
-            const demoRegions = svgMap.querySelectorAll('.demo-region');
-            
-            if (demoRegions.length === 0) {
-                console.warn('⚠️ No demo regions found for interactivity');
-                return;
-            }
-            
-            demoRegions.forEach(region => {
-                const regionId = region.getAttribute('data-region');
-                
-                if (!regionId) return;
-                
-                // Add hover effects
-                region.addEventListener('mouseenter', (e) => {
-                    region.style.opacity = '1';
-                    region.style.transform = 'scale(1.02)';
-                    region.style.transformOrigin = 'center';
-                    
-                    showDemoTooltipForRegion(e, regionId);
-                });
-                
-                region.addEventListener('mousemove', (e) => {
-                    updateTooltipPosition(e);
-                });
-                
-                region.addEventListener('mouseleave', () => {
-                    region.style.opacity = '0.8';
-                    region.style.transform = 'scale(1)';
-                    hideTooltip();
-                });
-                
-                region.addEventListener('click', () => {
-                    const regionName = getRegionNameById(regionId);
-                    console.log(`🗺️ Clicked demo region: ${regionName}`);
-                    alert(`Demo Region: ${regionName}\nMetrik: ${currentMapMetric}\nData ini hanya untuk demonstrasi.`);
-                });
-            });
-            
-            console.log(`✅ Added interactivity to ${demoRegions.length} demo regions`);
-        }
-
-        // ✅ SHOW DEMO TOOLTIP FOR REGION - Dynamic based on current metric
-        function showDemoTooltipForRegion(event, regionId) {
-            try {
-                // Get current data for the region based on active metric
-                const regionData = getDemoDataForRegion(regionId, currentMapMetric);
-                
-                if (!regionData) {
-                    console.warn(`No demo data found for region ${regionId}`);
-                    return;
-                }
-                
-                const tooltipHeaderElement = document.getElementById('tooltipHeader');
-                if (tooltipHeaderElement) {
-                    tooltipHeaderElement.textContent = `${regionData.name}, ${regionData.kabupaten}`;
-                }
-                
-                let tooltipContent = '';
-                
-                if (currentMapMetric === 'achievement') {
-                    tooltipContent = `
-                        <div class="tooltip-metric">
-                            <span class="tooltip-metric-label">Achievement:</span>
-                            <span class="tooltip-metric-value">${formatPercentage(regionData.ach)}</span>
-                        </div>
-                        <div class="tooltip-metric">
-                            <span class="tooltip-metric-label">Actual:</span>
-                            <span class="tooltip-metric-value">${formatCurrency(regionData.actual)}</span>
-                        </div>
-                        <div class="tooltip-metric">
-                            <span class="tooltip-metric-label">Target:</span>
-                            <span class="tooltip-metric-value">${formatCurrency(regionData.target)}</span>
-                        </div>
-                    `;
-                } else if (currentMapMetric === 'actual') {
-                    tooltipContent = `
-                        <div class="tooltip-metric">
-                            <span class="tooltip-metric-label">Actual Sales:</span>
-                            <span class="tooltip-metric-value">${formatCurrency(regionData.actual)}</span>
-                        </div>
-                        <div class="tooltip-metric">
-                            <span class="tooltip-metric-label">Target:</span>
-                            <span class="tooltip-metric-value">${formatCurrency(regionData.target)}</span>
-                        </div>
-                        <div class="tooltip-metric">
-                            <span class="tooltip-metric-label">Achievement:</span>
-                            <span class="tooltip-metric-value">${formatPercentage(regionData.ach)}</span>
-                        </div>
-                    `;
-                } else if (currentMapMetric === 'gap') {
-                    const gap = regionData.actual - regionData.target;
-                    tooltipContent = `
-                        <div class="tooltip-metric">
-                            <span class="tooltip-metric-label">Gap:</span>
-                            <span class="tooltip-metric-value ${gap >= 0 ? 'positive' : 'negative'}">${formatCurrency(gap)}</span>
-                        </div>
-                        <div class="tooltip-metric">
-                            <span class="tooltip-metric-label">Actual:</span>
-                            <span class="tooltip-metric-value">${formatCurrency(regionData.actual)}</span>
-                        </div>
-                        <div class="tooltip-metric">
-                            <span class="tooltip-metric-label">Target:</span>
-                            <span class="tooltip-metric-value">${formatCurrency(regionData.target)}</span>
-                        </div>
-                    `;
-                }
-                
-                tooltipContent += `
-                    <div class="tooltip-metric" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #f1f5f9;">
-                        <span class="tooltip-metric-label" style="color: #f59e0b;">Mode:</span>
-                        <span class="tooltip-metric-value" style="color: #f59e0b;">🧪 Demo</span>
-                    </div>
-                `;
-                
-                const tooltipContentElement = document.getElementById('tooltipContent');
-                if (tooltipContentElement) {
-                    tooltipContentElement.innerHTML = tooltipContent;
-                }
-                
-                showTooltip();
-                updateTooltipPosition(event);
-            } catch (error) {
-                console.warn('Error showing demo tooltip:', error);
-            }
-        }
-
-        // ✅ GET DEMO DATA FOR REGION
-        function getDemoDataForRegion(regionId, metric) {
-            const demoData = {
-                'A': { name: 'Kecamatan A', kabupaten: 'Kabupaten Demo', ach: 0.921, actual: 98000000, target: 106500000 },
-                'B': { name: 'Kecamatan B', kabupaten: 'Kabupaten Demo', ach: 0.789, actual: 87000000, target: 111500000 },
-                'C': { name: 'Kecamatan C', kabupaten: 'Kabupaten Demo', ach: 0.852, actual: 125000000, target: 147000000 }
-            };
-            
-            return demoData[regionId] || null;
-        }
-
-        // ✅ GET REGION NAME BY ID
-        function getRegionNameById(regionId) {
-            const names = {
-                'A': 'Kecamatan A',
-                'B': 'Kecamatan B', 
-                'C': 'Kecamatan C'
-            };
-            return names[regionId] || 'Unknown Region';
-        }
-
-        // ✅ FLATTEN COORDINATES (helper function) - Fixed version
-        function flattenCoordinates(coords) {
-            const result = [];
-            
-            function flatten(arr, depth = 0) {
-                // Prevent infinite recursion
-                if (depth > 10) {
-                    console.warn('Maximum recursion depth reached in flattenCoordinates');
-                    return;
-                }
-                
-                // Check if arr is actually an array
-                if (!Array.isArray(arr)) {
-                    return;
-                }
-                
-                // Check if this is a coordinate pair [lng, lat]
-                if (arr.length === 2 && typeof arr[0] === 'number' && typeof arr[1] === 'number') {
-                    result.push(arr);
-                    return;
-                }
-                
-                // Recursively flatten nested arrays
-                arr.forEach(item => {
-                    if (Array.isArray(item)) {
-                        flatten(item, depth + 1);
-                    }
-                });
-            }
-            
-            try {
-                flatten(coords);
-                return result;
-            } catch (error) {
-                console.warn('Error in flattenCoordinates:', error);
-                return [];
-            }
-        }
-
-        // ✅ CREATE SVG PATH - Enhanced with comprehensive error handling
-        function createSVGPath(feature, dataLookup, index) {
-            try {
-                if (!feature || !feature.geometry || !feature.geometry.coordinates) {
-                    return null;
-                }
-
-                const pathData = coordinatesToPath(feature.geometry.coordinates, feature.geometry.type);
-                if (!pathData || pathData.trim() === '') {
-                    return null;
-                }
-
-                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                path.setAttribute('d', pathData);
-                path.setAttribute('class', 'map-region');
-                
-                // Get area data for styling
-                let fillColor = '#e2e8f0';
-                let areaInfo = null;
-                
-                try {
-                    const kecamatanRaw = feature.properties?.WADMKC || feature.properties?.NAMOBJ;
-                    const kabupatenRaw = feature.properties?.WADMKK;
-                    
-                    if (kecamatanRaw && kabupatenRaw && typeof kecamatanRaw === 'string' && typeof kabupatenRaw === 'string') {
-                        const key = `${kecamatanRaw.toLowerCase()}_${kabupatenRaw.toLowerCase()}`;
-                        areaInfo = dataLookup[key];
-                        
-                        if (areaInfo) {
-                            fillColor = getRegionColor(areaInfo);
-                        }
-                    }
-                } catch (error) {
-                    console.warn('Error processing region data for path:', error);
-                }
-                
-                path.setAttribute('fill', fillColor);
-                
-                // Add event listeners with error handling
-                try {
-                    path.addEventListener('mouseenter', (e) => {
-                        try {
-                            handleRegionHover(e, feature, areaInfo);
-                        } catch (err) {
-                            console.warn('Error in region hover handler:', err);
-                        }
-                    });
-                    
-                    path.addEventListener('mousemove', (e) => {
-                        try {
-                            updateTooltipPosition(e);
-                        } catch (err) {
-                            console.warn('Error updating tooltip position:', err);
-                        }
-                    });
-                    
-                    path.addEventListener('mouseleave', () => {
-                        try {
-                            hideTooltip();
-                        } catch (err) {
-                            console.warn('Error hiding tooltip:', err);
-                        }
-                    });
-                    
-                    path.addEventListener('click', () => {
-                        try {
-                            handleRegionClick(feature, areaInfo);
-                        } catch (err) {
-                            console.warn('Error in region click handler:', err);
-                        }
-                    });
-                } catch (error) {
-                    console.warn('Error adding event listeners to path:', error);
-                }
-                
-                return path;
-            } catch (error) {
-                console.warn(`Error creating SVG path for feature ${index}:`, error);
-                return null;
-            }
-        }
-
-        // ✅ COORDINATES TO PATH - Enhanced with error handling
-        function coordinatesToPath(coords, type) {
-            try {
-                if (!coords || !Array.isArray(coords)) {
-                    return null;
-                }
-                
-                if (type === 'Polygon') {
-                    return polygonToPath(coords);
-                } else if (type === 'MultiPolygon') {
-                    return coords.map(polygon => polygonToPath(polygon)).filter(path => path).join(' ');
-                }
-                return null;
-            } catch (error) {
-                console.warn('Error converting coordinates to path:', error);
-                return null;
-            }
-        }
-
-        // ✅ POLYGON TO PATH - Enhanced with error handling
-        function polygonToPath(polygon) {
-            try {
-                if (!polygon || !Array.isArray(polygon)) {
-                    return null;
-                }
-                
-                return polygon.map(ring => {
-                    if (!ring || !Array.isArray(ring)) {
-                        return '';
-                    }
-                    
-                    const pathParts = ring.map((coord, i) => {
-                        if (!coord || !Array.isArray(coord) || coord.length < 2) {
-                            return '';
-                        }
-                        
-                        const [x, y] = coord;
-                        if (typeof x !== 'number' || typeof y !== 'number' || !isFinite(x) || !isFinite(y)) {
-                            return '';
-                        }
-                        
-                        const command = i === 0 ? 'M' : 'L';
-                        return `${command}${x},${y}`;
-                    }).filter(part => part !== '');
-                    
-                    return pathParts.length > 0 ? pathParts.join(' ') + ' Z' : '';
-                }).filter(ringPath => ringPath !== '').join(' ');
-            } catch (error) {
-                console.warn('Error converting polygon to path:', error);
-                return null;
-            }
-        }
-
-        // ✅ GET REGION COLOR - Enhanced with better validation
-        function getRegionColor(areaData) {
-            if (!areaData || typeof areaData !== 'object') {
-                return '#e2e8f0';
-            }
-            
-            try {
-                let value;
-                if (currentMapMetric === 'achievement') {
-                    value = areaData.Ach;
-                } else if (currentMapMetric === 'actual') {
-                    value = areaData.Actual;
-                } else if (currentMapMetric === 'gap') {
-                    value = areaData.Gap;
-                }
-                
-                if (value === undefined || value === null || typeof value !== 'number' || !isFinite(value)) {
-                    return '#e2e8f0';
-                }
-                
-                if (currentMapMetric === 'achievement') {
-                    const ach = value * 100;
-                    if (ach >= 80) return '#059669';      // Green - Excellent
-                    else if (ach >= 60) return '#f59e0b'; // Yellow - Good
-                    else if (ach >= 40) return '#fb7185'; // Pink - Fair
-                    else return '#ef4444';                // Red - Poor
-                } else if (currentMapMetric === 'gap') {
-                    return value >= 0 ? '#059669' : '#ef4444'; // Green for surplus, Red for deficit
-                } else {
-                    return '#667eea'; // Blue for actual sales
-                }
-            } catch (error) {
-                console.warn('Error determining region color:', error);
-                return '#e2e8f0';
-            }
-        }
-
-        // ✅ HANDLE REGION HOVER - Enhanced with better error handling
-        function handleRegionHover(event, feature, areaData) {
-            try {
-                const kecamatan = feature.properties?.WADMKC || feature.properties?.NAMOBJ || 'Unknown';
-                const kabupaten = feature.properties?.WADMKK || 'Unknown';
-                
-                const tooltipHeaderElement = document.getElementById('tooltipHeader');
-                if (tooltipHeaderElement) {
-                    tooltipHeaderElement.textContent = `${kecamatan}, ${kabupaten}`;
-                }
-                
-                let tooltipContent = '';
-                
-                if (areaData && typeof areaData === 'object') {
-                    tooltipContent = `
-                        <div class="tooltip-metric">
-                            <span class="tooltip-metric-label">Achievement:</span>
-                            <span class="tooltip-metric-value">${formatPercentage(areaData.Ach)}</span>
-                        </div>
-                        <div class="tooltip-metric">
-                            <span class="tooltip-metric-label">Actual:</span>
-                            <span class="tooltip-metric-value">${formatCurrency(areaData.Actual)}</span>
-                        </div>
-                        <div class="tooltip-metric">
-                            <span class="tooltip-metric-label">Target:</span>
-                            <span class="tooltip-metric-value">${formatCurrency(areaData.Target)}</span>
-                        </div>
-                    `;
-                } else {
-                    tooltipContent = `
-                        <div class="tooltip-metric">
-                            <span class="tooltip-metric-label">Status:</span>
-                            <span class="tooltip-metric-value">No data available</span>
-                        </div>
-                    `;
-                }
-                
-                const tooltipContentElement = document.getElementById('tooltipContent');
-                if (tooltipContentElement) {
-                    tooltipContentElement.innerHTML = tooltipContent;
-                }
-                
-                showTooltip();
-                updateTooltipPosition(event);
-            } catch (error) {
-                console.warn('Error in handleRegionHover:', error);
-            }
-        }
-
-        // ✅ UPDATE TOOLTIP POSITION - Enhanced with boundary checking
-        function updateTooltipPosition(event) {
-            if (!tooltip) return;
-            
-            try {
-                const mapContainer = document.getElementById('mapContainer');
-                if (!mapContainer) return;
-                
-                const rect = mapContainer.getBoundingClientRect();
-                const x = event.clientX - rect.left;
-                const y = event.clientY - rect.top;
-                
-                // Ensure tooltip stays within bounds
-                const tooltipRect = tooltip.getBoundingClientRect();
-                const containerWidth = rect.width;
-                const containerHeight = rect.height;
-                
-                let finalX = x + 10;
-                let finalY = y - 10;
-                
-                // Adjust if tooltip would go outside container
-                if (finalX + tooltipRect.width > containerWidth) {
-                    finalX = x - tooltipRect.width - 10;
-                }
-                
-                if (finalY < 0) {
-                    finalY = y + 20;
-                }
-                
-                tooltip.style.left = Math.max(0, finalX) + 'px';
-                tooltip.style.top = Math.max(0, finalY) + 'px';
-            } catch (error) {
-                console.warn('Error updating tooltip position:', error);
-            }
-        }
-
-        // ✅ SHOW TOOLTIP - Enhanced with existence check
-        function showTooltip() {
-            if (tooltip) {
-                tooltip.classList.add('visible');
-            }
-        }
-
-        // ✅ HIDE TOOLTIP - Enhanced with existence check
-        function hideTooltip() {
-            if (tooltip) {
-                tooltip.classList.remove('visible');
-            }
-        }
-
-        // ✅ HANDLE REGION CLICK
-        function handleRegionClick(feature, areaData) {
-            const kecamatan = feature.properties?.WADMKC || feature.properties?.NAMOBJ || 'Unknown';
-            console.log('🗺️ Clicked region:', kecamatan, areaData);
-        }
-
-        // ✅ UPDATE MAP LEGEND - Enhanced for real data
-        function updateMapLegend() {
-            const legendTitle = document.getElementById('legendTitle');
-            const legendItems = document.getElementById('legendItems');
-
-            if (!legendTitle || !legendItems) return;
-
-            let title, items;
-
-            if (currentMapMetric === 'achievement') {
-                title = 'Achievement Level';
-                items = [
-                    { color: '#059669', label: '≥ 80% - Excellent' },
-                    { color: '#f59e0b', label: '60-79% - Good' },
-                    { color: '#fb7185', label: '40-59% - Fair' },
-                    { color: '#ef4444', label: '< 40% - Poor' },
-                    { color: '#e2e8f0', label: 'No Data' }
-                ];
-            } else if (currentMapMetric === 'actual') {
-                title = 'Actual Sales';
-                items = [
-                    { color: '#667eea', label: 'Sales Performance' },
-                    { color: '#e2e8f0', label: 'No Data' }
-                ];
-            } else if (currentMapMetric === 'gap') {
-                title = 'Gap Analysis';
-                items = [
-                    { color: '#059669', label: 'Good Performance (≥80% Ach)' },
-                    { color: '#ef4444', label: 'Needs Improvement (<80% Ach)' },
-                    { color: '#e2e8f0', label: 'No Data' }
-                ];
-            }
-
-            legendTitle.textContent = title;
-            legendItems.innerHTML = items.map(item => `
-                <div class="legend-item">
-                    <div class="legend-color" style="background-color: ${item.color};"></div>
-                    <span class="legend-label">${item.label}</span>
-                </div>
-            `).join('');
-            
-            // Add data indicator for real data
-            if (areaData && areaData.length > 3) {
-                const validLocations = areaData.filter(loc => 
-                    loc.Kecamatan !== 'DEPO TANJUNG' && loc.Latitude && loc.Longitude
-                );
-                
-                legendItems.innerHTML += `
-                    <div class="legend-item" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e2e8f0;">
-                        <span style="font-size: 10px; color: #059669;">📍 ${validLocations.length} Real Locations</span>
-                    </div>
-                `;
-            }
-        }
-
-        // ✅ UPDATE SALESMAN TABLE
-        function updateSalesmanTable(salesmanList) {
-            const tableBody = document.getElementById('salesmanTableBody');
-            const salesmanCount = document.getElementById('salesmanCount');
-            
-            tableBody.innerHTML = '';
-            salesmanCount.textContent = `${salesmanList.length} Salesman`;
-
-            salesmanList.forEach((salesman, index) => {
-                const row = createSalesmanRow(salesman, index);
-                tableBody.appendChild(row);
-            });
-
-            console.log('✅ Tabel salesman berhasil diperbarui');
-        }
-
-        // ✅ CREATE SALESMAN ROW
-        function createSalesmanRow(salesman, index) {
-            const row = document.createElement('tr');
-            row.style.animationDelay = `${index * 0.02}s`;
-            row.className = 'fade-in';
-            
-            const statusClass = getStatusClass(salesman.status);
-            
-            row.innerHTML = `
-                <td class="rank-column">${salesman.rank}</td>
-                <td>
-                    <div class="salesman-name-cell">
-                        <div class="salesman-avatar" data-nik="${salesman.id}">
-                            <img src="photos/${salesman.id}.jpg" 
-                                 alt="${salesman.name}" 
-                                 style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;"
-                                 onerror="this.style.display='none'; this.parentElement.textContent='${salesman.name.charAt(0).toUpperCase()}';">
-                        </div>
-                        <div class="salesman-info">
-                            <h4>${salesman.name}</h4>
-                            <p>${salesman.type}</p>
-                        </div>
-                    </div>
-                </td>
-                <td class="achievement-cell">
-                    <div class="achievement-value">${salesman.achievement}</div>
-                </td>
-                <td class="status-cell">
-                    <div class="status-badge ${statusClass}">${salesman.status}</div>
-                </td>
-                <td class="action-cell">
-                    <button class="view-btn" onclick="openSalesmanDetail('${salesman.id}')">
-                        View
-                    </button>
-                </td>
-            `;
-
-            return row;
-        }
-
-        function getStatusClass(status) {
-            switch (status) {
-                case 'Extra Effort': return 'status-extra-effort';
-                case 'Good': return 'status-good';
-                case 'Very Good': return 'status-very-good';
-                case 'Excellent': return 'status-excellent';
-                default: return 'status-good';
-            }
-        }
-
-        // ✅ NAVIGATION FUNCTIONS
-        function openSalesmanDetail(salesmanId) {
-            console.log(`🚀 Navigating to salesman detail: ${salesmanId}`);
-            window.location.href = `salesman-desktop.html?id=${salesmanId}`;
-        }
-
-        function showDashboard() {
-            console.log('Already on dashboard');
-        }
-
-        function showActivity() {
-            alert('🔜 Activity module coming soon!');
-        }
-
-        function showInsentif() {
-            alert('🔜 Insentif module coming soon!');
-        }
-
-        function showReports() {
-            alert('🔜 Reports module coming soon!');
-        }
-
-        function showSettings() {
-            alert('🔜 Settings module coming soon!');
-        }
-
-        function logout() {
-            if (confirm('Apakah Anda yakin ingin logout?')) {
-                sessionStorage.removeItem('isLoggedIn');
-                sessionStorage.removeItem('currentUser');
-                window.location.href = 'index.html';
-            }
-        }
-
-        // ✅ UI CONTROL FUNCTIONS
-        function showLoading(show) {
-            document.getElementById('loadingSpinner').style.display = show ? 'flex' : 'none';
-        }
-
-        function showError(show) {
-            document.getElementById('errorMessage').style.display = show ? 'block' : 'none';
-        }
-
-        function hideError() {
-            showError(false);
-        }
-
-        function showMainContent(show) {
-            document.getElementById('dashboardContent').style.display = show ? 'block' : 'none';
-        }
-
-        // ✅ INITIALIZE DASHBOARD
-        document.addEventListener('DOMContentLoaded', function() {
-            if (!checkLoginStatus()) {
-                return;
-            }
-
-            console.log('🚀 Initializing dashboard...');
-            loadDashboardData();
-            console.log('✅ Dashboard initialized');
-        });
-    </script>
-</body>
-</html>
+                let validFe
