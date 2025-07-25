@@ -723,14 +723,14 @@
                 </button>
             </form>
 
-			<!-- Demo Info -->
+            <!-- Demo Info -->
             <div class="demo-info">
                 <h4>🔑 Demo Account</h4>
                 <p><strong>Admin:</strong> admin / admin123</p>
-                <div id="lastUpdateInfo" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.2);">
-                    <div style="font-size: 11px; opacity: 0.8;">
+                <div id="lastUpdateInfo" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, 0.2);">
+                    <div style="font-size: 14px; font-weight: 600; color: rgba(255, 255, 255, 0.95);">
                         <span>📅 Last Update: </span>
-                        <span id="lastUpdateTime">Loading...</span>
+                        <span id="lastUpdateTime" style="color: white; font-weight: 700;">Loading...</span>
                     </div>
                 </div>
             </div>
@@ -875,6 +875,92 @@
             }, 2000);
         }
 
+        // ✅ Load last update info from dashboard.json
+        async function loadLastUpdateInfo() {
+            try {
+                console.log('📅 Loading last update info...');
+                
+                // Set loading state
+                document.getElementById('lastUpdateTime').textContent = 'Loading...';
+                
+                const response = await fetch('data/dashboard.json');
+                console.log('📊 Dashboard fetch response:', response.status, response.ok);
+                
+                if (response.ok) {
+                    const dashboardData = await response.json();
+                    console.log('📊 Dashboard data structure:', {
+                        hasLastUpdated: !!dashboardData.last_updated,
+                        lastUpdated: dashboardData.last_updated,
+                        keys: Object.keys(dashboardData)
+                    });
+                    
+                    if (dashboardData.last_updated) {
+                        // Parse the datetime string
+                        const lastUpdate = new Date(dashboardData.last_updated);
+                        console.log('📅 Parsed date:', lastUpdate);
+                        
+                        // Check if date is valid
+                        if (isNaN(lastUpdate.getTime())) {
+                            console.error('❌ Invalid date:', dashboardData.last_updated);
+                            document.getElementById('lastUpdateTime').textContent = 'Invalid date format';
+                            return;
+                        }
+                        
+                        // Format the datetime for better display
+                        const formattedDate = lastUpdate.toLocaleDateString('id-ID', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric'
+                        });
+                        const formattedTime = lastUpdate.toLocaleTimeString('id-ID', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        });
+                        
+                        const displayText = `${formattedDate} ${formattedTime}`;
+                        document.getElementById('lastUpdateTime').textContent = displayText;
+                        console.log('✅ Last update info loaded:', displayText);
+                    } else {
+                        console.warn('⚠️ No last_updated field found in dashboard.json');
+                        console.log('📊 Available fields:', Object.keys(dashboardData));
+                        document.getElementById('lastUpdateTime').textContent = 'Data not available';
+                    }
+                } else {
+                    console.warn('⚠️ Could not load dashboard.json:', response.status, response.statusText);
+                    
+                    // Try alternative approach - show current time as fallback
+                    const now = new Date();
+                    const fallbackDate = now.toLocaleDateString('id-ID', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                    });
+                    const fallbackTime = now.toLocaleTimeString('id-ID', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                    
+                    document.getElementById('lastUpdateTime').textContent = `${fallbackDate} ${fallbackTime} (Approx)`;
+                }
+            } catch (error) {
+                console.error('❌ Error loading last update info:', error);
+                
+                // Show current time as ultimate fallback
+                const now = new Date();
+                const fallbackDate = now.toLocaleDateString('id-ID', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                });
+                const fallbackTime = now.toLocaleTimeString('id-ID', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                
+                document.getElementById('lastUpdateTime').textContent = `${fallbackDate} ${fallbackTime} (Estimated)`;
+            }
+        }
+
         // ✅ Load valid users dengan proper error handling
         async function loadValidUsers() {
             try {
@@ -954,8 +1040,11 @@
             loginButton.disabled = true;
             buttonText.textContent = 'Loading...';
             
-            // Load users
-            await loadValidUsers();
+            // Load users and last update info in parallel
+            await Promise.all([
+                loadValidUsers(),
+                loadLastUpdateInfo()
+            ]);
             
             // Reset button text
             buttonText.textContent = 'Sign In';
@@ -1115,7 +1204,7 @@
             }
         });
 
-        console.log('🔧 Sales Dashboard login script loaded with dashboard selection');
+        console.log('🔧 Sales Dashboard login script loaded with dashboard selection and last update info display');
     </script>
 </body>
 </html>
