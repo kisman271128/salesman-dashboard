@@ -150,6 +150,11 @@
             background: linear-gradient(135deg, #1e40af, #3b82f6);
         }
 
+        .performance-card.silver {
+            background: linear-gradient(135deg, #94a3b8, #64748b);
+            color: white;
+        }
+
         .card-label {
             font-size: 11px;
             opacity: 0.9;
@@ -658,6 +663,7 @@
         // Global variables
         let salesmanLobData = [];
         let salesmanProcessData = [];
+        let performanceData = [];
         let currentSalesmanId = null;
 
         // ✅ FORMAT CURRENCY INDONESIA (Rb/Jt/M)
@@ -737,6 +743,20 @@
 
                 console.log(`✅ Loaded ${salesmanProcessData.length} process records`);
 
+                // 🆕 NEW: Load performance data for TOTAL calculation
+                const performanceResponse = await fetch('data/d.performance.json');
+                if (!performanceResponse.ok) {
+                    throw new Error(`Failed to load performance data: ${performanceResponse.status}`);
+                }
+                const performanceText = await performanceResponse.text();
+                
+                // Parse JSONL format
+                performanceData = performanceText.split('\n')
+                    .filter(line => line.trim())
+                    .map(line => JSON.parse(line));
+
+                console.log(`✅ Loaded ${performanceData.length} performance records`);
+
                 return true;
             } catch (error) {
                 console.error('❌ Error loading JSON data:', error);
@@ -756,6 +776,39 @@
             return salesmanProcessData.find(item => 
                 item.szEmployeeId.toString() === employeeId.toString()
             );
+        }
+
+        // 🆕 NEW: GET SALESMAN PERFORMANCE DATA 
+        function getSalesmanPerformanceData(employeeId) {
+            return performanceData.find(item => 
+                item.szEmployeeId.toString() === employeeId.toString()
+            );
+        }
+
+        // 🆕 NEW: GET SALESMAN TYPE CATEGORY
+        function getSalesmanTypeCategory(salesmanType) {
+            if (!salesmanType) return 'default';
+            
+            const type = salesmanType.toLowerCase();
+            if (type.includes('retailer arjuna')) return 'arjuna';
+            if (type.includes('retailer bima')) return 'bima';
+            return 'default';
+        }
+
+        // 🆕 NEW: GET LOB ORDER BASED ON SALESMAN TYPE
+        function getLobOrderBySalesmanType(salesmanType) {
+            const typeCategory = getSalesmanTypeCategory(salesmanType);
+            
+            if (typeCategory === 'arjuna') {
+                // Sales Representative Retailer Arjuna: hanya GPPJ, GEN, ABBOTT
+                return ['GPPJ', 'GEN', 'ABBOTT'];
+            } else if (typeCategory === 'bima') {
+                // Sales Representative Retailer Bima: semua kecuali GEN dan ABBOTT
+                return ['GPPJ', 'GBS', 'MBR', 'HGJ', 'RANS', 'GSJ'];
+            } else {
+                // Default: semua LOB
+                return ['GPPJ', 'GEN', 'GBS', 'MBR', 'HGJ', 'RANS', 'ABBOTT', 'GSJ'];
+            }
         }
 
         // ✅ ENHANCED: CREATE PERFORMANCE ITEM HTML WITH GAP CALCULATION
@@ -787,70 +840,96 @@
             `;
         }
 
-        // ✅ UPDATE PERFORMANCE LIST
-        function updatePerformanceList(lobData) {
+        // ✅ ENHANCED: UPDATE PERFORMANCE LIST WITH LOB FILTERING BY SALESMAN TYPE
+        function updatePerformanceList(lobData, salesmanInfo) {
             const performanceList = document.getElementById('performanceList');
             let html = '';
             
             // Group LOB data
             const lobMap = {};
-            let totalTarget = 0;
-            let totalActual = 0;
-
             lobData.forEach(item => {
                 lobMap[item.LOB] = item;
-                totalTarget += (item.Target || 0);
-                totalActual += (item.Actual || 0);
             });
 
-            // Standard LOB order
-            const lobOrder = ['GPPJ', 'GEN', 'GBS', 'MBR', 'HGJ', 'RANS', 'ABBOTT', 'GSJ'];
+            // Get LOB order based on salesman type
+            const salesmanType = salesmanInfo['Tipe Salesman'] || '';
+            const lobOrder = getLobOrderBySalesmanType(salesmanType);
+            
+            console.log(`🎯 Processing LOB for ${getSalesmanTypeCategory(salesmanType)} type: ${lobOrder}`);
 
-            // Add LOB items
+            // Add LOB items based on salesman type
             lobOrder.forEach(lob => {
                 if (lobMap[lob]) {
                     html += createPerformanceItemHTML(lob, lobMap[lob]);
                 }
             });
 
-            // Add total with gap calculation
-            const totalPercentage = totalTarget > 0 ? Math.round((totalActual / totalTarget) * 100) : 0;
-            const totalGap = Math.abs(totalActual - totalTarget);
-            
-            html += `
-                <div class="performance-item total">
-                    <div class="item-left">
-                        <div class="item-name">TOTAL</div>
-                        <div class="item-target">T/A: ${formatCurrencyIndonesia(totalTarget)} / ${formatCurrencyIndonesia(totalActual)} - Gap ${formatCurrencyIndonesia(totalGap)}</div>
-                    </div>
-                    <div class="progress-container">
-                        <div class="progress-bar">
-                            <div class="progress-fill ${getProgressColorClass(totalPercentage)}" style="width: ${Math.min(totalPercentage, 100)}%"></div>
+            // 🆕 ENHANCED: Add TOTAL from d.performance.json instead of calculation
+            const performanceData = getSalesmanPerformanceData(salesmanInfo.szEmployeeId);
+            if (performanceData) {
+                const totalActual = parseFloat(performanceData.Actual || 0);
+                const totalTarget = parseFloat(performanceData.Target || 0);
+                const totalPercentage = totalTarget > 0 ? Math.round((totalActual / totalTarget) * 100) : 0;
+                const totalGap = Math.abs(totalActual - totalTarget);
+                
+                html += `
+                    <div class="performance-item total">
+                        <div class="item-left">
+                            <div class="item-name">TOTAL</div>
+                            <div class="item-target">T/A: ${formatCurrencyIndonesia(totalTarget)} / ${formatCurrencyIndonesia(totalActual)} - Gap ${formatCurrencyIndonesia(totalGap)}</div>
                         </div>
-                        <div class="progress-percentage">${totalPercentage}%</div>
+                        <div class="progress-container">
+                            <div class="progress-bar">
+                                <div class="progress-fill ${getProgressColorClass(totalPercentage)}" style="width: ${Math.min(totalPercentage, 100)}%"></div>
+                            </div>
+                            <div class="progress-percentage">${totalPercentage}%</div>
+                        </div>
                     </div>
-                </div>
-            `;
+                `;
+                
+                console.log(`✅ Added TOTAL from d.performance.json: ${totalPercentage}%, Target: ${formatCurrencyIndonesia(totalTarget)}, Actual: ${formatCurrencyIndonesia(totalActual)}`);
+            } else {
+                console.log(`⚠️ No performance data found for szEmployeeId: ${salesmanInfo.szEmployeeId}`);
+            }
 
             performanceList.innerHTML = html;
         }
 
-        // ✅ UPDATE SUMMARY CARDS
-        function updateSummaryCards(lobData) {
+        // ✅ ENHANCED: UPDATE SUMMARY CARDS WITH SALESMAN TYPE SPECIFIC LOGIC
+        function updateSummaryCards(lobData, salesmanInfo) {
             const lobMap = {};
             lobData.forEach(item => {
                 lobMap[item.LOB] = item;
             });
 
-            // Calculate GPPJ + GEN
+            const salesmanType = salesmanInfo['Tipe Salesman'] || '';
+            const typeCategory = getSalesmanTypeCategory(salesmanType);
+            
+            console.log(`🎯 Updating summary cards for ${typeCategory} type`);
+
+            // Calculate GPPJ + GEN (or GPPJ Only for Bima)
             const gppjData = lobMap.GPPJ || { Actual: 0, Target: 0, Ach: 0 };
             const genData = lobMap.GEN || { Actual: 0, Target: 0, Ach: 0 };
             
-            const gppjGenTotal = {
-                actual: gppjData.Actual + genData.Actual,
-                target: gppjData.Target + genData.Target
-            };
-            const gppjGenPercentage = gppjGenTotal.target > 0 ? 
+            let gppjGenTotal, gppjGenPercentage, leftCardLabel;
+            
+            if (typeCategory === 'bima') {
+                // Sales Representative Retailer Bima: hanya GPPJ
+                gppjGenTotal = {
+                    actual: gppjData.Actual,
+                    target: gppjData.Target
+                };
+                leftCardLabel = 'GPPJ Only';
+            } else {
+                // Default dan Arjuna: GPPJ + GEN
+                gppjGenTotal = {
+                    actual: gppjData.Actual + genData.Actual,
+                    target: gppjData.Target + genData.Target
+                };
+                leftCardLabel = 'GPPJ + GEN';
+            }
+            
+            gppjGenPercentage = gppjGenTotal.target > 0 ? 
                 Math.round((gppjGenTotal.actual / gppjGenTotal.target) * 100) : 0;
 
             // Calculate GBS + Others
@@ -866,9 +945,29 @@
             const othersPercentage = othersTotal.target > 0 ? 
                 Math.round((othersTotal.actual / othersTotal.target) * 100) : 0;
 
-            // Update UI
+            // Update left card (GPPJ+GEN or GPPJ Only)
+            const leftCard = document.querySelector('.performance-card:first-child .card-label');
+            if (leftCard) {
+                leftCard.textContent = leftCardLabel;
+            }
             document.getElementById('gppjGenPercentage').textContent = `${gppjGenPercentage}%`;
+
+            // Update right card (GBS+OTHERS) with special styling for Arjuna
+            const rightCard = document.querySelector('.performance-card.secondary');
+            if (typeCategory === 'arjuna') {
+                // Sales Representative Retailer Arjuna: silver background
+                rightCard.classList.remove('secondary');
+                rightCard.classList.add('silver');
+                console.log(`✅ Applied silver styling for Arjuna type`);
+            } else {
+                // Kembalikan ke styling normal jika bukan Arjuna
+                rightCard.classList.remove('silver');
+                rightCard.classList.add('secondary');
+            }
+            
             document.getElementById('gbsOthersPercentage').textContent = `${othersPercentage}%`;
+            
+            console.log(`✅ Updated summary cards - Left: ${leftCardLabel} ${gppjGenPercentage}%, Right: GBS+OTHERS ${othersPercentage}%`);
         }
 
         // ✅ GET METRIC COLOR CLASS BASED ON ACHIEVEMENT
@@ -996,8 +1095,8 @@
 
                 // Update UI
                 updateSalesmanProfile(salesmanInfo);
-                updatePerformanceList(salesmanLob);
-                updateSummaryCards(salesmanLob);
+                updatePerformanceList(salesmanLob, salesmanInfo);
+                updateSummaryCards(salesmanLob, salesmanInfo);
                 updateCircularMetrics(salesmanProcess);
                 
                 showLoading(false);
@@ -1114,7 +1213,7 @@
             loadSalesmanData();
         });
 
-        console.log('✅ Enhanced salesman detail script loaded with photo, gap calculation, AR Coll metrics with color coding, and special SKU display');
+        console.log('✅ Enhanced salesman detail script loaded with salesman type specific LOB filtering, performance data integration, and custom summary cards');
     </script>
 </body>
 </html>
