@@ -187,6 +187,18 @@
             backdrop-filter: blur(10px);
         }
 
+        .profile-status {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.8);
+            background: rgba(255, 255, 255, 0.1);
+            padding: 4px 10px;
+            border-radius: 15px;
+            display: inline-block;
+            backdrop-filter: blur(10px);
+            margin-top: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
         /* Profile Details */
         .profile-details {
             background: rgba(255, 255, 255, 0.95);
@@ -383,6 +395,7 @@
                 <div class="profile-name" id="profileName">Loading...</div>
                 <div class="profile-title" id="profileTitle">Loading...</div>
                 <div class="profile-id" id="profileId">ID: Loading...</div>
+                <div class="profile-status" id="profileStatus" style="font-size: 13px; color: rgba(255, 255, 255, 0.8); background: rgba(255, 255, 255, 0.1); padding: 4px 10px; border-radius: 15px; display: inline-block; backdrop-filter: blur(10px); margin-top: 8px;">Loading...</div>
             </div>
 
             <!-- Profile Details -->
@@ -392,10 +405,10 @@
                 </div>
                 
                 <div class="detail-item">
-                    <div class="detail-icon">📱</div>
+                    <div class="detail-icon">👨‍💼</div>
                     <div class="detail-content">
-                        <div class="detail-label">Phone Number</div>
-                        <div class="detail-value" id="phoneNumber">Loading...</div>
+                        <div class="detail-label">Supervisor</div>
+                        <div class="detail-value" id="supervisor">Loading...</div>
                     </div>
                 </div>
                 
@@ -408,58 +421,26 @@
                 </div>
                 
                 <div class="detail-item">
-                    <div class="detail-icon">🏢</div>
+                    <div class="detail-icon">📱</div>
                     <div class="detail-content">
-                        <div class="detail-label">Position</div>
-                        <div class="detail-value" id="position">Loading...</div>
-                    </div>
-                </div>
-                
-                <div class="detail-item">
-                    <div class="detail-icon">👨‍💼</div>
-                    <div class="detail-content">
-                        <div class="detail-label">Supervisor</div>
-                        <div class="detail-value" id="supervisor">Loading...</div>
-                    </div>
-                </div>
-                
-                <div class="detail-item">
-                    <div class="detail-icon">🏆</div>
-                    <div class="detail-content">
-                        <div class="detail-label">Employee Status</div>
-                        <div class="detail-value" id="employeeStatus">Loading...</div>
+                        <div class="detail-label">Phone Number</div>
+                        <div class="detail-value" id="phoneNumber">Loading...</div>
                     </div>
                 </div>
                 
                 <div class="detail-item">
                     <div class="detail-icon">📅</div>
                     <div class="detail-content">
-                        <div class="detail-label">Join Date</div>
-                        <div class="detail-value" id="joinDate">Loading...</div>
-                    </div>
-                </div>
-                
-                <div class="detail-item">
-                    <div class="detail-icon">⏰</div>
-                    <div class="detail-content">
-                        <div class="detail-label">Work Experience</div>
-                        <div class="detail-value" id="workExperience">Loading...</div>
+                        <div class="detail-label">Join Date & Work Experience</div>
+                        <div class="detail-value" id="joinAndExperience">Loading...</div>
                     </div>
                 </div>
                 
                 <div class="detail-item">
                     <div class="detail-icon">🎂</div>
                     <div class="detail-content">
-                        <div class="detail-label">Date of Birth</div>
-                        <div class="detail-value" id="birthDate">Loading...</div>
-                    </div>
-                </div>
-                
-                <div class="detail-item">
-                    <div class="detail-icon">📍</div>
-                    <div class="detail-content">
-                        <div class="detail-label">Place of Birth</div>
-                        <div class="detail-value" id="birthPlace">Loading...</div>
+                        <div class="detail-label">Date & Place of Birth</div>
+                        <div class="detail-value" id="birthInfo">Loading...</div>
                     </div>
                 </div>
             </div>
@@ -625,26 +606,24 @@
             const name = profileInfo.szName || 'Unknown User';
             const position = profileInfo.Position_Name || 'Sales Representative';
             const employeeId = profileInfo.szEmployeeId || 'Unknown';
+            const status = profileInfo.Employee_Status || 'Active';
 
             document.getElementById('profileName').textContent = name;
             document.getElementById('profileTitle').textContent = position;
             document.getElementById('profileId').textContent = `ID: ${employeeId}`;
+            document.getElementById('profileStatus').textContent = status;
 
             // Personal information from d.profile.json fields
-            document.getElementById('phoneNumber').textContent = profileInfo.No_HP || 'Not Available';
-            document.getElementById('emailAddress').textContent = profileInfo.Email || 'Not Available';
-            document.getElementById('position').textContent = profileInfo.Position_Name || 'Not Available';
             document.getElementById('supervisor').textContent = profileInfo.Supervisor_Name || 'Not Available';
-            document.getElementById('employeeStatus').textContent = profileInfo.Employee_Status || 'Not Available';
+            document.getElementById('emailAddress').textContent = profileInfo.Email || 'Not Available';
+            document.getElementById('phoneNumber').textContent = profileInfo.No_HP || 'Not Available';
             
-            // Format join date from timestamp
+            // Combine Join Date and Work Experience
             const joinDate = formatTimestampToDate(profileInfo.Join_Group);
-            document.getElementById('joinDate').textContent = joinDate;
+            const workExperience = profileInfo.Masa_Kerja || 'Not Available';
+            document.getElementById('joinAndExperience').textContent = `${joinDate} • ${workExperience}`;
             
-            // Work experience from Masa_Kerja field
-            document.getElementById('workExperience').textContent = profileInfo.Masa_Kerja || 'Not Available';
-            
-            // Birth date - handle both timestamp and string format
+            // Combine Birth Date and Birth Place
             let birthDate = 'Not Available';
             if (profileInfo.Tgl_Lahir) {
                 if (typeof profileInfo.Tgl_Lahir === 'number') {
@@ -653,10 +632,8 @@
                     birthDate = profileInfo.Tgl_Lahir;
                 }
             }
-            document.getElementById('birthDate').textContent = birthDate;
-            
-            // Place of birth
-            document.getElementById('birthPlace').textContent = profileInfo.Tempat_Lahir || 'Not Available';
+            const birthPlace = profileInfo.Tempat_Lahir || 'Not Available';
+            document.getElementById('birthInfo').textContent = `${birthDate} • ${birthPlace}`;
 
             // Update photo
             updateProfilePhoto(profileInfo);
