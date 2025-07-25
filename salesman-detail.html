@@ -341,6 +341,66 @@
             margin-top: 2px;
         }
 
+        /* NEW: Additional Metrics Section */
+        .additional-metrics {
+            padding: 0 16px;
+            margin-bottom: 20px;
+        }
+
+        .metrics-section {
+            margin-bottom: 16px;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(55px, 1fr));
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 16px;
+            padding: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .metric-item {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 12px;
+            padding: 8px 4px;
+            text-align: center;
+            color: white;
+            transition: transform 0.2s ease;
+        }
+
+        .metric-item:hover {
+            transform: translateY(-2px);
+        }
+
+        .metric-label {
+            font-size: 8px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            opacity: 0.9;
+            line-height: 1.1;
+        }
+
+        .metric-value {
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 1.1;
+        }
+
+        /* Special styling for comparison metrics */
+        .metric-item.comparison {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+        }
+
+        .metric-item.gp-food {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+
+        .metric-item.gp-others {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+        }
+
         /* Bottom Metrics - Circular Progress */
         .bottom-metrics {
             padding: 0 16px;
@@ -577,6 +637,25 @@
                 font-size: 21px;
                 padding: 2px 5px;
             }
+
+            /* Additional metrics responsive */
+            .metrics-grid {
+                grid-template-columns: repeat(auto-fit, minmax(45px, 1fr));
+                gap: 6px;
+                padding: 10px;
+            }
+
+            .metric-item {
+                padding: 6px 3px;
+            }
+
+            .metric-label {
+                font-size: 7px;
+            }
+
+            .metric-value {
+                font-size: 9px;
+            }
         }
     </style>
 </head>
@@ -636,6 +715,32 @@
                 <div class="section-title">Sales Performance :</div>
                 <div class="performance-list" id="performanceList">
                     <!-- Will be populated dynamically -->
+                </div>
+            </div>
+
+            <!-- NEW: Additional Metrics Section -->
+            <div class="additional-metrics">
+                <div class="section-title">Process Metrics :</div>
+                
+                <!-- Row 1: Basic Metrics -->
+                <div class="metrics-section">
+                    <div class="metrics-grid" id="metricsRow1">
+                        <!-- A.CR, A.CA, A.PC, A.AC, A.EC, A.ET -->
+                    </div>
+                </div>
+
+                <!-- Row 2: Comparison Metrics -->
+                <div class="metrics-section">
+                    <div class="metrics-grid" id="metricsRow2">
+                        <!-- EC vs PC, EC vs AC, Ach_CAProdW, A.CAProdR, Ach_CAProdM -->
+                    </div>
+                </div>
+
+                <!-- Row 3: GP Metrics -->
+                <div class="metrics-section">
+                    <div class="metrics-grid" id="metricsRow3">
+                        <!-- A.GPFood, Ach_GPFood, A.GPOthers, Ach_GPOthers -->
+                    </div>
                 </div>
             </div>
 
@@ -731,6 +836,26 @@
                 } else { // < 1 Ribu
                     return `${val.toFixed(0)}`;
                 }
+            } catch {
+                return "0";
+            }
+        }
+
+        // ✅ FORMAT PERCENTAGE
+        function formatPercentage(value) {
+            try {
+                const val = parseFloat(value || 0);
+                return `${Math.round(val * 100)}%`;
+            } catch {
+                return "0%";
+            }
+        }
+
+        // ✅ FORMAT DECIMAL VALUE
+        function formatDecimal(value, decimals = 1) {
+            try {
+                const val = parseFloat(value || 0);
+                return val.toFixed(decimals);
             } catch {
                 return "0";
             }
@@ -1112,6 +1237,78 @@
             console.log(`✅ Updated summary cards - Left: ${leftCardLabel} ${gppjGenPercentage}% (${getAchievementColorClass(gppjGenPercentage, leftHasSpecialCase)}), Right: GBS+OTHERS ${othersPercentage}% (${typeCategory === 'arjuna' ? 'silver' : getAchievementColorClass(othersPercentage, rightHasSpecialCase)})`);
         }
 
+        // 🆕 NEW: UPDATE ADDITIONAL METRICS SECTION
+        function updateAdditionalMetrics(processData) {
+            if (!processData) {
+                console.log('⚠️ No process data available for additional metrics');
+                return;
+            }
+
+            console.log('🎯 Updating additional metrics:', processData);
+
+            // Row 1: Basic Metrics - A.CR, A.CA, A.PC, A.AC, A.EC, A.ET
+            const row1Metrics = [
+                { label: 'A.CR', value: formatDecimal(processData['A.CR']) },
+                { label: 'A.CA', value: formatDecimal(processData['A.CA']) },
+                { label: 'A.PC', value: formatDecimal(processData['A.PC']) },
+                { label: 'A.AC', value: formatDecimal(processData['A.AC']) },
+                { label: 'A.EC', value: formatDecimal(processData['A.EC']) },
+                { label: 'A.ET', value: formatDecimal(processData['A.ET']) }
+            ];
+
+            // Row 2: Comparison Metrics - EC vs PC, EC vs AC, Ach_CAProdW, A.CAProdR, Ach_CAProdM
+            const ecVsPc = processData['A.EC'] && processData['A.PC'] ? 
+                `${formatDecimal(processData['A.EC'])}/${formatDecimal(processData['A.PC'])}` : '0/0';
+            const ecVsAc = processData['A.EC'] && processData['A.AC'] ? 
+                `${formatDecimal(processData['A.EC'])}/${formatDecimal(processData['A.AC'])}` : '0/0';
+
+            const row2Metrics = [
+                { label: 'EC vs PC', value: ecVsPc, class: 'comparison' },
+                { label: 'EC vs AC', value: ecVsAc, class: 'comparison' },
+                { label: 'CA ProdW', value: formatPercentage(processData['Ach_CAProdW']) },
+                { label: 'CA ProdR', value: formatDecimal(processData['A.CAProdR']) },
+                { label: 'CA ProdM', value: formatPercentage(processData['Ach_CAProdM']) }
+            ];
+
+            // Row 3: GP Metrics - A.GPFood, Ach_GPFood, A.GPOthers, Ach_GPOthers
+            const row3Metrics = [
+                { label: 'A.GPFood', value: formatCurrencyIndonesia(processData['A.GPFood']), class: 'gp-food' },
+                { label: 'Ach GPFood', value: formatPercentage(processData['Ach_GPFood']), class: 'gp-food' },
+                { label: 'A.GPOthers', value: formatCurrencyIndonesia(processData['A.GPOthers']), class: 'gp-others' },
+                { label: 'Ach GPOthers', value: formatPercentage(processData['Ach_GPOthers']), class: 'gp-others' }
+            ];
+
+            // Update Row 1
+            updateMetricRow('metricsRow1', row1Metrics);
+            
+            // Update Row 2
+            updateMetricRow('metricsRow2', row2Metrics);
+            
+            // Update Row 3
+            updateMetricRow('metricsRow3', row3Metrics);
+
+            console.log('✅ Additional metrics updated successfully');
+        }
+
+        // 🆕 NEW: UPDATE METRIC ROW HELPER FUNCTION
+        function updateMetricRow(containerId, metrics) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            let html = '';
+            metrics.forEach(metric => {
+                const cssClass = metric.class ? `metric-item ${metric.class}` : 'metric-item';
+                html += `
+                    <div class="${cssClass}">
+                        <div class="metric-label">${metric.label}</div>
+                        <div class="metric-value">${metric.value}</div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
         // ✅ UPDATED: GET METRIC COLOR CLASS BASED ON NEW ACHIEVEMENT RANGES
         function getMetricColorClass(percentage) {
             if (percentage >= 100) return 'metric-high';    // Green >= 100%
@@ -1119,11 +1316,11 @@
             return 'metric-low';                            // Red < 90%
         }
 
-        // ✅ ENHANCED: UPDATE CIRCULAR METRICS WITH AR_COLL AND COLOR CODING + SKU SPECIAL FORMAT
+        // ✅ ENHANCED: UPDATE CIRCULAR METRICS WITH REVISED GP CALCULATION
         function updateCircularMetrics(processData) {
             if (!processData) return;
 
-            // Regular circular metrics (CA, CA Prod, GP, AR Coll)
+            // Regular circular metrics (CA, CA Prod, AR Coll)
             const circularMetrics = [
                 { 
                     id: 'caProgress', 
@@ -1134,14 +1331,34 @@
                     percentage: Math.round((processData.Ach_CAProdAll || 0) * 100)
                 },
                 { 
-                    id: 'gpProgress', 
-                    percentage: Math.round(((processData.Ach_GPFood || 0) + (processData.Ach_GPOthers || 0)) / 2 * 100)
-                },
-                { 
                     id: 'arCollProgress', 
                     percentage: Math.round((processData.Ach_ARColl || 0) * 100)
                 }
             ];
+
+            // 🆕 REVISED: GP Calculation using new formula (A.GPFood+A.GPOthers)/(T.GPFood+T.GPOthers)
+            let gpPercentage = 0;
+            const aGpFood = parseFloat(processData['A.GPFood'] || 0);
+            const aGpOthers = parseFloat(processData['A.GPOthers'] || 0);
+            const tGpFood = parseFloat(processData['T.GPFood'] || 0);
+            const tGpOthers = parseFloat(processData['T.GPOthers'] || 0);
+            
+            const totalActualGP = aGpFood + aGpOthers;
+            const totalTargetGP = tGpFood + tGpOthers;
+            
+            if (totalTargetGP > 0) {
+                gpPercentage = Math.round((totalActualGP / totalTargetGP) * 100);
+            } else if (totalActualGP > 0) {
+                // Special case: target=0 but actual>0 → 100%
+                gpPercentage = 100;
+            }
+            
+            circularMetrics.push({
+                id: 'gpProgress',
+                percentage: gpPercentage
+            });
+
+            console.log(`🎯 Revised GP calculation: (${aGpFood}+${aGpOthers})/(${tGpFood}+${tGpOthers}) = ${totalActualGP}/${totalTargetGP} = ${gpPercentage}%`);
 
             console.log('🎯 Updating circular metrics:', circularMetrics);
 
@@ -1239,6 +1456,7 @@
                 updateSalesmanProfile(salesmanInfo);
                 updatePerformanceList(salesmanLob, salesmanInfo);
                 updateSummaryCards(salesmanLob, salesmanInfo);
+                updateAdditionalMetrics(salesmanProcess); // 🆕 NEW: Update additional metrics
                 updateCircularMetrics(salesmanProcess);
                 
                 showLoading(false);
@@ -1358,11 +1576,11 @@
                 return;
             }
 
-            console.log('🚀 Initializing enhanced salesman detail page with target=0 logic...');
+            console.log('🚀 Initializing enhanced salesman detail page with additional metrics...');
             loadSalesmanData();
         });
 
-        console.log('✅ Enhanced salesman detail script loaded with target=0 → 100% green logic implemented');
+        console.log('✅ Enhanced salesman detail script loaded with additional metrics and revised GP calculation');
     </script>
 </body>
 </html>
