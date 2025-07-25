@@ -736,15 +736,45 @@
             }
         }
 
-        // ✅ UPDATED: GET PROGRESS COLOR CLASS BASED ON NEW RANGES
-        function getProgressColorClass(percentage) {
+        // ✅ ENHANCED: Calculate achievement percentage with special logic for target = 0
+        function calculateAchievementPercentage(target, actual) {
+            const targetValue = parseFloat(target || 0);
+            const actualValue = parseFloat(actual || 0);
+            
+            // 🆕 NEW LOGIC: If target is 0 but actual > 0, return 100%
+            if (targetValue === 0 && actualValue > 0) {
+                console.log(`🎯 Special case: Target=0, Actual=${actualValue} → Setting Ach to 100%`);
+                return 100;
+            }
+            
+            // Normal calculation: Ach = (Actual / Target) * 100
+            if (targetValue > 0) {
+                return Math.round((actualValue / targetValue) * 100);
+            }
+            
+            // Both target and actual are 0
+            return 0;
+        }
+
+        // ✅ ENHANCED: Get progress color class with special handling for target = 0
+        function getProgressColorClass(percentage, hasSpecialCase = false) {
+            // 🆕 If it's a special case (target=0, actual>0), always return green
+            if (hasSpecialCase) {
+                return 'high';
+            }
+            
             if (percentage >= 100) return 'high';      // Green >= 100%
             if (percentage >= 90) return 'medium';     // Orange 90-99.99%
             return 'low';                              // Red < 90%
         }
 
-        // ✅ UPDATED: GET ACHIEVEMENT COLOR CLASS FOR CARDS BASED ON NEW RANGES
-        function getAchievementColorClass(percentage) {
+        // ✅ ENHANCED: Get achievement color class with special handling for target = 0
+        function getAchievementColorClass(percentage, hasSpecialCase = false) {
+            // 🆕 If it's a special case (target=0, actual>0), always return green
+            if (hasSpecialCase) {
+                return 'achievement-high';
+            }
+            
             if (percentage >= 100) return 'achievement-high';      // Green >= 100%
             if (percentage >= 90) return 'achievement-medium';     // Orange 90-99.99%
             return 'achievement-low';                              // Red < 90%
@@ -869,11 +899,15 @@
             }
         }
 
-        // ✅ ENHANCED: CREATE PERFORMANCE ITEM HTML WITH IMPROVED GAP DISPLAY
+        // ✅ ENHANCED: CREATE PERFORMANCE ITEM HTML WITH TARGET=0 LOGIC
         function createPerformanceItemHTML(lobName, data) {
-            const percentage = Math.round((data.Ach || 0) * 100);
             const target = parseFloat(data.Target || 0);
             const actual = parseFloat(data.Actual || 0);
+            
+            // 🆕 ENHANCED: Use new achievement calculation logic
+            const percentage = calculateAchievementPercentage(target, actual);
+            const hasSpecialCase = target === 0 && actual > 0;
+            
             const gap = Math.abs(actual - target);
             
             const targetFormatted = formatCurrencyIndonesia(target);
@@ -885,7 +919,13 @@
             const gapText = isPositive ? `Gap (+) ${gapFormatted}` : `Gap (-) ${gapFormatted}`;
             const gapClass = isPositive ? 'gap-positive' : 'gap-negative';
             
-            const colorClass = getProgressColorClass(percentage);
+            // 🆕 ENHANCED: Use enhanced color class function
+            const colorClass = getProgressColorClass(percentage, hasSpecialCase);
+            
+            // 🆕 Log special case
+            if (hasSpecialCase) {
+                console.log(`🌟 Special case detected for ${lobName}: Target=0, Actual=${actual} → 100% (Green)`);
+            }
             
             return `
                 <div class="performance-item">
@@ -928,18 +968,30 @@
                 }
             });
 
-            // 🆕 ENHANCED: Add TOTAL from d.performance.json instead of calculation
+            // 🆕 ENHANCED: Add TOTAL from d.performance.json with target=0 logic
             const performanceData = getSalesmanPerformanceData(salesmanInfo.szEmployeeId);
             if (performanceData) {
                 const totalActual = parseFloat(performanceData.Actual || 0);
                 const totalTarget = parseFloat(performanceData.Target || 0);
-                const totalPercentage = totalTarget > 0 ? Math.round((totalActual / totalTarget) * 100) : 0;
+                
+                // 🆕 Use enhanced achievement calculation
+                const totalPercentage = calculateAchievementPercentage(totalTarget, totalActual);
+                const hasSpecialCase = totalTarget === 0 && totalActual > 0;
+                
                 const totalGap = Math.abs(totalActual - totalTarget);
                 
                 // Determine gap display and color for total
                 const isPositive = totalActual >= totalTarget;
                 const gapText = isPositive ? `Gap (+) ${formatCurrencyIndonesia(totalGap)}` : `Gap (-) ${formatCurrencyIndonesia(totalGap)}`;
                 const gapClass = isPositive ? 'gap-positive' : 'gap-negative';
+                
+                // 🆕 Use enhanced color class function
+                const totalColorClass = getProgressColorClass(totalPercentage, hasSpecialCase);
+                
+                // 🆕 Log special case for total
+                if (hasSpecialCase) {
+                    console.log(`🌟 Special case detected for TOTAL: Target=0, Actual=${totalActual} → 100% (Green)`);
+                }
                 
                 html += `
                     <div class="performance-item total">
@@ -950,7 +1002,7 @@
                         </div>
                         <div class="progress-container">
                             <div class="progress-bar">
-                                <div class="progress-fill ${getProgressColorClass(totalPercentage)}" style="width: ${Math.min(totalPercentage, 100)}%"></div>
+                                <div class="progress-fill ${totalColorClass}" style="width: ${Math.min(totalPercentage, 100)}%"></div>
                             </div>
                             <div class="progress-percentage">${totalPercentage}%</div>
                         </div>
@@ -965,7 +1017,7 @@
             performanceList.innerHTML = html;
         }
 
-        // ✅ ENHANCED: UPDATE SUMMARY CARDS WITH GRADIENT COLORS BASED ON ACHIEVEMENT
+        // ✅ ENHANCED: UPDATE SUMMARY CARDS WITH TARGET=0 LOGIC
         function updateSummaryCards(lobData, salesmanInfo) {
             const lobMap = {};
             lobData.forEach(item => {
@@ -981,7 +1033,7 @@
             const gppjData = lobMap.GPPJ || { Actual: 0, Target: 0, Ach: 0 };
             const genData = lobMap.GEN || { Actual: 0, Target: 0, Ach: 0 };
             
-            let gppjGenTotal, gppjGenPercentage, leftCardLabel;
+            let gppjGenTotal, gppjGenPercentage, leftCardLabel, leftHasSpecialCase;
             
             if (typeCategory === 'bima') {
                 // Sales Representative Retailer Bima: hanya GPPJ
@@ -999,8 +1051,9 @@
                 leftCardLabel = 'GPPJ + GEN';
             }
             
-            gppjGenPercentage = gppjGenTotal.target > 0 ? 
-                Math.round((gppjGenTotal.actual / gppjGenTotal.target) * 100) : 0;
+            // 🆕 Use enhanced calculation for left card
+            gppjGenPercentage = calculateAchievementPercentage(gppjGenTotal.target, gppjGenTotal.actual);
+            leftHasSpecialCase = gppjGenTotal.target === 0 && gppjGenTotal.actual > 0;
 
             // Calculate GBS + Others
             const gbsData = lobMap.GBS || { Actual: 0, Target: 0, Ach: 0 };
@@ -1012,8 +1065,10 @@
                 actual: gbsData.Actual + mbrData.Actual + hgjData.Actual + ransData.Actual,
                 target: gbsData.Target + mbrData.Target + hgjData.Target + ransData.Target
             };
-            const othersPercentage = othersTotal.target > 0 ? 
-                Math.round((othersTotal.actual / othersTotal.target) * 100) : 0;
+            
+            // 🆕 Use enhanced calculation for right card
+            const othersPercentage = calculateAchievementPercentage(othersTotal.target, othersTotal.actual);
+            const rightHasSpecialCase = othersTotal.target === 0 && othersTotal.actual > 0;
 
             // Update left card with achievement-based color
             const leftCard = document.getElementById('leftCard');
@@ -1024,9 +1079,14 @@
             
             // Remove existing achievement classes and add new one
             leftCard.classList.remove('achievement-low', 'achievement-medium', 'achievement-high', 'silver');
-            leftCard.classList.add(getAchievementColorClass(gppjGenPercentage));
+            leftCard.classList.add(getAchievementColorClass(gppjGenPercentage, leftHasSpecialCase));
             
             document.getElementById('gppjGenPercentage').textContent = `${gppjGenPercentage}%`;
+
+            // 🆕 Log special case for left card
+            if (leftHasSpecialCase) {
+                console.log(`🌟 Special case detected for ${leftCardLabel}: Target=0, Actual=${gppjGenTotal.actual} → 100% (Green)`);
+            }
 
             // Update right card with achievement-based color
             const rightCard = document.getElementById('rightCard');
@@ -1037,14 +1097,19 @@
                 rightCard.classList.add('silver');
                 console.log(`✅ Applied silver styling for Arjuna type`);
             } else {
-                // Apply achievement-based color for other types
+                // Apply achievement-based color for other types with target=0 logic
                 rightCard.classList.remove('achievement-low', 'achievement-medium', 'achievement-high', 'silver');
-                rightCard.classList.add(getAchievementColorClass(othersPercentage));
+                rightCard.classList.add(getAchievementColorClass(othersPercentage, rightHasSpecialCase));
+                
+                // 🆕 Log special case for right card
+                if (rightHasSpecialCase) {
+                    console.log(`🌟 Special case detected for GBS+OTHERS: Target=0, Actual=${othersTotal.actual} → 100% (Green)`);
+                }
             }
             
             document.getElementById('gbsOthersPercentage').textContent = `${othersPercentage}%`;
             
-            console.log(`✅ Updated summary cards - Left: ${leftCardLabel} ${gppjGenPercentage}% (${getAchievementColorClass(gppjGenPercentage)}), Right: GBS+OTHERS ${othersPercentage}% (${typeCategory === 'arjuna' ? 'silver' : getAchievementColorClass(othersPercentage)})`);
+            console.log(`✅ Updated summary cards - Left: ${leftCardLabel} ${gppjGenPercentage}% (${getAchievementColorClass(gppjGenPercentage, leftHasSpecialCase)}), Right: GBS+OTHERS ${othersPercentage}% (${typeCategory === 'arjuna' ? 'silver' : getAchievementColorClass(othersPercentage, rightHasSpecialCase)})`);
         }
 
         // ✅ UPDATED: GET METRIC COLOR CLASS BASED ON NEW ACHIEVEMENT RANGES
@@ -1293,11 +1358,11 @@
                 return;
             }
 
-            console.log('🚀 Initializing enhanced salesman detail page...');
+            console.log('🚀 Initializing enhanced salesman detail page with target=0 logic...');
             loadSalesmanData();
         });
 
-        console.log('✅ Enhanced salesman detail script loaded with improved gap display, achievement-based gradient colors, and removed settings menu');
+        console.log('✅ Enhanced salesman detail script loaded with target=0 → 100% green logic implemented');
     </script>
 </body>
 </html>
