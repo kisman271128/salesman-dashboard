@@ -1026,6 +1026,7 @@ class SalesmanDashboardUpdater:
                 'dashboard-desktop.html',
                 'salesman-desktop.html',
                 'salesman-detail.html',
+                'profile.html',
                 'morning_update.py',
                 'morning_update.log'
             ]

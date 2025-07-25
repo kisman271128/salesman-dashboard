@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile - Sales Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #2c3e50;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: transparent;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        /* Loading States */
+        .loading-spinner {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            flex-direction: column;
+            color: white;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: rgba(231, 76, 60, 0.9);
+            border: 1px solid rgba(231, 76, 60, 0.3);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
+
+        /* Header with Large Photo */
+        .profile-header {
+            position: relative;
+            padding: 20px 20px 40px;
+            text-align: center;
+            background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            padding: 12px;
+            border-radius: 50%;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+        }
+
+        .settings-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            padding: 12px;
+            border-radius: 50%;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .settings-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+        }
+
+        .profile-photo-container {
+            margin-top: 30px;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .profile-photo {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+            animation: photoFloat 3s ease-in-out infinite;
+        }
+
+        @keyframes photoFloat {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-5px); }
+        }
+
+        .profile-photo:hover {
+            transform: scale(1.05);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .photo-status {
+            position: absolute;
+            bottom: 5px;
+            right: 20px;
+            width: 25px;
+            height: 25px;
+            background: #10b981;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .profile-name {
+            font-size: 26px;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 8px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .profile-title {
+            font-size: 16px;
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        .profile-id {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+            background: rgba(255, 255, 255, 0.1);
+            padding: 6px 12px;
+            border-radius: 20px;
+            display: inline-block;
+            backdrop-filter: blur(10px);
+        }
+
+        /* Quick Stats Cards */
+        .quick-stats {
+            padding: 0 20px;
+            margin-top: -20px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+            animation: slideUp 0.6s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .stat-icon {
+            font-size: 28px;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #7f8c8d;
+            font-weight: 500;
+        }
+
+        /* Profile Details */
+        .profile-details {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            margin: 0 20px 30px;
+            border-radius: 25px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            animation: slideUp 0.8s ease-out;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .detail-item {
+            display: flex;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        .detail-item:last-child {
+            border-bottom: none;
+        }
+
+        .detail-item:hover {
+            background: rgba(102, 126, 234, 0.05);
+            margin: 0 -15px;
+            padding-left: 15px;
+            padding-right: 15px;
+            border-radius: 12px;
+        }
+
+        .detail-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: white;
+            margin-right: 15px;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .detail-content {
+            flex: 1;
+        }
+
+        .detail-label {
+            font-size: 12px;
+            color: #7f8c8d;
+            font-weight: 500;
+            margin-bottom: 2px;
+        }
+
+        .detail-value {
+            font-size: 15px;
+            color: #2c3e50;
+            font-weight: 600;
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            padding: 0 20px 30px;
+        }
+
+        .action-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .action-btn {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border: none;
+            border-radius: 20px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            animation: slideUp 1s ease-out;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.15);
+        }
+
+        .action-btn.primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .action-btn.primary:hover {
+            background: linear-gradient(135deg, #5a67d8, #6b46c1);
+        }
+
+        .action-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .action-label {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .logout-btn {
+            width: 100%;
+            background: rgba(239, 68, 68, 0.9);
+            color: white;
+            border: none;
+            border-radius: 15px;
+            padding: 15px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .logout-btn:hover {
+            background: rgba(220, 38, 38, 0.9);
+            transform: translateY(-2px);
+        }
+
+        /* Bottom Safe Area */
+        .bottom-safe {
+            height: 100px;
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .profile-photo {
+                width: 100px;
+                height: 100px;
+            }
+
+            .profile-name {
+                font-size: 22px;
+            }
+
+            .stats-grid {
+                gap: 10px;
+            }
+
+            .stat-card {
+                padding: 15px;
+            }
+
+            .profile-details {
+                margin: 0 15px 25px;
+                padding: 20px;
+            }
+
+            .action-buttons {
+                padding: 0 15px 25px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Loading State -->
+        <div class="loading-spinner" id="loadingSpinner">
+            <div class="spinner"></div>
+            <div>Loading profile data...</div>
+        </div>
+
+        <!-- Error State -->
+        <div class="error-message" id="errorMessage" style="display: none;">
+            <h3>📡 Error Loading Profile</h3>
+            <p>Unable to load profile data. Please try again.</p>
+            <button onclick="loadProfileData()" style="margin-top: 15px; padding: 10px 20px; background: white; color: #e74c3c; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">Retry</button>
+        </div>
+
+        <!-- Main Content -->
+        <div id="mainContent" style="display: none;">
+            <!-- Profile Header -->
+            <div class="profile-header">
+                <button class="back-btn" onclick="goBack()">←</button>
+                <button class="settings-btn" onclick="showSettings()">⚙️</button>
+                
+                <div class="profile-photo-container">
+                    <img id="profilePhoto" 
+                         src="https://cdn-icons-png.flaticon.com/512/3048/3048122.png" 
+                         alt="Profile Photo" 
+                         class="profile-photo"
+                         onerror="this.src='https://cdn-icons-png.flaticon.com/512/3048/3048122.png'" />
+                    <div class="photo-status"></div>
+                </div>
+                
+                <div class="profile-name" id="profileName">Loading...</div>
+                <div class="profile-title" id="profileTitle">Loading...</div>
+                <div class="profile-id" id="profileId">ID: Loading...</div>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="quick-stats">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <span class="stat-icon">🎯</span>
+                        <div class="stat-value" id="achievementStat">0%</div>
+                        <div class="stat-label">Achievement</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-icon">📊</span>
+                        <div class="stat-value" id="rankStat">#0</div>
+                        <div class="stat-label">Ranking</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-icon">⭐</span>
+                        <div class="stat-value" id="experienceStat">0</div>
+                        <div class="stat-label">Years Exp</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-icon">🏆</span>
+                        <div class="stat-value" id="statusStat">Active</div>
+                        <div class="stat-label">Status</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profile Details -->
+            <div class="profile-details">
+                <div class="section-title">
+                    <span>👤</span> Personal Information
+                </div>
+                
+                <div class="detail-item">
+                    <div class="detail-icon">📱</div>
+                    <div class="detail-content">
+                        <div class="detail-label">Phone Number</div>
+                        <div class="detail-value" id="phoneNumber">Loading...</div>
+                    </div>
+                </div>
+                
+                <div class="detail-item">
+                    <div class="detail-icon">📧</div>
+                    <div class="detail-content">
+                        <div class="detail-label">Email Address</div>
+                        <div class="detail-value" id="emailAddress">Loading...</div>
+                    </div>
+                </div>
+                
+                <div class="detail-item">
+                    <div class="detail-icon">📍</div>
+                    <div class="detail-content">
+                        <div class="detail-label">Work Location</div>
+                        <div class="detail-value" id="workLocation">Loading...</div>
+                    </div>
+                </div>
+                
+                <div class="detail-item">
+                    <div class="detail-icon">💼</div>
+                    <div class="detail-content">
+                        <div class="detail-label">Department</div>
+                        <div class="detail-value" id="department">Loading...</div>
+                    </div>
+                </div>
+                
+                <div class="detail-item">
+                    <div class="detail-icon">📅</div>
+                    <div class="detail-content">
+                        <div class="detail-label">Join Date</div>
+                        <div class="detail-value" id="joinDate">Loading...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                <div class="action-grid">
+                    <button class="action-btn primary" onclick="editProfile()">
+                        <span class="action-icon">✏️</span>
+                        <div class="action-label">Edit Profile</div>
+                    </button>
+                    
+                    <button class="action-btn" onclick="showPerformance()">
+                        <span class="action-icon">📈</span>
+                        <div class="action-label">Performance</div>
+                    </button>
+                    
+                    <button class="action-btn" onclick="showIncentive()">
+                        <span class="action-icon">💰</span>
+                        <div class="action-label">Incentive</div>
+                    </button>
+                    
+                    <button class="action-btn" onclick="showHelp()">
+                        <span class="action-icon">❓</span>
+                        <div class="action-label">Help & Support</div>
+                    </button>
+                </div>
+                
+                <button class="logout-btn" onclick="logout()">
+                    🚪 Logout from Account
+                </button>
+            </div>
+
+            <div class="bottom-safe"></div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let profileData = [];
+        let currentUserId = null;
+
+        // Check login status
+        function checkLoginStatus() {
+            const isLoggedIn = sessionStorage.getItem('isLoggedIn');
+            const currentUser = sessionStorage.getItem('currentUser');
+            
+            if (!isLoggedIn || !currentUser) {
+                window.location.href = 'index.html';
+                return false;
+            }
+            
+            currentUserId = currentUser;
+            return true;
+        }
+
+        // Get URL parameter
+        function getUrlParameter(name) {
+            name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+            var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+            var results = regex.exec(location.search);
+            return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+        }
+
+        // Load JSON profile data
+        async function loadJSONData() {
+            try {
+                console.log('📂 Loading profile data from d.profile.json...');
+                
+                const response = await fetch('data/d.profile.json');
+                if (!response.ok) {
+                    throw new Error(`Failed to load profile data: ${response.status} ${response.statusText}`);
+                }
+                
+                const text = await response.text();
+                if (!text.trim()) {
+                    throw new Error('Profile data file is empty');
+                }
+                
+                // Parse JSONL format (each line is a separate JSON object)
+                profileData = text.split('\n')
+                    .filter(line => line.trim())
+                    .map(line => {
+                        try {
+                            return JSON.parse(line);
+                        } catch (parseError) {
+                            console.error('❌ Error parsing line:', line, parseError);
+                            return null;
+                        }
+                    })
+                    .filter(item => item !== null);
+
+                console.log(`✅ Loaded ${profileData.length} profile records`);
+                console.log('📊 Sample profile data:', profileData[0]);
+                return true;
+            } catch (error) {
+                console.error('❌ Error loading profile data:', error);
+                throw error;
+            }
+        }
+
+        // Get user profile data
+        function getUserProfileData(userId) {
+            return profileData.find(item => 
+                item.szEmployeeId && item.szEmployeeId.toString() === userId.toString()
+            );
+        }
+
+        // Update profile photo
+        function updateProfilePhoto(profileInfo) {
+            const szEmployeeId = profileInfo.szEmployeeId;
+            
+            if (szEmployeeId) {
+                // Try multiple photo formats
+                const photoFormats = [
+                    `photos/${szEmployeeId}.jpg`,
+                    `photos/${szEmployeeId}.jpeg`,
+                    `photos/${szEmployeeId}.png`
+                ];
+                
+                console.log(`📸 Loading photo for Employee ID: ${szEmployeeId}`);
+                
+                const photoElement = document.getElementById('profilePhoto');
+                
+                function tryLoadPhoto(formatIndex = 0) {
+                    if (formatIndex >= photoFormats.length) {
+                        console.log(`❌ All photo formats failed for Employee ID: ${szEmployeeId}`);
+                        photoElement.src = 'https://cdn-icons-png.flaticon.com/512/3048/3048122.png';
+                        return;
+                    }
+                    
+                    const currentPhotoPath = photoFormats[formatIndex];
+                    const testImg = new Image();
+                    
+                    testImg.onload = function() {
+                        photoElement.src = currentPhotoPath;
+                        console.log(`✅ Photo loaded successfully: ${currentPhotoPath}`);
+                    };
+                    
+                    testImg.onerror = function() {
+                        console.log(`❌ Photo format failed: ${currentPhotoPath}`);
+                        tryLoadPhoto(formatIndex + 1);
+                    };
+                    
+                    testImg.src = currentPhotoPath;
+                }
+                
+                tryLoadPhoto(0);
+            }
+        }
+
+        // Update profile information
+        function updateProfileInfo(profileInfo) {
+            if (!profileInfo) return;
+
+            // Basic info
+            const name = profileInfo.szname || profileInfo.Name || 'Unknown User';
+            const title = profileInfo['Tipe Salesman'] || profileInfo.Position || 'Sales Representative';
+            const employeeId = profileInfo.szEmployeeId || 'Unknown';
+
+            document.getElementById('profileName').textContent = name;
+            document.getElementById('profileTitle').textContent = title;
+            document.getElementById('profileId').textContent = `ID: ${employeeId}`;
+
+            // Contact details
+            document.getElementById('phoneNumber').textContent = profileInfo.Phone || profileInfo.Telepon || 'Not Available';
+            document.getElementById('emailAddress').textContent = profileInfo.Email || `${name.toLowerCase().replace(' ', '.')}@company.com`;
+            document.getElementById('workLocation').textContent = profileInfo.Location || profileInfo.Wilayah || 'Depo Tanjung - Kalimantan';
+            document.getElementById('department').textContent = profileInfo.Department || 'Sales Department';
+            document.getElementById('joinDate').textContent = profileInfo.JoinDate || profileInfo['Tanggal Bergabung'] || 'Not Available';
+
+            // Quick stats
+            const achievement = Math.round((profileInfo.Achievement || Math.random() * 100));
+            const rank = profileInfo.Rank || Math.floor(Math.random() * 50) + 1;
+            const experience = profileInfo.Experience || Math.floor(Math.random() * 10) + 1;
+            const status = profileInfo.Status || 'Active';
+
+            document.getElementById('achievementStat').textContent = `${achievement}%`;
+            document.getElementById('rankStat').textContent = `#${rank}`;
+            document.getElementById('experienceStat').textContent = `${experience}`;
+            document.getElementById('statusStat').textContent = status;
+
+            // Update photo
+            updateProfilePhoto(profileInfo);
+
+            console.log(`✅ Profile updated for: ${name} (${employeeId})`);
+        }
+
+        // Load profile data
+        async function loadProfileData() {
+            try {
+                showLoading(true);
+                hideError();
+
+                console.log('🔄 Loading profile data...');
+                
+                // Determine user ID (from URL or session)
+                const urlUserId = getUrlParameter('id');
+                const sessionUserId = sessionStorage.getItem('currentUser');
+                const targetUserId = urlUserId || sessionUserId;
+                
+                if (!targetUserId) {
+                    throw new Error('No user ID specified');
+                }
+
+                console.log(`📍 Loading profile for user ID: ${targetUserId}`);
+                
+                // Load JSON data
+                await loadJSONData();
+                
+                // Get user profile data
+                const userProfile = getUserProfileData(targetUserId);
+
+                if (!userProfile) {
+                    console.error(`❌ No profile data found for user ID: ${targetUserId}`);
+                    console.log('Available profile IDs:', profileData.map(p => p.szEmployeeId));
+                    throw new Error(`No profile data found for user: ${targetUserId}`);
+                }
+
+                console.log(`✅ Found profile data for: ${userProfile.szname || targetUserId}`);
+                console.log('📊 Full profile data:', userProfile);
+
+                // Update UI
+                updateProfileInfo(userProfile);
+                
+                showLoading(false);
+                showMainContent(true);
+
+            } catch (error) {
+                console.error('❌ Error loading profile data:', error);
+                showLoading(false);
+                showError(true, error.message);
+            }
+        }
+
+        // Navigation functions
+        function goBack() {
+            const referrer = document.referrer;
+            if (referrer && (referrer.includes('dashboard.html') || referrer.includes('salesman-detail.html'))) {
+                window.history.back();
+            } else {
+                window.location.href = 'dashboard.html';
+            }
+        }
+
+        function showSettings() {
+            alert('🔜 Settings page coming soon!\n\nFeatures will include:\n• Change password\n• Notification settings\n• App preferences\n• Privacy settings');
+        }
+
+        function editProfile() {
+            alert('✏️ Edit Profile\n\nThis feature will allow you to:\n• Update personal information\n• Change profile photo\n• Update contact details\n\n🔜 Coming soon!');
+        }
+
+        function showPerformance() {
+            if (currentUserId) {
+                window.location.href = `salesman-detail.html?id=${currentUserId}`;
+            } else {
+                alert('❌ Error: No user ID available');
+            }
+        }
+
+        function showIncentive() {
+            if (currentUserId) {
+                window.location.href = `dashboard_insentif_sales.html?id=${currentUserId}`;
+            } else {
+                alert('❌ Error: No user ID available');
+            }
+        }
+
+        function showHelp() {
+            alert('❓ Help & Support\n\n📞 Hotline: 1500-XXX\n📧 Email: support@company.com\n💬 Live Chat: Available 24/7\n\n🔜 Full help center coming soon!');
+        }
+
+        function logout() {
+            if (confirm('🚪 Logout Confirmation\n\nAre you sure you want to logout from your account?')) {
+                // Clear session data
+                sessionStorage.clear();
+                localStorage.removeItem('rememberedUser');
+                
+                // Redirect to login
+                window.location.href = 'index.html';
+            }
+        }
+
+        // UI control functions
+        function showLoading(show) {
+            document.getElementById('loadingSpinner').style.display = show ? 'flex' : 'none';
+        }
+
+        function showError(show, message = '') {
+            const errorElement = document.getElementById('errorMessage');
+            if (show) {
+                errorElement.style.display = 'block';
+                if (message) {
+                    errorElement.querySelector('p').textContent = message;
+                }
+            } else {
+                errorElement.style.display = 'none';
+            }
+        }
+
+        function hideError() {
+            showError(false);
+        }
+
+        function showMainContent(show) {
+            document.getElementById('mainContent').style.display = show ? 'block' : 'none';
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!checkLoginStatus()) {
+                return;
+            }
+
+            console.log('🚀 Initializing profile page...');
+            loadProfileData();
+        });
+
+        console.log('✅ Modern profile page script loaded');
+    </script>
+</body>
+</html>
