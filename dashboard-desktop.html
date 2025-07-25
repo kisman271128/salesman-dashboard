@@ -394,27 +394,12 @@
             --indicator-color: #059669;
         }
 
-        .indicator-green .metric-status {
-            background: rgba(5, 150, 105, 0.1);
-            color: #059669;
-        }
-
         .indicator-yellow {
             --indicator-color: #f59e0b;
         }
 
-        .indicator-yellow .metric-status {
-            background: rgba(245, 158, 11, 0.1);
-            color: #d97706;
-        }
-
         .indicator-red {
             --indicator-color: #ef4444;
-        }
-
-        .indicator-red .metric-status {
-            background: rgba(239, 68, 68, 0.1);
-            color: #dc2626;
         }
 
         /* ✅ MAIN DASHBOARD GRID - Modified for map */
@@ -1022,6 +1007,16 @@
             text-align: center;
         }
 
+        .no-data-message {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            color: #d97706;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 20px 0;
+        }
+
         /* ✅ SCROLLBAR STYLING */
         .lob-grid::-webkit-scrollbar,
         .salesman-table-container::-webkit-scrollbar {
@@ -1235,7 +1230,7 @@
 <!-- Error State -->
 <div class="error-message" id="errorMessage" style="display: none;">
 <h3>📡 Kesalahan Memuat Data</h3>
-<p>Tidak dapat memuat data dashboard. Silakan periksa koneksi Anda.</p>
+<p>Tidak dapat memuat data dari folder \data\. Silakan periksa ketersediaan file JSON.</p>
 <button class="refresh-btn" onclick="loadDashboardData()" style="margin-top: 12px;">Coba Lagi</button>
 </div>
 <!-- Main Dashboard Content -->
@@ -1325,13 +1320,13 @@
 </div>
 </div>
 </div>
+
 <script>
         // Global variables
         let dashboardData = null;
         let salesmanData = null;
         let chartData = null;
         let areaData = null;
-        let geoJsonData = null;
         let depoData = null;
         let currentMapMetric = 'achievement';
         let svgMap = null;
@@ -1370,7 +1365,7 @@
             return value || "0%";
         }
 
-        // ✅ NEW: Get achievement indicator
+        // ✅ Get achievement indicator
         function getAchievementIndicator(achievement) {
             const percentage = achievement * 100;
             if (percentage >= 100) {
@@ -1461,120 +1456,61 @@
             window.location.href = `dashboard_insentif_sales_desktop.html?id=${salesmanId}`;
         }
 
-        // ✅ LOAD DASHBOARD DATA - Enhanced with fallback data
+        // ✅ LOAD DASHBOARD DATA - Real data only from \data\ folder
         async function loadDashboardData() {
             try {
                 showLoading(true);
                 hideError();
 
-                console.log('🔄 Loading dashboard data...');
+                console.log('🔄 Loading dashboard data from \\data\\ folder...');
                 
-                // Try to load data files
-                let dataLoadSuccess = true;
-                
-                try {
-                    const responses = await Promise.all([
-                        fetch('data/dashboard.json'),
-                        fetch('data/salesman_list.json'),
-                        fetch('data/chart_data.json'),
-                        fetch('data/d.area.json'),
-                        fetch('data/kecamatan.geojson'),
-                        fetch('data/d.depoproses.json')
-                    ]);
+                // Load real data from files
+                const responses = await Promise.all([
+                    fetch('data/dashboard.json'),
+                    fetch('data/salesman_list.json'),
+                    fetch('data/chart_data.json'),
+                    fetch('data/d.area.json'),
+                    fetch('data/d.depoproses.json')
+                ]);
 
-                    // Check if any request failed
-                    const failedRequests = responses.filter(response => !response.ok);
-                    if (failedRequests.length > 0) {
-                        console.warn(`❌ ${failedRequests.length} data files failed to load`);
-                        dataLoadSuccess = false;
-                    }
-
-                    if (dataLoadSuccess) {
-                        // Load actual data
-                        try {
-                            dashboardData = await responses[0].json();
-                        } catch (error) {
-                            console.warn('⚠️ Error loading dashboard.json:', error);
-                            dashboardData = createFallbackDashboardData();
-                        }
-
-                        try {
-                            salesmanData = await responses[1].json();
-                        } catch (error) {
-                            console.warn('⚠️ Error loading salesman_list.json:', error);
-                            salesmanData = createFallbackSalesmanData();
-                        }
-
-                        try {
-                            chartData = await responses[2].json();
-                        } catch (error) {
-                            console.warn('⚠️ Error loading chart_data.json:', error);
-                            chartData = {};
-                        }
-
-                        // Load area data (it's in JSONL format) with validation
-                        try {
-                            const areaText = await responses[3].text();
-                            if (areaText && areaText.trim()) {
-                                areaData = areaText.trim().split('\n').map(line => JSON.parse(line));
-                                console.log('✅ Area data loaded:', areaData.length, 'records');
-                            } else {
-                                console.warn('⚠️ Area data file is empty');
-                                areaData = createFallbackAreaData();
-                            }
-                        } catch (error) {
-                            console.warn('⚠️ Error loading area data:', error);
-                            areaData = createFallbackAreaData();
-                        }
-
-                        // Load GeoJSON data with validation
-                        try {
-                            const geoJsonResponse = await responses[4];
-                            geoJsonData = await geoJsonResponse.json();
-                            
-                            if (!geoJsonData || !geoJsonData.features || !Array.isArray(geoJsonData.features)) {
-                                console.warn('⚠️ Invalid GeoJSON structure, using fallback');
-                                geoJsonData = createFallbackGeoJsonData();
-                            }
-                            console.log('✅ GeoJSON data loaded:', geoJsonData.features?.length || 0, 'features');
-                        } catch (error) {
-                            console.warn('⚠️ Error loading GeoJSON:', error);
-                            geoJsonData = createFallbackGeoJsonData();
-                        }
-
-                        // Load depot process data
-                        try {
-                            depoData = await responses[5].json();
-                            console.log('✅ Depot data loaded:', depoData);
-                        } catch (error) {
-                            console.warn('⚠️ Error loading depot data:', error);
-                            depoData = createFallbackDepoData();
-                        }
-                    }
-                } catch (networkError) {
-                    console.warn('⚠️ Network error, using fallback data:', networkError);
-                    dataLoadSuccess = false;
+                // Check if any request failed
+                const failedRequests = responses.filter(response => !response.ok);
+                if (failedRequests.length > 0) {
+                    throw new Error(`Failed to load ${failedRequests.length} data files from \\data\\ folder`);
                 }
 
-                // Use fallback data if loading failed
-                if (!dataLoadSuccess) {
-                    console.log('📦 Using fallback demo data...');
-                    dashboardData = createFallbackDashboardData();
-                    salesmanData = createFallbackSalesmanData();
-                    chartData = {};
-                    areaData = createFallbackAreaData();
-                    geoJsonData = createFallbackGeoJsonData();
-                    depoData = createFallbackDepoData();
+                // Load dashboard data
+                dashboardData = await responses[0].json();
+                console.log('✅ Dashboard data loaded:', dashboardData);
+
+                // Load salesman data
+                salesmanData = await responses[1].json();
+                console.log('✅ Salesman data loaded:', salesmanData.length, 'records');
+
+                // Load chart data
+                chartData = await responses[2].json();
+                console.log('✅ Chart data loaded');
+
+                // Load area data (JSONL format)
+                const areaText = await responses[3].text();
+                if (areaText && areaText.trim()) {
+                    areaData = areaText.trim().split('\n').map(line => JSON.parse(line));
+                    console.log('✅ Area data loaded:', areaData.length, 'records');
+                } else {
+                    throw new Error('Area data file is empty');
                 }
 
-                console.log('✅ Dashboard data loaded');
+                // Load depot process data
+                depoData = await responses[4].json();
+                console.log('✅ Depot process data loaded:', depoData);
 
+                // Update UI with real data
                 updateHeader(dashboardData);
                 updateAchievementMetrics(depoData);
                 updateLOBCards(dashboardData.lob_cards);
                 updateSalesmanTable(salesmanData);
                 
-                // Initialize and render SVG map
+                // Initialize and render map
                 initializeSVGMap();
                 renderSVGMap();
 
@@ -1588,157 +1524,7 @@
             }
         }
 
-        // ✅ FALLBACK DATA FUNCTIONS
-        function createFallbackDashboardData() {
-            return {
-                depo_name: "Demo Dashboard",
-                region_name: "Area Demonstrasi - Data Dummy",
-                lob_cards: [
-                    {
-                        name: "FOOD",
-                        achievement: "85.2%",
-                        actual: "425M",
-                        target: "500M",
-                        gap: "-75M",
-                        vs_lm: "+12.5%",
-                        vs_3lm: "+8.3%",
-                        vs_ly: "+15.2%"
-                    },
-                    {
-                        name: "HOME & PERSONAL CARE",
-                        achievement: "78.9%",
-                        actual: "315M",
-                        target: "400M",
-                        gap: "-85M",
-                        vs_lm: "-5.2%",
-                        vs_3lm: "+3.1%",
-                        vs_ly: "+9.8%"
-                    },
-                    {
-                        name: "BEAUTY & WELLNESS",
-                        achievement: "92.1%",
-                        actual: "184M",
-                        target: "200M",
-                        gap: "-16M",
-                        vs_lm: "+18.7%",
-                        vs_3lm: "+25.4%",
-                        vs_ly: "+32.1%"
-                    }
-                ],
-                total_data: {
-                    name: "TOTAL",
-                    achievement: "82.4%",
-                    actual: "924M",
-                    target: "1.1B",
-                    gap: "-176M",
-                    vs_lm: "+8.9%",
-                    vs_3lm: "+12.3%",
-                    vs_ly: "+18.7%"
-                }
-            };
-        }
-
-        function createFallbackSalesmanData() {
-            return [
-                { rank: 1, id: "S001", name: "Ahmad Wijaya", type: "Senior Sales", achievement: "125.8%", status: "Excellent" },
-                { rank: 2, id: "S002", name: "Siti Rahayu", type: "Sales Executive", achievement: "118.3%", status: "Excellent" },
-                { rank: 3, id: "S003", name: "Budi Santoso", type: "Sales Rep", achievement: "112.7%", status: "Very Good" },
-                { rank: 4, id: "S004", name: "Maya Sari", type: "Sales Executive", achievement: "108.4%", status: "Very Good" },
-                { rank: 5, id: "S005", name: "Rizki Pratama", type: "Sales Rep", achievement: "95.2%", status: "Good" }
-            ];
-        }
-
-        function createFallbackAreaData() {
-            return [
-                { 
-                    Kabupaten: "Kabupaten Demo", 
-                    Kecamatan: "Kecamatan A", 
-                    Latitude: -2.25, 
-                    Longitude: 115.4, 
-                    Ach: 0.85, 
-                    Actual: 125000000, 
-                    Target: 147000000, 
-                    Gap: -22000000,
-                    "vs LY": 0.12,
-                    "vs LM": 0.08,
-                    "vs 3LM": 0.15
-                },
-                { 
-                    Kabupaten: "Kabupaten Demo", 
-                    Kecamatan: "Kecamatan B", 
-                    Latitude: -2.35, 
-                    Longitude: 115.5, 
-                    Ach: 0.92, 
-                    Actual: 98000000, 
-                    Target: 106500000, 
-                    Gap: -8500000,
-                    "vs LY": 0.18,
-                    "vs LM": 0.22,
-                    "vs 3LM": 0.09
-                },
-                { 
-                    Kabupaten: "Kabupaten Demo", 
-                    Kecamatan: "Kecamatan C", 
-                    Latitude: -2.15, 
-                    Longitude: 115.6, 
-                    Ach: 0.78, 
-                    Actual: 87000000, 
-                    Target: 111500000, 
-                    Gap: -24500000,
-                    "vs LY": -0.05,
-                    "vs LM": -0.12,
-                    "vs 3LM": 0.03
-                }
-            ];
-        }
-
-        function createFallbackGeoJsonData() {
-            return {
-                type: "FeatureCollection",
-                features: [
-                    {
-                        type: "Feature",
-                        properties: { WADMKC: "Kecamatan A", WADMKK: "Kabupaten Demo" },
-                        geometry: {
-                            type: "Polygon",
-                            coordinates: [[[106.0, -6.0], [106.5, -6.0], [106.5, -5.5], [106.0, -5.5], [106.0, -6.0]]]
-                        }
-                    },
-                    {
-                        type: "Feature", 
-                        properties: { WADMKC: "Kecamatan B", WADMKK: "Kabupaten Demo" },
-                        geometry: {
-                            type: "Polygon",
-                            coordinates: [[[106.5, -6.0], [107.0, -6.0], [107.0, -5.5], [106.5, -5.5], [106.5, -6.0]]]
-                        }
-                    },
-                    {
-                        type: "Feature",
-                        properties: { WADMKC: "Kecamatan C", WADMKK: "Kabupaten Demo" },
-                        geometry: {
-                            type: "Polygon", 
-                            coordinates: [[[106.0, -5.5], [106.5, -5.5], [106.5, -5.0], [106.0, -5.0], [106.0, -5.5]]]
-                        }
-                    }
-                ]
-            };
-        }
-
-        function createFallbackDepoData() {
-            return {
-                Ach_CR: 0.89,
-                Ach_CA: 0.94,
-                Ach_PC: 0.87,
-                Ach_AC: 0.91,
-                Ach_EC: 0.83,
-                Ach_AvgSKU: 0.96,
-                Ach_CAProdAll: 0.88,
-                Ach_GPFood: 0.85,
-                Ach_GPOthers: 0.79
-            };
-        }
-
-        // ✅ UPDATE HEADER - Enhanced with real data mode indicator
+        // ✅ UPDATE HEADER
         function updateHeader(data) {
             document.getElementById('depoName').textContent = data.depo_name || 'Dashboard';
             const regionElement = document.getElementById('regionName');
@@ -1747,18 +1533,16 @@
             // Check if we have real area data
             const hasRealData = areaData && 
                                Array.isArray(areaData) && 
-                               areaData.length > 3 &&
+                               areaData.length > 1 &&
                                areaData[0].Latitude && 
                                areaData[0].Longitude;
             
             if (hasRealData) {
-                // Add real data indicator
+                const validLocations = areaData.filter(loc => 
+                    loc.Kecamatan !== 'DEPO TANJUNG' && loc.Latitude && loc.Longitude
+                );
                 regionElement.style.color = '#059669';
-                regionElement.textContent += ` 📍 (${areaData.length - 1} Lokasi)`;
-            } else if (data.region_name && data.region_name.includes('Demo')) {
-                // Add demo mode indicator if using fallback data
-                regionElement.style.color = '#f59e0b';
-                regionElement.textContent += ' 🧪';
+                regionElement.textContent += ` 📍 (${validLocations.length} Lokasi)`;
             }
         }
 
@@ -1766,76 +1550,32 @@
         function updateAchievementMetrics(data) {
             const metricsRow = document.getElementById('metricsRow');
             
-            console.log('🔍 updateAchievementMetrics called with data:', data);
-            
             if (!data || typeof data !== 'object') {
-                console.error('❌ Depot data is not available or invalid:', data);
+                console.error('❌ Depot data is not available:', data);
                 metricsRow.innerHTML = `
-                    <div class="metric-card indicator-red">
-                        <div class="metric-header">
-                            <div class="metric-title">Error</div>
-                            <div class="metric-indicator">🔴</div>
-                        </div>
-                        <div class="metric-value">N/A</div>
-                        <div class="metric-status">Data achievement tidak tersedia</div>
+                    <div class="no-data-message" style="grid-column: span 9;">
+                        <h3>📊 Data Achievement Tidak Tersedia</h3>
+                        <p>File d.depoproses.json tidak dapat dimuat atau kosong.</p>
                     </div>
                 `;
                 return;
             }
             
             const achievementMetrics = [
-                {
-                    key: 'Ach_CR',
-                    title: 'Customer Register',
-                    shortTitle: 'CR'
-                },
-                {
-                    key: 'Ach_CA',
-                    title: 'Customer Active',
-                    shortTitle: 'CA'
-                },
-                {
-                    key: 'Ach_PC',
-                    title: 'Plan Call',
-                    shortTitle: 'PC'
-                },
-                {
-                    key: 'Ach_AC',
-                    title: 'Actual Call',
-                    shortTitle: 'AC'
-                },
-                {
-                    key: 'Ach_EC',
-                    title: 'Effective Call',
-                    shortTitle: 'EC'
-                },
-                {
-                    key: 'Ach_AvgSKU',
-                    title: 'Average SKU',
-                    shortTitle: 'Avg SKU'
-                },
-                {
-                    key: 'Ach_CAProdAll',
-                    title: 'CA Prod',
-                    shortTitle: 'CA Prod'
-                },
-                {
-                    key: 'Ach_GPFood',
-                    title: 'GP Food',
-                    shortTitle: 'GP Food'
-                },
-                {
-                    key: 'Ach_GPOthers',
-                    title: 'GP Others',
-                    shortTitle: 'GP Others'
-                }
+                { key: 'Ach_CR', title: 'Customer Register', shortTitle: 'CR' },
+                { key: 'Ach_CA', title: 'Customer Active', shortTitle: 'CA' },
+                { key: 'Ach_PC', title: 'Plan Call', shortTitle: 'PC' },
+                { key: 'Ach_AC', title: 'Actual Call', shortTitle: 'AC' },
+                { key: 'Ach_EC', title: 'Effective Call', shortTitle: 'EC' },
+                { key: 'Ach_AvgSKU', title: 'Average SKU', shortTitle: 'Avg SKU' },
+                { key: 'Ach_CAProdAll', title: 'CA Prod', shortTitle: 'CA Prod' },
+                { key: 'Ach_GPFood', title: 'GP Food', shortTitle: 'GP Food' },
+                { key: 'Ach_GPOthers', title: 'GP Others', shortTitle: 'GP Others' }
             ];
 
             let cardsHTML = '';
             
             achievementMetrics.forEach((metric, index) => {
-                console.log(`🔍 Processing metric: ${metric.key}, value: ${data[metric.key]}`);
-                
                 const achievement = data[metric.key] || 0;
                 const indicator = getAchievementIndicator(achievement);
                 const percentage = (achievement * 100).toFixed(1);
@@ -1858,28 +1598,31 @@
         // ✅ UPDATE LOB CARDS
         function updateLOBCards(lobCards) {
             const lobGrid = document.getElementById('lobGrid');
+            
+            if (!lobCards || !Array.isArray(lobCards)) {
+                lobGrid.innerHTML = `
+                    <div class="no-data-message">
+                        <h3>📊 Data LOB Tidak Tersedia</h3>
+                        <p>File dashboard.json tidak dapat dimuat atau tidak memiliki data lob_cards.</p>
+                    </div>
+                `;
+                return;
+            }
+
             lobGrid.innerHTML = '';
 
-            const totalCard = dashboardData.total_data || {
-                name: "TOTAL",
-                achievement: "0%",
-                actual: "0",
-                target: "0",
-                gap: "0",
-                vs_lm: "0%",
-                vs_3lm: "0%",
-                vs_ly: "0%"
-            };
-
-            const totalCardElement = createLOBCard(totalCard, 'total', true);
-            lobGrid.appendChild(totalCardElement);
+            const totalCard = dashboardData.total_data;
+            if (totalCard) {
+                const totalCardElement = createLOBCard(totalCard, 'total', true);
+                lobGrid.appendChild(totalCardElement);
+            }
 
             lobCards.forEach((lob, index) => {
                 const card = createLOBCard(lob, index);
                 lobGrid.appendChild(card);
             });
 
-            console.log('✅ Generated', lobCards.length + 1, 'LOB cards (including Total from dashboard.json)');
+            console.log('✅ Generated', lobCards.length + (totalCard ? 1 : 0), 'LOB cards');
         }
 
         // ✅ CREATE LOB CARD
@@ -1931,14 +1674,10 @@
                 </div>
             `;
 
-            card.addEventListener('click', () => {
-                console.log(`Diklik pada LOB ${lob.name}`);
-            });
-
             return card;
         }
 
-        // ✅ INITIALIZE SVG MAP - Enhanced with clean container setup
+        // ✅ INITIALIZE SVG MAP
         function initializeSVGMap() {
             svgMap = document.getElementById('svgMap');
             tooltip = document.getElementById('mapTooltip');
@@ -1948,7 +1687,6 @@
             if (mapContainer) {
                 mapContainer.style.background = '#ffffff';
                 mapContainer.style.backgroundImage = 'none';
-                mapContainer.style.backgroundPattern = 'none';
             }
             
             // Clean SVG element
@@ -1964,164 +1702,63 @@
                     document.querySelectorAll('.map-control-btn').forEach(b => b.classList.remove('active'));
                     e.target.classList.add('active');
                     
-                    const oldMetric = currentMapMetric;
                     currentMapMetric = e.target.getAttribute('data-metric');
+                    console.log(`🗺️ Map metric changed to ${currentMapMetric}`);
                     
-                    console.log(`🗺️ Map metric changed from ${oldMetric} to ${currentMapMetric}`);
-                    
-                    // Update map based on current map type
                     updateMapColors();
                     updateMapLegend();
                 });
             });
 
-            console.log('✅ SVG Map initialized with clean background');
+            console.log('✅ SVG Map initialized');
         }
 
-        // ✅ UPDATE MAP COLORS - New function to update colors without re-rendering
+        // ✅ UPDATE MAP COLORS
         function updateMapColors() {
-            // Check if we have coordinate-based map (circles)
             const locationMarkers = svgMap.querySelectorAll('.location-marker');
             
             if (locationMarkers.length > 0) {
-                console.log(`🎨 Updating colors for ${locationMarkers.length} location markers`);
-                updateCoordinateMapColors(locationMarkers);
-                return;
-            }
-            
-            // Check if we have demo regions
-            const demoRegions = svgMap.querySelectorAll('.demo-region');
-            
-            if (demoRegions.length > 0) {
-                console.log('🎨 Updating demo region colors');
-                updateDemoRegionColors();
-                return;
-            }
-            
-            // For GeoJSON-based maps, re-render completely
-            console.log('🎨 Re-rendering GeoJSON map for metric change');
-            renderSVGMap();
-        }
-
-        // ✅ UPDATE COORDINATE MAP COLORS - New function for real coordinate data
-        function updateCoordinateMapColors(locationMarkers) {
-            locationMarkers.forEach(marker => {
-                try {
-                    const achievement = parseFloat(marker.getAttribute('data-achievement'));
-                    const newColor = getAchievementColor(achievement);
-                    marker.setAttribute('fill', newColor);
-                } catch (error) {
-                    console.warn('Error updating marker color:', error);
-                }
-            });
-        }
-
-        // ✅ UPDATE DEMO REGION COLORS based on current metric
-        function updateDemoRegionColors() {
-            const demoRegions = svgMap.querySelectorAll('.demo-region');
-            
-            // Demo data for different metrics
-            const demoMetricData = {
-                achievement: {
-                    'A': { value: 0.921, color: '#059669' }, // Excellent
-                    'B': { value: 0.789, color: '#f59e0b' }, // Good  
-                    'C': { value: 0.852, color: '#059669' }  // Excellent
-                },
-                actual: {
-                    'A': { value: 98000000, color: '#667eea' },
-                    'B': { value: 87000000, color: '#667eea' },
-                    'C': { value: 125000000, color: '#667eea' }
-                },
-                gap: {
-                    'A': { value: -8500000, color: '#ef4444' },   // Deficit
-                    'B': { value: -24500000, color: '#ef4444' },  // Deficit
-                    'C': { value: -22000000, color: '#ef4444' }   // Deficit
-                }
-            };
-            
-            const currentData = demoMetricData[currentMapMetric] || demoMetricData.achievement;
-            
-            demoRegions.forEach(region => {
-                const regionId = region.getAttribute('data-region');
-                const data = currentData[regionId];
-                
-                if (data) {
-                    region.setAttribute('fill', data.color);
-                }
-            });
-            
-            // Update text labels based on metric
-            const labels = svgMap.querySelectorAll('text');
-            labels.forEach(label => {
-                const textContent = label.textContent;
-                if (textContent.includes('%') && currentMapMetric === 'achievement') {
-                    // Keep achievement percentages
-                } else if (textContent.includes('%') && currentMapMetric !== 'achievement') {
-                    // Update to show values for other metrics
-                    if (textContent.includes('92.1%')) {
-                        label.textContent = currentMapMetric === 'actual' ? '98Jt' : '-8.5Jt';
-                    } else if (textContent.includes('78.9%')) {
-                        label.textContent = currentMapMetric === 'actual' ? '87Jt' : '-24.5Jt';
-                    } else if (textContent.includes('85.2%')) {
-                        label.textContent = currentMapMetric === 'actual' ? '125Jt' : '-22Jt';
+                locationMarkers.forEach(marker => {
+                    try {
+                        const achievement = parseFloat(marker.getAttribute('data-achievement'));
+                        const newColor = getAchievementColor(achievement);
+                        marker.setAttribute('fill', newColor);
+                    } catch (error) {
+                        console.warn('Error updating marker color:', error);
                     }
-                } else if (!textContent.includes('%') && !textContent.includes('Jt') && currentMapMetric === 'achievement') {
-                    // Restore to achievement percentages
-                    if (textContent.includes('98Jt') || textContent.includes('-8.5Jt')) {
-                        label.textContent = '92.1%';
-                    } else if (textContent.includes('87Jt') || textContent.includes('-24.5Jt')) {
-                        label.textContent = '78.9%';
-                    } else if (textContent.includes('125Jt') || textContent.includes('-22Jt')) {
-                        label.textContent = '85.2%';
-                    }
-                }
-            });
+                });
+            }
         }
 
-        // ✅ RENDER SVG MAP - Enhanced to use real coordinate data from d.area.json
+        // ✅ RENDER SVG MAP - Using d.area.json data only
         function renderSVGMap() {
             if (!svgMap) {
                 console.warn('⚠️ SVG map element not found');
                 return;
             }
             
-            // Check if we have real area data with coordinates
-            const hasRealAreaData = areaData && 
-                                   Array.isArray(areaData) && 
-                                   areaData.length > 0 &&
-                                   areaData[0].Latitude && 
-                                   areaData[0].Longitude;
+            // Check if we have area data with coordinates
+            const hasAreaData = areaData && 
+                               Array.isArray(areaData) && 
+                               areaData.length > 0 &&
+                               areaData[0].Latitude && 
+                               areaData[0].Longitude;
             
-            if (hasRealAreaData) {
-                console.log('🗺️ Rendering real coordinate-based map with', areaData.length, 'locations');
-                renderRealCoordinateMap();
+            if (!hasAreaData) {
+                console.warn('⚠️ No area data available from d.area.json');
+                showNoMapData();
                 return;
             }
             
-            // Check if we have valid GeoJSON data as fallback
-            const hasValidGeoJson = geoJsonData && 
-                                   geoJsonData.features && 
-                                   Array.isArray(geoJsonData.features) && 
-                                   geoJsonData.features.length > 0;
-            
-            if (hasValidGeoJson) {
-                console.log('🗺️ Rendering GeoJSON-based map...');
-                renderGeoJsonMap();
-                return;
-            }
-
-            // Use demo map as last resort
-            console.log('⚠️ No real data available, showing demo map');
-            showFallbackMap();
+            console.log('🗺️ Rendering coordinate-based map with', areaData.length, 'locations');
+            renderCoordinateMap();
         }
 
-        // ✅ RENDER REAL COORDINATE MAP - Enhanced with clean background
-        function renderRealCoordinateMap() {
+        // ✅ RENDER COORDINATE MAP from d.area.json
+        function renderCoordinateMap() {
             try {
-                // Completely clear and reset SVG
+                // Clear SVG
                 svgMap.innerHTML = '';
-                svgMap.style.background = 'none';
-                svgMap.style.backgroundImage = 'none';
                 
                 // Filter out Grand Total and invalid data
                 const validLocations = areaData.filter(location => 
@@ -2134,7 +1771,7 @@
                 
                 if (validLocations.length === 0) {
                     console.warn('⚠️ No valid coordinate data found');
-                    showFallbackMap();
+                    showNoMapData();
                     return;
                 }
                 
@@ -2149,8 +1786,6 @@
                 const minLng = Math.min(...longitudes);
                 const maxLng = Math.max(...longitudes);
                 
-                console.log(`🗺️ Coordinate bounds: Lat(${minLat.toFixed(3)}, ${maxLat.toFixed(3)}), Lng(${minLng.toFixed(3)}, ${maxLng.toFixed(3)})`);
-                
                 // Add padding to bounds
                 const latPadding = (maxLat - minLat) * 0.1;
                 const lngPadding = (maxLng - minLng) * 0.1;
@@ -2160,52 +1795,19 @@
                 const viewMinLat = minLat - latPadding;
                 const viewMaxLat = maxLat + latPadding;
                 
-                // Note: SVG coordinate system has Y increasing downward, but latitude increases upward
-                // So we need to flip the Y coordinate: (maxLat - lat)
                 const svgWidth = viewMaxLng - viewMinLng;
                 const svgHeight = viewMaxLat - viewMinLat;
                 
                 svgMap.setAttribute('viewBox', `${viewMinLng} ${viewMinLat} ${svgWidth} ${svgHeight}`);
                 
-                // Add clean, simple background - no patterns
+                // Add background
                 const background = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
                 background.setAttribute('x', viewMinLng);
                 background.setAttribute('y', viewMinLat);
                 background.setAttribute('width', svgWidth);
                 background.setAttribute('height', svgHeight);
                 background.setAttribute('fill', '#ffffff');
-                background.setAttribute('stroke', 'none');
                 svgMap.appendChild(background);
-                
-                // Add subtle grid lines for reference (optional)
-                const gridGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-                gridGroup.setAttribute('opacity', '0.1');
-                
-                // Vertical grid lines
-                for (let lng = Math.ceil(minLng * 10) / 10; lng <= maxLng; lng += 0.1) {
-                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                    line.setAttribute('x1', lng);
-                    line.setAttribute('y1', viewMinLat);
-                    line.setAttribute('x2', lng);
-                    line.setAttribute('y2', viewMaxLat);
-                    line.setAttribute('stroke', '#64748b');
-                    line.setAttribute('stroke-width', '0.002');
-                    gridGroup.appendChild(line);
-                }
-                
-                // Horizontal grid lines  
-                for (let lat = Math.ceil(minLat * 10) / 10; lat <= maxLat; lat += 0.1) {
-                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                    line.setAttribute('x1', viewMinLng);
-                    line.setAttribute('y1', lat);
-                    line.setAttribute('x2', viewMaxLng);
-                    line.setAttribute('y2', lat);
-                    line.setAttribute('stroke', '#64748b');
-                    line.setAttribute('stroke-width', '0.002');
-                    gridGroup.appendChild(line);
-                }
-                
-                svgMap.appendChild(gridGroup);
                 
                 // Create circles for each location
                 validLocations.forEach((location, index) => {
@@ -2215,7 +1817,7 @@
                     }
                 });
                 
-                // Add simple title
+                // Add title
                 const title = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                 title.setAttribute('x', minLng + (maxLng - minLng) / 2);
                 title.setAttribute('y', maxLat - latPadding / 3);
@@ -2230,36 +1832,32 @@
                 // Update legend
                 updateMapLegend();
                 
-                console.log('✅ Clean coordinate map rendered successfully');
+                console.log('✅ Coordinate map rendered successfully');
                 
             } catch (error) {
                 console.error('❌ Error rendering coordinate map:', error);
-                showFallbackMap();
+                showNoMapData();
             }
         }
 
-        // ✅ CREATE LOCATION CIRCLE - New function for coordinate-based markers
+        // ✅ CREATE LOCATION CIRCLE
         function createLocationCircle(location, index) {
             try {
                 const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
                 
-                // Position (note: Y coordinate flipped for SVG)
                 circle.setAttribute('cx', location.Longitude);
                 circle.setAttribute('cy', location.Latitude);
-                circle.setAttribute('r', '0.03'); // Circle radius
+                circle.setAttribute('r', '0.03');
                 
-                // Styling based on achievement
                 const achievement = location.Ach;
                 const fillColor = getAchievementColor(achievement);
-                const strokeColor = '#1e3a8a';
                 
                 circle.setAttribute('fill', fillColor);
-                circle.setAttribute('stroke', strokeColor);
+                circle.setAttribute('stroke', '#1e3a8a');
                 circle.setAttribute('stroke-width', '0.005');
                 circle.setAttribute('opacity', '0.8');
                 circle.setAttribute('class', 'map-region location-marker');
                 
-                // Store location data
                 circle.setAttribute('data-kecamatan', location.Kecamatan);
                 circle.setAttribute('data-kabupaten', location.Kabupaten);
                 circle.setAttribute('data-achievement', achievement);
@@ -2281,10 +1879,6 @@
                     hideTooltip();
                 });
                 
-                circle.addEventListener('click', () => {
-                    handleLocationClick(location);
-                });
-                
                 return circle;
                 
             } catch (error) {
@@ -2293,33 +1887,28 @@
             }
         }
 
-        // ✅ GET ACHIEVEMENT COLOR - Enhanced for real achievement data
+        // ✅ GET ACHIEVEMENT COLOR
         function getAchievementColor(achievement) {
             if (!achievement || typeof achievement !== 'number') {
-                return '#e2e8f0'; // No data
-            }
-            
-            try {
-                if (currentMapMetric === 'achievement') {
-                    const ach = achievement * 100;
-                    if (ach >= 80) return '#059669';      // Green - Excellent
-                    else if (ach >= 60) return '#f59e0b'; // Yellow - Good
-                    else if (ach >= 40) return '#fb7185'; // Pink - Fair
-                    else return '#ef4444';                // Red - Poor
-                } else if (currentMapMetric === 'actual') {
-                    return '#667eea'; // Blue for actual sales
-                } else if (currentMapMetric === 'gap') {
-                    return achievement >= 0.8 ? '#059669' : '#ef4444'; // Green if good achievement, red if poor
-                }
-                
-                return '#667eea'; // Default blue
-            } catch (error) {
-                console.warn('Error determining achievement color:', error);
                 return '#e2e8f0';
             }
+            
+            if (currentMapMetric === 'achievement') {
+                const ach = achievement * 100;
+                if (ach >= 80) return '#059669';
+                else if (ach >= 60) return '#f59e0b';
+                else if (ach >= 40) return '#fb7185';
+                else return '#ef4444';
+            } else if (currentMapMetric === 'actual') {
+                return '#667eea';
+            } else if (currentMapMetric === 'gap') {
+                return achievement >= 0.8 ? '#059669' : '#ef4444';
+            }
+            
+            return '#667eea';
         }
 
-        // ✅ HANDLE LOCATION HOVER - New function for coordinate-based markers
+        // ✅ HANDLE LOCATION HOVER
         function handleLocationHover(event, location) {
             try {
                 const tooltipHeaderElement = document.getElementById('tooltipHeader');
@@ -2362,10 +1951,6 @@
                             <span class="tooltip-metric-label">Achievement:</span>
                             <span class="tooltip-metric-value">${formatPercentage(location.Ach)}</span>
                         </div>
-                        <div class="tooltip-metric">
-                            <span class="tooltip-metric-label">vs LY:</span>
-                            <span class="tooltip-metric-value ${location['vs LY'] >= 0 ? 'positive' : 'negative'}">${formatPercentage(location['vs LY'])}</span>
-                        </div>
                     `;
                 } else if (currentMapMetric === 'gap') {
                     tooltipContent = `
@@ -2380,10 +1965,6 @@
                         <div class="tooltip-metric">
                             <span class="tooltip-metric-label">Target:</span>
                             <span class="tooltip-metric-value">${formatCurrency(location.Target)}</span>
-                        </div>
-                        <div class="tooltip-metric">
-                            <span class="tooltip-metric-label">Achievement:</span>
-                            <span class="tooltip-metric-value">${formatPercentage(location.Ach)}</span>
                         </div>
                     `;
                 }
@@ -2400,591 +1981,25 @@
             }
         }
 
-        // ✅ HANDLE LOCATION CLICK - New function for coordinate-based markers
-        function handleLocationClick(location) {
-            console.log(`🗺️ Clicked location: ${location.Kecamatan}, ${location.Kabupaten}`);
-            console.log('📊 Location data:', {
-                achievement: formatPercentage(location.Ach),
-                actual: formatCurrency(location.Actual),
-                target: formatCurrency(location.Target),
-                gap: formatCurrency(location.Gap)
-            });
-        }
-
-        // ✅ RENDER GEOJSON MAP - Separated original GeoJSON rendering logic
-        function renderGeoJsonMap() {
-            try {
-                console.log('🗺️ Rendering GeoJSON-based map...');
-                
-                // Clear existing paths
-                svgMap.innerHTML = '';
-
-                // Create data lookup map
-                const dataLookup = {};
-                if (areaData && Array.isArray(areaData) && areaData.length > 0) {
-                    areaData.forEach(area => {
-                        if (area && area.Kecamatan && area.Kabupaten && 
-                            typeof area.Kecamatan === 'string' && typeof area.Kabupaten === 'string') {
-                            const key = `${area.Kecamatan.toLowerCase()}_${area.Kabupaten.toLowerCase()}`;
-                            dataLookup[key] = area;
-                        }
-                    });
-                }
-
-                // Calculate bounds for viewBox
-                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-                let validFeatureCount = 0;
-                
-                geoJsonData.features.forEach(feature => {
-                    try {
-                        if (feature.geometry && feature.geometry.coordinates) {
-                            const coords = feature.geometry.coordinates;
-                            const flatCoords = flattenCoordinates(coords);
-                            
-                            if (flatCoords.length > 0) {
-                                flatCoords.forEach(([x, y]) => {
-                                    if (typeof x === 'number' && typeof y === 'number' && isFinite(x) && isFinite(y)) {
-                                        minX = Math.min(minX, x);
-                                        minY = Math.min(minY, y);
-                                        maxX = Math.max(maxX, x);
-                                        maxY = Math.max(maxY, y);
-                                        validFeatureCount++;
-                                    }
-                                });
-                            }
-                        }
-                    } catch (error) {
-                        console.warn('Error processing feature for bounds:', error);
-                    }
-                });
-
-                // Check if we have valid bounds
-                if (validFeatureCount === 0 || !isFinite(minX) || !isFinite(minY) || !isFinite(maxX) || !isFinite(maxY)) {
-                    console.warn('⚠️ No valid coordinates found in GeoJSON data, using demo map');
-                    showFallbackMap();
-                    return;
-                }
-
-                // Set viewBox with padding
-                const padding = 0.1;
-                const width = maxX - minX;
-                const height = maxY - minY;
-                const paddingX = width * padding;
-                const paddingY = height * padding;
-                
-                if (width > 0 && height > 0) {
-                    svgMap.setAttribute('viewBox', 
-                        `${minX - paddingX} ${minY - paddingY} ${width + 2 * paddingX} ${height + 2 * paddingY}`
-                    );
-                } else {
-                    console.warn('⚠️ Invalid map dimensions, using demo map');
-                    showFallbackMap();
-                    return;
-                }
-
-                // Render each feature
-                let renderedCount = 0;
-                geoJsonData.features.forEach((feature, index) => {
-                    try {
-                        const path = createSVGPath(feature, dataLookup, index);
-                        if (path) {
-                            svgMap.appendChild(path);
-                            renderedCount++;
-                        }
-                    } catch (error) {
-                        console.warn(`Error rendering feature ${index}:`, error);
-                    }
-                });
-
-                if (renderedCount === 0) {
-                    console.warn('⚠️ No regions could be rendered, using demo map');
-                    showFallbackMap();
-                    return;
-                }
-
-                // Update legend
-                updateMapLegend();
-                
-                console.log(`✅ GeoJSON Map rendered with ${renderedCount} valid regions out of ${geoJsonData.features.length} total features`);
-                
-            } catch (error) {
-                console.error('❌ Error rendering GeoJSON map:', error);
-                showFallbackMap();
-            }
-        }
-
-        // ✅ SHOW FALLBACK MAP - Enhanced with interactive demo regions
-        function showFallbackMap() {
+        // ✅ SHOW NO MAP DATA MESSAGE
+        function showNoMapData() {
             if (!svgMap) return;
             
-            console.log('🗺️ Showing enhanced fallback map with demo regions...');
-            
-            // Create a functional demo map with 3 interactive regions
             svgMap.innerHTML = `
-                <!-- Background -->
-                <rect x="0" y="0" width="800" height="600" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
-                
-                <!-- Demo Region A (Excellent Achievement) -->
-                <rect x="150" y="150" width="150" height="120" fill="#059669" stroke="#1e3a8a" stroke-width="2" 
-                      class="map-region demo-region" data-region="A" rx="8" opacity="0.8"/>
-                
-                <!-- Demo Region B (Good Achievement) -->
-                <rect x="350" y="180" width="180" height="140" fill="#f59e0b" stroke="#1e3a8a" stroke-width="2" 
-                      class="map-region demo-region" data-region="B" rx="8" opacity="0.8"/>
-                
-                <!-- Demo Region C (Fair Achievement) -->
-                <rect x="200" y="350" width="160" height="130" fill="#fb7185" stroke="#1e3a8a" stroke-width="2" 
-                      class="map-region demo-region" data-region="C" rx="8" opacity="0.8"/>
-                
-                <!-- Region Labels -->
-                <text x="225" y="215" text-anchor="middle" fill="white" font-family="Inter, sans-serif" font-size="14" font-weight="600">
-                    Kecamatan A
+                <rect x="0" y="0" width="800" height="600" fill="#f8fafc"/>
+                <text x="400" y="280" text-anchor="middle" fill="#d97706" font-family="Inter, sans-serif" font-size="24" font-weight="600">
+                    📊 Data Peta Tidak Tersedia
                 </text>
-                <text x="225" y="235" text-anchor="middle" fill="white" font-family="Inter, sans-serif" font-size="11">
-                    92.1%
-                </text>
-                
-                <text x="440" y="255" text-anchor="middle" fill="white" font-family="Inter, sans-serif" font-size="14" font-weight="600">
-                    Kecamatan B
-                </text>
-                <text x="440" y="275" text-anchor="middle" fill="white" font-family="Inter, sans-serif" font-size="11">
-                    78.9%
-                </text>
-                
-                <text x="280" y="420" text-anchor="middle" fill="white" font-family="Inter, sans-serif" font-size="14" font-weight="600">
-                    Kecamatan C
-                </text>
-                <text x="280" y="440" text-anchor="middle" fill="white" font-family="Inter, sans-serif" font-size="11">
-                    85.2%
-                </text>
-                
-                <!-- Demo indicator -->
-                <text x="400" y="550" text-anchor="middle" fill="#f59e0b" font-family="Inter, sans-serif" font-size="12" font-weight="500">
-                    🧪 Mode Demo - Data Ilustrasi
+                <text x="400" y="320" text-anchor="middle" fill="#64748b" font-family="Inter, sans-serif" font-size="16">
+                    File d.area.json tidak dapat dimuat atau tidak memiliki koordinat.
                 </text>
             `;
             
             svgMap.setAttribute('viewBox', '0 0 800 600');
-            
-            // Add interactive functionality to demo regions
-            addDemoRegionInteractivity();
-            
-            // Update legend for demo mode
-            updateMapLegend();
-            
-            console.log('✅ Enhanced fallback map with demo regions displayed');
+            console.log('⚠️ Showing no map data message');
         }
 
-        // ✅ ADD DEMO REGION INTERACTIVITY - Enhanced with dynamic data
-        function addDemoRegionInteractivity() {
-            const demoRegions = svgMap.querySelectorAll('.demo-region');
-            
-            if (demoRegions.length === 0) {
-                console.warn('⚠️ No demo regions found for interactivity');
-                return;
-            }
-            
-            demoRegions.forEach(region => {
-                const regionId = region.getAttribute('data-region');
-                
-                if (!regionId) return;
-                
-                // Add hover effects
-                region.addEventListener('mouseenter', (e) => {
-                    region.style.opacity = '1';
-                    region.style.transform = 'scale(1.02)';
-                    region.style.transformOrigin = 'center';
-                    
-                    showDemoTooltipForRegion(e, regionId);
-                });
-                
-                region.addEventListener('mousemove', (e) => {
-                    updateTooltipPosition(e);
-                });
-                
-                region.addEventListener('mouseleave', () => {
-                    region.style.opacity = '0.8';
-                    region.style.transform = 'scale(1)';
-                    hideTooltip();
-                });
-                
-                region.addEventListener('click', () => {
-                    const regionName = getRegionNameById(regionId);
-                    console.log(`🗺️ Clicked demo region: ${regionName}`);
-                    alert(`Demo Region: ${regionName}\nMetrik: ${currentMapMetric}\nData ini hanya untuk demonstrasi.`);
-                });
-            });
-            
-            console.log(`✅ Added interactivity to ${demoRegions.length} demo regions`);
-        }
-
-        // ✅ SHOW DEMO TOOLTIP FOR REGION - Dynamic based on current metric
-        function showDemoTooltipForRegion(event, regionId) {
-            try {
-                // Get current data for the region based on active metric
-                const regionData = getDemoDataForRegion(regionId, currentMapMetric);
-                
-                if (!regionData) {
-                    console.warn(`No demo data found for region ${regionId}`);
-                    return;
-                }
-                
-                const tooltipHeaderElement = document.getElementById('tooltipHeader');
-                if (tooltipHeaderElement) {
-                    tooltipHeaderElement.textContent = `${regionData.name}, ${regionData.kabupaten}`;
-                }
-                
-                let tooltipContent = '';
-                
-                if (currentMapMetric === 'achievement') {
-                    tooltipContent = `
-                        <div class="tooltip-metric">
-                            <span class="tooltip-metric-label">Achievement:</span>
-                            <span class="tooltip-metric-value">${formatPercentage(regionData.ach)}</span>
-                        </div>
-                        <div class="tooltip-metric">
-                            <span class="tooltip-metric-label">Actual:</span>
-                            <span class="tooltip-metric-value">${formatCurrency(regionData.actual)}</span>
-                        </div>
-                        <div class="tooltip-metric">
-                            <span class="tooltip-metric-label">Target:</span>
-                            <span class="tooltip-metric-value">${formatCurrency(regionData.target)}</span>
-                        </div>
-                    `;
-                } else if (currentMapMetric === 'actual') {
-                    tooltipContent = `
-                        <div class="tooltip-metric">
-                            <span class="tooltip-metric-label">Actual Sales:</span>
-                            <span class="tooltip-metric-value">${formatCurrency(regionData.actual)}</span>
-                        </div>
-                        <div class="tooltip-metric">
-                            <span class="tooltip-metric-label">Target:</span>
-                            <span class="tooltip-metric-value">${formatCurrency(regionData.target)}</span>
-                        </div>
-                        <div class="tooltip-metric">
-                            <span class="tooltip-metric-label">Achievement:</span>
-                            <span class="tooltip-metric-value">${formatPercentage(regionData.ach)}</span>
-                        </div>
-                    `;
-                } else if (currentMapMetric === 'gap') {
-                    const gap = regionData.actual - regionData.target;
-                    tooltipContent = `
-                        <div class="tooltip-metric">
-                            <span class="tooltip-metric-label">Gap:</span>
-                            <span class="tooltip-metric-value ${gap >= 0 ? 'positive' : 'negative'}">${formatCurrency(gap)}</span>
-                        </div>
-                        <div class="tooltip-metric">
-                            <span class="tooltip-metric-label">Actual:</span>
-                            <span class="tooltip-metric-value">${formatCurrency(regionData.actual)}</span>
-                        </div>
-                        <div class="tooltip-metric">
-                            <span class="tooltip-metric-label">Target:</span>
-                            <span class="tooltip-metric-value">${formatCurrency(regionData.target)}</span>
-                        </div>
-                    `;
-                }
-                
-                tooltipContent += `
-                    <div class="tooltip-metric" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #f1f5f9;">
-                        <span class="tooltip-metric-label" style="color: #f59e0b;">Mode:</span>
-                        <span class="tooltip-metric-value" style="color: #f59e0b;">🧪 Demo</span>
-                    </div>
-                `;
-                
-                const tooltipContentElement = document.getElementById('tooltipContent');
-                if (tooltipContentElement) {
-                    tooltipContentElement.innerHTML = tooltipContent;
-                }
-                
-                showTooltip();
-                updateTooltipPosition(event);
-            } catch (error) {
-                console.warn('Error showing demo tooltip:', error);
-            }
-        }
-
-        // ✅ GET DEMO DATA FOR REGION
-        function getDemoDataForRegion(regionId, metric) {
-            const demoData = {
-                'A': { name: 'Kecamatan A', kabupaten: 'Kabupaten Demo', ach: 0.921, actual: 98000000, target: 106500000 },
-                'B': { name: 'Kecamatan B', kabupaten: 'Kabupaten Demo', ach: 0.789, actual: 87000000, target: 111500000 },
-                'C': { name: 'Kecamatan C', kabupaten: 'Kabupaten Demo', ach: 0.852, actual: 125000000, target: 147000000 }
-            };
-            
-            return demoData[regionId] || null;
-        }
-
-        // ✅ GET REGION NAME BY ID
-        function getRegionNameById(regionId) {
-            const names = {
-                'A': 'Kecamatan A',
-                'B': 'Kecamatan B', 
-                'C': 'Kecamatan C'
-            };
-            return names[regionId] || 'Unknown Region';
-        }
-
-        // ✅ FLATTEN COORDINATES (helper function) - Fixed version
-        function flattenCoordinates(coords) {
-            const result = [];
-            
-            function flatten(arr, depth = 0) {
-                // Prevent infinite recursion
-                if (depth > 10) {
-                    console.warn('Maximum recursion depth reached in flattenCoordinates');
-                    return;
-                }
-                
-                // Check if arr is actually an array
-                if (!Array.isArray(arr)) {
-                    return;
-                }
-                
-                // Check if this is a coordinate pair [lng, lat]
-                if (arr.length === 2 && typeof arr[0] === 'number' && typeof arr[1] === 'number') {
-                    result.push(arr);
-                    return;
-                }
-                
-                // Recursively flatten nested arrays
-                arr.forEach(item => {
-                    if (Array.isArray(item)) {
-                        flatten(item, depth + 1);
-                    }
-                });
-            }
-            
-            try {
-                flatten(coords);
-                return result;
-            } catch (error) {
-                console.warn('Error in flattenCoordinates:', error);
-                return [];
-            }
-        }
-
-        // ✅ CREATE SVG PATH - Enhanced with comprehensive error handling
-        function createSVGPath(feature, dataLookup, index) {
-            try {
-                if (!feature || !feature.geometry || !feature.geometry.coordinates) {
-                    return null;
-                }
-
-                const pathData = coordinatesToPath(feature.geometry.coordinates, feature.geometry.type);
-                if (!pathData || pathData.trim() === '') {
-                    return null;
-                }
-
-                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                path.setAttribute('d', pathData);
-                path.setAttribute('class', 'map-region');
-                
-                // Get area data for styling
-                let fillColor = '#e2e8f0';
-                let areaInfo = null;
-                
-                try {
-                    const kecamatanRaw = feature.properties?.WADMKC || feature.properties?.NAMOBJ;
-                    const kabupatenRaw = feature.properties?.WADMKK;
-                    
-                    if (kecamatanRaw && kabupatenRaw && typeof kecamatanRaw === 'string' && typeof kabupatenRaw === 'string') {
-                        const key = `${kecamatanRaw.toLowerCase()}_${kabupatenRaw.toLowerCase()}`;
-                        areaInfo = dataLookup[key];
-                        
-                        if (areaInfo) {
-                            fillColor = getRegionColor(areaInfo);
-                        }
-                    }
-                } catch (error) {
-                    console.warn('Error processing region data for path:', error);
-                }
-                
-                path.setAttribute('fill', fillColor);
-                
-                // Add event listeners with error handling
-                try {
-                    path.addEventListener('mouseenter', (e) => {
-                        try {
-                            handleRegionHover(e, feature, areaInfo);
-                        } catch (err) {
-                            console.warn('Error in region hover handler:', err);
-                        }
-                    });
-                    
-                    path.addEventListener('mousemove', (e) => {
-                        try {
-                            updateTooltipPosition(e);
-                        } catch (err) {
-                            console.warn('Error updating tooltip position:', err);
-                        }
-                    });
-                    
-                    path.addEventListener('mouseleave', () => {
-                        try {
-                            hideTooltip();
-                        } catch (err) {
-                            console.warn('Error hiding tooltip:', err);
-                        }
-                    });
-                    
-                    path.addEventListener('click', () => {
-                        try {
-                            handleRegionClick(feature, areaInfo);
-                        } catch (err) {
-                            console.warn('Error in region click handler:', err);
-                        }
-                    });
-                } catch (error) {
-                    console.warn('Error adding event listeners to path:', error);
-                }
-                
-                return path;
-            } catch (error) {
-                console.warn(`Error creating SVG path for feature ${index}:`, error);
-                return null;
-            }
-        }
-
-        // ✅ COORDINATES TO PATH - Enhanced with error handling
-        function coordinatesToPath(coords, type) {
-            try {
-                if (!coords || !Array.isArray(coords)) {
-                    return null;
-                }
-                
-                if (type === 'Polygon') {
-                    return polygonToPath(coords);
-                } else if (type === 'MultiPolygon') {
-                    return coords.map(polygon => polygonToPath(polygon)).filter(path => path).join(' ');
-                }
-                return null;
-            } catch (error) {
-                console.warn('Error converting coordinates to path:', error);
-                return null;
-            }
-        }
-
-        // ✅ POLYGON TO PATH - Enhanced with error handling
-        function polygonToPath(polygon) {
-            try {
-                if (!polygon || !Array.isArray(polygon)) {
-                    return null;
-                }
-                
-                return polygon.map(ring => {
-                    if (!ring || !Array.isArray(ring)) {
-                        return '';
-                    }
-                    
-                    const pathParts = ring.map((coord, i) => {
-                        if (!coord || !Array.isArray(coord) || coord.length < 2) {
-                            return '';
-                        }
-                        
-                        const [x, y] = coord;
-                        if (typeof x !== 'number' || typeof y !== 'number' || !isFinite(x) || !isFinite(y)) {
-                            return '';
-                        }
-                        
-                        const command = i === 0 ? 'M' : 'L';
-                        return `${command}${x},${y}`;
-                    }).filter(part => part !== '');
-                    
-                    return pathParts.length > 0 ? pathParts.join(' ') + ' Z' : '';
-                }).filter(ringPath => ringPath !== '').join(' ');
-            } catch (error) {
-                console.warn('Error converting polygon to path:', error);
-                return null;
-            }
-        }
-
-        // ✅ GET REGION COLOR - Enhanced with better validation
-        function getRegionColor(areaData) {
-            if (!areaData || typeof areaData !== 'object') {
-                return '#e2e8f0';
-            }
-            
-            try {
-                let value;
-                if (currentMapMetric === 'achievement') {
-                    value = areaData.Ach;
-                } else if (currentMapMetric === 'actual') {
-                    value = areaData.Actual;
-                } else if (currentMapMetric === 'gap') {
-                    value = areaData.Gap;
-                }
-                
-                if (value === undefined || value === null || typeof value !== 'number' || !isFinite(value)) {
-                    return '#e2e8f0';
-                }
-                
-                if (currentMapMetric === 'achievement') {
-                    const ach = value * 100;
-                    if (ach >= 80) return '#059669';      // Green - Excellent
-                    else if (ach >= 60) return '#f59e0b'; // Yellow - Good
-                    else if (ach >= 40) return '#fb7185'; // Pink - Fair
-                    else return '#ef4444';                // Red - Poor
-                } else if (currentMapMetric === 'gap') {
-                    return value >= 0 ? '#059669' : '#ef4444'; // Green for surplus, Red for deficit
-                } else {
-                    return '#667eea'; // Blue for actual sales
-                }
-            } catch (error) {
-                console.warn('Error determining region color:', error);
-                return '#e2e8f0';
-            }
-        }
-
-        // ✅ HANDLE REGION HOVER - Enhanced with better error handling
-        function handleRegionHover(event, feature, areaData) {
-            try {
-                const kecamatan = feature.properties?.WADMKC || feature.properties?.NAMOBJ || 'Unknown';
-                const kabupaten = feature.properties?.WADMKK || 'Unknown';
-                
-                const tooltipHeaderElement = document.getElementById('tooltipHeader');
-                if (tooltipHeaderElement) {
-                    tooltipHeaderElement.textContent = `${kecamatan}, ${kabupaten}`;
-                }
-                
-                let tooltipContent = '';
-                
-                if (areaData && typeof areaData === 'object') {
-                    tooltipContent = `
-                        <div class="tooltip-metric">
-                            <span class="tooltip-metric-label">Achievement:</span>
-                            <span class="tooltip-metric-value">${formatPercentage(areaData.Ach)}</span>
-                        </div>
-                        <div class="tooltip-metric">
-                            <span class="tooltip-metric-label">Actual:</span>
-                            <span class="tooltip-metric-value">${formatCurrency(areaData.Actual)}</span>
-                        </div>
-                        <div class="tooltip-metric">
-                            <span class="tooltip-metric-label">Target:</span>
-                            <span class="tooltip-metric-value">${formatCurrency(areaData.Target)}</span>
-                        </div>
-                    `;
-                } else {
-                    tooltipContent = `
-                        <div class="tooltip-metric">
-                            <span class="tooltip-metric-label">Status:</span>
-                            <span class="tooltip-metric-value">No data available</span>
-                        </div>
-                    `;
-                }
-                
-                const tooltipContentElement = document.getElementById('tooltipContent');
-                if (tooltipContentElement) {
-                    tooltipContentElement.innerHTML = tooltipContent;
-                }
-                
-                showTooltip();
-                updateTooltipPosition(event);
-            } catch (error) {
-                console.warn('Error in handleRegionHover:', error);
-            }
-        }
-
-        // ✅ UPDATE TOOLTIP POSITION - Enhanced with boundary checking
+        // ✅ UPDATE TOOLTIP POSITION
         function updateTooltipPosition(event) {
             if (!tooltip) return;
             
@@ -2996,7 +2011,6 @@
                 const x = event.clientX - rect.left;
                 const y = event.clientY - rect.top;
                 
-                // Ensure tooltip stays within bounds
                 const tooltipRect = tooltip.getBoundingClientRect();
                 const containerWidth = rect.width;
                 const containerHeight = rect.height;
@@ -3004,7 +2018,6 @@
                 let finalX = x + 10;
                 let finalY = y - 10;
                 
-                // Adjust if tooltip would go outside container
                 if (finalX + tooltipRect.width > containerWidth) {
                     finalX = x - tooltipRect.width - 10;
                 }
@@ -3020,27 +2033,20 @@
             }
         }
 
-        // ✅ SHOW TOOLTIP - Enhanced with existence check
+        // ✅ SHOW/HIDE TOOLTIP
         function showTooltip() {
             if (tooltip) {
                 tooltip.classList.add('visible');
             }
         }
 
-        // ✅ HIDE TOOLTIP - Enhanced with existence check
         function hideTooltip() {
             if (tooltip) {
                 tooltip.classList.remove('visible');
             }
         }
 
-        // ✅ HANDLE REGION CLICK
-        function handleRegionClick(feature, areaData) {
-            const kecamatan = feature.properties?.WADMKC || feature.properties?.NAMOBJ || 'Unknown';
-            console.log('🗺️ Clicked region:', kecamatan, areaData);
-        }
-
-        // ✅ UPDATE MAP LEGEND - Enhanced for real data
+        // ✅ UPDATE MAP LEGEND
         function updateMapLegend() {
             const legendTitle = document.getElementById('legendTitle');
             const legendItems = document.getElementById('legendItems');
@@ -3081,15 +2087,15 @@
                 </div>
             `).join('');
             
-            // Add data indicator for real data
-            if (areaData && areaData.length > 3) {
+            // Add data source indicator
+            if (areaData && areaData.length > 1) {
                 const validLocations = areaData.filter(loc => 
                     loc.Kecamatan !== 'DEPO TANJUNG' && loc.Latitude && loc.Longitude
                 );
                 
                 legendItems.innerHTML += `
                     <div class="legend-item" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e2e8f0;">
-                        <span style="font-size: 10px; color: #059669;">📍 ${validLocations.length} Real Locations</span>
+                        <span style="font-size: 10px; color: #059669;">📍 ${validLocations.length} Lokasi (d.area.json)</span>
                     </div>
                 `;
             }
@@ -3100,6 +2106,19 @@
             const tableBody = document.getElementById('salesmanTableBody');
             const salesmanCount = document.getElementById('salesmanCount');
             
+            if (!salesmanList || !Array.isArray(salesmanList)) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="no-data-message">
+                            <h3>👥 Data Salesman Tidak Tersedia</h3>
+                            <p>File salesman_list.json tidak dapat dimuat atau kosong.</p>
+                        </td>
+                    </tr>
+                `;
+                salesmanCount.textContent = '0 Salesman';
+                return;
+            }
+            
             tableBody.innerHTML = '';
             salesmanCount.textContent = `${salesmanList.length} Salesman`;
 
@@ -3108,7 +2127,7 @@
                 tableBody.appendChild(row);
             });
 
-            console.log('✅ Tabel salesman berhasil diperbarui');
+            console.log('✅ Tabel salesman berhasil diperbarui dengan', salesmanList.length, 'records');
         }
 
         // ✅ CREATE SALESMAN ROW
@@ -3175,7 +2194,6 @@
             alert('🔜 Activity module coming soon!');
         }
 
-        // ✅ UPDATED INSENTIF FUNCTION - Opens salesman selector modal
         function showInsentif() {
             console.log('💰 Opening incentive module...');
             showSalesmanModal();
@@ -3220,9 +2238,8 @@
                 return;
             }
 
-            console.log('🚀 Initializing dashboard...');
+            console.log('🚀 Initializing dashboard with real data only...');
             loadDashboardData();
-            console.log('✅ Dashboard initialized');
         });
 
         // ✅ CLOSE MODAL ON OUTSIDE CLICK
@@ -3233,7 +2250,7 @@
             }
         });
 
-        console.log('✅ Dashboard script loaded with incentive navigation to dashboard_insentif_sales_desktop.html');
+        console.log('✅ Dashboard script loaded - Real data only from \\data\\ folder');
     </script>
 </body>
 </html>
