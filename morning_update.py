@@ -51,16 +51,20 @@ class SalesmanDashboardUpdater:
     def __init__(self, excel_file="DbaseSalesmanWebApp.xlsx"):
         self.excel_file = excel_file
         self.data_dir = "data"
+        self.log_file = 'morning_update.log'
         
         # Setup directories
         if not os.path.exists(self.data_dir):
             os.makedirs(self.data_dir)
         
+        # 🆕 NEW: Clear previous log file for fresh start
+        self.clear_previous_log()
+        
         # Setup logging dengan encoding yang aman
         log_format = '%(asctime)s - %(levelname)s - %(message)s'
         
-        # Setup file handler dengan UTF-8
-        file_handler = logging.FileHandler('morning_update.log', encoding='utf-8')
+        # Setup file handler dengan UTF-8 dan mode 'w' untuk overwrite
+        file_handler = logging.FileHandler(self.log_file, mode='w', encoding='utf-8')
         file_handler.setFormatter(logging.Formatter(log_format))
         
         # Setup console handler dengan fallback untuk emoji
@@ -71,10 +75,36 @@ class SalesmanDashboardUpdater:
         logging.basicConfig(
             level=logging.INFO,
             handlers=[file_handler, console_handler],
-            format=log_format
+            format=log_format,
+            force=True  # Force reconfiguration if logger already exists
         )
         
         self.logger = logging.getLogger(__name__)
+        
+        # Log session start
+        self.safe_log('info', "=" * 80, "=" * 50)
+        self.safe_log('info', f"🚀 MORNING UPDATE SESSION STARTED - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", f"[LAUNCH] MORNING UPDATE SESSION STARTED - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        self.safe_log('info', "=" * 80, "=" * 50)
+
+    def clear_previous_log(self):
+        """🆕 NEW: Clear previous log file untuk fresh start"""
+        try:
+            if os.path.exists(self.log_file):
+                # Get file info before deletion
+                file_size = os.path.getsize(self.log_file)
+                mod_time = datetime.fromtimestamp(os.path.getmtime(self.log_file))
+                
+                # Delete the old log file
+                os.remove(self.log_file)
+                
+                print(f"🗑️  Cleared previous log file: {self.log_file}")
+                print(f"   Previous size: {file_size:,} bytes")
+                print(f"   Last modified: {mod_time.strftime('%Y-%m-%d %H:%M:%S')}")
+                print(f"   Starting fresh log session...")
+            else:
+                print(f"📝 Creating new log file: {self.log_file}")
+        except Exception as e:
+            print(f"⚠️  Warning: Could not clear previous log: {str(e)}")
 
     def safe_log(self, level, message, fallback_message=None):
         """Logging yang aman dengan fallback untuk emoji"""
@@ -115,7 +145,9 @@ class SalesmanDashboardUpdater:
             '⏱️': '[TIMER]',
             '🖥️': '[DESKTOP]',
             '💻': '[LAPTOP]',
-            '💸': '[INCENTIVE]'
+            '💸': '[INCENTIVE]',
+            '🗑️': '[DELETE]',
+            '📝': '[NOTE]'
         }
         
         for emoji, replacement in emoji_map.items():
@@ -1159,6 +1191,13 @@ class SalesmanDashboardUpdater:
             # Success message
             duration = (datetime.now() - start_time).total_seconds()
             
+            # 🆕 NEW: Log session summary
+            self.safe_log('info', "=" * 80, "=" * 50)
+            self.safe_log('info', f"🎉 MORNING UPDATE COMPLETED SUCCESSFULLY!", f"[SUCCESS] MORNING UPDATE COMPLETED SUCCESSFULLY!")
+            self.safe_log('info', f"⏱️  Processing time: {duration:.2f} seconds", f"[TIMER] Processing time: {duration:.2f} seconds")
+            self.safe_log('info', f"📅 Session completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", f"[DATE] Session completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            self.safe_log('info', "=" * 80, "=" * 50)
+            
             success_message = f"""
 =======================================================
 🎉 MORNING UPDATE COMPLETED SUCCESSFULLY!
@@ -1213,6 +1252,11 @@ class SalesmanDashboardUpdater:
    • 1Jt-999Jt = Jt (50.5Jt)
    • ≥1M = M (1.5M)
    • Gap = Actual - Target (untuk analisis performance)
+
+📝 LOG INFO:
+   • Fresh log file created for this session
+   • Previous log cleared for clarity
+   • All operations logged with timestamps
 =======================================================
 """
             
@@ -1227,10 +1271,11 @@ class SalesmanDashboardUpdater:
             return False
 
 def main():
-    """🆕 UPDATED: Main function - Enhanced with Desktop Dashboard + Incentive Support"""
-    print("🚀 SALESMAN DASHBOARD UPDATER v2.7 - ENHANCED WITH INCENTIVE SUPPORT")
-    print("=" * 80)
+    """🆕 UPDATED: Main function - Enhanced with Desktop Dashboard + Incentive Support + Fresh Log"""
+    print("🚀 SALESMAN DASHBOARD UPDATER v2.8 - ENHANCED WITH FRESH LOG SESSION")
+    print("=" * 85)
     print("Running with ENHANCED FEATURES:")
+    print("✅ NEW: Fresh log session (previous log cleared)")
     print("✅ FIXED git status checking before operations")
     print("✅ FIXED git add with detailed logging")
     print("✅ FIXED git commit with proper error handling")
@@ -1243,11 +1288,14 @@ def main():
     print("✅ ADDED Desktop dashboard untuk laptop/PC")
     print("✅ ADDED Device auto-detection & selection")
     print("✅ NEW: Incentive Data Support (d.insentif.json)")
-    print("=" * 75)
+    print("✅ NEW: Clear previous log for fresh session")
+    print("=" * 80)
     
-    print("\n🌅 MORNING BATCH UPDATE - ENHANCED WITH INCENTIVE SUPPORT")
-    print("=" * 65)
-    print("🚀 Version 2.7 - ENHANCED ERROR HANDLING & INCENTIVE SUPPORT:")
+    print("\n🌅 MORNING BATCH UPDATE v2.8 - FRESH LOG SESSION")
+    print("=" * 70)
+    print("🚀 Version 2.8 - FRESH LOG + ENHANCED ERROR HANDLING & INCENTIVE SUPPORT:")
+    print("   🗑️  NEW: Clear previous log file untuk fresh start")
+    print("   📝 NEW: Session start/end logging dengan timestamps")
     print("   🔧 FIXED git status checking before operations")
     print("   🔧 FIXED git add with individual file logging")
     print("   🔧 FIXED git commit with detailed error messages")
@@ -1264,7 +1312,7 @@ def main():
     print("   💸 NEW: d.insentif.json dalam format JSONL")
     print("   💸 NEW: Complete incentive calculations")
     print("   💸 NEW: Application-ready incentive structure")
-    print("=" * 60)
+    print("=" * 65)
     
     # Create updater and run
     updater = SalesmanDashboardUpdater()
@@ -1274,13 +1322,14 @@ def main():
         print("\n✅ ENHANCED DASHBOARD SYSTEM UPDATE SUCCESSFUL!")
         print("🌐 Multi-platform dashboard dengan format Rb/Jt/M yang benar")
         print("💸 Incentive data support untuk aplikasi mobile")
+        print("📝 Fresh log session untuk troubleshooting yang lebih mudah")
         print("📱 Mobile: https://kisman271128.github.io/salesman-dashboard/dashboard.html")
         print("💻 Desktop: https://kisman271128.github.io/salesman-dashboard/dashboard-desktop.html")
         print("🏠 Login: https://kisman271128.github.io/salesman-dashboard/")
         sys.exit(0)
     else:
         print("\n❌ UPDATE FAILED!")
-        print("❗ Check logs for details")
+        print("❗ Check morning_update.log for details (fresh session)")
         sys.exit(1)
 
 if __name__ == "__main__":

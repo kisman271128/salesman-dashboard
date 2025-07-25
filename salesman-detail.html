@@ -138,16 +138,25 @@
 
         .performance-card {
             flex: 1;
-            background: linear-gradient(135deg, #1e3a8a, #3b82f6);
             color: white;
             padding: 16px;
             border-radius: 16px;
             text-align: center;
             box-shadow: 0 4px 12px rgba(30, 58, 138, 0.3);
+            transition: all 0.3s ease;
         }
 
-        .performance-card.secondary {
-            background: linear-gradient(135deg, #1e40af, #3b82f6);
+        /* Performance card achievement colors */
+        .performance-card.achievement-low {
+            background: linear-gradient(135deg, #dc2626, #ef4444);
+        }
+
+        .performance-card.achievement-medium {
+            background: linear-gradient(135deg, #d97706, #f59e0b);
+        }
+
+        .performance-card.achievement-high {
+            background: linear-gradient(135deg, #059669, #10b981);
         }
 
         .performance-card.silver {
@@ -244,6 +253,21 @@
             font-size: 10px;
             color: #7f8c8d;
             line-height: 1.2;
+            margin-bottom: 2px;
+        }
+
+        .item-gap {
+            font-size: 11px;
+            font-weight: 600;
+            line-height: 1.2;
+        }
+
+        .gap-positive {
+            color: #10b981;
+        }
+
+        .gap-negative {
+            color: #ef4444;
         }
 
         .progress-container {
@@ -449,7 +473,6 @@
         .nav-icon.home { background: #3b82f6; color: white; }
         .nav-icon.activity { background: #ef4444; color: white; }
         .nav-icon.incentive { background: #f59e0b; color: white; }
-        .nav-icon.settings { background: #6b7280; color: white; }
         .nav-icon.profile { background: #10b981; color: white; }
 
         .nav-label {
@@ -554,7 +577,7 @@
             <!-- Performance Summary Cards -->
             <div class="performance-summary">
                 <div class="performance-cards">
-                    <div class="performance-card">
+                    <div class="performance-card" id="leftCard">
                         <div class="card-label">GPPJ + GEN</div>
                         <div class="card-percentage" id="gppjGenPercentage">0%</div>
                         <div class="card-subtitle">Ach</div>
@@ -568,7 +591,7 @@
                              onerror="this.src='https://cdn-icons-png.flaticon.com/512/3048/3048122.png'" />
                     </div>
                     
-                    <div class="performance-card secondary">
+                    <div class="performance-card" id="rightCard">
                         <div class="card-label">GBS+OTHERS</div>
                         <div class="card-percentage" id="gbsOthersPercentage">0%</div>
                         <div class="card-subtitle">Ach</div>
@@ -648,10 +671,6 @@
                 <div class="nav-icon incentive">💰</div>
                 <div class="nav-label">Incentive</div>
             </div>
-            <div class="nav-item" onclick="showSettings()">
-                <div class="nav-icon settings">⚙️</div>
-                <div class="nav-label">Settings</div>
-            </div>
             <div class="nav-item active" onclick="showProfile()">
                 <div class="nav-icon profile">👤</div>
                 <div class="nav-label">Profile</div>
@@ -690,6 +709,13 @@
             if (percentage >= 80) return 'high';
             if (percentage >= 50) return 'medium';
             return 'low';
+        }
+
+        // ✅ NEW: GET ACHIEVEMENT COLOR CLASS FOR CARDS
+        function getAchievementColorClass(percentage) {
+            if (percentage >= 100) return 'achievement-high';
+            if (percentage >= 90) return 'achievement-medium';
+            return 'achievement-low';
         }
 
         // Check if user is logged in
@@ -811,7 +837,7 @@
             }
         }
 
-        // ✅ ENHANCED: CREATE PERFORMANCE ITEM HTML WITH GAP CALCULATION
+        // ✅ ENHANCED: CREATE PERFORMANCE ITEM HTML WITH IMPROVED GAP DISPLAY
         function createPerformanceItemHTML(lobName, data) {
             const percentage = Math.round((data.Ach || 0) * 100);
             const target = parseFloat(data.Target || 0);
@@ -822,13 +848,19 @@
             const actualFormatted = formatCurrencyIndonesia(actual);
             const gapFormatted = formatCurrencyIndonesia(gap);
             
+            // Determine gap display and color
+            const isPositive = actual >= target;
+            const gapText = isPositive ? `Gap (+) ${gapFormatted}` : `Gap (-) ${gapFormatted}`;
+            const gapClass = isPositive ? 'gap-positive' : 'gap-negative';
+            
             const colorClass = getProgressColorClass(percentage);
             
             return `
                 <div class="performance-item">
                     <div class="item-left">
                         <div class="item-name">${lobName}</div>
-                        <div class="item-target">T/A: ${targetFormatted} / ${actualFormatted} - Gap ${gapFormatted}</div>
+                        <div class="item-target">T/A: ${targetFormatted} / ${actualFormatted}</div>
+                        <div class="item-gap ${gapClass}">${gapText}</div>
                     </div>
                     <div class="progress-container">
                         <div class="progress-bar">
@@ -872,11 +904,17 @@
                 const totalPercentage = totalTarget > 0 ? Math.round((totalActual / totalTarget) * 100) : 0;
                 const totalGap = Math.abs(totalActual - totalTarget);
                 
+                // Determine gap display and color for total
+                const isPositive = totalActual >= totalTarget;
+                const gapText = isPositive ? `Gap (+) ${formatCurrencyIndonesia(totalGap)}` : `Gap (-) ${formatCurrencyIndonesia(totalGap)}`;
+                const gapClass = isPositive ? 'gap-positive' : 'gap-negative';
+                
                 html += `
                     <div class="performance-item total">
                         <div class="item-left">
                             <div class="item-name">TOTAL</div>
-                            <div class="item-target">T/A: ${formatCurrencyIndonesia(totalTarget)} / ${formatCurrencyIndonesia(totalActual)} - Gap ${formatCurrencyIndonesia(totalGap)}</div>
+                            <div class="item-target">T/A: ${formatCurrencyIndonesia(totalTarget)} / ${formatCurrencyIndonesia(totalActual)}</div>
+                            <div class="item-gap ${gapClass}">${gapText}</div>
                         </div>
                         <div class="progress-container">
                             <div class="progress-bar">
@@ -895,7 +933,7 @@
             performanceList.innerHTML = html;
         }
 
-        // ✅ ENHANCED: UPDATE SUMMARY CARDS WITH SALESMAN TYPE SPECIFIC LOGIC
+        // ✅ ENHANCED: UPDATE SUMMARY CARDS WITH GRADIENT COLORS BASED ON ACHIEVEMENT
         function updateSummaryCards(lobData, salesmanInfo) {
             const lobMap = {};
             lobData.forEach(item => {
@@ -945,29 +983,36 @@
             const othersPercentage = othersTotal.target > 0 ? 
                 Math.round((othersTotal.actual / othersTotal.target) * 100) : 0;
 
-            // Update left card (GPPJ+GEN or GPPJ Only)
-            const leftCard = document.querySelector('.performance-card:first-child .card-label');
-            if (leftCard) {
-                leftCard.textContent = leftCardLabel;
+            // Update left card with achievement-based color
+            const leftCard = document.getElementById('leftCard');
+            const leftCardLabelElement = leftCard.querySelector('.card-label');
+            if (leftCardLabelElement) {
+                leftCardLabelElement.textContent = leftCardLabel;
             }
+            
+            // Remove existing achievement classes and add new one
+            leftCard.classList.remove('achievement-low', 'achievement-medium', 'achievement-high', 'silver');
+            leftCard.classList.add(getAchievementColorClass(gppjGenPercentage));
+            
             document.getElementById('gppjGenPercentage').textContent = `${gppjGenPercentage}%`;
 
-            // Update right card (GBS+OTHERS) with special styling for Arjuna
-            const rightCard = document.querySelector('.performance-card.secondary');
+            // Update right card with achievement-based color
+            const rightCard = document.getElementById('rightCard');
+            
             if (typeCategory === 'arjuna') {
                 // Sales Representative Retailer Arjuna: silver background
-                rightCard.classList.remove('secondary');
+                rightCard.classList.remove('achievement-low', 'achievement-medium', 'achievement-high');
                 rightCard.classList.add('silver');
                 console.log(`✅ Applied silver styling for Arjuna type`);
             } else {
-                // Kembalikan ke styling normal jika bukan Arjuna
-                rightCard.classList.remove('silver');
-                rightCard.classList.add('secondary');
+                // Apply achievement-based color for other types
+                rightCard.classList.remove('achievement-low', 'achievement-medium', 'achievement-high', 'silver');
+                rightCard.classList.add(getAchievementColorClass(othersPercentage));
             }
             
             document.getElementById('gbsOthersPercentage').textContent = `${othersPercentage}%`;
             
-            console.log(`✅ Updated summary cards - Left: ${leftCardLabel} ${gppjGenPercentage}%, Right: GBS+OTHERS ${othersPercentage}%`);
+            console.log(`✅ Updated summary cards - Left: ${leftCardLabel} ${gppjGenPercentage}% (${getAchievementColorClass(gppjGenPercentage)}), Right: GBS+OTHERS ${othersPercentage}% (${typeCategory === 'arjuna' ? 'silver' : getAchievementColorClass(othersPercentage)})`);
         }
 
         // ✅ GET METRIC COLOR CLASS BASED ON ACHIEVEMENT
@@ -1168,10 +1213,6 @@
             }
         }
 
-        function showSettings() {
-            alert('🔜 Settings module coming soon!');
-        }
-
         // ✅ UPDATED: Show Profile - Redirect to profile page
         function showProfile() {
             if (currentSalesmanId) {
@@ -1220,11 +1261,11 @@
                 return;
             }
 
-            console.log('🚀 Initializing salesman detail page...');
+            console.log('🚀 Initializing enhanced salesman detail page...');
             loadSalesmanData();
         });
 
-        console.log('✅ Enhanced salesman detail script loaded with salesman type specific LOB filtering, performance data integration, custom summary cards, and profile integration');
+        console.log('✅ Enhanced salesman detail script loaded with improved gap display, achievement-based gradient colors, and removed settings menu');
     </script>
 </body>
 </html>
