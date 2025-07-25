@@ -170,6 +170,11 @@
         .lob-card.color-7 { background: linear-gradient(135deg, #005f73, #001219); }
         .lob-card.color-8 { background: linear-gradient(135deg, #667eea, #764ba2); }
 
+        /* ✅ NEW: Achievement-based colors for special cases (target=0, actual>0) */
+        .lob-card.achievement-high { background: linear-gradient(135deg, #059669, #10b981) !important; }
+        .lob-card.achievement-medium { background: linear-gradient(135deg, #d97706, #f59e0b) !important; }
+        .lob-card.achievement-low { background: linear-gradient(135deg, #dc2626, #ef4444) !important; }
+
         /* ✅ NEW: Total Card First Position Styling */
         .total-card-first {
             background: linear-gradient(135deg, #2c3e50, #34495e, #2980b9) !important;
@@ -1002,6 +1007,38 @@
             }
         }
 
+        // ✅ NEW: Calculate achievement percentage with special logic for target = 0
+        function calculateAchievementPercentage(target, actual) {
+            const targetValue = parseFloat(target || 0);
+            const actualValue = parseFloat(actual || 0);
+            
+            // 🆕 NEW LOGIC: If target is 0 but actual > 0, return 100%
+            if (targetValue === 0 && actualValue > 0) {
+                console.log(`🎯 Special case: Target=0, Actual=${actualValue} → Setting Ach to 100%`);
+                return 100;
+            }
+            
+            // Normal calculation: Ach = (Actual / Target) * 100
+            if (targetValue > 0) {
+                return Math.round((actualValue / targetValue) * 100);
+            }
+            
+            // Both target and actual are 0
+            return 0;
+        }
+
+        // ✅ NEW: Get achievement color class with special handling for target = 0
+        function getAchievementColorClass(percentage, hasSpecialCase = false) {
+            // 🆕 If it's a special case (target=0, actual>0), always return green
+            if (hasSpecialCase) {
+                return 'achievement-high';
+            }
+            
+            if (percentage >= 100) return 'achievement-high';      // Green >= 100%
+            if (percentage >= 90) return 'achievement-medium';     // Orange 90-99.99%
+            return 'achievement-low';                              // Red < 90%
+        }
+
         // ✅ HELPER: Parse formatted Indonesian values back to numbers
         function parseFormattedValue(formattedValue) {
             if (!formattedValue || formattedValue === '0') return 0;
@@ -1094,7 +1131,7 @@
             }
         }
 
-        // ✅ ENHANCED: UPDATE LOB CARDS dengan Total Card di posisi pertama (3x3 grid)
+        // ✅ ENHANCED: UPDATE LOB CARDS dengan Target=0 Logic dan Total Card di posisi pertama (3x3 grid)
         function updateLOBCards(lobCards) {
             const cardsGrid = document.getElementById('cardsGrid');
             cardsGrid.innerHTML = '';
@@ -1103,46 +1140,82 @@
             cardsGrid.style.gridTemplateColumns = 'repeat(3, 1fr)';
             cardsGrid.style.gap = '8px';
 
-            // ✅ NEW: Add Total Card FIRST (position 1)
-            const totalCard = createTotalCard(lobCards, dashboardData.total_data);
+            // ✅ ENHANCED: Process LOB cards with target=0 logic
+            const processedLobCards = lobCards.map(lob => {
+                const target = parseFormattedValue(lob.target);
+                const actual = parseFormattedValue(lob.actual);
+                
+                // ✅ Apply target=0 logic
+                const calculatedAchievement = calculateAchievementPercentage(target, actual);
+                const hasSpecialCase = target === 0 && actual > 0;
+                
+                // ✅ Log special case
+                if (hasSpecialCase) {
+                    console.log(`🌟 Special case detected for ${lob.name}: Target=0, Actual=${actual} → 100% (Green)`);
+                }
+                
+                return {
+                    ...lob,
+                    calculatedAchievement,
+                    hasSpecialCase,
+                    achievement: `${calculatedAchievement}%`
+                };
+            });
+
+            // ✅ NEW: Add Total Card FIRST (position 1) with enhanced logic
+            const totalCard = createTotalCard(processedLobCards, dashboardData.total_data);
             cardsGrid.appendChild(totalCard);
 
-            // Add individual LOB cards after Total card
-            lobCards.forEach((lob, index) => {
-                // index + 1 untuk color karena Total card sudah mengambil posisi 0
+            // Add individual LOB cards after Total card with enhanced styling
+            processedLobCards.forEach((lob, index) => {
                 const card = createLOBCard(lob, index + 1);
                 cardsGrid.appendChild(card);
             });
 
-            console.log('✅ Generated 1 Total card + ', lobCards.length, 'LOB cards in 3x3 grid layout');
+            console.log('✅ Generated 1 Total card + ', processedLobCards.length, 'LOB cards in 3x3 grid layout with target=0 logic');
             
-            // ✅ DEBUG: Log vs metrics untuk debugging
-            lobCards.forEach(lob => {
-                console.log(`${lob.name}: vs_lm=${lob.vs_lm}, vs_3lm=${lob.vs_3lm}, vs_ly=${lob.vs_ly}`);
+            // ✅ DEBUG: Log processed data for debugging
+            processedLobCards.forEach(lob => {
+                console.log(`${lob.name}: Achievement=${lob.achievement}, HasSpecialCase=${lob.hasSpecialCase}, vs_lm=${lob.vs_lm}, vs_3lm=${lob.vs_3lm}, vs_ly=${lob.vs_ly}`);
             });
         }
 
-        // ✅ ENHANCED: Create Total Card function with special styling for first position
-        function createTotalCard(lobCards, backendTotalData = null) {
+        // ✅ ENHANCED: Create Total Card function with target=0 logic for first position
+        function createTotalCard(processedLobCards, backendTotalData = null) {
             const card = document.createElement('div');
             card.className = 'lob-card total-card-first'; // Special class for first position
             
             let totalData;
             
-            // ✅ ENHANCED: Use backend data if available, else calculate from frontend
+            // ✅ ENHANCED: Use backend data if available, else calculate from frontend with target=0 logic
             if (backendTotalData) {
                 console.log('✅ Using backend TOTAL data:', backendTotalData);
-                totalData = backendTotalData;
-            } else {
-                console.log('⚠️ Backend TOTAL data not available, calculating from frontend...');
                 
-                // Calculate total values from individual LOB cards
+                // ✅ Apply target=0 logic to backend total data
+                const totalTarget = parseFormattedValue(backendTotalData.target);
+                const totalActual = parseFormattedValue(backendTotalData.actual);
+                const calculatedTotalAchievement = calculateAchievementPercentage(totalTarget, totalActual);
+                const totalHasSpecialCase = totalTarget === 0 && totalActual > 0;
+                
+                if (totalHasSpecialCase) {
+                    console.log(`🌟 Special case detected for TOTAL: Target=0, Actual=${totalActual} → 100% (Green)`);
+                }
+                
+                totalData = {
+                    ...backendTotalData,
+                    achievement: `${calculatedTotalAchievement}%`,
+                    hasSpecialCase: totalHasSpecialCase
+                };
+            } else {
+                console.log('⚠️ Backend TOTAL data not available, calculating from frontend with target=0 logic...');
+                
+                // Calculate total values from individual processed LOB cards
                 let totalActual = 0;
                 let totalTarget = 0;
                 let totalGap = 0;
                 
                 // Parse values from individual LOB cards
-                lobCards.forEach(lob => {
+                processedLobCards.forEach(lob => {
                     const actualValue = parseFormattedValue(lob.actual);
                     const targetValue = parseFormattedValue(lob.target);
                     const gapValue = parseFormattedValue(lob.gap);
@@ -1152,20 +1225,32 @@
                     totalGap += gapValue;
                 });
                 
-                // Calculate total achievement
-                const totalAchievement = totalTarget > 0 ? (totalActual / totalTarget * 100) : 0;
+                // ✅ Apply target=0 logic to calculated total
+                const calculatedTotalAchievement = calculateAchievementPercentage(totalTarget, totalActual);
+                const totalHasSpecialCase = totalTarget === 0 && totalActual > 0;
+                
+                if (totalHasSpecialCase) {
+                    console.log(`🌟 Special case detected for calculated TOTAL: Target=0, Actual=${totalActual} → 100% (Green)`);
+                }
                 
                 // Create calculated total data
                 totalData = {
                     name: 'TOTAL',
-                    achievement: `${Math.round(totalAchievement)}%`,
+                    achievement: `${calculatedTotalAchievement}%`,
                     actual: formatCurrencyIndonesia(totalActual),
                     target: formatCurrencyIndonesia(totalTarget),
                     gap: formatCurrencyIndonesia(totalGap),
                     vs_lm: 'N/A',
                     vs_3lm: 'N/A',
-                    vs_ly: 'N/A'
+                    vs_ly: 'N/A',
+                    hasSpecialCase: totalHasSpecialCase
                 };
+            }
+            
+            // ✅ Apply special case styling if needed
+            if (totalData.hasSpecialCase) {
+                card.classList.add('achievement-high');
+                console.log('✅ Applied green styling to TOTAL card for target=0 special case');
             }
             
             card.innerHTML = `
@@ -1227,10 +1312,32 @@
             alert(summary);
         }
 
-        // ✅ UPDATED createLOBCard dengan vs metrics FIXED
+        // ✅ ENHANCED: createLOBCard dengan target=0 logic dan achievement-based colors
         function createLOBCard(lob, index) {
             const card = document.createElement('div');
-            card.className = `lob-card color-${index % 9}`;
+            
+            // ✅ Apply achievement-based color if special case, otherwise use default color
+            if (lob.hasSpecialCase) {
+                card.className = `lob-card achievement-high`;
+                console.log(`✅ Applied green styling to ${lob.name} card for target=0 special case`);
+            } else {
+                // ✅ Apply achievement-based color for normal cases
+                const target = parseFormattedValue(lob.target);
+                const actual = parseFormattedValue(lob.actual);
+                const achievementPercentage = target > 0 ? (actual / target * 100) : 0;
+                const achievementColorClass = getAchievementColorClass(achievementPercentage, false);
+                
+                // Use achievement color if significant difference, otherwise use default color
+                if (achievementPercentage >= 100) {
+                    card.className = `lob-card achievement-high`;
+                } else if (achievementPercentage >= 90) {
+                    card.className = `lob-card achievement-medium`;
+                } else if (achievementPercentage < 90 && achievementPercentage > 0) {
+                    card.className = `lob-card achievement-low`;
+                } else {
+                    card.className = `lob-card color-${index % 9}`;
+                }
+            }
             
             card.innerHTML = `
                 <div class="card-layout">
@@ -1261,7 +1368,7 @@
             `;
 
             card.addEventListener('click', () => {
-                console.log(`Clicked on ${lob.name} LOB`);
+                console.log(`Clicked on ${lob.name} LOB${lob.hasSpecialCase ? ' (Special Case: Target=0)' : ''}`);
                 // Add navigation logic here if needed
             });
 
@@ -1666,10 +1773,10 @@
                 return;
             }
 
-            console.log('🚀 Initializing dashboard with Indonesia format...');
+            console.log('🚀 Initializing dashboard with Indonesia format and target=0 → 100% logic...');
             loadDashboardData();
             startAutoRefresh();
-            console.log('✅ Dashboard initialized with Rb/Jt/M format');
+            console.log('✅ Dashboard initialized with Rb/Jt/M format and target=0 special case logic');
         });
 
         // Handle offline/online status
