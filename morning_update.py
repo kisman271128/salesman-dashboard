@@ -1061,6 +1061,7 @@ class SalesmanDashboardUpdater:
                 'profile.html',
                 'dashboard_insentif_sales.html',
                 'dashboard_insentif_sales_desktop.html',
+                'visit.html',
                 'morning_update.py',
                 'morning_update.log'
             ]
