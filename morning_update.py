@@ -14,7 +14,7 @@ if sys.platform == "win32":
     sys.stderr = codecs.getwriter('utf-8')(sys.stderr.detach())
 
 # Menggunakan path absolut untuk file Excel
-file_path = r'C:\Dashboard\DbaseSalesmanWebApp.xlsx'
+file_path = r'C:\Dashboard\DbaseSalesmanWebApp.xlsm'
 
 # Mengambil semua nama sheet
 xls = pd.ExcelFile(file_path)
