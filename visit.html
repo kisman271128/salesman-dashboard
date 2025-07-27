@@ -132,10 +132,22 @@
             transition: all 0.2s ease;
         }
 
+        .filter-item select:disabled {
+            background: #f7fafc;
+            color: #a0aec0;
+            cursor: not-allowed;
+            border-color: #e2e8f0;
+        }
+
         .filter-item select:focus {
             outline: none;
             border-color: #667eea;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .filter-item select:focus:disabled {
+            border-color: #e2e8f0;
+            box-shadow: none;
         }
 
         .filter-item::after {
@@ -752,10 +764,17 @@
             const hariSelect = document.getElementById('hari');
             const pelangganSelect = document.getElementById('pelanggan');
             
+            // Always enable hari dropdown when salesman is selected
+            hariSelect.disabled = false;
+            
             hariSelect.innerHTML = '<option value="">📅 Pilih Hari Kunjungan</option>';
             pelangganSelect.innerHTML = '<option value="">🏪 Pilih Pelanggan</option>';
             
-            if (salesmanSelect.value && hariData.length > 0) {
+            if (salesmanSelect.value) {
+                console.log('🔄 Updating hari options for:', salesmanSelect.value);
+                console.log('📅 Hari data available:', hariData.length > 0);
+                console.log('🏪 Pelanggan data available:', pelangganData.length > 0);
+                
                 // Get available hari for this salesman from pelanggan data (if loaded)
                 let salesmanHariFromData = [];
                 if (pelangganData.length > 0) {
@@ -766,13 +785,20 @@
                     )];
                 }
                 
-                // Get all hari from d.harijks.json
-                const allHariFromFile = [...new Set(hariData
-                    .map(item => item.Hari_Kunjungan)
-                    .filter(hari => hari && hari.trim() !== '')
-                )];
+                // Get all hari from d.harijks.json or fallback to common hari
+                let allHariFromFile = [];
+                if (hariData.length > 0) {
+                    allHariFromFile = [...new Set(hariData
+                        .map(item => item.Hari_Kunjungan)
+                        .filter(hari => hari && hari.trim() !== '')
+                    )];
+                } else {
+                    // Fallback if hari data not loaded yet
+                    allHariFromFile = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+                    console.log('⚠️ Using fallback hari list');
+                }
                 
-                console.log('📅 Available hari from d.harijks.json:', allHariFromFile);
+                console.log('📅 Available hari from file:', allHariFromFile);
                 console.log('📊 Salesman has data for hari:', salesmanHariFromData);
                 
                 // Show all hari from file
@@ -781,7 +807,7 @@
                     option.value = hari;
                     
                     // Add indicator if this hari has data for current salesman
-                    const hasData = pelangganData.length > 0 ? salesmanHariFromData.includes(hari) : true;
+                    const hasData = pelangganData.length === 0 || salesmanHariFromData.includes(hari);
                     option.textContent = hasData ? `${hari} ✓` : hari;
                     
                     // Only disable if we have pelanggan data loaded and no data exists
@@ -794,12 +820,13 @@
                     hariSelect.appendChild(option);
                 });
                 
-                console.log(`✅ Loaded ${allHariFromFile.length} hari options from d.harijks.json`);
-                if (pelangganData.length > 0) {
-                    console.log(`   - ${salesmanHariFromData.length} have data for ${salesmanSelect.value}`);
-                }
-            } else if (salesmanSelect.value && hariData.length === 0) {
-                console.warn('⚠️ Hari data not loaded yet from d.harijks.json');
+                console.log(`✅ Added ${allHariFromFile.length} hari options to dropdown`);
+                console.log('🎯 Hari dropdown enabled:', !hariSelect.disabled);
+                
+            } else {
+                // Disable hari dropdown if no salesman selected
+                hariSelect.disabled = true;
+                console.log('⚠️ Hari dropdown disabled - no salesman selected');
             }
             
             updateTable();
@@ -1014,8 +1041,19 @@
                 console.log(`   - Hari: ${hariData.length} records`);
                 console.log(`   - Pelanggan: ${pelangganData.length} records`);
                 
+                // Enable all dropdowns after data is loaded
+                const salesmanSelect = document.getElementById('salesman');
+                const hariSelect = document.getElementById('hari');
+                const pelangganSelect = document.getElementById('pelanggan');
+                
+                if (salesmanSelect) salesmanSelect.disabled = false;
+                if (hariSelect) hariSelect.disabled = false;
+                if (pelangganSelect) pelangganSelect.disabled = false;
+                
+                console.log('✅ All dropdowns enabled');
+                
                 if (hariData.length === 0) {
-                    throw new Error('No hari data loaded from d.harijks.json');
+                    console.warn('⚠️ No hari data loaded, but continuing with fallback');
                 }
                 
                 console.log('📅 Available hari from d.harijks.json:', 
@@ -1024,10 +1062,27 @@
                 showLoading(false);
                 showMainContent(true);
                 
+                // Trigger initial update if salesman already selected
+                if (salesmanSelect && salesmanSelect.value) {
+                    console.log('🔄 Triggering hari options update for pre-selected salesman');
+                    updateHariOptions();
+                }
+                
             } catch (error) {
                 console.error('❌ Error loading data:', error);
                 showLoading(false);
                 showError(true, error.message);
+                
+                // Even if there's an error, try to enable dropdowns
+                const salesmanSelect = document.getElementById('salesman');
+                const hariSelect = document.getElementById('hari');
+                const pelangganSelect = document.getElementById('pelanggan');
+                
+                if (salesmanSelect) salesmanSelect.disabled = false;
+                if (hariSelect) hariSelect.disabled = false;  
+                if (pelangganSelect) pelangganSelect.disabled = false;
+                
+                console.log('⚠️ Enabled dropdowns despite error');
             }
         }
 
