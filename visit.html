@@ -190,46 +190,6 @@
             background: #94a3b8;
         }
 
-        /* File upload styling */
-        .file-upload-section {
-            margin-bottom: 16px;
-            padding: 12px;
-            background: #f8fafc;
-            border-radius: 8px;
-            border: 2px dashed #cbd5e1;
-        }
-
-        .file-upload-section input[type="file"] {
-            width: 100%;
-            padding: 4px;
-            font-size: 11px;
-            border: 1px solid #e2e8f0;
-            border-radius: 4px;
-            background: white;
-        }
-
-        .file-upload-button {
-            width: 100%;
-            margin-top: 12px;
-            padding: 8px;
-            background: #3182ce;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-size: 12px;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-
-        .file-upload-button:hover {
-            background: #2c5aa0;
-        }
-
-        .file-upload-button:disabled {
-            background: #94a3b8;
-            cursor: not-allowed;
-        }
-
         table {
             width: 100%;
             border-collapse: collapse;
@@ -524,10 +484,6 @@
                 <div class="filter-item">
                     <select id="salesman">
                         <option value="">Pilih Salesman</option>
-                        <option value="john">John Doe</option>
-                        <option value="jane">Jane Smith</option>
-                        <option value="mike">Mike Johnson</option>
-                        <option value="sarah">Sarah Wilson</option>
                     </select>
                 </div>
                 
@@ -567,7 +523,7 @@
                                 <td colspan="9">
                                     <div class="empty-state">
                                         <div class="empty-state-icon">📊</div>
-                                        <div>Pilih filter untuk melihat data</div>
+                                        <div>Loading data...</div>
                                     </div>
                                 </td>
                             </tr>
@@ -583,199 +539,10 @@
     </div>
 
     <script>
-        // Real data variables
-        let realData = {
-            salesmen: [],
-            hari: [],
-            pelanggan: [],
-            transaksi: []
-        };
-        let isDataLoaded = false;
-
-        // Status message functions
-        function showStatusMessage(message, type = 'info') {
-            const statusEl = document.getElementById('statusMessage');
-            
-            // Check if element exists
-            if (!statusEl) {
-                console.log(`Status: ${message} (${type})`);
-                return;
-            }
-            
-            statusEl.textContent = message;
-            statusEl.style.display = 'block';
-            
-            // Style based on type
-            if (type === 'success') {
-                statusEl.style.background = '#dcfce7';
-                statusEl.style.color = '#166534';
-            } else if (type === 'error') {
-                statusEl.style.background = '#fee2e2';
-                statusEl.style.color = '#dc2626';
-            } else {
-                statusEl.style.background = '#e0f2fe';
-                statusEl.style.color = '#0369a1';
-            }
-            
-            // Auto hide after 5 seconds
-            setTimeout(() => {
-                if (statusEl) {
-                    statusEl.style.display = 'none';
-                }
-            }, 5000);
-        }
-
-        // Load all required JSON files
-        async function loadRealData() {
-            showStatusMessage('Loading data...', 'info');
-            
-            // Check if we're in Claude Artifacts environment
-            if (typeof window.fs === 'undefined') {
-                console.log('window.fs not available - showing file upload interface');
-                showStatusMessage('Please upload the required JSON files below', 'info');
-                document.getElementById('fileUploadSection').style.display = 'block';
-                return;
-            }
-            
-            try {
-                // Load salesmen data (JSONL format)
-                console.log('Loading salesmen data...');
-                const salesmenContent = await window.fs.readFile('c:\\dashboard\\data\\d.salesman.json', { encoding: 'utf8' });
-                const salesmenData = parseJSONL(salesmenContent);
-                console.log('Salesmen data loaded:', salesmenData.length, 'records');
-                console.log('Sample salesman:', salesmenData[0]);
-                
-                // Load hari/rute data (JSONL format)
-                console.log('Loading hari/rute data...');
-                const hariContent = await window.fs.readFile('c:\\dashboard\\data\\d.harijks.json', { encoding: 'utf8' });
-                const hariData = parseJSONL(hariContent);
-                console.log('Hari data loaded:', hariData.length, 'records');
-                console.log('Sample hari:', hariData[0]);
-                
-                // Load pelanggan data (assume same JSONL format)
-                console.log('Loading pelanggan data...');
-                const pelangganContent = await window.fs.readFile('c:\\dashboard\\data\\d.skupelanggan.json', { encoding: 'utf8' });
-                let pelangganData;
-                
-                // Try JSONL first, then standard JSON array
-                try {
-                    pelangganData = parseJSONL(pelangganContent);
-                    console.log('Pelanggan data loaded as JSONL:', pelangganData.length, 'records');
-                } catch (jsonlError) {
-                    console.log('JSONL parse failed, trying standard JSON array...');
-                    pelangganData = JSON.parse(pelangganContent);
-                    console.log('Pelanggan data loaded as JSON array:', pelangganData.length, 'records');
-                }
-                
-                console.log('Sample pelanggan:', pelangganData[0]);
-                
-                // Process all data
-                processRealData(salesmenData, hariData, pelangganData);
-                isDataLoaded = true;
-                
-                // Initialize UI
-                initializeDropdowns();
-                updateTable();
-                
-                showStatusMessage(`Data loaded successfully! Salesmen: ${salesmenData.length}, Hari: ${hariData.length}, Records: ${pelangganData.length}`, 'success');
-                
-            } catch (error) {
-                console.error('Error loading data:', error);
-                showStatusMessage(`Error loading data: ${error.message}. Please check file paths and formats.`, 'error');
-                
-                // Show file upload option as fallback
-                document.getElementById('fileUploadSection').style.display = 'block';
-                
-                // Show error state in UI
-                const tableBody = document.getElementById('tableBody');
-                if (tableBody) {
-                    tableBody.innerHTML = `
-                        <tr>
-                            <td colspan="9">
-                                <div class="empty-state">
-                                    <div class="empty-state-icon">❌</div>
-                                    <div>Failed to load data files</div>
-                                    <div style="font-size: 11px; margin-top: 8px; color: #64748b;">
-                                        Please upload files using the form above
-                                    </div>
-                                </div>
-                            </td>
-                        </tr>
-                    `;
-                }
-                
-                // Disable dropdowns safely
-                const salesmanSelect = document.getElementById('salesman');
-                const hariSelect = document.getElementById('hari');
-                const pelangganSelect = document.getElementById('pelanggan');
-                
-                if (salesmanSelect) salesmanSelect.disabled = true;
-                if (hariSelect) hariSelect.disabled = true;
-                if (pelangganSelect) pelangganSelect.disabled = true;
-            }
-        }
-
-        // Load data from uploaded files
-        async function loadFromFiles() {
-            const salesmanFile = document.getElementById('salesmanFile').files[0];
-            const hariFile = document.getElementById('hariFile').files[0];
-            const dataFile = document.getElementById('dataFile').files[0];
-            
-            if (!salesmanFile || !hariFile || !dataFile) {
-                showStatusMessage('Please select all 3 required files', 'error');
-                return;
-            }
-            
-            showStatusMessage('Processing uploaded files...', 'info');
-            
-            try {
-                // Read all files
-                const salesmenContent = await readFileAsText(salesmanFile);
-                const hariContent = await readFileAsText(hariFile);
-                const dataContent = await readFileAsText(dataFile);
-                
-                // Parse JSONL data
-                const salesmenData = parseJSONL(salesmenContent);
-                const hariData = parseJSONL(hariContent);
-                
-                let pelangganData;
-                try {
-                    pelangganData = parseJSONL(dataContent);
-                } catch (jsonlError) {
-                    pelangganData = JSON.parse(dataContent);
-                }
-                
-                console.log('Files loaded successfully');
-                console.log('Salesmen:', salesmenData.length, 'Hari:', hariData.length, 'Data:', pelangganData.length);
-                
-                // Process data
-                processRealData(salesmenData, hariData, pelangganData);
-                isDataLoaded = true;
-                
-                // Hide upload section and show data
-                document.getElementById('fileUploadSection').style.display = 'none';
-                
-                // Initialize UI
-                initializeDropdowns();
-                updateTable();
-                
-                showStatusMessage(`Files loaded successfully! Salesmen: ${salesmenData.length}, Hari: ${hariData.length}, Records: ${pelangganData.length}`, 'success');
-                
-            } catch (error) {
-                console.error('Error processing files:', error);
-                showStatusMessage(`Error processing files: ${error.message}`, 'error');
-            }
-        }
-
-        // Helper function to read file as text
-        function readFileAsText(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = () => reject(reader.error);
-                reader.readAsText(file);
-            });
-        }
+        // Global variables
+        let salesmenData = [];
+        let hariData = [];
+        let pelangganData = [];
 
         // Parse JSONL (JSON Lines) format
         function parseJSONL(content) {
@@ -796,55 +563,80 @@
             return data;
         }
 
-        function processRealData(salesmenData, hariData, pelangganData) {
-            // Process salesmen - extract unique szname
-            realData.salesmen = [...new Set(salesmenData
-                .map(item => item.szname)
-                .filter(name => name && name.trim() !== '')
-            )];
-            
-            // Process hari/rute - extract unique Hari_Kunjungan
-            realData.hari = [...new Set(hariData
-                .map(item => item.Hari_Kunjungan)
-                .filter(hari => hari && hari.trim() !== '')
-            )];
-            
-            // Store full pelanggan data for filtering
-            realData.transaksi = pelangganData;
-            
-            console.log('Processed salesmen:', realData.salesmen);
-            console.log('Processed hari:', realData.hari);
-            console.log('Sample transaksi:', realData.transaksi[0]);
+        // Load salesman data and populate combobox
+        async function loadSalesmanData() {
+            try {
+                const response = await fetch('data/d.salesman.json');
+                if (!response.ok) throw new Error('Failed to load salesman data');
+                
+                const content = await response.text();
+                salesmenData = parseJSONL(content);
+                
+                const salesmanSelect = document.getElementById('salesman');
+                salesmanSelect.innerHTML = '<option value="">Pilih Salesman</option>';
+                
+                // Extract unique salesman names
+                const uniqueSalesmen = [...new Set(salesmenData
+                    .map(item => item.szname)
+                    .filter(name => name && name.trim() !== '')
+                )];
+                
+                uniqueSalesmen.forEach(name => {
+                    const option = document.createElement('option');
+                    option.value = name;
+                    option.textContent = name;
+                    salesmanSelect.appendChild(option);
+                });
+                
+                console.log('✅ Loaded', uniqueSalesmen.length, 'salesmen');
+                
+            } catch (error) {
+                console.error('❌ Error loading salesman data:', error);
+            }
         }
 
-        function useLocalData() {
-            console.log('Using fallback dummy data');
-            // Fallback dummy data with new structure
-            realData = {
-                salesmen: ["John Doe", "Jane Smith", "Mike Johnson"],
-                hari: ["Senin", "Selasa", "Rabu", "Kamis", "Jumat"],
-                pelanggan: [],
-                transaksi: [
-                    { SKU: "APC", Unit3LM: 6, UnitLM: 77, Plan: 41, UnitMTD: 28, Gap: -13, Promo: "Bisc", Nama_Salesman: "John Doe", Hari_Kunjungan: "Senin", Nama_Pelanggan: "Toko ABC" },
-                    { SKU: "APD", Unit3LM: 43, UnitLM: 40, Plan: 49, UnitMTD: 39, Gap: -10, Promo: "SF", Nama_Salesman: "John Doe", Hari_Kunjungan: "Senin", Nama_Pelanggan: "Toko ABC" },
-                    { SKU: "BIC4K", Unit3LM: 13, UnitLM: 28, Plan: 90, UnitMTD: 16, Gap: -74, Promo: "Bisc", Nama_Salesman: "Jane Smith", Hari_Kunjungan: "Selasa", Nama_Pelanggan: "Mini Market 123" },
-                    { SKU: "BPG", Unit3LM: 36, UnitLM: 65, Plan: 30, UnitMTD: 99, Gap: 69, Promo: "SF", Nama_Salesman: "John Doe", Hari_Kunjungan: "Rabu", Nama_Pelanggan: "Supermarket XYZ" }
-                ]
-            };
-            isDataLoaded = true;
-            initializeDropdowns();
+        // Load hari data and populate combobox
+        async function loadHariData() {
+            try {
+                const response = await fetch('data/d.harijks.json');
+                if (!response.ok) throw new Error('Failed to load hari data');
+                
+                const content = await response.text();
+                hariData = parseJSONL(content);
+                
+                // Extract unique hari for reference
+                const uniqueHari = [...new Set(hariData
+                    .map(item => item.Hari_Kunjungan)
+                    .filter(hari => hari && hari.trim() !== '')
+                )];
+                
+                console.log('✅ Loaded', uniqueHari.length, 'hari options');
+                
+            } catch (error) {
+                console.error('❌ Error loading hari data:', error);
+            }
         }
 
-        function initializeDropdowns() {
-            const salesmanSelect = document.getElementById('salesman');
-            salesmanSelect.innerHTML = '<option value="">Pilih Salesman</option>';
-            
-            Object.keys(realData.salesmen).forEach(key => {
-                const option = document.createElement('option');
-                option.value = key;
-                option.textContent = realData.salesmen[key].name;
-                salesmanSelect.appendChild(option);
-            });
+        // Load pelanggan data for table
+        async function loadPelangganData() {
+            try {
+                const response = await fetch('data/d.skupelanggan.json');
+                if (!response.ok) throw new Error('Failed to load pelanggan data');
+                
+                const content = await response.text();
+                
+                // Try JSONL first, then standard JSON array
+                try {
+                    pelangganData = parseJSONL(content);
+                } catch (jsonlError) {
+                    pelangganData = JSON.parse(content);
+                }
+                
+                console.log('✅ Loaded', pelangganData.length, 'pelanggan records');
+                
+            } catch (error) {
+                console.error('❌ Error loading pelanggan data:', error);
+            }
         }
 
         // Event listeners
@@ -860,14 +652,22 @@
             hariSelect.innerHTML = '<option value="">Pilih Hari Kunjungan</option>';
             pelangganSelect.innerHTML = '<option value="">Pilih Pelanggan</option>';
             
-            if (salesmanSelect.value && realData.salesmen[salesmanSelect.value]) {
-                const availableHari = realData.salesmen[salesmanSelect.value].hari;
-                availableHari.forEach(hari => {
+            if (salesmanSelect.value && pelangganData.length > 0) {
+                // Filter hari options based on selected salesman from pelanggan data
+                const filteredHari = [...new Set(pelangganData
+                    .filter(item => item.Nama_Salesman === salesmanSelect.value)
+                    .map(item => item.Hari_Kunjungan)
+                    .filter(hari => hari && hari.trim() !== '')
+                )];
+                
+                filteredHari.forEach(hari => {
                     const option = document.createElement('option');
                     option.value = hari;
                     option.textContent = hari.charAt(0).toUpperCase() + hari.slice(1);
                     hariSelect.appendChild(option);
                 });
+                
+                console.log(`Found ${filteredHari.length} hari options for ${salesmanSelect.value}`);
             }
             
             updateTable();
@@ -880,14 +680,25 @@
             
             pelangganSelect.innerHTML = '<option value="">Pilih Pelanggan</option>';
             
-            if (salesmanSelect.value && hariSelect.value && realData.pelanggan[salesmanSelect.value]) {
-                const availablePelanggan = realData.pelanggan[salesmanSelect.value][hariSelect.value] || [];
-                availablePelanggan.forEach((pelanggan, index) => {
+            if (salesmanSelect.value && hariSelect.value && pelangganData.length > 0) {
+                // Filter pelanggan options based on selected salesman and hari
+                const filteredPelanggan = [...new Set(pelangganData
+                    .filter(item => 
+                        item.Nama_Salesman === salesmanSelect.value && 
+                        item.Hari_Kunjungan === hariSelect.value
+                    )
+                    .map(item => item.Nama_Pelanggan)
+                    .filter(pelanggan => pelanggan && pelanggan.trim() !== '')
+                )];
+                
+                filteredPelanggan.forEach(pelanggan => {
                     const option = document.createElement('option');
                     option.value = pelanggan;
                     option.textContent = pelanggan;
                     pelangganSelect.appendChild(option);
                 });
+                
+                console.log(`Found ${filteredPelanggan.length} pelanggan options for ${salesmanSelect.value} - ${hariSelect.value}`);
             }
             
             updateTable();
@@ -899,18 +710,12 @@
             const hariSelect = document.getElementById('hari');
             const pelangganSelect = document.getElementById('pelanggan');
             
-            // Check if elements exist
-            if (!tableBody) {
-                console.error('Table body element not found');
+            if (!tableBody || !salesmanSelect || !hariSelect || !pelangganSelect) {
+                console.error('Table or dropdown elements not found');
                 return;
             }
             
-            if (!salesmanSelect || !hariSelect || !pelangganSelect) {
-                console.error('Dropdown elements not found in updateTable');
-                return;
-            }
-            
-            if (!isDataLoaded) {
+            if (pelangganData.length === 0) {
                 tableBody.innerHTML = `
                     <tr>
                         <td colspan="9">
@@ -938,8 +743,8 @@
                 return;
             }
             
-            // Filter data based on selected criteria using exact field names
-            const filteredData = realData.transaksi.filter(item => {
+            // Filter data based on selected criteria
+            const filteredData = pelangganData.filter(item => {
                 return item.Nama_Salesman === salesmanSelect.value &&
                        item.Hari_Kunjungan === hariSelect.value &&
                        item.Nama_Pelanggan === pelangganSelect.value;
@@ -1034,17 +839,28 @@
             const button = document.getElementById('refreshBtn');
             button.innerHTML = '<span class="loading">⟳</span>';
             
-            showStatusMessage('Refreshing data...', 'info');
-            
-            setTimeout(() => {
-                loadRealData();
+            setTimeout(async () => {
+                await initializeData();
                 button.innerHTML = '🔄';
             }, 1000);
         }
 
+        // Initialize data loading
+        async function initializeData() {
+            console.log('🚀 Loading data files...');
+            
+            await Promise.all([
+                loadSalesmanData(),
+                loadHariData(),
+                loadPelangganData()
+            ]);
+            
+            console.log('✅ All data loaded');
+        }
+
         // Initialize on page load
         window.onload = function() {
-            loadRealData();
+            initializeData();
         }
     </script>
 </body>
