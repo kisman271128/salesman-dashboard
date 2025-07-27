@@ -686,10 +686,15 @@
         // Load hari data and populate combobox
         async function loadHariData() {
             try {
+                console.log('📅 Fetching d.harijks.json...');
                 const response = await fetch('data/d.harijks.json');
-                if (!response.ok) throw new Error('Failed to load hari data');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: Failed to load hari data from d.harijks.json`);
+                }
                 
                 const content = await response.text();
+                console.log('📅 Raw content from d.harijks.json:', content.substring(0, 200) + '...');
+                
                 hariData = parseJSONL(content);
                 
                 // Extract unique hari for reference
@@ -698,10 +703,20 @@
                     .filter(hari => hari && hari.trim() !== '')
                 )];
                 
-                console.log('✅ Loaded', uniqueHari.length, 'hari options');
+                console.log('✅ Loaded hari data successfully:');
+                console.log(`   - Total records: ${hariData.length}`);
+                console.log(`   - Unique hari: ${uniqueHari.length}`);
+                console.log(`   - Hari list:`, uniqueHari);
+                
+                if (hariData.length === 0) {
+                    throw new Error('No hari data found in d.harijks.json');
+                }
                 
             } catch (error) {
-                console.error('❌ Error loading hari data:', error);
+                console.error('❌ Error loading hari data from d.harijks.json:', error);
+                console.error('   - Make sure data/d.harijks.json file exists and is accessible');
+                console.error('   - Check file format: each line should be valid JSON with Hari_Kunjungan field');
+                throw error; // Re-throw to be caught by initializeData
             }
         }
 
@@ -740,22 +755,51 @@
             hariSelect.innerHTML = '<option value="">📅 Pilih Hari Kunjungan</option>';
             pelangganSelect.innerHTML = '<option value="">🏪 Pilih Pelanggan</option>';
             
-            if (salesmanSelect.value && pelangganData.length > 0) {
-                // Filter hari options based on selected salesman from pelanggan data
-                const filteredHari = [...new Set(pelangganData
-                    .filter(item => item.Nama_Salesman === salesmanSelect.value)
+            if (salesmanSelect.value && hariData.length > 0) {
+                // Get available hari for this salesman from pelanggan data (if loaded)
+                let salesmanHariFromData = [];
+                if (pelangganData.length > 0) {
+                    salesmanHariFromData = [...new Set(pelangganData
+                        .filter(item => item.Nama_Salesman === salesmanSelect.value)
+                        .map(item => item.Hari_Kunjungan)
+                        .filter(hari => hari && hari.trim() !== '')
+                    )];
+                }
+                
+                // Get all hari from d.harijks.json
+                const allHariFromFile = [...new Set(hariData
                     .map(item => item.Hari_Kunjungan)
                     .filter(hari => hari && hari.trim() !== '')
                 )];
                 
-                filteredHari.forEach(hari => {
+                console.log('📅 Available hari from d.harijks.json:', allHariFromFile);
+                console.log('📊 Salesman has data for hari:', salesmanHariFromData);
+                
+                // Show all hari from file
+                allHariFromFile.forEach(hari => {
                     const option = document.createElement('option');
                     option.value = hari;
-                    option.textContent = hari.charAt(0).toUpperCase() + hari.slice(1);
+                    
+                    // Add indicator if this hari has data for current salesman
+                    const hasData = pelangganData.length > 0 ? salesmanHariFromData.includes(hari) : true;
+                    option.textContent = hasData ? `${hari} ✓` : hari;
+                    
+                    // Only disable if we have pelanggan data loaded and no data exists
+                    if (pelangganData.length > 0 && !hasData) {
+                        option.disabled = true;
+                        option.style.color = '#cbd5e1';
+                        option.title = 'Tidak ada data untuk hari ini';
+                    }
+                    
                     hariSelect.appendChild(option);
                 });
                 
-                console.log(`Found ${filteredHari.length} hari options for ${salesmanSelect.value}`);
+                console.log(`✅ Loaded ${allHariFromFile.length} hari options from d.harijks.json`);
+                if (pelangganData.length > 0) {
+                    console.log(`   - ${salesmanHariFromData.length} have data for ${salesmanSelect.value}`);
+                }
+            } else if (salesmanSelect.value && hariData.length === 0) {
+                console.warn('⚠️ Hari data not loaded yet from d.harijks.json');
             }
             
             updateTable();
@@ -954,13 +998,29 @@
                 
                 console.log('🚀 Loading data files...');
                 
-                await Promise.all([
-                    loadSalesmanData(),
-                    loadHariData(),
-                    loadPelangganData()
-                ]);
+                // Load all data files sequentially to ensure proper order
+                console.log('📊 Loading salesman data...');
+                await loadSalesmanData();
                 
-                console.log('✅ All data loaded');
+                console.log('📅 Loading hari data from d.harijks.json...');
+                await loadHariData();
+                
+                console.log('🏪 Loading pelanggan data...');
+                await loadPelangganData();
+                
+                // Verify data is loaded
+                console.log('✅ Data verification:');
+                console.log(`   - Salesmen: ${salesmenData.length} records`);
+                console.log(`   - Hari: ${hariData.length} records`);
+                console.log(`   - Pelanggan: ${pelangganData.length} records`);
+                
+                if (hariData.length === 0) {
+                    throw new Error('No hari data loaded from d.harijks.json');
+                }
+                
+                console.log('📅 Available hari from d.harijks.json:', 
+                    hariData.map(item => item.Hari_Kunjungan));
+                
                 showLoading(false);
                 showMainContent(true);
                 
