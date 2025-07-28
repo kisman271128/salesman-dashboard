@@ -695,7 +695,7 @@
             }
         }
 
-        // Load hari data and populate combobox
+        // Load hari data and populate combobox immediately
         async function loadHariData() {
             try {
                 console.log('📅 Fetching d.harijks.json...');
@@ -705,30 +705,38 @@
                 }
                 
                 const content = await response.text();
-                console.log('📅 Raw content from d.harijks.json:', content.substring(0, 200) + '...');
-                
                 hariData = parseJSONL(content);
                 
-                // Extract unique hari for reference
+                // Extract unique hari and populate dropdown immediately
                 const uniqueHari = [...new Set(hariData
                     .map(item => item.Hari_Kunjungan)
                     .filter(hari => hari && hari.trim() !== '')
                 )];
+                
+                // Populate hari dropdown immediately
+                const hariSelect = document.getElementById('hari');
+                if (hariSelect) {
+                    hariSelect.innerHTML = '<option value="">📅 Pilih Hari Kunjungan</option>';
+                    
+                    uniqueHari.forEach(hari => {
+                        const option = document.createElement('option');
+                        option.value = hari;
+                        option.textContent = hari;
+                        hariSelect.appendChild(option);
+                    });
+                    
+                    hariSelect.disabled = false;
+                    console.log(`✅ Hari dropdown populated with ${uniqueHari.length} options`);
+                }
                 
                 console.log('✅ Loaded hari data successfully:');
                 console.log(`   - Total records: ${hariData.length}`);
                 console.log(`   - Unique hari: ${uniqueHari.length}`);
                 console.log(`   - Hari list:`, uniqueHari);
                 
-                if (hariData.length === 0) {
-                    throw new Error('No hari data found in d.harijks.json');
-                }
-                
             } catch (error) {
                 console.error('❌ Error loading hari data from d.harijks.json:', error);
-                console.error('   - Make sure data/d.harijks.json file exists and is accessible');
-                console.error('   - Check file format: each line should be valid JSON with Hari_Kunjungan field');
-                throw error; // Re-throw to be caught by initializeData
+                throw error;
             }
         }
 
@@ -759,87 +767,18 @@
         document.getElementById('hari').addEventListener('change', updatePelangganOptions);
         document.getElementById('pelanggan').addEventListener('change', updateTable);
 
-        function updateHariOptions() {
-            const salesmanSelect = document.getElementById('salesman');
-            const hariSelect = document.getElementById('hari');
-            const pelangganSelect = document.getElementById('pelanggan');
-            
-            // Always enable hari dropdown when salesman is selected
-            hariSelect.disabled = false;
-            
-            hariSelect.innerHTML = '<option value="">📅 Pilih Hari Kunjungan</option>';
-            pelangganSelect.innerHTML = '<option value="">🏪 Pilih Pelanggan</option>';
-            
-            if (salesmanSelect.value) {
-                console.log('🔄 Updating hari options for:', salesmanSelect.value);
-                console.log('📅 Hari data available:', hariData.length > 0);
-                console.log('🏪 Pelanggan data available:', pelangganData.length > 0);
-                
-                // Get available hari for this salesman from pelanggan data (if loaded)
-                let salesmanHariFromData = [];
-                if (pelangganData.length > 0) {
-                    salesmanHariFromData = [...new Set(pelangganData
-                        .filter(item => item.Nama_Salesman === salesmanSelect.value)
-                        .map(item => item.Hari_Kunjungan)
-                        .filter(hari => hari && hari.trim() !== '')
-                    )];
-                }
-                
-                // Get all hari from d.harijks.json or fallback to common hari
-                let allHariFromFile = [];
-                if (hariData.length > 0) {
-                    allHariFromFile = [...new Set(hariData
-                        .map(item => item.Hari_Kunjungan)
-                        .filter(hari => hari && hari.trim() !== '')
-                    )];
-                } else {
-                    // Fallback if hari data not loaded yet
-                    allHariFromFile = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-                    console.log('⚠️ Using fallback hari list');
-                }
-                
-                console.log('📅 Available hari from file:', allHariFromFile);
-                console.log('📊 Salesman has data for hari:', salesmanHariFromData);
-                
-                // Show all hari from file
-                allHariFromFile.forEach(hari => {
-                    const option = document.createElement('option');
-                    option.value = hari;
-                    
-                    // Add indicator if this hari has data for current salesman
-                    const hasData = pelangganData.length === 0 || salesmanHariFromData.includes(hari);
-                    option.textContent = hasData ? `${hari} ✓` : hari;
-                    
-                    // Only disable if we have pelanggan data loaded and no data exists
-                    if (pelangganData.length > 0 && !hasData) {
-                        option.disabled = true;
-                        option.style.color = '#cbd5e1';
-                        option.title = 'Tidak ada data untuk hari ini';
-                    }
-                    
-                    hariSelect.appendChild(option);
-                });
-                
-                console.log(`✅ Added ${allHariFromFile.length} hari options to dropdown`);
-                console.log('🎯 Hari dropdown enabled:', !hariSelect.disabled);
-                
-            } else {
-                // Disable hari dropdown if no salesman selected
-                hariSelect.disabled = true;
-                console.log('⚠️ Hari dropdown disabled - no salesman selected');
-            }
-            
-            updateTable();
-        }
-
         function updatePelangganOptions() {
             const salesmanSelect = document.getElementById('salesman');
             const hariSelect = document.getElementById('hari');
             const pelangganSelect = document.getElementById('pelanggan');
             
             pelangganSelect.innerHTML = '<option value="">🏪 Pilih Pelanggan</option>';
+            pelangganSelect.disabled = false;
             
+            // Only filter pelanggan if both salesman and hari are selected
             if (salesmanSelect.value && hariSelect.value && pelangganData.length > 0) {
+                console.log(`🔍 Filtering pelanggan for: ${salesmanSelect.value} - ${hariSelect.value}`);
+                
                 // Filter pelanggan options based on selected salesman and hari
                 const filteredPelanggan = [...new Set(pelangganData
                     .filter(item => 
@@ -857,7 +796,26 @@
                     pelangganSelect.appendChild(option);
                 });
                 
-                console.log(`Found ${filteredPelanggan.length} pelanggan options for ${salesmanSelect.value} - ${hariSelect.value}`);
+                console.log(`✅ Found ${filteredPelanggan.length} pelanggan for ${salesmanSelect.value} - ${hariSelect.value}`);
+                
+                if (filteredPelanggan.length === 0) {
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = 'Tidak ada data pelanggan';
+                    option.disabled = true;
+                    option.style.color = '#cbd5e1';
+                    pelangganSelect.appendChild(option);
+                }
+                
+            } else if (salesmanSelect.value || hariSelect.value) {
+                // Show message if only one filter is selected
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = 'Pilih salesman dan hari terlebih dahulu';
+                option.disabled = true;
+                option.style.color = '#cbd5e1';
+                pelangganSelect.appendChild(option);
+                console.log('⚠️ Need both salesman and hari to show pelanggan');
             }
             
             updateTable();
