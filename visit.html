@@ -262,6 +262,45 @@
             text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
         }
 
+        /* Sortable header styling */
+        .sortable-header {
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .sortable-header:hover {
+            background: linear-gradient(135deg, #5a67d8, #6b46c1);
+            transform: translateY(-1px);
+        }
+
+        .sortable-header::after {
+            content: '';
+            position: absolute;
+            right: 4px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 0;
+            height: 0;
+            border-left: 3px solid transparent;
+            border-right: 3px solid transparent;
+            border-bottom: 3px solid rgba(255, 255, 255, 0.7);
+            opacity: 0.5;
+        }
+
+        .sortable-header.asc::after {
+            border-bottom: 3px solid white;
+            border-top: none;
+            opacity: 1;
+        }
+
+        .sortable-header.desc::after {
+            border-top: 3px solid white;
+            border-bottom: none;
+            opacity: 1;
+        }
+
         /* Sticky columns - No, Promo, SKU */
         th:nth-child(1), th:nth-child(2), th:nth-child(3),
         td:nth-child(1), td:nth-child(2), td:nth-child(3) {
@@ -351,8 +390,14 @@
         .promo-bev { 
             background: linear-gradient(135deg, #059669, #10b981);
         }
-        .promo-others, .promo-sf, .promo-gen, .promo-go, .promo-solmed { 
+        .promo-others, .promo-sf, .promo-gen, .promo-go { 
             background: linear-gradient(135deg, #0369a1, #0284c7);
+        }
+        .promo-gbs { 
+            background: linear-gradient(135deg, #7c2d12, #ea580c);
+        }
+        .promo-solmed { 
+            background: linear-gradient(135deg, #d97706, #f59e0b);
         }
 
         .recommendation {
@@ -566,7 +611,7 @@
                             <thead>
                                 <tr>
                                     <th>No</th>
-                                    <th>Promo</th>
+                                    <th class="sortable-header" onclick="sortTable('promo')">Promo</th>
                                     <th>SKU</th>
                                     <th>3LM</th>
                                     <th>LM</th>
@@ -618,6 +663,8 @@
         let salesmenData = [];
         let hariData = [];
         let pelangganData = [];
+        let currentFilteredData = []; // Store current filtered data for sorting
+        let sortState = { column: null, direction: 'asc' }; // Track sort state
 
         // Check if user is logged in
         function checkLoginStatus() {
@@ -884,64 +931,63 @@
             updateTable();
         }
 
-        function updateTable() {
-            const tableBody = document.getElementById('tableBody');
-            const salesmanSelect = document.getElementById('salesman');
-            const hariSelect = document.getElementById('hari');
-            const pelangganSelect = document.getElementById('pelanggan');
-            
-            if (!tableBody || !salesmanSelect || !hariSelect || !pelangganSelect) {
-                console.error('Table or dropdown elements not found');
+        // Sort table function
+        function sortTable(column) {
+            if (currentFilteredData.length === 0) {
+                console.log('No data to sort');
                 return;
             }
-            
-            if (pelangganData.length === 0) {
-                tableBody.innerHTML = `
-                    <tr>
-                        <td colspan="9">
-                            <div class="empty-state">
-                                <div class="empty-state-icon">⏳</div>
-                                <div>Loading data...</div>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-                return;
+
+            // Toggle sort direction
+            if (sortState.column === column) {
+                sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortState.column = column;
+                sortState.direction = 'asc';
             }
-            
-            if (!salesmanSelect.value || !hariSelect.value || !pelangganSelect.value) {
-                tableBody.innerHTML = `
-                    <tr>
-                        <td colspan="9">
-                            <div class="empty-state">
-                                <div class="empty-state-icon">📊</div>
-                                <div>Pilih filter untuk melihat data</div>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-                return;
+
+            // Sort the current filtered data
+            if (column === 'promo') {
+                currentFilteredData.sort((a, b) => {
+                    const promoA = (a.Promo || '').toLowerCase();
+                    const promoB = (b.Promo || '').toLowerCase();
+                    
+                    if (sortState.direction === 'asc') {
+                        return promoA.localeCompare(promoB);
+                    } else {
+                        return promoB.localeCompare(promoA);
+                    }
+                });
             }
-            
-            // 🆕 IMPROVED: Case-insensitive matching
-            const selectedSalesman = salesmanSelect.value.trim().toLowerCase();
-            const selectedHari = hariSelect.value.trim().toLowerCase();
-            const selectedPelanggan = pelangganSelect.value.trim().toLowerCase();
-            
-            // Filter data based on selected criteria
-            const filteredData = pelangganData.filter(item => {
-                const itemSalesman = (item.Nama_Salesman || '').trim().toLowerCase();
-                const itemHari = (item.Hari_Kunjungan || '').trim().toLowerCase();
-                const itemPelanggan = (item.Nama_Pelanggan || '').trim().toLowerCase();
-                
-                return itemSalesman === selectedSalesman &&
-                       itemHari === selectedHari &&
-                       itemPelanggan === selectedPelanggan;
+
+            // Update header visual state
+            updateSortHeaders();
+
+            // Re-render table with sorted data
+            renderTableData(currentFilteredData);
+        }
+
+        // Update sort header visual indicators
+        function updateSortHeaders() {
+            // Remove all sort classes
+            document.querySelectorAll('.sortable-header').forEach(header => {
+                header.classList.remove('asc', 'desc');
             });
+
+            // Add current sort class to active header
+            if (sortState.column === 'promo') {
+                const promoHeader = document.querySelector('.sortable-header');
+                if (promoHeader) {
+                    promoHeader.classList.add(sortState.direction);
+                }
+            }
+        }
+
+        // Render table data (extracted from updateTable for reusability)
+        function renderTableData(data) {
+            const tableBody = document.getElementById('tableBody');
             
-            console.log(`Filtered data for ${salesmanSelect.value} - ${hariSelect.value} - ${pelangganSelect.value}:`, filteredData.length, 'records');
-            
-            if (filteredData.length === 0) {
+            if (data.length === 0) {
                 tableBody.innerHTML = `
                     <tr>
                         <td colspan="9">
@@ -958,7 +1004,7 @@
             let html = '';
             let totalPlan = 0, totalMTD = 0;
             
-            filteredData.forEach((item, index) => {
+            data.forEach((item, index) => {
                 // Map real data fields to display format
                 const no = index + 1;
                 const promo = item.Promo || "Others";
@@ -1011,17 +1057,75 @@
             `;
             
             tableBody.innerHTML = html;
-        }
 
-        function generateRecommendation(gap, plan, mtd) {
-            const gapPercentage = plan > 0 ? (gap / plan) * 100 : 0;
+        function updateTable() {
+            const tableBody = document.getElementById('tableBody');
+            const salesmanSelect = document.getElementById('salesman');
+            const hariSelect = document.getElementById('hari');
+            const pelangganSelect = document.getElementById('pelanggan');
             
-            if (gapPercentage > 20) return "Outstanding";
-            if (gapPercentage > 10) return "Above target";
-            if (gapPercentage > 0) return "On track";
-            if (gapPercentage > -10) return "Need attention";
-            if (gapPercentage > -25) return "Focus";
-            return "Urgent";
+            if (!tableBody || !salesmanSelect || !hariSelect || !pelangganSelect) {
+                console.error('Table or dropdown elements not found');
+                return;
+            }
+            
+            if (pelangganData.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="9">
+                            <div class="empty-state">
+                                <div class="empty-state-icon">⏳</div>
+                                <div>Loading data...</div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                currentFilteredData = [];
+                return;
+            }
+            
+            if (!salesmanSelect.value || !hariSelect.value || !pelangganSelect.value) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="9">
+                            <div class="empty-state">
+                                <div class="empty-state-icon">📊</div>
+                                <div>Pilih filter untuk melihat data</div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                currentFilteredData = [];
+                return;
+            }
+            
+            // 🆕 IMPROVED: Case-insensitive matching
+            const selectedSalesman = salesmanSelect.value.trim().toLowerCase();
+            const selectedHari = hariSelect.value.trim().toLowerCase();
+            const selectedPelanggan = pelangganSelect.value.trim().toLowerCase();
+            
+            // Filter data based on selected criteria
+            const filteredData = pelangganData.filter(item => {
+                const itemSalesman = (item.Nama_Salesman || '').trim().toLowerCase();
+                const itemHari = (item.Hari_Kunjungan || '').trim().toLowerCase();
+                const itemPelanggan = (item.Nama_Pelanggan || '').trim().toLowerCase();
+                
+                return itemSalesman === selectedSalesman &&
+                       itemHari === selectedHari &&
+                       itemPelanggan === selectedPelanggan;
+            });
+            
+            console.log(`Filtered data for ${salesmanSelect.value} - ${hariSelect.value} - ${pelangganSelect.value}:`, filteredData.length, 'records');
+            
+            // Store filtered data for sorting
+            currentFilteredData = [...filteredData];
+            
+            // Reset sort state when new data is loaded
+            sortState = { column: null, direction: 'asc' };
+            updateSortHeaders();
+            
+            // Render the table
+            renderTableData(currentFilteredData);
         }
 
         // Event listeners
