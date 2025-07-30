@@ -48,7 +48,7 @@ for sheet in filtered_sheets:
 print(f"\nProses selesai. Total {len(filtered_sheets)} sheet telah dikonversi ke JSON dan disimpan di kedua lokasi.")
 
 class SalesmanDashboardUpdater:
-    def __init__(self, excel_file="DbaseSalesmanWebApp.xlsx"):
+    def __init__(self, excel_file="DbaseSalesmanWebApp.xlsm"):
         self.excel_file = excel_file
         self.data_dir = "data"
         self.log_file = 'morning_update.log'
@@ -167,7 +167,7 @@ class SalesmanDashboardUpdater:
             
             # Read with multiple engines for compatibility
             try:
-                # Try openpyxl first (best for .xlsx)
+                # Try openpyxl first (best for .xlsm)
                 xl_file = pd.ExcelFile(self.excel_file, engine='openpyxl')
             except:
                 try:
