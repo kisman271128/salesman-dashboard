@@ -761,7 +761,69 @@
                 console.error('❌ Error loading pelanggan data:', error);
             }
         }
-
+		
+		// Update hari options based on selected salesman
+		function updateHariOptions() {
+			const salesmanSelect = document.getElementById('salesman');
+			const hariSelect = document.getElementById('hari');
+			const pelangganSelect = document.getElementById('pelanggan');
+			
+			// Reset hari and pelanggan dropdowns
+			hariSelect.innerHTML = '<option value="">📅 Pilih Hari Kunjungan</option>';
+			pelangganSelect.innerHTML = '<option value="">🏪 Pilih Pelanggan</option>';
+			pelangganSelect.disabled = true;
+			
+			if (salesmanSelect.value && hariData.length > 0) {
+				console.log(`🔍 Filtering hari for salesman: ${salesmanSelect.value}`);
+				
+				// Filter hari options based on selected salesman
+				const filteredHari = [...new Set(hariData
+					.filter(item => item.Nama_Salesman === salesmanSelect.value)
+					.map(item => item.Hari_Kunjungan)
+					.filter(hari => hari && hari.trim() !== '')
+				)];
+				
+				filteredHari.forEach(hari => {
+					const option = document.createElement('option');
+					option.value = hari;
+					option.textContent = hari;
+					hariSelect.appendChild(option);
+				});
+				
+				hariSelect.disabled = false;
+				console.log(`✅ Found ${filteredHari.length} hari for ${salesmanSelect.value}`);
+				
+				if (filteredHari.length === 0) {
+					const option = document.createElement('option');
+					option.value = '';
+					option.textContent = 'Tidak ada hari kunjungan';
+					option.disabled = true;
+					option.style.color = '#cbd5e1';
+					hariSelect.appendChild(option);
+				}
+				
+			} else if (salesmanSelect.value === '') {
+				// If no salesman selected, show all hari
+				const uniqueHari = [...new Set(hariData
+					.map(item => item.Hari_Kunjungan)
+					.filter(hari => hari && hari.trim() !== '')
+				)];
+				
+				uniqueHari.forEach(hari => {
+					const option = document.createElement('option');
+					option.value = hari;
+					option.textContent = hari;
+					hariSelect.appendChild(option);
+				});
+				
+				hariSelect.disabled = false;
+				console.log(`✅ Showing all ${uniqueHari.length} hari options`);
+			}
+			
+			// Update table since filters changed
+			updateTable();
+		}
+		
         // Event listeners
         document.getElementById('salesman').addEventListener('change', updateHariOptions);
         document.getElementById('hari').addEventListener('change', updatePelangganOptions);
