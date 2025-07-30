@@ -351,7 +351,7 @@
         .promo-bev { 
             background: linear-gradient(135deg, #059669, #10b981);
         }
-        .promo-others, .promo-sf, .promo-gen, .promo-go { 
+        .promo-others, .promo-sf, .promo-gen, .promo-go, .promo-solmed { 
             background: linear-gradient(135deg, #0369a1, #0284c7);
         }
 
@@ -619,6 +619,18 @@
         let hariData = [];
         let pelangganData = [];
 
+        // Check if user is logged in
+        function checkLoginStatus() {
+            const isLoggedIn = sessionStorage.getItem('isLoggedIn');
+            const currentUser = sessionStorage.getItem('currentUser');
+            
+            if (!isLoggedIn || !currentUser) {
+                window.location.href = 'index.html';
+                return false;
+            }
+            return true;
+        }
+
         // Parse JSONL (JSON Lines) format
         function parseJSONL(content) {
             const lines = content.trim().split('\n');
@@ -761,97 +773,116 @@
                 console.error('❌ Error loading pelanggan data:', error);
             }
         }
-		
-		// Update hari options - NO FILTERING needed, just show all available hari
-		function updateHariOptions() {
-			const salesmanSelect = document.getElementById('salesman');
-			const hariSelect = document.getElementById('hari');
-			const pelangganSelect = document.getElementById('pelanggan');
-			
-			// Reset pelanggan dropdown
-			pelangganSelect.innerHTML = '<option value="">🏪 Pilih Pelanggan</option>';
-			pelangganSelect.disabled = true;
-			
-			// ✅ NO FILTERING: Hari dropdown stays the same regardless of salesman selection
-			// The hari options are already populated from d.harijks.json in loadHariData()
-			
-			console.log(`📅 Salesman selected: ${salesmanSelect.value} - Hari options remain the same`);
-			
-			// Update pelanggan options if hari is already selected
-			if (hariSelect.value) {
-				updatePelangganOptions();
-			} else {
-				// Update table since filters changed
-				updateTable();
-			}
-		}
-		
-        // Event listeners
-        document.getElementById('salesman').addEventListener('change', updateHariOptions);
-        document.getElementById('hari').addEventListener('change', updatePelangganOptions);
-        document.getElementById('pelanggan').addEventListener('change', updateTable);
 
-		function updatePelangganOptions() {
-			const salesmanSelect = document.getElementById('salesman');
-			const hariSelect = document.getElementById('hari');
-			const pelangganSelect = document.getElementById('pelanggan');
-			
-			pelangganSelect.innerHTML = '<option value="">🏪 Pilih Pelanggan</option>';
-			pelangganSelect.disabled = false;
-			
-			// Only filter pelanggan if both salesman and hari are selected
-			if (salesmanSelect.value && hariSelect.value && pelangganData.length > 0) {
-				console.log(`🔍 Filtering pelanggan for: ${salesmanSelect.value} - ${hariSelect.value}`);
-				
-				// 🆕 DEBUG: Tampilkan struktur data pelanggan untuk melihat field names
-				if (pelangganData.length > 0) {
-					console.log('📊 Sample pelanggan data structure:', pelangganData[0]);
-					console.log('📊 Available fields:', Object.keys(pelangganData[0]));
-				}
-				
-				// Filter pelanggan berdasarkan salesman dan hari dari d.skupelanggan.json
-				const filteredPelanggan = [...new Set(pelangganData
-					.filter(item => {
-						// Coba beberapa kemungkinan field name untuk salesman
-						const salesmanName = item.Nama_Salesman;
-						return salesmanName === salesmanSelect.value && 
-							   item.Hari_Kunjungan === hariSelect.value;
-					})
-					.map(item => item.Nama_Pelanggan)
-					.filter(pelanggan => pelanggan && pelanggan.trim() !== '')
-				)];
-				
-				filteredPelanggan.forEach(pelanggan => {
-					const option = document.createElement('option');
-					option.value = pelanggan;
-					option.textContent = pelanggan;
-					pelangganSelect.appendChild(option);
-				});
-				
-				console.log(`✅ Found ${filteredPelanggan.length} pelanggan for ${salesmanSelect.value} - ${hariSelect.value}`);
-				
-				if (filteredPelanggan.length === 0) {
-					const option = document.createElement('option');
-					option.value = '';
-					option.textContent = 'Tidak ada data pelanggan';
-					option.disabled = true;
-					option.style.color = '#cbd5e1';
-					pelangganSelect.appendChild(option);
-				}
-				
-			} else if (salesmanSelect.value || hariSelect.value) {
-				// Show message if only one filter is selected
-				const option = document.createElement('option');
-				option.value = '';
-				option.textContent = 'Pilih salesman dan hari terlebih dahulu';
-				option.disabled = true;
-				option.style.color = '#cbd5e1';
-				pelangganSelect.appendChild(option);
-				console.log('⚠️ Need both salesman and hari to show pelanggan');
-			}
-			
-			updateTable();
-		}
+        // Update hari options - NO FILTERING needed, just show all available hari
+        function updateHariOptions() {
+            const salesmanSelect = document.getElementById('salesman');
+            const hariSelect = document.getElementById('hari');
+            const pelangganSelect = document.getElementById('pelanggan');
+            
+            // Reset pelanggan dropdown
+            pelangganSelect.innerHTML = '<option value="">🏪 Pilih Pelanggan</option>';
+            pelangganSelect.disabled = true;
+            
+            // ✅ NO FILTERING: Hari dropdown stays the same regardless of salesman selection
+            // The hari options are already populated from d.harijks.json in loadHariData()
+            
+            console.log(`📅 Salesman selected: ${salesmanSelect.value} - Hari options remain the same`);
+            
+            // Update pelanggan options if hari is already selected
+            if (hariSelect.value) {
+                updatePelangganOptions();
+            } else {
+                // Update table since filters changed
+                updateTable();
+            }
+        }
+
+        function updatePelangganOptions() {
+            const salesmanSelect = document.getElementById('salesman');
+            const hariSelect = document.getElementById('hari');
+            const pelangganSelect = document.getElementById('pelanggan');
+            
+            pelangganSelect.innerHTML = '<option value="">🏪 Pilih Pelanggan</option>';
+            pelangganSelect.disabled = false;
+            
+            // 🆕 DEBUG: Tampilkan semua salesman yang ada di pelangganData
+            if (pelangganData.length > 0) {
+                const availableSalesmen = [...new Set(pelangganData
+                    .map(item => item.Nama_Salesman)
+                    .filter(name => name && name !== 'No Salesman')
+                )];
+                console.log('👥 Available salesmen in d.skupelanggan.json:', availableSalesmen);
+                
+                const availableHari = [...new Set(pelangganData
+                    .map(item => item.Hari_Kunjungan)
+                    .filter(hari => hari && hari !== 'No JKS')
+                )];
+                console.log('📅 Available hari in d.skupelanggan.json:', availableHari);
+            }
+            
+            // Only filter pelanggan if both salesman and hari are selected
+            if (salesmanSelect.value && hariSelect.value && pelangganData.length > 0) {
+                console.log(`🔍 Filtering pelanggan for: ${salesmanSelect.value} - ${hariSelect.value}`);
+                
+                // 🆕 IMPROVED: Case-insensitive dan trim spaces untuk matching
+                const selectedSalesman = salesmanSelect.value.trim().toLowerCase();
+                const selectedHari = hariSelect.value.trim().toLowerCase();
+                
+                // Filter pelanggan berdasarkan salesman dan hari dari d.skupelanggan.json
+                const filteredPelanggan = [...new Set(pelangganData
+                    .filter(item => {
+                        const itemSalesman = (item.Nama_Salesman || '').trim().toLowerCase();
+                        const itemHari = (item.Hari_Kunjungan || '').trim().toLowerCase();
+                        
+                        return itemSalesman === selectedSalesman && 
+                               itemHari === selectedHari;
+                    })
+                    .map(item => item.Nama_Pelanggan)
+                    .filter(pelanggan => pelanggan && pelanggan.trim() !== '' && pelanggan !== 'No Pelanggan')
+                )];
+                
+                // 🆕 DEBUG: Tampilkan data yang match dengan filter
+                const matchingRecords = pelangganData.filter(item => {
+                    const itemSalesman = (item.Nama_Salesman || '').trim().toLowerCase();
+                    const itemHari = (item.Hari_Kunjungan || '').trim().toLowerCase();
+                    
+                    return itemSalesman === selectedSalesman && 
+                           itemHari === selectedHari;
+                });
+                console.log(`📊 Matching records for ${salesmanSelect.value} - ${hariSelect.value}:`, matchingRecords);
+                
+                filteredPelanggan.forEach(pelanggan => {
+                    const option = document.createElement('option');
+                    option.value = pelanggan;
+                    option.textContent = pelanggan;
+                    pelangganSelect.appendChild(option);
+                });
+                
+                console.log(`✅ Found ${filteredPelanggan.length} pelanggan for ${salesmanSelect.value} - ${hariSelect.value}`);
+                
+                if (filteredPelanggan.length === 0) {
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = 'Tidak ada data pelanggan';
+                    option.disabled = true;
+                    option.style.color = '#cbd5e1';
+                    pelangganSelect.appendChild(option);
+                }
+                
+            } else if (salesmanSelect.value || hariSelect.value) {
+                // Show message if only one filter is selected
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = 'Pilih salesman dan hari terlebih dahulu';
+                option.disabled = true;
+                option.style.color = '#cbd5e1';
+                pelangganSelect.appendChild(option);
+                console.log('⚠️ Need both salesman and hari to show pelanggan');
+            }
+            
+            updateTable();
+        }
 
         function updateTable() {
             const tableBody = document.getElementById('tableBody');
@@ -892,11 +923,20 @@
                 return;
             }
             
+            // 🆕 IMPROVED: Case-insensitive matching
+            const selectedSalesman = salesmanSelect.value.trim().toLowerCase();
+            const selectedHari = hariSelect.value.trim().toLowerCase();
+            const selectedPelanggan = pelangganSelect.value.trim().toLowerCase();
+            
             // Filter data based on selected criteria
             const filteredData = pelangganData.filter(item => {
-                return item.Nama_Salesman === salesmanSelect.value &&
-                       item.Hari_Kunjungan === hariSelect.value &&
-                       item.Nama_Pelanggan === pelangganSelect.value;
+                const itemSalesman = (item.Nama_Salesman || '').trim().toLowerCase();
+                const itemHari = (item.Hari_Kunjungan || '').trim().toLowerCase();
+                const itemPelanggan = (item.Nama_Pelanggan || '').trim().toLowerCase();
+                
+                return itemSalesman === selectedSalesman &&
+                       itemHari === selectedHari &&
+                       itemPelanggan === selectedPelanggan;
             });
             
             console.log(`Filtered data for ${salesmanSelect.value} - ${hariSelect.value} - ${pelangganSelect.value}:`, filteredData.length, 'records');
@@ -942,11 +982,11 @@
                         <td>${no}</td>
                         <td><span class="promo-tag ${promoClass}">${promo}</span></td>
                         <td><span class="sku-code">${sku}</span></td>
-                        <td>${threeLM}</td>
-                        <td>${lm}</td>
-                        <td class="metric-value">${plan}</td>
-                        <td class="metric-value">${mtd}</td>
-                        <td><span class="gap-badge ${gapBadgeClass}">${gap > 0 ? '+' : ''}${gap.toFixed(1)}</span></td>
+                        <td>${threeLM.toFixed(2)}</td>
+                        <td>${lm.toFixed(2)}</td>
+                        <td class="metric-value">${plan.toFixed(2)}</td>
+                        <td class="metric-value">${mtd.toFixed(2)}</td>
+                        <td><span class="gap-badge ${gapBadgeClass}">${gap > 0 ? '+' : ''}${gap.toFixed(2)}</span></td>
                         <td><span class="recommendation">${rekomendasi}</span></td>
                     </tr>
                 `;
@@ -963,9 +1003,9 @@
                     <td></td>
                     <td></td>
                     <td></td>
-                    <td><strong>${totalPlan.toFixed(1)}</strong></td>
-                    <td><strong>${totalMTD.toFixed(1)}</strong></td>
-                    <td><span class="gap-badge ${totalGapBadgeClass}">${totalGap > 0 ? '+' : ''}${totalGap.toFixed(1)}</span></td>
+                    <td><strong>${totalPlan.toFixed(2)}</strong></td>
+                    <td><strong>${totalMTD.toFixed(2)}</strong></td>
+                    <td><span class="gap-badge ${totalGapBadgeClass}">${totalGap > 0 ? '+' : ''}${totalGap.toFixed(2)}</span></td>
                     <td>-</td>
                 </tr>
             `;
@@ -984,6 +1024,13 @@
             return "Urgent";
         }
 
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('salesman').addEventListener('change', updateHariOptions);
+            document.getElementById('hari').addEventListener('change', updatePelangganOptions);
+            document.getElementById('pelanggan').addEventListener('change', updateTable);
+        });
+
         // Navigation Functions
         function goHome() {
             window.location.href = 'dashboard.html';
@@ -995,7 +1042,12 @@
         }
 
         function showIncentive() {
-            alert('🔜 Incentive module coming soon!');
+            const currentUser = sessionStorage.getItem('currentUser');
+            if (currentUser) {
+                window.location.href = `dashboard_insentif_sales.html?id=${currentUser}`;
+            } else {
+                alert('🔜 Incentive: Please login first');
+            }
         }
 
         function showProfile() {
@@ -1078,6 +1130,10 @@
 
         // Initialize on page load
         window.onload = function() {
+            if (!checkLoginStatus()) {
+                return;
+            }
+            
             console.log('📱 Starting Visit Outlet with mobile layout...');
             initializeData();
         }
