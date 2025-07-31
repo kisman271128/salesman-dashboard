@@ -390,7 +390,7 @@
         console.log(`✅ Sales detail updated for ${typeCategory} type`);
       }
 
-      // 🆕 ENHANCED: Update incentive process detail based on salesman type
+      // 🆕 ENHANCED: Update incentive process detail based on salesman type (with POM)
       function updateIncentiveProcessDetail(incentiveData) {
         if (!incentiveData) return;
 
@@ -402,9 +402,9 @@
         let html = '';
         
         if (typeCategory === 'bima') {
-          // Bima: Avg SKU available, GP not available (silver with dash)
+          // Bima: Avg SKU and POM available, GP not available (silver with dash)
           html = `
-            <div class="grid grid-cols-2 gap-3">
+            <div class="grid grid-cols-3 gap-2">
               <div class="bg-blue-100 p-3 shadow rounded-xl">
                 <p class="text-xs font-medium flex items-center gap-1">
                   <span>📊</span> Avg SKU
@@ -417,27 +417,37 @@
                 </p>
                 <p class="text-gray-500 font-bold text-sm">-</p>
               </div>
+              <div class="bg-purple-100 p-3 shadow rounded-xl">
+                <p class="text-xs font-medium flex items-center gap-1">
+                  <span>🎯</span> POM
+                </p>
+                <p class="text-purple-700 font-bold text-sm">${formatCurrencyIDR(incentiveData.POM || 0)}</p>
+              </div>
             </div>
           `;
         } else {
-          // Other types: Show available process incentives
+          // Other types: Show available process incentives including POM
           const processDetails = [
-            { name: 'Avg SKU', value: incentiveData["Avg SKU"] || 0, icon: '📊' },
-            { name: 'GP', value: incentiveData.GP || 0, icon: '📈' }
+            { name: 'Avg SKU', value: incentiveData["Avg SKU"] || 0, icon: '📊', color: 'blue' },
+            { name: 'GP', value: incentiveData.GP || 0, icon: '📈', color: 'green' },
+            { name: 'POM', value: incentiveData.POM || 0, icon: '🎯', color: 'purple' }
           ];
 
           // Filter out zero values for non-Bima types
           const availableDetails = processDetails.filter(item => item.value > 0);
           
           if (availableDetails.length > 0) {
-            html = `<div class="grid grid-cols-${Math.min(availableDetails.length, 3)} gap-3">`;
+            // Adjust grid columns based on number of available details
+            const gridCols = Math.min(availableDetails.length, 3);
+            html = `<div class="grid grid-cols-${gridCols} gap-3">`;
+            
             availableDetails.forEach(item => {
               html += `
-                <div class="bg-indigo-100 p-3 shadow rounded-xl">
+                <div class="bg-${item.color}-100 p-3 shadow rounded-xl">
                   <p class="text-xs font-medium flex items-center gap-1">
                     <span>${item.icon}</span> ${item.name}
                   </p>
-                  <p class="text-indigo-700 font-bold text-sm">${formatCurrencyIDR(item.value)}</p>
+                  <p class="text-${item.color}-700 font-bold text-sm">${formatCurrencyIDR(item.value)}</p>
                 </div>
               `;
             });
@@ -452,7 +462,7 @@
         }
 
         document.getElementById('insentifProsesDetail').innerHTML = html;
-        console.log(`✅ Process detail updated for ${typeCategory} type`);
+        console.log(`✅ Process detail updated for ${typeCategory} type with POM incentive`);
       }
 
       // Update penalty AR section
