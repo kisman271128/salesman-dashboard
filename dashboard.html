@@ -706,12 +706,34 @@
 
         .status {
             font-size: 12px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        .status.extra-effort { color: #e74c3c; }
-        .status.good { color: #f39c12; }
-        .status.very-good { color: #2980b9; }
-        .status.excellent { color: #27ae60; }
+        /* ✅ UPDATED: Status Colors berdasarkan criteria baru */
+        .status.extra-effort { 
+            color: #ffffff; 
+            background: linear-gradient(135deg, #dc2626, #ef4444);
+            box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
+        }
+        .status.good { 
+            color: #ffffff; 
+            background: linear-gradient(135deg, #d97706, #f59e0b);
+            box-shadow: 0 2px 8px rgba(217, 119, 6, 0.3);
+        }
+        .status.very-good { 
+            color: #ffffff; 
+            background: linear-gradient(135deg, #2563eb, #3b82f6);
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+        }
+        .status.excellent { 
+            color: #ffffff; 
+            background: linear-gradient(135deg, #059669, #10b981);
+            box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3);
+        }
 
         /* ✅ UPDATED BOTTOM NAVIGATION - 4 icons */
         .bottom-nav {
@@ -1061,6 +1083,33 @@
             }
             
             return numValue * multiplier;
+        }
+
+        // ✅ NEW: Parse achievement percentage from string (e.g., "114%" → 114)
+        function parseAchievementPercentage(achievementString) {
+            if (!achievementString) return 0;
+            
+            const numericString = achievementString.toString().replace('%', '');
+            return parseFloat(numericString) || 0;
+        }
+
+        // ✅ NEW: Determine status based on achievement percentage with new criteria
+        function determineStatusFromAchievement(achievementPercentage) {
+            console.log(`🎯 Determining status for ${achievementPercentage}%`);
+            
+            if (achievementPercentage >= 110) {
+                console.log(`→ Excellent (≥110%)`);
+                return 'Excellent';
+            } else if (achievementPercentage >= 100) {
+                console.log(`→ Very Good (≥100%)`);
+                return 'Very Good';
+            } else if (achievementPercentage >= 90) {
+                console.log(`→ Good (≥90%)`);
+                return 'Good';
+            } else {
+                console.log(`→ Extra Effort (<90%)`);
+                return 'Extra Effort';
+            }
         }
 
         // Check if user is logged in
@@ -1655,15 +1704,31 @@
             console.log('✅ Chart stats updated with Indonesia format');
         }
 
-        // ✅ UPDATE SALESMAN LIST dengan click handler untuk detail
+        // ✅ UPDATE SALESMAN LIST dengan click handler untuk detail dan STATUS LOGIC YANG DIPERBAIKI
         function updateSalesmanList(salesmanList) {
             const salesmanListElement = document.getElementById('salesmanList');
             salesmanListElement.innerHTML = '';
 
+            console.log('🎯 Updating salesman list with new status logic...');
+
             salesmanList.forEach((salesman, index) => {
-                const item = createSalesmanItem(salesman, index);
+                // ✅ Parse achievement percentage and determine correct status
+                const achievementPercentage = parseAchievementPercentage(salesman.achievement);
+                const calculatedStatus = determineStatusFromAchievement(achievementPercentage);
+                
+                // ✅ Override the status with calculated status
+                const updatedSalesman = {
+                    ...salesman,
+                    status: calculatedStatus
+                };
+                
+                console.log(`📋 ${salesman.name}: ${salesman.achievement} → Status: ${calculatedStatus}`);
+                
+                const item = createSalesmanItem(updatedSalesman, index);
                 salesmanListElement.appendChild(item);
             });
+            
+            console.log('✅ Salesman list updated with corrected status logic');
         }
 
         function createSalesmanItem(salesman, index) {
@@ -1700,7 +1765,7 @@
             return item;
         }
 
-        // Get status CSS class
+        // ✅ UPDATED: Get status CSS class dengan mapping yang benar
         function getStatusClass(status) {
             switch (status) {
                 case 'Extra Effort': return 'extra-effort';
@@ -1773,10 +1838,11 @@
                 return;
             }
 
-            console.log('🚀 Initializing dashboard with Indonesia format and target=0 → 100% logic...');
+            console.log('🚀 Initializing dashboard with Indonesia format, target=0 → 100% logic, and corrected status criteria...');
+            console.log('📊 STATUS CRITERIA: Extra Effort <90%, Good ≥90%, Very Good ≥100%, Excellent ≥110%');
             loadDashboardData();
             startAutoRefresh();
-            console.log('✅ Dashboard initialized with Rb/Jt/M format and target=0 special case logic');
+            console.log('✅ Dashboard initialized with all enhanced features');
         });
 
         // Handle offline/online status
