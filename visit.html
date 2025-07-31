@@ -526,11 +526,6 @@
             font-weight: 500;
         }
 
-        .loading {
-            display: inline-block;
-            animation: spin 1s linear infinite;
-        }
-
         /* Responsive */
         @media (max-width: 480px) {
             th:nth-child(1), td:nth-child(1) { width: 25px; }
@@ -663,8 +658,8 @@
         let salesmenData = [];
         let hariData = [];
         let pelangganData = [];
-        let currentFilteredData = []; // Store current filtered data for sorting
-        let sortState = { column: null, direction: 'asc' }; // Track sort state
+        let currentFilteredData = [];
+        let sortState = { column: null, direction: 'asc' };
 
         // Check if user is logged in
         function checkLoginStatus() {
@@ -734,7 +729,6 @@
                 const salesmanSelect = document.getElementById('salesman');
                 salesmanSelect.innerHTML = '<option value="">🧑‍💼 Pilih Salesman</option>';
                 
-                // Extract unique salesman names
                 const uniqueSalesmen = [...new Set(salesmenData
                     .map(item => item.szname)
                     .filter(name => name && name.trim() !== '')
@@ -766,13 +760,11 @@
                 const content = await response.text();
                 hariData = parseJSONL(content);
                 
-                // Extract unique hari and populate dropdown immediately
                 const uniqueHari = [...new Set(hariData
                     .map(item => item.Hari_Kunjungan)
                     .filter(hari => hari && hari.trim() !== '')
                 )];
                 
-                // Populate hari dropdown immediately
                 const hariSelect = document.getElementById('hari');
                 if (hariSelect) {
                     hariSelect.innerHTML = '<option value="">📅 Pilih Hari Kunjungan</option>';
@@ -791,7 +783,6 @@
                 console.log('✅ Loaded hari data successfully:');
                 console.log(`   - Total records: ${hariData.length}`);
                 console.log(`   - Unique hari: ${uniqueHari.length}`);
-                console.log(`   - Hari list:`, uniqueHari);
                 
             } catch (error) {
                 console.error('❌ Error loading hari data from d.harijks.json:', error);
@@ -807,7 +798,6 @@
                 
                 const content = await response.text();
                 
-                // Try JSONL first, then standard JSON array
                 try {
                     pelangganData = parseJSONL(content);
                 } catch (jsonlError) {
@@ -821,26 +811,20 @@
             }
         }
 
-        // Update hari options - NO FILTERING needed, just show all available hari
+        // Update hari options - NO FILTERING needed, show all available hari
         function updateHariOptions() {
             const salesmanSelect = document.getElementById('salesman');
             const hariSelect = document.getElementById('hari');
             const pelangganSelect = document.getElementById('pelanggan');
             
-            // Reset pelanggan dropdown
             pelangganSelect.innerHTML = '<option value="">🏪 Pilih Pelanggan</option>';
             pelangganSelect.disabled = true;
             
-            // ✅ NO FILTERING: Hari dropdown stays the same regardless of salesman selection
-            // The hari options are already populated from d.harijks.json in loadHariData()
-            
             console.log(`📅 Salesman selected: ${salesmanSelect.value} - Hari options remain the same`);
             
-            // Update pelanggan options if hari is already selected
             if (hariSelect.value) {
                 updatePelangganOptions();
             } else {
-                // Update table since filters changed
                 updateTable();
             }
         }
@@ -853,7 +837,6 @@
             pelangganSelect.innerHTML = '<option value="">🏪 Pilih Pelanggan</option>';
             pelangganSelect.disabled = false;
             
-            // 🆕 DEBUG: Tampilkan semua salesman yang ada di pelangganData
             if (pelangganData.length > 0) {
                 const availableSalesmen = [...new Set(pelangganData
                     .map(item => item.Nama_Salesman)
@@ -868,15 +851,12 @@
                 console.log('📅 Available hari in d.skupelanggan.json:', availableHari);
             }
             
-            // Only filter pelanggan if both salesman and hari are selected
             if (salesmanSelect.value && hariSelect.value && pelangganData.length > 0) {
                 console.log(`🔍 Filtering pelanggan for: ${salesmanSelect.value} - ${hariSelect.value}`);
                 
-                // 🆕 IMPROVED: Case-insensitive dan trim spaces untuk matching
                 const selectedSalesman = salesmanSelect.value.trim().toLowerCase();
                 const selectedHari = hariSelect.value.trim().toLowerCase();
                 
-                // Filter pelanggan berdasarkan salesman dan hari dari d.skupelanggan.json
                 const filteredPelanggan = [...new Set(pelangganData
                     .filter(item => {
                         const itemSalesman = (item.Nama_Salesman || '').trim().toLowerCase();
@@ -889,7 +869,6 @@
                     .filter(pelanggan => pelanggan && pelanggan.trim() !== '' && pelanggan !== 'No Pelanggan')
                 )];
                 
-                // 🆕 DEBUG: Tampilkan data yang match dengan filter
                 const matchingRecords = pelangganData.filter(item => {
                     const itemSalesman = (item.Nama_Salesman || '').trim().toLowerCase();
                     const itemHari = (item.Hari_Kunjungan || '').trim().toLowerCase();
@@ -918,7 +897,6 @@
                 }
                 
             } else if (salesmanSelect.value || hariSelect.value) {
-                // Show message if only one filter is selected
                 const option = document.createElement('option');
                 option.value = '';
                 option.textContent = 'Pilih salesman dan hari terlebih dahulu';
@@ -938,7 +916,6 @@
                 return;
             }
 
-            // Toggle sort direction
             if (sortState.column === column) {
                 sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
             } else {
@@ -946,7 +923,6 @@
                 sortState.direction = 'asc';
             }
 
-            // Sort the current filtered data
             if (column === 'promo') {
                 currentFilteredData.sort((a, b) => {
                     const promoA = (a.Promo || '').toLowerCase();
@@ -960,21 +936,16 @@
                 });
             }
 
-            // Update header visual state
             updateSortHeaders();
-
-            // Re-render table with sorted data
             renderTableData(currentFilteredData);
         }
 
         // Update sort header visual indicators
         function updateSortHeaders() {
-            // Remove all sort classes
             document.querySelectorAll('.sortable-header').forEach(header => {
                 header.classList.remove('asc', 'desc');
             });
 
-            // Add current sort class to active header
             if (sortState.column === 'promo') {
                 const promoHeader = document.querySelector('.sortable-header');
                 if (promoHeader) {
@@ -983,7 +954,7 @@
             }
         }
 
-        // Render table data (extracted from updateTable for reusability)
+        // Render table data
         function renderTableData(data) {
             const tableBody = document.getElementById('tableBody');
             
@@ -1005,7 +976,6 @@
             let totalPlan = 0, totalMTD = 0;
             
             data.forEach((item, index) => {
-                // Map real data fields to display format
                 const no = index + 1;
                 const promo = item.Promo || "Others";
                 const sku = item.SKU || "N/A";
@@ -1038,7 +1008,6 @@
                 `;
             });
             
-            // Summary row
             const totalGap = totalMTD - totalPlan;
             const totalGapBadgeClass = totalGap > 0 ? 'gap-positive' : totalGap < 0 ? 'gap-negative' : 'gap-neutral';
             
@@ -1057,6 +1026,7 @@
             `;
             
             tableBody.innerHTML = html;
+        }
 
         function updateTable() {
             const tableBody = document.getElementById('tableBody');
@@ -1099,12 +1069,10 @@
                 return;
             }
             
-            // 🆕 IMPROVED: Case-insensitive matching
             const selectedSalesman = salesmanSelect.value.trim().toLowerCase();
             const selectedHari = hariSelect.value.trim().toLowerCase();
             const selectedPelanggan = pelangganSelect.value.trim().toLowerCase();
             
-            // Filter data based on selected criteria
             const filteredData = pelangganData.filter(item => {
                 const itemSalesman = (item.Nama_Salesman || '').trim().toLowerCase();
                 const itemHari = (item.Hari_Kunjungan || '').trim().toLowerCase();
@@ -1117,15 +1085,21 @@
             
             console.log(`Filtered data for ${salesmanSelect.value} - ${hariSelect.value} - ${pelangganSelect.value}:`, filteredData.length, 'records');
             
-            // Store filtered data for sorting
             currentFilteredData = [...filteredData];
-            
-            // Reset sort state when new data is loaded
             sortState = { column: null, direction: 'asc' };
             updateSortHeaders();
-            
-            // Render the table
             renderTableData(currentFilteredData);
+        }
+
+        function generateRecommendation(gap, plan, mtd) {
+            if (mtd === 0 || mtd === null || mtd === undefined) {
+                return "Belum Aktif";
+            } else if (mtd > 0 && mtd < plan) {
+                return "Under Plan";
+            } else if (mtd > 0 && mtd >= plan) {
+                return "Over Plan";
+            }
+            return "Belum Aktif";
         }
 
         // Event listeners
@@ -1141,7 +1115,6 @@
         }
 
         function showVisitOutlet() {
-            // Already on visit page
             console.log('Already on Visit Outlet page');
         }
 
@@ -1171,7 +1144,6 @@
                 
                 console.log('🚀 Loading data files...');
                 
-                // Load all data files sequentially to ensure proper order
                 console.log('📊 Loading salesman data...');
                 await loadSalesmanData();
                 
@@ -1181,13 +1153,11 @@
                 console.log('🏪 Loading pelanggan data...');
                 await loadPelangganData();
                 
-                // Verify data is loaded
                 console.log('✅ Data verification:');
                 console.log(`   - Salesmen: ${salesmenData.length} records`);
                 console.log(`   - Hari: ${hariData.length} records`);
                 console.log(`   - Pelanggan: ${pelangganData.length} records`);
                 
-                // Enable all dropdowns after data is loaded
                 const salesmanSelect = document.getElementById('salesman');
                 const hariSelect = document.getElementById('hari');
                 const pelangganSelect = document.getElementById('pelanggan');
@@ -1198,17 +1168,9 @@
                 
                 console.log('✅ All dropdowns enabled');
                 
-                if (hariData.length === 0) {
-                    console.warn('⚠️ No hari data loaded, but continuing with fallback');
-                }
-                
-                console.log('📅 Available hari from d.harijks.json:', 
-                    hariData.map(item => item.Hari_Kunjungan));
-                
                 showLoading(false);
                 showMainContent(true);
                 
-                // Trigger initial update if salesman already selected
                 if (salesmanSelect && salesmanSelect.value) {
                     console.log('🔄 Triggering hari options update for pre-selected salesman');
                     updateHariOptions();
@@ -1219,7 +1181,6 @@
                 showLoading(false);
                 showError(true, error.message);
                 
-                // Even if there's an error, try to enable dropdowns
                 const salesmanSelect = document.getElementById('salesman');
                 const hariSelect = document.getElementById('hari');
                 const pelangganSelect = document.getElementById('pelanggan');
@@ -1240,7 +1201,7 @@
             
             console.log('📱 Starting Visit Outlet with mobile layout...');
             initializeData();
-        }
+        };
 
         console.log('✅ Visit Outlet mobile script loaded successfully');
     </script>
