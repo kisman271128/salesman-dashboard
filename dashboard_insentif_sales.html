@@ -37,8 +37,8 @@
         </div>
       </header>
 
-      <!-- 🆕 Tab Periode -->
-      <section class="mb-4">
+      <!-- 🆕 Tab Periode (hanya tampil jika ada lebih dari 1 periode) -->
+      <section class="mb-4" id="periodTabsSection">
         <div class="bg-white rounded-xl shadow p-1">
           <div class="flex overflow-x-auto" id="periodTabs">
             <!-- Tabs akan diisi secara dinamis -->
@@ -215,6 +215,20 @@
           }
         });
         
+        // 🔧 FALLBACK: Jika tidak ada periode dalam data, buat periode default
+        if (periodsSet.size === 0) {
+          console.warn('⚠️ No "Periode" column found in data, using default period');
+          const defaultPeriod = new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+          periodsSet.add(defaultPeriod);
+          
+          // Add default period to all data items
+          insentifData.forEach(item => {
+            if (!item.Periode) {
+              item.Periode = defaultPeriod;
+            }
+          });
+        }
+        
         availablePeriods = Array.from(periodsSet).sort((a, b) => {
           // Sort dari periode terlama ke terbaru
           // Assuming format "Bulan YYYY" or "MMM YYYY"
@@ -282,6 +296,7 @@
         });
         
         console.log(`📊 Data grouped by period:`, salesmanDataByPeriod);
+        console.log(`🔍 Available employee IDs in grouped data:`, Object.keys(salesmanDataByPeriod));
       }
 
       // 🆕 Create period tabs
@@ -454,6 +469,11 @@
 
           console.log(`✅ Loaded ${insentifData.length} incentive records`);
           console.log('📊 Sample data:', insentifData[0]);
+          
+          // Debug: Show all unique employee IDs in raw data
+          const uniqueEmployeeIds = [...new Set(insentifData.map(item => item.szEmployeeId?.toString()))];
+          console.log(`👥 Unique employee IDs in data: [${uniqueEmployeeIds.join(', ')}]`);
+          
           return true;
         } catch (error) {
           console.error('❌ Error loading JSON data:', error);
@@ -775,7 +795,9 @@
             throw new Error('No salesman ID specified');
           }
 
-          console.log(`📍 Loading incentive data for salesman ID: ${currentSalesmanId}`);
+          // 🔧 PERBAIKAN: Ensure currentSalesmanId is string for consistency
+          currentSalesmanId = currentSalesmanId.toString();
+          console.log(`📍 Loading incentive data for salesman ID: ${currentSalesmanId} (type: ${typeof currentSalesmanId})`);
           
           // Load JSON data
           await loadJSONData();
@@ -787,13 +809,31 @@
           
           // Debug: Show all available employee IDs
           const availableIds = insentifData.map(item => item.szEmployeeId);
-          console.log(`📋 Available employee IDs: ${availableIds.join(', ')}`);
+          console.log(`📋 Available employee IDs in raw data: ${availableIds.join(', ')}`);
+          console.log(`🔍 Available employee IDs in grouped data: ${Object.keys(salesmanDataByPeriod).join(', ')}`);
+          console.log(`🎯 Looking for employee ID: "${currentSalesmanId}"`);
+          console.log(`🔍 ID exists in grouped data? ${salesmanDataByPeriod.hasOwnProperty(currentSalesmanId)}`);
           
           // Check if salesman has data
           if (!salesmanDataByPeriod[currentSalesmanId]) {
-            console.error(`❌ No data found for employee ID: ${currentSalesmanId}`);
-            console.log('Available data preview:', insentifData.slice(0, 3));
-            throw new Error(`No incentive data found for salesman: ${currentSalesmanId}`);
+            // 🆕 ENHANCED: Try alternative matching if direct match fails
+            console.warn(`⚠️ Direct match failed for employee ID: ${currentSalesmanId}`);
+            
+            // Try to find by szEmployeeId value match
+            const foundEntry = Object.entries(salesmanDataByPeriod).find(([key, value]) => {
+              return key === currentSalesmanId || 
+                     Object.values(value).some(item => item.szEmployeeId?.toString() === currentSalesmanId);
+            });
+            
+            if (foundEntry) {
+              console.log(`✅ Found alternative match for employee ID: ${currentSalesmanId}`);
+              currentSalesmanId = foundEntry[0]; // Use the key that worked
+            } else {
+              console.error(`❌ No data found for employee ID: ${currentSalesmanId}`);
+              console.log('Available grouped data keys:', Object.keys(salesmanDataByPeriod));
+              console.log('Sample raw data:', insentifData.slice(0, 3));
+              throw new Error(`No incentive data found for salesman: ${currentSalesmanId}`);
+            }
           }
 
           console.log(`✅ Found incentive data for salesman: ${currentSalesmanId}`);
