@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performance Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(180deg, #f8f9ff 0%, #e8ecff 100%);
+            min-height: 100vh;
+            color: #2c3e50;
+            padding-bottom: 100px;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+            border-radius: 0 0 30px 30px;
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        .back-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            padding: 10px;
+            border-radius: 12px;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateX(-2px);
+        }
+
+        .title-container {
+            text-align: center;
+            flex: 1;
+        }
+
+        .title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .subtitle {
+            font-size: 12px;
+            opacity: 0.9;
+            font-weight: 400;
+        }
+
+        .user-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            padding: 10px;
+            border-radius: 12px;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .user-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Loading States */
+        .loading-spinner {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            flex-direction: column;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #8b5cf6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: rgba(231, 76, 60, 0.1);
+            border: 1px solid rgba(231, 76, 60, 0.3);
+            color: #e74c3c;
+            padding: 16px;
+            border-radius: 12px;
+            margin: 20px;
+            text-align: center;
+        }
+
+        /* Summary Cards */
+        .summary-section {
+            padding: 0 16px 20px;
+        }
+
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .summary-card {
+            background: white;
+            padding: 16px;
+            border-radius: 16px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid #8b5cf6;
+        }
+
+        .card-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 4px;
+        }
+
+        .card-label {
+            font-size: 12px;
+            color: #7f8c8d;
+            font-weight: 500;
+        }
+
+        /* Channel Groups Section */
+        .channel-section {
+            padding: 0 16px;
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .channel-tabs {
+            display: flex;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 12px;
+            padding: 4px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .tab {
+            flex: 1;
+            background: transparent;
+            border: none;
+            padding: 10px 8px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #7f8c8d;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .tab.active {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            color: white;
+            box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
+        }
+
+        .projects-container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        /* Project Cards */
+        .project-card {
+            padding: 16px;
+            border-bottom: 1px solid #f1f2f6;
+            transition: background-color 0.2s ease;
+        }
+
+        .project-card:last-child {
+            border-bottom: none;
+        }
+
+        .project-card:hover {
+            background-color: rgba(139, 92, 246, 0.05);
+        }
+
+        .project-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .project-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #2c3e50;
+            flex: 1;
+        }
+
+        .achievement-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            color: white;
+            min-width: 50px;
+            text-align: center;
+        }
+
+        .achievement-high {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+
+        .achievement-medium {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+        }
+
+        .achievement-low {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+
+        .project-metrics {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .metric-item {
+            text-align: center;
+            padding: 8px;
+            background: rgba(139, 92, 246, 0.05);
+            border-radius: 8px;
+        }
+
+        .metric-value {
+            font-size: 12px;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 2px;
+        }
+
+        .metric-label {
+            font-size: 9px;
+            color: #7f8c8d;
+            font-weight: 500;
+        }
+
+        /* Comparison Section */
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+        }
+
+        .comparison-item {
+            text-align: center;
+            padding: 6px 4px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        .comparison-item.positive {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .comparison-item.negative {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .comparison-value {
+            font-size: 10px;
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+
+        .comparison-value.positive {
+            color: #10b981;
+        }
+
+        .comparison-value.negative {
+            color: #ef4444;
+        }
+
+        .comparison-label {
+            font-size: 8px;
+            color: #7f8c8d;
+            font-weight: 500;
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 400px;
+            background: white;
+            border-top: 1px solid #f1f2f6;
+            padding: 15px 0;
+            display: flex;
+            justify-content: space-around;
+            box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-decoration: none;
+            color: #bdc3c7;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            padding: 8px 6px;
+            border-radius: 12px;
+            min-width: 50px;
+        }
+
+        .nav-item.active {
+            color: #8b5cf6;
+            background: rgba(139, 92, 246, 0.1);
+        }
+
+        .nav-item:hover {
+            color: #8b5cf6;
+            transform: translateY(-2px);
+        }
+
+        .nav-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 4px;
+            font-size: 12px;
+        }
+
+        .nav-icon.home { background: #3b82f6; color: white; }
+        .nav-icon.activity { background: #ef4444; color: white; }
+        .nav-icon.incentive { background: #f59e0b; color: white; }
+        .nav-icon.performance { background: #8b5cf6; color: white; }
+        .nav-icon.profile { background: #10b981; color: white; }
+
+        .nav-label {
+            font-size: 10px;
+            font-weight: 500;
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .summary-cards {
+                grid-template-columns: 1fr;
+            }
+            
+            .project-metrics {
+                grid-template-columns: 1fr;
+            }
+            
+            .tab {
+                padding: 8px 6px;
+                font-size: 10px;
+            }
+        }
+
+        /* Animation */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .project-card {
+            animation: fadeInUp 0.3s ease forwards;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="javascript:goBack()" class="back-btn">←</a>
+            <div class="title-container">
+                <div class="title" id="salesmanTitle">Performance Dashboard</div>
+                <div class="subtitle" id="salesmanName">Loading...</div>
+            </div>
+            <button class="user-btn" onclick="showProfile()">👤</button>
+        </div>
+
+        <!-- Loading State -->
+        <div class="loading-spinner" id="loadingSpinner">
+            <div class="spinner"></div>
+            <div>Loading performance data...</div>
+        </div>
+
+        <!-- Error State -->
+        <div class="error-message" id="errorMessage" style="display: none;">
+            <h3>📡 Data Loading Error</h3>
+            <p>Unable to load performance data. Please check your connection.</p>
+            <button onclick="loadPerformanceData()" style="margin-top: 10px; padding: 8px 16px; background: #8b5cf6; color: white; border: none; border-radius: 8px; cursor: pointer;">Retry</button>
+        </div>
+
+        <!-- Main Content -->
+        <div id="mainContent" style="display: none;">
+            <!-- Summary Cards -->
+            <div class="summary-section">
+                <div class="summary-cards">
+                    <div class="summary-card">
+                        <div class="card-value" id="totalProjects">0</div>
+                        <div class="card-label">Total Projects</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="card-value" id="totalOutlets">0</div>
+                        <div class="card-label">Total Outlets</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="card-value" id="avgAchievement">0%</div>
+                        <div class="card-label">Avg Achievement</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="card-value" id="totalGap">0</div>
+                        <div class="card-label">Total Gap</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Channel Groups Section -->
+            <div class="channel-section">
+                <div class="section-title">
+                    📈 Performance by Channel
+                </div>
+                
+                <!-- Channel Tabs -->
+                <div class="channel-tabs">
+                    <button class="tab active" onclick="showChannelData('all')" id="tabAll">All</button>
+                    <button class="tab" onclick="showChannelData('MTI')" id="tabMTI">MTI</button>
+                    <button class="tab" onclick="showChannelData('Retail')" id="tabRetail">Retail</button>
+                    <button class="tab" onclick="showChannelData('Wholesaler')" id="tabWholesaler">Wholesaler</button>
+                </div>
+
+                <!-- Projects Container -->
+                <div class="projects-container" id="projectsContainer">
+                    <!-- Will be populated dynamically -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Navigation -->
+        <div class="bottom-nav">
+            <div class="nav-item" onclick="goHome()">
+                <div class="nav-icon home">🏠</div>
+                <div class="nav-label">Home</div>
+            </div>
+            <div class="nav-item" onclick="showVisitOutlet()">
+                <div class="nav-icon activity">📊</div>
+                <div class="nav-label">Visit Outlet</div>
+            </div>
+            <div class="nav-item" onclick="showIncentive()">
+                <div class="nav-icon incentive">💰</div>
+                <div class="nav-label">Incentive</div>
+            </div>
+            <div class="nav-item active" onclick="showPerformance()">
+                <div class="nav-icon performance">📈</div>
+                <div class="nav-label">Performance</div>
+            </div>
+            <div class="nav-item" onclick="showProfile()">
+                <div class="nav-icon profile">👤</div>
+                <div class="nav-label">Profile</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let performanceData = [];
+        let currentSalesmanId = null;
+        let currentChannel = 'all';
+
+        // Check if user is logged in
+        function checkLoginStatus() {
+            const isLoggedIn = sessionStorage.getItem('isLoggedIn');
+            const currentUser = sessionStorage.getItem('currentUser');
+            
+            if (!isLoggedIn || !currentUser) {
+                window.location.href = 'index.html';
+                return false;
+            }
+            return true;
+        }
+
+        // Get URL parameter
+        function getUrlParameter(name) {
+            name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+            var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+            var results = regex.exec(location.search);
+            return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+        }
+
+        // ✅ FORMAT CURRENCY INDONESIA
+        function formatCurrencyIndonesia(value) {
+            try {
+                const val = Math.abs(parseFloat(value));
+                
+                if (val >= 1000000000) {
+                    return `${(val/1000000000).toFixed(1)}M`;
+                } else if (val >= 1000000) {
+                    return `${(val/1000000).toFixed(1)}jt`;
+                } else if (val >= 1000) {
+                    return `${(val/1000).toFixed(0)}rb`;
+                } else {
+                    return `${val.toFixed(0)}`;
+                }
+            } catch {
+                return "0";
+            }
+        }
+
+        // ✅ FORMAT PERCENTAGE
+        function formatPercentage(value) {
+            try {
+                const val = parseFloat(value || 0);
+                return `${Math.round(val * 100)}%`;
+            } catch {
+                return "0%";
+            }
+        }
+
+        // ✅ GET ACHIEVEMENT COLOR CLASS
+        function getAchievementColorClass(percentage) {
+            if (percentage >= 100) return 'achievement-high';
+            if (percentage >= 90) return 'achievement-medium';
+            return 'achievement-low';
+        }
+
+        // ✅ LOAD PERFORMANCE DATA FROM d.project.json
+        async function loadPerformanceData() {
+            try {
+                showLoading(true);
+                hideError();
+
+                console.log('🔄 Loading performance data...');
+                
+                // Get salesman ID from URL
+                currentSalesmanId = getUrlParameter('id');
+                
+                if (!currentSalesmanId) {
+                    throw new Error('No salesman ID specified');
+                }
+
+                console.log(`📍 Loading performance data for salesman ID: ${currentSalesmanId}`);
+                
+                // Load d.project.json data
+                const response = await fetch('data/d.project.json');
+                if (!response.ok) {
+                    throw new Error(`Failed to load performance data: ${response.status}`);
+                }
+                
+                const text = await response.text();
+                
+                // Parse JSONL format (each line is a separate JSON object)
+                const allData = text.split('\n')
+                    .filter(line => line.trim())
+                    .map(line => JSON.parse(line));
+
+                // Filter data for current salesman
+                performanceData = allData.filter(item => 
+                    item.szEmployeeId.toString() === currentSalesmanId.toString()
+                );
+
+                if (performanceData.length === 0) {
+                    throw new Error(`No performance data found for salesman: ${currentSalesmanId}`);
+                }
+
+                console.log(`✅ Found ${performanceData.length} performance records for ${performanceData[0].szname}`);
+
+                // Update UI
+                updateSalesmanInfo(performanceData[0]);
+                updateSummaryCards();
+                showChannelData('all');
+                
+                showLoading(false);
+                showMainContent(true);
+
+            } catch (error) {
+                console.error('❌ Error loading performance data:', error);
+                showLoading(false);
+                showError(true, error.message);
+            }
+        }
+
+        // ✅ UPDATE SALESMAN INFO
+        function updateSalesmanInfo(salesmanData) {
+            const salesmanName = salesmanData.szname || 'Unknown';
+            
+            document.getElementById('salesmanName').textContent = salesmanName;
+            document.title = `${salesmanName} - Performance Dashboard`;
+            
+            console.log(`✅ Updated salesman info: ${salesmanName}`);
+        }
+
+        // ✅ UPDATE SUMMARY CARDS
+        function updateSummaryCards() {
+            const totalProjects = performanceData.length;
+            const totalOutlets = performanceData.reduce((sum, item) => sum + (item['CR on JKS'] || 0), 0);
+            
+            // Calculate average achievement
+            const achievements = performanceData.map(item => (item.Ach || 0) * 100);
+            const avgAchievement = achievements.length > 0 ? 
+                Math.round(achievements.reduce((sum, ach) => sum + ach, 0) / achievements.length) : 0;
+            
+            // Calculate total gap
+            const totalGap = performanceData.reduce((sum, item) => sum + (item[' Gap MTD'] || 0), 0);
+            
+            document.getElementById('totalProjects').textContent = totalProjects;
+            document.getElementById('totalOutlets').textContent = totalOutlets;
+            document.getElementById('avgAchievement').textContent = `${avgAchievement}%`;
+            document.getElementById('totalGap').textContent = formatCurrencyIndonesia(totalGap);
+            
+            console.log(`✅ Updated summary cards - Projects: ${totalProjects}, Outlets: ${totalOutlets}, Avg Ach: ${avgAchievement}%`);
+        }
+
+        // ✅ SHOW CHANNEL DATA
+        function showChannelData(channel) {
+            currentChannel = channel;
+            
+            // Update active tab
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.getElementById(`tab${channel.charAt(0).toUpperCase() + channel.slice(1)}`).classList.add('active');
+            
+            // Filter data based on channel
+            let filteredData = performanceData;
+            if (channel !== 'all') {
+                filteredData = performanceData.filter(item => 
+                    item['Channel Group'] === channel
+                );
+            }
+            
+            // Update projects container
+            updateProjectsContainer(filteredData);
+            
+            console.log(`✅ Showing channel data for: ${channel} (${filteredData.length} records)`);
+        }
+
+        // ✅ UPDATE PROJECTS CONTAINER
+        function updateProjectsContainer(data) {
+            const container = document.getElementById('projectsContainer');
+            
+            if (data.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: #7f8c8d;">
+                        <p>No data available for this channel</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '';
+            
+            data.forEach((item, index) => {
+                const achievement = Math.round((item.Ach || 0) * 100);
+                const achievementClass = getAchievementColorClass(achievement);
+                
+                const target = item[' T.MTD'] || 0;
+                const actual = item[' A.MTD'] || 0;
+                const gap = item[' Gap MTD'] || 0;
+                const outlets = item['CR on JKS'] || 0;
+                
+                // Comparison metrics
+                const vsLY = (item['vs LY'] || 0) * 100;
+                const vs3LM = (item['vs 3LM'] || 0) * 100;
+                const vsLM = (item['vs LM'] || 0) * 100;
+                
+                html += `
+                    <div class="project-card" style="animation-delay: ${index * 0.1}s">
+                        <div class="project-header">
+                            <div class="project-name">${item.Project || 'Unknown Project'}</div>
+                            <div class="achievement-badge ${achievementClass}">${achievement}%</div>
+                        </div>
+                        
+                        <div class="project-metrics">
+                            <div class="metric-item">
+                                <div class="metric-value">${formatCurrencyIndonesia(target)}</div>
+                                <div class="metric-label">Target</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-value">${formatCurrencyIndonesia(actual)}</div>
+                                <div class="metric-label">Actual</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-value">${formatCurrencyIndonesia(gap)}</div>
+                                <div class="metric-label">Gap</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-value">${outlets}</div>
+                                <div class="metric-label">Outlets</div>
+                            </div>
+                        </div>
+                        
+                        <div class="comparison-grid">
+                            <div class="comparison-item ${vsLY >= 0 ? 'positive' : 'negative'}">
+                                <div class="comparison-value ${vsLY >= 0 ? 'positive' : 'negative'}">${vsLY >= 0 ? '+' : ''}${Math.round(vsLY)}%</div>
+                                <div class="comparison-label">vs LY</div>
+                            </div>
+                            <div class="comparison-item ${vs3LM >= 0 ? 'positive' : 'negative'}">
+                                <div class="comparison-value ${vs3LM >= 0 ? 'positive' : 'negative'}">${vs3LM >= 0 ? '+' : ''}${Math.round(vs3LM)}%</div>
+                                <div class="comparison-label">vs 3LM</div>
+                            </div>
+                            <div class="comparison-item ${vsLM >= 0 ? 'positive' : 'negative'}">
+                                <div class="comparison-value ${vsLM >= 0 ? 'positive' : 'negative'}">${vsLM >= 0 ? '+' : ''}${Math.round(vsLM)}%</div>
+                                <div class="comparison-label">vs LM</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+
+        // ✅ NAVIGATION FUNCTIONS
+        function goBack() {
+            if (currentSalesmanId) {
+                window.location.href = `salesman-detail.html?id=${currentSalesmanId}`;
+            } else {
+                window.location.href = 'dashboard.html';
+            }
+        }
+
+        function goHome() {
+            window.location.href = 'dashboard.html';
+        }
+
+        function showVisitOutlet() {
+            console.log('🏪 Redirecting to Visit Outlet dashboard...');
+            window.location.href = 'visit.html';
+        }
+
+        function showIncentive() {
+            if (currentSalesmanId) {
+                console.log(`🎯 Redirecting to incentive dashboard for salesman: ${currentSalesmanId}`);
+                window.location.href = `dashboard_insentif_sales.html?id=${currentSalesmanId}`;
+            } else {
+                alert('❌ Error: No salesman ID available for incentive data');
+            }
+        }
+
+        function showPerformance() {
+            // Already on performance page
+            console.log('📈 Already on performance page');
+        }
+
+        function showProfile() {
+            if (currentSalesmanId) {
+                console.log(`👤 Opening profile for salesman: ${currentSalesmanId}`);
+                window.location.href = `profile.html?id=${currentSalesmanId}`;
+            } else {
+                alert('❌ Error: No user ID available for profile data');
+            }
+        }
+
+        // ✅ UI CONTROL FUNCTIONS
+        function showLoading(show) {
+            document.getElementById('loadingSpinner').style.display = show ? 'flex' : 'none';
+        }
+
+        function showError(show, message = '') {
+            const errorElement = document.getElementById('errorMessage');
+            if (show) {
+                errorElement.style.display = 'block';
+                if (message) {
+                    errorElement.querySelector('p').textContent = message;
+                }
+            } else {
+                errorElement.style.display = 'none';
+            }
+        }
+
+        function hideError() {
+            showError(false);
+        }
+
+        function showMainContent(show) {
+            document.getElementById('mainContent').style.display = show ? 'block' : 'none';
+        }
+
+        // ✅ INITIALIZE PAGE
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!checkLoginStatus()) {
+                return;
+            }
+
+            console.log('🚀 Initializing performance dashboard...');
+            loadPerformanceData();
+        });
+
+        console.log('✅ Performance dashboard script loaded');
+    </script>
+</body>
+</html>
