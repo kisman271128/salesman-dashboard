@@ -606,7 +606,7 @@
         console.log(`✅ Sales detail updated for ${typeCategory} type`);
       }
 
-      // Update incentive process detail based on salesman type (with POM)
+      // 🔧 FIXED: Update incentive process detail - Always show metrics even if 0
       function updateIncentiveProcessDetail(incentiveData) {
         if (!incentiveData) return;
 
@@ -642,43 +642,37 @@
             </div>
           `;
         } else {
-          // Other types: Show available process incentives including POM
+          // 🔧 FIXED: Other types - ALWAYS show all metrics including zeros
           const processDetails = [
             { name: 'Avg SKU', value: incentiveData["Avg SKU"] || 0, icon: '📊', color: 'blue' },
             { name: 'GP', value: incentiveData.GP || 0, icon: '📈', color: 'green' },
             { name: 'POM', value: incentiveData.POM || 0, icon: '🎯', color: 'purple' }
           ];
 
-          // Filter out zero values for non-Bima types
-          const availableDetails = processDetails.filter(item => item.value > 0);
+          // 🔧 REMOVED: Filter that removed zero values
+          // const availableDetails = processDetails.filter(item => item.value > 0);
           
-          if (availableDetails.length > 0) {
-            // Adjust grid columns based on number of available details
-            const gridCols = Math.min(availableDetails.length, 3);
-            html = `<div class="grid grid-cols-${gridCols} gap-3">`;
-            
-            availableDetails.forEach(item => {
-              html += `
-                <div class="bg-${item.color}-100 p-3 shadow rounded-xl">
-                  <p class="text-xs font-medium flex items-center gap-1">
-                    <span>${item.icon}</span> ${item.name}
-                  </p>
-                  <p class="text-${item.color}-700 font-bold text-sm">${formatCurrencyIDR(item.value)}</p>
-                </div>
-              `;
-            });
-            html += '</div>';
-          } else {
-            html = `
-              <div class="bg-gray-100 p-4 rounded-xl text-center">
-                <p class="text-gray-500 text-sm">Tidak ada insentif proses</p>
+          // 🔧 NEW: Always show all details, even if they're zero
+          const availableDetails = processDetails;
+          
+          // Always show grid with 3 columns for consistency
+          html = `<div class="grid grid-cols-3 gap-2">`;
+          
+          availableDetails.forEach(item => {
+            html += `
+              <div class="bg-${item.color}-100 p-3 shadow rounded-xl">
+                <p class="text-xs font-medium flex items-center gap-1">
+                  <span>${item.icon}</span> ${item.name}
+                </p>
+                <p class="text-${item.color}-700 font-bold text-sm">${formatCurrencyIDR(item.value)}</p>
               </div>
             `;
-          }
+          });
+          html += '</div>';
         }
 
         document.getElementById('insentifProsesDetail').innerHTML = html;
-        console.log(`✅ Process detail updated for ${typeCategory} type with POM incentive`);
+        console.log(`✅ Process detail updated for ${typeCategory} type with all metrics shown (including zeros)`);
       }
 
       // Update penalty AR section
@@ -823,7 +817,7 @@
         loadIncentiveData();
       });
 
-      console.log('✅ Incentive dashboard script loaded with period tabs');
+      console.log('✅ Incentive dashboard script loaded with period tabs and fixed process metrics display');
     </script>
   </body>
 </html>
