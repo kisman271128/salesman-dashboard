@@ -247,9 +247,19 @@
             overflow-y: auto;
         }
 
+        .pareto-scroll {
+            overflow-x: auto;
+            overflow-y: auto;
+        }
+
         .data-table {
             width: 100%;
             border-collapse: collapse;
+            min-width: 100%;
+        }
+
+        .pareto-table {
+            min-width: 800px;
         }
 
         .data-table th,
@@ -258,6 +268,7 @@
             text-align: left;
             border-bottom: 1px solid #f1f3f4;
             font-size: 11px;
+            white-space: nowrap;
         }
 
         .data-table th {
@@ -267,6 +278,36 @@
             position: sticky;
             top: 0;
             z-index: 10;
+        }
+
+        /* Sticky columns for pareto table */
+        .sticky-col {
+            position: sticky;
+            background: #f8fafc !important;
+            z-index: 15;
+        }
+
+        .rank-col {
+            left: 0;
+            width: 50px;
+            min-width: 50px;
+        }
+
+        .customer-col {
+            left: 50px;
+            width: 120px;
+            min-width: 120px;
+        }
+
+        /* Sticky columns for tbody */
+        .pareto-table tbody td.sticky-col {
+            background: white !important;
+            position: sticky;
+            z-index: 5;
+        }
+
+        .pareto-table tbody tr:hover td.sticky-col {
+            background: rgba(102, 126, 234, 0.05) !important;
         }
 
         .data-table tbody tr:hover {
@@ -396,6 +437,22 @@
             .data-table td {
                 padding: 6px 4px;
                 font-size: 10px;
+            }
+            
+            /* Responsive pareto table */
+            .rank-col {
+                width: 40px;
+                min-width: 40px;
+            }
+            
+            .customer-col {
+                width: 100px;
+                min-width: 100px;
+                left: 40px;
+            }
+            
+            .pareto-table {
+                min-width: 700px;
             }
         }
     </style>
@@ -570,10 +627,6 @@
             <div class="nav-item" onclick="showIncentive()">
                 <div class="nav-icon incentive">💰</div>
                 <div class="nav-label">Incentive</div>
-            </div>
-            <div class="nav-item active" onclick="showPerformance()">
-                <div class="nav-icon performance">📈</div>
-                <div class="nav-label">Performance</div>
             </div>
             <div class="nav-item" onclick="showProfile()">
                 <div class="nav-icon profile">👤</div>
@@ -802,10 +855,7 @@
                 
                 html += `
                     <tr>
-                        <td>
-                            <strong>${item['CUST NAME'] || ''}</strong><br>
-                            <small style="color: #64748b;">${item['CUST ID SNS'] || ''}</small>
-                        </td>
+                        <td><strong>${item['CUST NAME'] || ''}</strong></td>
                         <td><span class="status-badge">${item.ITG || ''}</span></td>
                         <td class="value-currency">${formatCurrencyIndonesia(item['T.Q3_2025'])}</td>
                         <td class="value-currency">${formatCurrencyIndonesia(item['A.Q3_2025'])}</td>
@@ -828,7 +878,7 @@
             const tbody = document.getElementById('paretoTableBody');
             
             if (salesmanParetoData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><div class="icon">🏆</div><div>No pareto data available</div></td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9" class="empty-state" style="text-align: center;"><div class="icon">🏆</div><div>No pareto data available</div></td></tr>';
                 return;
             }
 
@@ -839,12 +889,15 @@
                 
                 html += `
                     <tr>
-                        <td><span class="ranking-badge">#${item.Ranking}</span></td>
-                        <td>
-                            <strong style="font-size: 10px;">${(item['Kode Pelanggan'] || '').substring(0, 15)}</strong><br>
-                            <small style="color: #64748b;">${item['Hari JKS'] || ''}</small>
+                        <td class="sticky-col"><span class="ranking-badge">#${item.Ranking}</span></td>
+                        <td class="sticky-col">
+                            <strong style="font-size: 10px;">${(item['Nama Pelanggan'] || '').substring(0, 20)}</strong><br>
+                            <small style="color: #64748b; font-size: 9px;">${item['Hari JKS'] || ''}</small>
                         </td>
-                        <td>${item['Hari JKS'] || ''}</td>
+                        <td class="value-currency">${formatCurrencyIndonesia(item[' LY'])}</td>
+                        <td class="value-currency">${formatCurrencyIndonesia(item[' 3LM'])}</td>
+                        <td class="value-currency">${formatCurrencyIndonesia(item[' LM'])}</td>
+                        <td class="value-currency">${formatCurrencyIndonesia(item[' Max'])}</td>
                         <td class="value-currency">${formatCurrencyIndonesia(item[' T.MTD'])}</td>
                         <td class="value-currency">${formatCurrencyIndonesia(item[' A.MTD'])}</td>
                         <td class="value-currency ${gapClass}">${gap >= 0 ? '+' : ''}${formatCurrencyIndonesia(gap)}</td>
@@ -933,11 +986,6 @@
             } else {
                 alert('❌ Error: No salesman ID available');
             }
-        }
-
-        function showPerformance() {
-            // Already on performance page
-            console.log('👤 Already on performance page');
         }
 
         function showProfile() {
