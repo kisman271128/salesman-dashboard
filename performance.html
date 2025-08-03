@@ -257,6 +257,11 @@
             overflow-y: auto;
         }
 
+        .channel-scroll {
+            overflow-x: auto;
+            overflow-y: auto;
+        }
+
         .data-table {
             width: 100%;
             border-collapse: collapse;
@@ -269,6 +274,10 @@
 
         .project-table {
             min-width: 700px;
+        }
+
+        .channel-table {
+            min-width: 800px;
         }
 
         .data-table th,
@@ -322,16 +331,31 @@
             min-width: 80px;
         }
 
+        /* Channel table sticky columns */
+        .channel-group-col {
+            left: 0;
+            width: 100px;
+            min-width: 100px;
+        }
+
+        .channel-project-col {
+            left: 100px;
+            width: 80px;
+            min-width: 80px;
+        }
+
         /* Sticky columns for tbody */
         .pareto-table tbody td.sticky-col,
-        .project-table tbody td.sticky-col {
+        .project-table tbody td.sticky-col,
+        .channel-table tbody td.sticky-col {
             background: white !important;
             position: sticky;
             z-index: 5;
         }
 
         .pareto-table tbody tr:hover td.sticky-col,
-        .project-table tbody tr:hover td.sticky-col {
+        .project-table tbody tr:hover td.sticky-col,
+        .channel-table tbody tr:hover td.sticky-col {
             background: rgba(102, 126, 234, 0.05) !important;
         }
 
@@ -632,17 +656,18 @@
                     <div class="table-header">
                         📈 Channel Fokus Performance
                     </div>
-                    <div class="table-wrapper">
-                        <table class="data-table">
+                    <div class="table-wrapper channel-scroll">
+                        <table class="data-table channel-table">
                             <thead>
                                 <tr>
-                                    <th>Channel</th>
-                                    <th>Target</th>
-                                    <th>Actual</th>
-                                    <th>Ach%</th>
-                                    <th>Gap</th>
-                                    <th>vs LY</th>
-                                    <th>vs 3LM</th>
+                                    <th class="sticky-col channel-group-col">Channel Group</th>
+                                    <th class="sticky-col channel-project-col">Project</th>
+                                    <th>LY</th>
+                                    <th>3LM</th>
+                                    <th>LM</th>
+                                    <th>Target MTD</th>
+                                    <th>Actual MTD</th>
+                                    <th>Gap MTD</th>
                                 </tr>
                             </thead>
                             <tbody id="channelTableBody">
@@ -808,18 +833,27 @@
                     .map(line => JSON.parse(line));
 
                 // Load channel proj data
-                const channelProjResponse = await fetch('data/d.channelproj.json');
-                if (!channelProjResponse.ok) throw new Error('Failed to load channel proj data');
-                const channelProjText = await channelProjResponse.text();
-                channelProjData = channelProjText.split('\n')
-                    .filter(line => line.trim())
-                    .map(line => JSON.parse(line));
+                try {
+                    const channelProjResponse = await fetch('data/d.channelproj.json');
+                    if (!channelProjResponse.ok) {
+                        console.log('⚠️ d.channelproj.json not found, continuing without channel fokus data');
+                        channelProjData = [];
+                    } else {
+                        const channelProjText = await channelProjResponse.text();
+                        channelProjData = channelProjText.split('\n')
+                            .filter(line => line.trim())
+                            .map(line => JSON.parse(line));
+                        console.log(`✅ Loaded ${channelProjData.length} channel proj records`);
+                    }
+                } catch (error) {
+                    console.log('⚠️ Failed to load d.channelproj.json:', error.message);
+                    channelProjData = [];
+                }
 
                 console.log(`✅ Loaded ${channelData.length} channel records`);
                 console.log(`✅ Loaded ${jksData.length} JKS records`);
                 console.log(`✅ Loaded ${projectData.length} project records`);
                 console.log(`✅ Loaded ${paretoData.length} pareto records`);
-                console.log(`✅ Loaded ${channelProjData.length} channel proj records`);
                 console.log('✅ All data loaded successfully');
                 return true;
             } catch (error) {
@@ -992,37 +1026,58 @@
         }
 
         // Update Channel Fokus table
-        function updateChannelTable(salesmanId) {
-            const salesmanChannelData = channelProjData.filter(item => 
-                item.szEmployeeId.toString() === salesmanId.toString()
-            );
+        function updateChannelTable(salesmanName) {
+            console.log('🔍 Debugging Channel Table:');
+            console.log('Channel Proj Data:', channelProjData);
+            console.log('Salesman Name:', salesmanName);
+            
+            if (!channelProjData || channelProjData.length === 0) {
+                console.log('⚠️ No channel proj data loaded');
+                const tbody = document.getElementById('channelTableBody');
+                tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><div class="icon">📈</div><div>Channel fokus data not available</div></td></tr>';
+                return;
+            }
+
+            // Check first item structure
+            if (channelProjData.length > 0) {
+                console.log('📋 First channel proj item:', channelProjData[0]);
+                console.log('📋 Available fields:', Object.keys(channelProjData[0]));
+            }
+
+            // Filter by salesman name (not employee ID)
+            const salesmanChannelData = channelProjData.filter(item => {
+                return item.szname === salesmanName;
+            });
+
+            console.log(`🔍 Found ${salesmanChannelData.length} channel records for salesman ${salesmanName}`);
 
             const tbody = document.getElementById('channelTableBody');
             
             if (salesmanChannelData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">📈</div><div>No channel fokus data available</div></td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><div class="icon">📈</div><div>No channel fokus data available for this salesman</div></td></tr>';
                 return;
             }
 
             let html = '';
             salesmanChannelData.forEach(item => {
-                const achPercentage = Math.round((item.Ach || 0) * 100);
-                const gap = parseFloat(item.Gap || 0);
+                // Calculate achievement percentage from Target and Actual
+                const target = parseFloat(item[' T.MTD'] || 0);
+                const actual = parseFloat(item[' A.MTD'] || 0);
+                const achPercentage = calculateAchievementPercentage(target, actual);
+                
+                const gap = parseFloat(item[' Gap MTD'] || 0);
                 const gapClass = gap >= 0 ? 'value-positive' : 'value-negative';
-                const vsLy = parseFloat(item['vs LY'] || 0);
-                const vs3Lm = parseFloat(item['vs 3LM'] || 0);
-                const vsLyClass = vsLy >= 0 ? 'value-positive' : 'value-negative';
-                const vs3LmClass = vs3Lm >= 0 ? 'value-positive' : 'value-negative';
                 
                 html += `
                     <tr>
-                        <td><strong>${item.Channel || ''}</strong></td>
-                        <td class="value-currency">${formatCurrencyIndonesia(item.Target)}</td>
-                        <td class="value-currency">${formatCurrencyIndonesia(item.Actual)}</td>
-                        <td class="value-percentage ${getAchievementClass(achPercentage)}">${achPercentage}%</td>
+                        <td class="sticky-col"><strong>${item['Channel Group'] || ''}</strong></td>
+                        <td class="sticky-col"><span class="status-badge">${item.Project || ''}</span></td>
+                        <td class="value-currency">${formatCurrencyIndonesia(item[' LY'])}</td>
+                        <td class="value-currency">${formatCurrencyIndonesia(item[' 3LM'])}</td>
+                        <td class="value-currency">${formatCurrencyIndonesia(item[' LM'])}</td>
+                        <td class="value-currency">${formatCurrencyIndonesia(item[' T.MTD'])}</td>
+                        <td class="value-currency">${formatCurrencyIndonesia(item[' A.MTD'])}</td>
                         <td class="value-currency ${gapClass}">${gap >= 0 ? '+' : ''}${formatCurrencyIndonesia(gap)}</td>
-                        <td class="value-percentage ${vsLyClass}">${Math.round(vsLy * 100)}%</td>
-                        <td class="value-percentage ${vs3LmClass}">${Math.round(vs3Lm * 100)}%</td>
                     </tr>
                 `;
             });
@@ -1069,6 +1124,7 @@
                     item.szEmployeeId.toString() === currentSalesmanId.toString()
                 );
 
+                // Update salesman info and show/hide tabs based on data availability
                 if (salesmanChannelData) {
                     document.getElementById('salesmanName').textContent = salesmanChannelData.szname;
                     document.getElementById('salesmanPosition').textContent = 'Performance Analysis';
@@ -1077,11 +1133,36 @@
                     document.getElementById('backBtn').href = `salesman-detail.html?id=${currentSalesmanId}`;
                 }
 
+                // Show/hide Channel Fokus tab based on data availability
+                const channelTab = document.querySelector('[onclick="switchTab(\'channel\')"]');
+                if (!channelProjData || channelProjData.length === 0) {
+                    if (channelTab) {
+                        channelTab.style.display = 'none';
+                        console.log('🙈 Hidden Channel Fokus tab - no data available');
+                    }
+                } else {
+                    if (channelTab) {
+                        channelTab.style.display = 'block';
+                        console.log('👁️ Channel Fokus tab available');
+                    }
+                }
+
                 // Update all sections
                 updateMetricsCards(currentSalesmanId);
                 updateJKSTable(currentSalesmanId);
                 updateProjectTable(currentSalesmanId);
-                updateChannelTable(currentSalesmanId);
+                
+                // Only update channel table if data is available
+                if (channelProjData && channelProjData.length > 0) {
+                    updateChannelTable(currentSalesmanId);
+                } else {
+                    console.log('⚠️ Skipping channel table update - no data available');
+                    const tbody = document.getElementById('channelTableBody');
+                    if (tbody) {
+                        tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">📈</div><div>Channel fokus data file not found</div></td></tr>';
+                    }
+                }
+                
                 updateParetoTable(salesmanChannelData ? salesmanChannelData.szname : '');
                 
                 showLoading(false);
