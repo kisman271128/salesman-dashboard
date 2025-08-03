@@ -252,6 +252,11 @@
             overflow-y: auto;
         }
 
+        .project-scroll {
+            overflow-x: auto;
+            overflow-y: auto;
+        }
+
         .data-table {
             width: 100%;
             border-collapse: collapse;
@@ -260,6 +265,10 @@
 
         .pareto-table {
             min-width: 800px;
+        }
+
+        .project-table {
+            min-width: 700px;
         }
 
         .data-table th,
@@ -287,6 +296,7 @@
             z-index: 15;
         }
 
+        /* Pareto table sticky columns */
         .rank-col {
             left: 0;
             width: 50px;
@@ -299,14 +309,29 @@
             min-width: 120px;
         }
 
+        /* Project table sticky columns */
+        .project-customer-col {
+            left: 0;
+            width: 140px;
+            min-width: 140px;
+        }
+
+        .project-itg-col {
+            left: 140px;
+            width: 80px;
+            min-width: 80px;
+        }
+
         /* Sticky columns for tbody */
-        .pareto-table tbody td.sticky-col {
+        .pareto-table tbody td.sticky-col,
+        .project-table tbody td.sticky-col {
             background: white !important;
             position: sticky;
             z-index: 5;
         }
 
-        .pareto-table tbody tr:hover td.sticky-col {
+        .pareto-table tbody tr:hover td.sticky-col,
+        .project-table tbody tr:hover td.sticky-col {
             background: rgba(102, 126, 234, 0.05) !important;
         }
 
@@ -451,8 +476,24 @@
                 left: 40px;
             }
             
+            /* Responsive project table */
+            .project-customer-col {
+                width: 120px;
+                min-width: 120px;
+            }
+            
+            .project-itg-col {
+                width: 70px;
+                min-width: 70px;
+                left: 120px;
+            }
+            
             .pareto-table {
                 min-width: 700px;
+            }
+            
+            .project-table {
+                min-width: 600px;
             }
         }
     </style>
@@ -530,6 +571,7 @@
                 <div class="tab-nav">
                     <button class="tab-btn active" onclick="switchTab('jks')">By JKS</button>
                     <button class="tab-btn" onclick="switchTab('project')">By Project</button>
+                    <button class="tab-btn" onclick="switchTab('channel')">Channel Fokus</button>
                     <button class="tab-btn" onclick="switchTab('pareto')">30 Pareto</button>
                 </div>
             </div>
@@ -565,12 +607,12 @@
                     <div class="table-header">
                         🎯 Performance by Project
                     </div>
-                    <div class="table-wrapper">
-                        <table class="data-table">
+                    <div class="table-wrapper project-scroll">
+                        <table class="data-table project-table">
                             <thead>
                                 <tr>
-                                    <th>Customer</th>
-                                    <th>ITG</th>
+                                    <th class="sticky-col project-customer-col">Customer</th>
+                                    <th class="sticky-col project-itg-col">ITG</th>
                                     <th>Target Q3</th>
                                     <th>Actual Q3</th>
                                     <th>Ach%</th>
@@ -578,6 +620,32 @@
                                 </tr>
                             </thead>
                             <tbody id="projectTableBody">
+                                <!-- Populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="channelContent">
+                <div class="table-container">
+                    <div class="table-header">
+                        📈 Channel Fokus Performance
+                    </div>
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Channel</th>
+                                    <th>Target</th>
+                                    <th>Actual</th>
+                                    <th>Ach%</th>
+                                    <th>Gap</th>
+                                    <th>vs LY</th>
+                                    <th>vs 3LM</th>
+                                </tr>
+                            </thead>
+                            <tbody id="channelTableBody">
                                 <!-- Populated by JavaScript -->
                             </tbody>
                         </table>
@@ -641,6 +709,7 @@
         let jksData = [];
         let projectData = [];
         let paretoData = [];
+        let channelProjData = [];
         let currentSalesmanId = null;
 
         // Format currency Indonesia
@@ -738,6 +807,19 @@
                     .filter(line => line.trim())
                     .map(line => JSON.parse(line));
 
+                // Load channel proj data
+                const channelProjResponse = await fetch('data/d.channelproj.json');
+                if (!channelProjResponse.ok) throw new Error('Failed to load channel proj data');
+                const channelProjText = await channelProjResponse.text();
+                channelProjData = channelProjText.split('\n')
+                    .filter(line => line.trim())
+                    .map(line => JSON.parse(line));
+
+                console.log(`✅ Loaded ${channelData.length} channel records`);
+                console.log(`✅ Loaded ${jksData.length} JKS records`);
+                console.log(`✅ Loaded ${projectData.length} project records`);
+                console.log(`✅ Loaded ${paretoData.length} pareto records`);
+                console.log(`✅ Loaded ${channelProjData.length} channel proj records`);
                 console.log('✅ All data loaded successfully');
                 return true;
             } catch (error) {
@@ -855,8 +937,8 @@
                 
                 html += `
                     <tr>
-                        <td><strong>${item['CUST NAME'] || ''}</strong></td>
-                        <td><span class="status-badge">${item.ITG || ''}</span></td>
+                        <td class="sticky-col"><strong>${item['CUST NAME'] || ''}</strong></td>
+                        <td class="sticky-col"><span class="status-badge">${item.ITG || ''}</span></td>
                         <td class="value-currency">${formatCurrencyIndonesia(item['T.Q3_2025'])}</td>
                         <td class="value-currency">${formatCurrencyIndonesia(item['A.Q3_2025'])}</td>
                         <td class="value-percentage ${getAchievementClass(achPercentage)}">${achPercentage}%</td>
@@ -909,6 +991,46 @@
             console.log(`✅ Pareto table updated with ${salesmanParetoData.length} records`);
         }
 
+        // Update Channel Fokus table
+        function updateChannelTable(salesmanId) {
+            const salesmanChannelData = channelProjData.filter(item => 
+                item.szEmployeeId.toString() === salesmanId.toString()
+            );
+
+            const tbody = document.getElementById('channelTableBody');
+            
+            if (salesmanChannelData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">📈</div><div>No channel fokus data available</div></td></tr>';
+                return;
+            }
+
+            let html = '';
+            salesmanChannelData.forEach(item => {
+                const achPercentage = Math.round((item.Ach || 0) * 100);
+                const gap = parseFloat(item.Gap || 0);
+                const gapClass = gap >= 0 ? 'value-positive' : 'value-negative';
+                const vsLy = parseFloat(item['vs LY'] || 0);
+                const vs3Lm = parseFloat(item['vs 3LM'] || 0);
+                const vsLyClass = vsLy >= 0 ? 'value-positive' : 'value-negative';
+                const vs3LmClass = vs3Lm >= 0 ? 'value-positive' : 'value-negative';
+                
+                html += `
+                    <tr>
+                        <td><strong>${item.Channel || ''}</strong></td>
+                        <td class="value-currency">${formatCurrencyIndonesia(item.Target)}</td>
+                        <td class="value-currency">${formatCurrencyIndonesia(item.Actual)}</td>
+                        <td class="value-percentage ${getAchievementClass(achPercentage)}">${achPercentage}%</td>
+                        <td class="value-currency ${gapClass}">${gap >= 0 ? '+' : ''}${formatCurrencyIndonesia(gap)}</td>
+                        <td class="value-percentage ${vsLyClass}">${Math.round(vsLy * 100)}%</td>
+                        <td class="value-percentage ${vs3LmClass}">${Math.round(vs3Lm * 100)}%</td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+            console.log(`✅ Channel table updated with ${salesmanChannelData.length} records`);
+        }
+
         // Switch tabs
         function switchTab(tabName) {
             // Update tab buttons
@@ -959,6 +1081,7 @@
                 updateMetricsCards(currentSalesmanId);
                 updateJKSTable(currentSalesmanId);
                 updateProjectTable(currentSalesmanId);
+                updateChannelTable(currentSalesmanId);
                 updateParetoTable(salesmanChannelData ? salesmanChannelData.szname : '');
                 
                 showLoading(false);
