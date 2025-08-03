@@ -669,18 +669,52 @@
             return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
         }
 
-        // Load JSON data using window.fs.readFile
+        // Load JSON data using window.fs.readFile or fetch
         async function loadJSONData() {
             try {
                 console.log('🔄 Loading JSON data files...');
 
+                // Function to try multiple loading methods
+                async function loadFile(filename) {
+                    // Method 1: Try window.fs.readFile
+                    if (window.fs && window.fs.readFile) {
+                        try {
+                            console.log(`📂 Trying to load ${filename} using window.fs.readFile...`);
+                            const text = await window.fs.readFile(filename, { encoding: 'utf8' });
+                            console.log(`✅ Successfully loaded ${filename} using window.fs.readFile`);
+                            return text;
+                        } catch (error) {
+                            console.log(`⚠️ window.fs.readFile failed for ${filename}:`, error.message);
+                        }
+                    }
+
+                    // Method 2: Try fetch
+                    try {
+                        console.log(`📂 Trying to load ${filename} using fetch...`);
+                        const response = await fetch(filename);
+                        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                        const text = await response.text();
+                        console.log(`✅ Successfully loaded ${filename} using fetch`);
+                        return text;
+                    } catch (error) {
+                        console.log(`⚠️ fetch failed for ${filename}:`, error.message);
+                        throw error;
+                    }
+                }
+
                 // Load JKS data
                 try {
-                    const jksText = await window.fs.readFile('d.jks.json', { encoding: 'utf8' });
+                    const jksText = await loadFile('d.jks.json');
                     jksData = jksText.split('\n')
                         .filter(line => line.trim())
                         .map(line => JSON.parse(line));
                     console.log(`✅ Loaded ${jksData.length} JKS records`);
+                    
+                    // Debug: Show first few records
+                    if (jksData.length > 0) {
+                        console.log('📋 First JKS record sample:', jksData[0]);
+                        console.log('📋 Available employee IDs:', jksData.slice(0, 5).map(item => item.szEmployeeId));
+                    }
                 } catch (error) {
                     console.error('❌ Error loading d.jks.json:', error);
                     jksData = [];
@@ -688,11 +722,16 @@
 
                 // Load channel proj data
                 try {
-                    const channelProjText = await window.fs.readFile('d.channelproj.json', { encoding: 'utf8' });
+                    const channelProjText = await loadFile('d.channelproj.json');
                     channelProjData = channelProjText.split('\n')
                         .filter(line => line.trim())
                         .map(line => JSON.parse(line));
                     console.log(`✅ Loaded ${channelProjData.length} channel proj records`);
+                    
+                    // Debug: Show first record
+                    if (channelProjData.length > 0) {
+                        console.log('📋 First channel proj record sample:', channelProjData[0]);
+                    }
                 } catch (error) {
                     console.log('⚠️ d.channelproj.json not found, continuing without channel fokus data');
                     channelProjData = [];
@@ -700,7 +739,7 @@
 
                 // Try to load project data (if exists)
                 try {
-                    const projectText = await window.fs.readFile('d.project.json', { encoding: 'utf8' });
+                    const projectText = await loadFile('d.project.json');
                     projectData = projectText.split('\n')
                         .filter(line => line.trim())
                         .map(line => JSON.parse(line));
@@ -712,7 +751,7 @@
 
                 // Try to load pareto data (if exists)
                 try {
-                    const paretoText = await window.fs.readFile('d.30pareto.json', { encoding: 'utf8' });
+                    const paretoText = await loadFile('d.30pareto.json');
                     paretoData = paretoText.split('\n')
                         .filter(line => line.trim())
                         .map(line => JSON.parse(line));
@@ -816,9 +855,16 @@
 
         // Update JKS table
         function updateJKSTable(salesmanName) {
+            console.log(`🔍 Updating JKS table for: "${salesmanName}"`);
+            
             const salesmanJKSData = jksData.filter(item => 
                 item.szname === salesmanName
             );
+
+            console.log(`📊 Found ${salesmanJKSData.length} JKS records for ${salesmanName}`);
+            if (salesmanJKSData.length > 0) {
+                console.log('📋 Sample JKS record:', salesmanJKSData[0]);
+            }
 
             const tbody = document.getElementById('jksTableBody');
             
@@ -854,9 +900,17 @@
 
         // Update Channel table
         function updateChannelTable(salesmanName) {
+            console.log(`🔍 Updating Channel table for: "${salesmanName}"`);
+            console.log(`📊 Total channel proj records: ${channelProjData.length}`);
+            
             const salesmanChannelData = channelProjData.filter(item => 
                 item.szname === salesmanName
             );
+
+            console.log(`📊 Found ${salesmanChannelData.length} channel records for ${salesmanName}`);
+            if (salesmanChannelData.length > 0) {
+                console.log('📋 Sample channel record:', salesmanChannelData[0]);
+            }
 
             const tbody = document.getElementById('channelTableBody');
             
@@ -994,10 +1048,40 @@
                 // Load all JSON data
                 await loadJSONData();
                 
-                // Get salesman name from JKS data first
-                const salesmanJKSData = jksData.find(item => 
+                console.log(`🔍 Looking for salesman with ID: ${currentSalesmanId}`);
+                console.log(`📊 Total JKS records available: ${jksData.length}`);
+                
+                // Debug: Check if we have any data and what employee IDs exist
+                if (jksData.length > 0) {
+                    console.log('📋 Sample employee IDs in data:', 
+                        jksData.slice(0, 10).map(item => `${item.szEmployeeId} (${typeof item.szEmployeeId})`));
+                }
+                
+                // Get salesman name from JKS data - try different comparison methods
+                let salesmanJKSData = null;
+                
+                // Method 1: Direct comparison
+                salesmanJKSData = jksData.find(item => 
                     item.szEmployeeId.toString() === currentSalesmanId.toString()
                 );
+                
+                // Method 2: If not found, try numeric comparison
+                if (!salesmanJKSData) {
+                    console.log('🔍 Direct string comparison failed, trying numeric comparison...');
+                    salesmanJKSData = jksData.find(item => 
+                        Number(item.szEmployeeId) === Number(currentSalesmanId)
+                    );
+                }
+                
+                // Method 3: If still not found, try loose comparison
+                if (!salesmanJKSData) {
+                    console.log('🔍 Numeric comparison failed, trying loose comparison...');
+                    salesmanJKSData = jksData.find(item => 
+                        item.szEmployeeId == currentSalesmanId
+                    );
+                }
+                
+                console.log(`🎯 Salesman search result:`, salesmanJKSData);
 
                 if (salesmanJKSData) {
                     currentSalesmanName = salesmanJKSData.szname;
@@ -1006,8 +1090,14 @@
                     
                     // Update back button with salesman ID
                     document.getElementById('backBtn').href = `salesman-detail.html?id=${currentSalesmanId}`;
+                    
+                    console.log(`✅ Found salesman: ${currentSalesmanName} (ID: ${currentSalesmanId})`);
                 } else {
-                    throw new Error(`Salesman with ID ${currentSalesmanId} not found`);
+                    // If still not found, show available IDs for debugging
+                    console.log('❌ Salesman not found. Available employee IDs:');
+                    const availableIds = [...new Set(jksData.map(item => item.szEmployeeId))].sort();
+                    console.log(availableIds);
+                    throw new Error(`Salesman with ID ${currentSalesmanId} not found. Available IDs: ${availableIds.slice(0, 5).join(', ')}...`);
                 }
 
                 // Show/hide tabs based on data availability
@@ -1016,26 +1106,83 @@
                 const paretoTab = document.querySelector('[onclick="switchTab(\'pareto\')"]');
 
                 if (!channelProjData || channelProjData.length === 0) {
-                    if (channelTab) channelTab.style.display = 'none';
+                    if (channelTab) {
+                        channelTab.style.display = 'none';
+                        console.log('🙈 Hidden Channel Fokus tab - no data');
+                    }
+                } else {
+                    if (channelTab) {
+                        channelTab.style.display = 'block';
+                        console.log('👁️ Channel Fokus tab available');
+                    }
                 }
 
                 if (!projectData || projectData.length === 0) {
-                    if (projectTab) projectTab.style.display = 'none';
+                    if (projectTab) {
+                        projectTab.style.display = 'none';
+                        console.log('🙈 Hidden Project tab - no data');
+                    }
+                } else {
+                    if (projectTab) {
+                        projectTab.style.display = 'block';
+                        console.log('👁️ Project tab available');
+                    }
                 }
 
                 if (!paretoData || paretoData.length === 0) {
-                    if (paretoTab) paretoTab.style.display = 'none';
+                    if (paretoTab) {
+                        paretoTab.style.display = 'none';
+                        console.log('🙈 Hidden Pareto tab - no data');
+                    }
+                } else {
+                    if (paretoTab) {
+                        paretoTab.style.display = 'block';
+                        console.log('👁️ Pareto tab available');
+                    }
                 }
 
                 // Update all sections
-                updateMetricsCards(currentSalesmanName);
-                updateJKSTable(currentSalesmanName);
-                updateChannelTable(currentSalesmanName);
-                updateProjectTable(currentSalesmanName);
-                updateParetoTable(currentSalesmanName);
+                console.log('🔄 Starting data updates...');
+                
+                try {
+                    updateMetricsCards(currentSalesmanName);
+                    console.log('✅ Metrics cards updated');
+                } catch (error) {
+                    console.error('❌ Error updating metrics:', error);
+                }
+                
+                try {
+                    updateJKSTable(currentSalesmanName);
+                    console.log('✅ JKS table updated');
+                } catch (error) {
+                    console.error('❌ Error updating JKS table:', error);
+                }
+                
+                try {
+                    updateChannelTable(currentSalesmanName);
+                    console.log('✅ Channel table updated');
+                } catch (error) {
+                    console.error('❌ Error updating channel table:', error);
+                }
+                
+                try {
+                    updateProjectTable(currentSalesmanName);
+                    console.log('✅ Project table updated');
+                } catch (error) {
+                    console.error('❌ Error updating project table:', error);
+                }
+                
+                try {
+                    updateParetoTable(currentSalesmanName);
+                    console.log('✅ Pareto table updated');
+                } catch (error) {
+                    console.error('❌ Error updating pareto table:', error);
+                }
                 
                 showLoading(false);
                 showMainContent(true);
+                
+                console.log('🎉 Performance data loading completed successfully!');
 
             } catch (error) {
                 console.error('❌ Error loading performance data:', error);
