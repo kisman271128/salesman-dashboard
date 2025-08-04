@@ -11,6 +11,8 @@
             box-sizing: border-box;
         }
 
+        // ===== HARI FORMAT NORMALIZATION =====
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(180deg, #f8f9ff 0%, #e8ecff 100%);
@@ -633,6 +635,12 @@
                                 <option value="">🏪 Pilih Pelanggan</option>
                             </select>
                         </div>
+                        
+                        <!-- Customer Info Display -->
+                        <div id="customerInfo" style="margin-top: 8px; padding: 6px 8px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; display: none;">
+                            <div style="font-size: 10px; color: #64748b; font-weight: 500; margin-bottom: 2px;">Customer Type:</div>
+                            <div id="customerType" style="font-size: 11px; color: #1e293b; font-weight: 600;"></div>
+                        </div>
                     </div>
 
                     <!-- Right Frame - Summary -->
@@ -721,6 +729,7 @@
         let currentFilteredData = [];
         let sortState = { column: null, direction: 'asc' };
         let currentSalesman = '';
+        let currentSalesmanId = null;
 
         // ===== UTILITY FUNCTIONS =====
         function checkLoginStatus() {
@@ -750,6 +759,14 @@
             });
             
             return data;
+        }
+
+        // Get URL parameter
+        function getUrlParameter(name) {
+            name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+            var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+            var results = regex.exec(location.search);
+            return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
         }
 
         // ===== UI CONTROL FUNCTIONS =====
@@ -785,17 +802,59 @@
                 const content = await response.text();
                 salesmenData = parseJSONL(content);
                 
-                // Get current user salesman name
-                const currentUser = sessionStorage.getItem('currentUser');
-                if (currentUser && salesmenData.length > 0) {
-                    const salesmanRecord = salesmenData.find(s => s.szid === currentUser);
+                // Get salesman ID from URL parameter (try 'id' first, then 'user')
+                currentSalesmanId = getUrlParameter('id') || getUrlParameter('user');
+                console.log(`📍 Looking for salesman with ID: ${currentSalesmanId}`);
+                
+                if (currentSalesmanId && salesmenData.length > 0) {
+                    // Try to find by szEmployeeId first (NIK)
+                    let salesmanRecord = salesmenData.find(s => s.szEmployeeId === currentSalesmanId);
+                    
+                    // If not found, try to find by szid (for backward compatibility)
+                    if (!salesmanRecord) {
+                        salesmanRecord = salesmenData.find(s => s.szid === currentSalesmanId);
+                        if (salesmanRecord) {
+                            // Update currentSalesmanId to use szEmployeeId for consistency
+                            currentSalesmanId = salesmanRecord.szEmployeeId;
+                        }
+                    }
+                    
                     if (salesmanRecord) {
                         currentSalesman = salesmanRecord.szname;
                         document.getElementById('salesmanName').textContent = currentSalesman;
+                        console.log(`✅ Found salesman: ${currentSalesman} (Employee ID: ${currentSalesmanId})`);
+                    } else {
+                        console.log(`⚠️ Salesman not found with ID: ${currentSalesmanId}`);
+                        // Fallback: try to get from session if URL param fails
+                        const currentUser = sessionStorage.getItem('currentUser');
+                        if (currentUser) {
+                            const fallbackRecord = salesmenData.find(s => s.szid === currentUser);
+                            if (fallbackRecord) {
+                                currentSalesman = fallbackRecord.szname;
+                                currentSalesmanId = fallbackRecord.szEmployeeId;
+                                document.getElementById('salesmanName').textContent = currentSalesman;
+                                console.log(`✅ Fallback found salesman: ${currentSalesman} (Employee ID: ${currentSalesmanId})`);
+                            }
+                        }
+                    }
+                } else {
+                    // Fallback: try to get from session storage
+                    const currentUser = sessionStorage.getItem('currentUser');
+                    if (currentUser && salesmenData.length > 0) {
+                        const salesmanRecord = salesmenData.find(s => s.szid === currentUser);
+                        if (salesmanRecord) {
+                            currentSalesman = salesmanRecord.szname;
+                            currentSalesmanId = salesmanRecord.szEmployeeId;
+                            document.getElementById('salesmanName').textContent = currentSalesman;
+                            console.log(`✅ Session fallback found salesman: ${currentSalesman} (Employee ID: ${currentSalesmanId})`);
+                        }
                     }
                 }
                 
-                console.log(`✅ Loaded salesman: ${currentSalesman}`);
+                if (!currentSalesman) {
+                    document.getElementById('salesmanName').textContent = 'Unknown Salesman';
+                    console.log(`❌ No salesman found`);
+                }
                 
             } catch (error) {
                 console.error('Error loading salesman data:', error);
@@ -907,7 +966,46 @@
             }
         }
 
-        // ===== HARI FORMAT NORMALIZATION =====
+        // ===== CUSTOMER INFO FUNCTIONS =====
+        function updateCustomerInfo() {
+            const hariSelect = document.getElementById('hari');
+            const pelangganSelect = document.getElementById('pelanggan');
+            const customerInfoDiv = document.getElementById('customerInfo');
+            const customerTypeDiv = document.getElementById('customerType');
+            
+            if (!currentSalesmanId || !hariSelect.value || !pelangganSelect.value || detailsData.length === 0) {
+                customerInfoDiv.style.display = 'none';
+                return;
+            }
+            
+            const selectedHari = hariSelect.value.trim().toUpperCase();
+            const selectedPelanggan = pelangganSelect.value.trim();
+            
+            // Find customer info from d.details.json
+            const customerDetail = detailsData.find(item => {
+                const itemSalesman = (item.Nama_Salesman || '').toString().trim();
+                const itemHari = normalizeHariFormat(item.Hari_Kunjungan);
+                const itemPelanggan = (item.Nama_Pelanggan || '').toString().trim();
+                
+                return itemSalesman.toLowerCase() === currentSalesman.toLowerCase() &&
+                       itemHari === selectedHari &&
+                       itemPelanggan.toLowerCase() === selectedPelanggan.toLowerCase();
+            });
+            
+            if (customerDetail) {
+                const channelGroup = customerDetail['Channel Group'] || '';
+                const project = customerDetail.Project || '';
+                const customerType = channelGroup && project ? `${channelGroup}-${project}` : (channelGroup || project || 'N/A');
+                
+                customerTypeDiv.textContent = customerType;
+                customerInfoDiv.style.display = 'block';
+                
+                console.log(`✅ Customer info updated: ${selectedPelanggan} - ${customerType}`);
+            } else {
+                customerInfoDiv.style.display = 'none';
+                console.log(`⚠️ No customer detail found for: ${selectedPelanggan}`);
+            }
+        }
         function normalizeHariFormat(hariString) {
             if (!hariString) return '';
             
@@ -922,6 +1020,10 @@
             
             pelangganSelect.innerHTML = '<option value="">🏪 Pilih Pelanggan</option>';
             pelangganSelect.disabled = false;
+            
+            // Clear customer info when hari changes
+            const customerInfoDiv = document.getElementById('customerInfo');
+            customerInfoDiv.style.display = 'none';
             
             if (pelangganData.length === 0) {
                 const option = document.createElement('option');
@@ -1038,6 +1140,8 @@
             gapElement.className = totalGap > 0 ? 'summary-value positive' : 
                                   totalGap < 0 ? 'summary-value negative' : 
                                   'summary-value neutral';
+                                  
+            console.log(`✅ Summary updated - Target: ${totalTarget}, Actual: ${totalActual}, Gap: ${totalGap}`);
         }
 
         // ===== TABLE FUNCTIONS =====
@@ -1233,12 +1337,29 @@
             document.getElementById('pelanggan').addEventListener('change', function() {
                 updateTable();
                 updateSummary();
+                updateCustomerInfo(); // ✅ NEW: Update customer info when pelanggan changes
             });
         });
 
         // ===== NAVIGATION FUNCTIONS =====
         function goHome() { window.location.href = 'dashboard.html'; }
-        function showVisitOutlet() { console.log('Already on Visit Outlet page'); }
+        function showVisitOutlet() { 
+            // Check if currentSalesmanId is available (from URL parameter)
+            if (currentSalesmanId) {
+                console.log(`🏪 Redirecting to Visit Outlet with salesman ID: ${currentSalesmanId}`);
+                window.location.href = `visit.html?id=${currentSalesmanId}`;
+            } else {
+                // Fallback to session user
+                const currentUser = sessionStorage.getItem('currentUser');
+                if (currentUser) {
+                    console.log(`🏪 Redirecting to Visit Outlet with session user: ${currentUser}`);
+                    window.location.href = `visit.html?user=${currentUser}`;
+                } else {
+                    console.log('🏪 Redirecting to Visit Outlet without parameters');
+                    window.location.href = 'visit.html';
+                }
+            }
+        }
         function showIncentive() {
             const currentUser = sessionStorage.getItem('currentUser');
             if (currentUser) {
