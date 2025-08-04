@@ -11,8 +11,6 @@
             box-sizing: border-box;
         }
 
-        // ===== HARI FORMAT NORMALIZATION =====
-
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(180deg, #f8f9ff 0%, #e8ecff 100%);
@@ -566,6 +564,41 @@
             font-weight: 500;
         }
 
+        /* Customer Info */
+        .customer-info {
+            margin-top: 8px;
+            padding: 6px 8px;
+            background: #f8fafc;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            display: none;
+        }
+
+        .customer-info-label {
+            font-size: 10px;
+            color: #64748b;
+            font-weight: 500;
+            margin-bottom: 2px;
+        }
+
+        .customer-info-value {
+            font-size: 11px;
+            color: #1e293b;
+            font-weight: 600;
+        }
+
+        /* Debug info */
+        .debug-info {
+            margin-top: 8px;
+            padding: 6px 8px;
+            background: #fef3c7;
+            border-radius: 8px;
+            border: 1px solid #f59e0b;
+            font-size: 10px;
+            color: #92400e;
+            display: none;
+        }
+
         /* Responsive */
         @media (max-width: 480px) {
             .frames-container {
@@ -637,9 +670,14 @@
                         </div>
                         
                         <!-- Customer Info Display -->
-                        <div id="customerInfo" style="margin-top: 8px; padding: 6px 8px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; display: none;">
-                            <div style="font-size: 10px; color: #64748b; font-weight: 500; margin-bottom: 2px;">Customer Type:</div>
-                            <div id="customerType" style="font-size: 11px; color: #1e293b; font-weight: 600;"></div>
+                        <div id="customerInfo" class="customer-info">
+                            <div class="customer-info-label">Customer Code:</div>
+                            <div id="customerCode" class="customer-info-value"></div>
+                        </div>
+
+                        <!-- Debug Info -->
+                        <div id="debugInfo" class="debug-info">
+                            <div id="debugText"></div>
                         </div>
                     </div>
 
@@ -792,6 +830,18 @@
             document.getElementById('mainContent').style.display = show ? 'block' : 'none';
         }
 
+        function showDebugInfo(message) {
+            const debugDiv = document.getElementById('debugInfo');
+            const debugText = document.getElementById('debugText');
+            debugText.textContent = message;
+            debugDiv.style.display = 'block';
+            
+            // Auto hide after 5 seconds
+            setTimeout(() => {
+                debugDiv.style.display = 'none';
+            }, 5000);
+        }
+
         // ===== DATA LOADING FUNCTIONS =====
         async function loadSalesmanData() {
             try {
@@ -902,7 +952,7 @@
                     console.log('🔄 Fallback: Using hari from pelanggan data');
                     
                     const uniqueHari = [...new Set(pelangganData
-                        .filter(item => item.Nama_Salesman === currentSalesman)
+                        .filter(item => item.szname === currentSalesman) // FIXED: Use szname instead of Nama_Salesman
                         .map(item => normalizeHariFormat(item.Hari_Kunjungan))
                         .filter(hari => hari)
                     )];
@@ -940,8 +990,15 @@
                 
                 console.log(`✅ Loaded ${pelangganData.length} pelanggan records`);
                 
+                // Debug: Log first few records to check structure
+                if (pelangganData.length > 0) {
+                    console.log('Sample pelanggan record:', pelangganData[0]);
+                    showDebugInfo(`Loaded ${pelangganData.length} records. Sample keys: ${Object.keys(pelangganData[0]).join(', ')}`);
+                }
+                
             } catch (error) {
                 console.error('Error loading pelanggan data:', error);
+                showDebugInfo(`Error loading pelanggan: ${error.message}`);
             }
         }
 
@@ -971,9 +1028,9 @@
             const hariSelect = document.getElementById('hari');
             const pelangganSelect = document.getElementById('pelanggan');
             const customerInfoDiv = document.getElementById('customerInfo');
-            const customerTypeDiv = document.getElementById('customerType');
+            const customerCodeDiv = document.getElementById('customerCode');
             
-            if (!currentSalesmanId || !hariSelect.value || !pelangganSelect.value || detailsData.length === 0) {
+            if (!currentSalesman || !hariSelect.value || !pelangganSelect.value || pelangganData.length === 0) {
                 customerInfoDiv.style.display = 'none';
                 return;
             }
@@ -981,9 +1038,9 @@
             const selectedHari = hariSelect.value.trim().toUpperCase();
             const selectedPelanggan = pelangganSelect.value.trim();
             
-            // Find customer info from d.details.json
-            const customerDetail = detailsData.find(item => {
-                const itemSalesman = (item.Nama_Salesman || '').toString().trim();
+            // Find customer info from pelanggan data using correct field names
+            const customerDetail = pelangganData.find(item => {
+                const itemSalesman = (item.szname || '').toString().trim(); // FIXED: Use szname
                 const itemHari = normalizeHariFormat(item.Hari_Kunjungan);
                 const itemPelanggan = (item.Nama_Pelanggan || '').toString().trim();
                 
@@ -993,19 +1050,18 @@
             });
             
             if (customerDetail) {
-                const channelGroup = customerDetail['Channel Group'] || '';
-                const project = customerDetail.Project || '';
-                const customerType = channelGroup && project ? `${channelGroup}-${project}` : (channelGroup || project || 'N/A');
+                const customerCode = customerDetail.Kode_Pelanggan || 'N/A';
                 
-                customerTypeDiv.textContent = customerType;
+                customerCodeDiv.textContent = customerCode;
                 customerInfoDiv.style.display = 'block';
                 
-                console.log(`✅ Customer info updated: ${selectedPelanggan} - ${customerType}`);
+                console.log(`✅ Customer info updated: ${selectedPelanggan} - ${customerCode}`);
             } else {
                 customerInfoDiv.style.display = 'none';
                 console.log(`⚠️ No customer detail found for: ${selectedPelanggan}`);
             }
         }
+
         function normalizeHariFormat(hariString) {
             if (!hariString) return '';
             
@@ -1031,19 +1087,27 @@
                 option.textContent = 'Data pelanggan tidak tersedia';
                 option.disabled = true;
                 pelangganSelect.appendChild(option);
+                showDebugInfo('No pelanggan data available');
                 return;
             }
 
             if (currentSalesman && hariSelect.value) {
                 const selectedHari = hariSelect.value.trim().toUpperCase();
                 
+                console.log(`🔍 Filtering for salesman: "${currentSalesman}", hari: "${selectedHari}"`);
+                
+                // FIXED: Use szname instead of Nama_Salesman
                 const filteredPelanggan = [...new Set(pelangganData
                     .filter(item => {
-                        const itemSalesman = (item.Nama_Salesman || '').toString().trim();
+                        const itemSalesman = (item.szname || '').toString().trim(); // FIXED: Use szname
                         const itemHari = normalizeHariFormat(item.Hari_Kunjungan);
                         
                         const salesmanMatch = itemSalesman.toLowerCase() === currentSalesman.toLowerCase();
                         const hariMatch = itemHari === selectedHari;
+                        
+                        if (salesmanMatch && hariMatch) {
+                            console.log(`✅ Match found: ${item.Nama_Pelanggan}`);
+                        }
                         
                         return salesmanMatch && hariMatch;
                     })
@@ -1051,6 +1115,8 @@
                     .filter(pelanggan => pelanggan && pelanggan.toString().trim() !== '' && 
                             pelanggan !== 'No Pelanggan')
                 )];
+
+                console.log(`📋 Found ${filteredPelanggan.length} customers`);
 
                 filteredPelanggan.forEach(pelanggan => {
                     const option = document.createElement('option');
@@ -1066,6 +1132,10 @@
                     option.disabled = true;
                     option.style.color = '#cbd5e1';
                     pelangganSelect.appendChild(option);
+                    
+                    showDebugInfo(`No customers found for ${currentSalesman} on ${selectedHari}`);
+                } else {
+                    showDebugInfo(`Found ${filteredPelanggan.length} customers`);
                 }
                 
             } else {
@@ -1098,7 +1168,7 @@
                 return;
             }
             
-            if (detailsData.length === 0) {
+            if (pelangganData.length === 0) {
                 targetElement.textContent = '0';
                 actualElement.textContent = '0';
                 gapElement.textContent = '0';
@@ -1109,9 +1179,9 @@
             const selectedHari = hariSelect.value.trim().toUpperCase();
             const selectedPelanggan = pelangganSelect.value.trim();
             
-            // Filter details data for the selected criteria
-            const filteredDetails = detailsData.filter(item => {
-                const itemSalesman = (item.Nama_Salesman || '').toString().trim();
+            // Filter pelanggan data for the selected criteria - FIXED: Use szname
+            const filteredDetails = pelangganData.filter(item => {
+                const itemSalesman = (item.szname || '').toString().trim(); // FIXED: Use szname
                 const itemHari = normalizeHariFormat(item.Hari_Kunjungan);
                 const itemPelanggan = (item.Nama_Pelanggan || '').toString().trim();
                 
@@ -1302,8 +1372,9 @@
             const selectedHari = hariSelect.value.trim().toUpperCase();
             const selectedPelanggan = pelangganSelect.value.trim();
             
+            // FIXED: Use szname instead of Nama_Salesman
             const filteredData = pelangganData.filter(item => {
-                const itemSalesman = (item.Nama_Salesman || '').toString().trim();
+                const itemSalesman = (item.szname || '').toString().trim(); // FIXED: Use szname
                 const itemHari = normalizeHariFormat(item.Hari_Kunjungan);
                 const itemPelanggan = (item.Nama_Pelanggan || '').toString().trim();
                 
@@ -1337,7 +1408,7 @@
             document.getElementById('pelanggan').addEventListener('change', function() {
                 updateTable();
                 updateSummary();
-                updateCustomerInfo(); // ✅ NEW: Update customer info when pelanggan changes
+                updateCustomerInfo();
             });
         });
 
@@ -1421,7 +1492,7 @@
             initializeData();
         };
 
-        console.log('✅ Visit Outlet script loaded with new layout');
+        console.log('✅ Visit Outlet script loaded with fixed field mapping');
     </script>
 </body>
 </html>
