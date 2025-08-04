@@ -1007,7 +1007,7 @@
             const customerInfoDiv = document.getElementById('customerInfo');
             const customerTypeDiv = document.getElementById('customerType');
             
-            if (!currentSalesmanId || !hariSelect.value || !pelangganSelect.value || pelangganData.length === 0) {
+            if (!currentSalesmanId || !hariSelect.value || !pelangganSelect.value || pelangganData.length === 0 || detailsData.length === 0) {
                 customerInfoDiv.style.display = 'none';
                 return;
             }
@@ -1015,8 +1015,8 @@
             const selectedHari = hariSelect.value.trim().toUpperCase();
             const selectedPelanggan = pelangganSelect.value.trim();
             
-            // Find customer info from pelanggan data
-            const customerDetail = pelangganData.find(item => {
+            // 1. Find Kode_Pelanggan from skupelanggan data
+            const pelangganDetail = pelangganData.find(item => {
                 const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
                 const itemHari = normalizeHariFormat(item.Hari_Kunjungan);
                 const itemPelanggan = (item.Nama_Pelanggan || '').toString().trim();
@@ -1026,19 +1026,31 @@
                        itemPelanggan.toLowerCase() === selectedPelanggan.toLowerCase();
             });
             
+            if (!pelangganDetail || !pelangganDetail.Kode_Pelanggan) {
+                customerInfoDiv.style.display = 'none';
+                console.log(`⚠️ No Kode_Pelanggan found for: ${selectedPelanggan}`);
+                return;
+            }
+            
+            // 2. Find customer details from d.details.json using Kode_Pelanggan
+            const customerDetail = detailsData.find(item => {
+                const itemKodePelanggan = (item.Kode_Pelanggan || '').toString().trim();
+                return itemKodePelanggan === pelangganDetail.Kode_Pelanggan;
+            });
+            
             if (customerDetail) {
-                // Try to get customer type from available fields
-                const team = customerDetail.Team || '';
-                const promo = customerDetail.Promo || '';
-                const customerType = team && promo ? `${team}-${promo}` : (team || promo || 'General Customer');
+                // Use Channel Group and Project from d.details.json
+                const channelGroup = customerDetail['Channel Group'] || '';
+                const project = customerDetail.Project || '';
+                const customerType = channelGroup && project ? `${channelGroup}-${project}` : (channelGroup || project || 'General Customer');
                 
                 customerTypeDiv.textContent = customerType;
                 customerInfoDiv.style.display = 'block';
                 
-                console.log(`✅ Customer info updated: ${selectedPelanggan} - ${customerType}`);
+                console.log(`✅ Customer info updated: ${selectedPelanggan} - ${customerType} (Kode: ${pelangganDetail.Kode_Pelanggan})`);
             } else {
                 customerInfoDiv.style.display = 'none';
-                console.log(`⚠️ No customer detail found for: ${selectedPelanggan}`);
+                console.log(`⚠️ No customer detail found in d.details.json for Kode_Pelanggan: ${pelangganDetail.Kode_Pelanggan}`);
             }
         }
 
@@ -1138,7 +1150,7 @@
                 return;
             }
             
-            if (pelangganData.length === 0) {
+            if (pelangganData.length === 0 || detailsData.length === 0) {
                 targetElement.textContent = '0';
                 actualElement.textContent = '0';
                 gapElement.textContent = '0';
@@ -1149,8 +1161,8 @@
             const selectedHari = hariSelect.value.trim().toUpperCase();
             const selectedPelanggan = pelangganSelect.value.trim();
             
-            // Filter data for the selected criteria using szEmployeeId
-            const filteredDetails = pelangganData.filter(item => {
+            // 1. Get all Kode_Pelanggan for the selected criteria from skupelanggan data
+            const matchingPelangganRecords = pelangganData.filter(item => {
                 const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
                 const itemHari = normalizeHariFormat(item.Hari_Kunjungan);
                 const itemPelanggan = (item.Nama_Pelanggan || '').toString().trim();
@@ -1160,18 +1172,30 @@
                        itemPelanggan.toLowerCase() === selectedPelanggan.toLowerCase();
             });
             
-            // Calculate totals
-            let totalTarget = 0;
-            let totalActual = 0;
+            // 2. Get unique Kode_Pelanggan values
+            const kodePelangganList = [...new Set(matchingPelangganRecords
+                .map(item => item.Kode_Pelanggan)
+                .filter(kode => kode && kode.trim() !== '')
+            )];
             
-            filteredDetails.forEach(item => {
-                totalTarget += Number(item.Plan || 0);
-                totalActual += Number(item.UnitMTD || 0);
+            // 3. Find matching records in d.details.json using Kode_Pelanggan
+            const matchingDetailsRecords = detailsData.filter(item => {
+                const itemKodePelanggan = (item.Kode_Pelanggan || '').toString().trim();
+                return kodePelangganList.includes(itemKodePelanggan);
             });
             
-            const totalGap = totalActual - totalTarget;
+            // 4. Calculate totals using T.MTD, A.MTD, and Gap MTD from d.details.json
+            let totalTarget = 0;
+            let totalActual = 0;
+            let totalGap = 0;
             
-            // Update display
+            matchingDetailsRecords.forEach(item => {
+                totalTarget += Number(item['T.MTD'] || 0);
+                totalActual += Number(item['A.MTD'] || 0);
+                totalGap += Number(item['Gap MTD'] || 0);
+            });
+            
+            // 5. Update display
             targetElement.textContent = totalTarget.toLocaleString();
             actualElement.textContent = totalActual.toLocaleString();
             gapElement.textContent = (totalGap > 0 ? '+' : '') + totalGap.toLocaleString();
@@ -1181,7 +1205,8 @@
                                   totalGap < 0 ? 'summary-value negative' : 
                                   'summary-value neutral';
                                   
-            console.log(`✅ Summary updated - Target: ${totalTarget}, Actual: ${totalActual}, Gap: ${totalGap}`);
+            console.log(`✅ Summary updated from d.details.json - Target: ${totalTarget}, Actual: ${totalActual}, Gap: ${totalGap}`);
+            console.log(`📋 Used ${kodePelangganList.length} Kode_Pelanggan: ${kodePelangganList.join(', ')}`);
         }
 
         // ===== TABLE FUNCTIONS =====
