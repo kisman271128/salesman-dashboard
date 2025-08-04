@@ -503,6 +503,29 @@
             background: linear-gradient(135deg, #64748b, #475569);
         }
 
+        /* Customer Info */
+        .customer-info {
+            margin-top: 8px;
+            padding: 6px 8px;
+            background: #f8fafc;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            display: none;
+        }
+
+        .customer-info-label {
+            font-size: 10px;
+            color: #64748b;
+            font-weight: 500;
+            margin-bottom: 2px;
+        }
+
+        .customer-info-value {
+            font-size: 11px;
+            color: #1e293b;
+            font-weight: 600;
+        }
+
         /* Bottom Navigation */
         .bottom-nav {
             position: fixed;
@@ -564,38 +587,18 @@
             font-weight: 500;
         }
 
-        /* Customer Info */
-        .customer-info {
-            margin-top: 8px;
-            padding: 6px 8px;
-            background: #f8fafc;
+        /* Debug Panel */
+        .debug-panel {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
             border-radius: 8px;
-            border: 1px solid #e2e8f0;
-            display: none;
-        }
-
-        .customer-info-label {
             font-size: 10px;
-            color: #64748b;
-            font-weight: 500;
-            margin-bottom: 2px;
-        }
-
-        .customer-info-value {
-            font-size: 11px;
-            color: #1e293b;
-            font-weight: 600;
-        }
-
-        /* Debug info */
-        .debug-info {
-            margin-top: 8px;
-            padding: 6px 8px;
-            background: #fef3c7;
-            border-radius: 8px;
-            border: 1px solid #f59e0b;
-            font-size: 10px;
-            color: #92400e;
+            max-width: 200px;
+            z-index: 1000;
             display: none;
         }
 
@@ -636,6 +639,12 @@
             <button class="user-btn" onclick="showProfile()">👤</button>
         </div>
 
+        <!-- Debug Panel -->
+        <div class="debug-panel" id="debugPanel">
+            <div>Debug Info:</div>
+            <div id="debugInfo"></div>
+        </div>
+
         <!-- Loading State -->
         <div class="loading-spinner" id="loadingSpinner">
             <div class="spinner"></div>
@@ -671,13 +680,8 @@
                         
                         <!-- Customer Info Display -->
                         <div id="customerInfo" class="customer-info">
-                            <div class="customer-info-label">Customer Code:</div>
-                            <div id="customerCode" class="customer-info-value"></div>
-                        </div>
-
-                        <!-- Debug Info -->
-                        <div id="debugInfo" class="debug-info">
-                            <div id="debugText"></div>
+                            <div class="customer-info-label">Customer Type:</div>
+                            <div id="customerType" class="customer-info-value"></div>
                         </div>
                     </div>
 
@@ -768,6 +772,7 @@
         let sortState = { column: null, direction: 'asc' };
         let currentSalesman = '';
         let currentSalesmanId = null;
+        let debugMode = false;
 
         // ===== UTILITY FUNCTIONS =====
         function checkLoginStatus() {
@@ -799,12 +804,18 @@
             return data;
         }
 
-        // Get URL parameter
         function getUrlParameter(name) {
             name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
             var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
             var results = regex.exec(location.search);
             return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+        }
+
+        function updateDebugInfo(info) {
+            if (debugMode) {
+                document.getElementById('debugInfo').innerHTML = info;
+                document.getElementById('debugPanel').style.display = 'block';
+            }
         }
 
         // ===== UI CONTROL FUNCTIONS =====
@@ -830,18 +841,6 @@
             document.getElementById('mainContent').style.display = show ? 'block' : 'none';
         }
 
-        function showDebugInfo(message) {
-            const debugDiv = document.getElementById('debugInfo');
-            const debugText = document.getElementById('debugText');
-            debugText.textContent = message;
-            debugDiv.style.display = 'block';
-            
-            // Auto hide after 5 seconds
-            setTimeout(() => {
-                debugDiv.style.display = 'none';
-            }, 5000);
-        }
-
         // ===== DATA LOADING FUNCTIONS =====
         async function loadSalesmanData() {
             try {
@@ -852,7 +851,7 @@
                 const content = await response.text();
                 salesmenData = parseJSONL(content);
                 
-                // Get salesman ID from URL parameter (try 'id' first, then 'user')
+                // Get salesman ID from URL parameter
                 currentSalesmanId = getUrlParameter('id') || getUrlParameter('user');
                 console.log(`📍 Looking for salesman with ID: ${currentSalesmanId}`);
                 
@@ -864,7 +863,6 @@
                     if (!salesmanRecord) {
                         salesmanRecord = salesmenData.find(s => s.szid === currentSalesmanId);
                         if (salesmanRecord) {
-                            // Update currentSalesmanId to use szEmployeeId for consistency
                             currentSalesmanId = salesmanRecord.szEmployeeId;
                         }
                     }
@@ -873,6 +871,8 @@
                         currentSalesman = salesmanRecord.szname;
                         document.getElementById('salesmanName').textContent = currentSalesman;
                         console.log(`✅ Found salesman: ${currentSalesman} (Employee ID: ${currentSalesmanId})`);
+                        
+                        updateDebugInfo(`Salesman: ${currentSalesman}<br>ID: ${currentSalesmanId}`);
                     } else {
                         console.log(`⚠️ Salesman not found with ID: ${currentSalesmanId}`);
                         // Fallback: try to get from session if URL param fails
@@ -948,11 +948,16 @@
             } catch (error) {
                 console.log(`❌ Error loading hari: ${error.message}`);
                 
+                // Fallback: Use hari from pelanggan data
                 if (pelangganData.length > 0) {
                     console.log('🔄 Fallback: Using hari from pelanggan data');
                     
                     const uniqueHari = [...new Set(pelangganData
-                        .filter(item => item.szname === currentSalesman) // FIXED: Use szname instead of Nama_Salesman
+                        .filter(item => {
+                            // Use szname instead of Nama_Salesman
+                            const itemSalesman = (item.szname || '').toString().trim();
+                            return itemSalesman.toLowerCase() === currentSalesman.toLowerCase();
+                        })
                         .map(item => normalizeHariFormat(item.Hari_Kunjungan))
                         .filter(hari => hari)
                     )];
@@ -970,6 +975,8 @@
                         
                         hariSelect.disabled = false;
                     }
+                    
+                    console.log(`✅ Fallback loaded ${uniqueHari.length} hari options`);
                 }
             }
         }
@@ -990,15 +997,14 @@
                 
                 console.log(`✅ Loaded ${pelangganData.length} pelanggan records`);
                 
-                // Debug: Log first few records to check structure
+                // Debug: Show sample data
                 if (pelangganData.length > 0) {
-                    console.log('Sample pelanggan record:', pelangganData[0]);
-                    showDebugInfo(`Loaded ${pelangganData.length} records. Sample keys: ${Object.keys(pelangganData[0]).join(', ')}`);
+                    console.log('📋 Sample pelanggan data:', pelangganData[0]);
+                    updateDebugInfo(`Pelanggan: ${pelangganData.length} rows<br>Sample: ${JSON.stringify(pelangganData[0]).substring(0, 100)}...`);
                 }
                 
             } catch (error) {
                 console.error('Error loading pelanggan data:', error);
-                showDebugInfo(`Error loading pelanggan: ${error.message}`);
             }
         }
 
@@ -1023,14 +1029,23 @@
             }
         }
 
+        // ===== FORMAT NORMALIZATION =====
+        function normalizeHariFormat(hariString) {
+            if (!hariString) return '';
+            
+            // Remove bracketed numbers like [6] and clean up
+            const cleanHari = hariString.toString().replace(/^\[\d+\]/, '').trim().toUpperCase();
+            return cleanHari;
+        }
+
         // ===== CUSTOMER INFO FUNCTIONS =====
         function updateCustomerInfo() {
             const hariSelect = document.getElementById('hari');
             const pelangganSelect = document.getElementById('pelanggan');
             const customerInfoDiv = document.getElementById('customerInfo');
-            const customerCodeDiv = document.getElementById('customerCode');
+            const customerTypeDiv = document.getElementById('customerType');
             
-            if (!currentSalesman || !hariSelect.value || !pelangganSelect.value || pelangganData.length === 0) {
+            if (!currentSalesmanId || !hariSelect.value || !pelangganSelect.value || pelangganData.length === 0) {
                 customerInfoDiv.style.display = 'none';
                 return;
             }
@@ -1038,9 +1053,9 @@
             const selectedHari = hariSelect.value.trim().toUpperCase();
             const selectedPelanggan = pelangganSelect.value.trim();
             
-            // Find customer info from pelanggan data using correct field names
+            // Find customer info from pelanggan data
             const customerDetail = pelangganData.find(item => {
-                const itemSalesman = (item.szname || '').toString().trim(); // FIXED: Use szname
+                const itemSalesman = (item.szname || '').toString().trim(); 
                 const itemHari = normalizeHariFormat(item.Hari_Kunjungan);
                 const itemPelanggan = (item.Nama_Pelanggan || '').toString().trim();
                 
@@ -1050,23 +1065,19 @@
             });
             
             if (customerDetail) {
-                const customerCode = customerDetail.Kode_Pelanggan || 'N/A';
+                // Try to get customer type from available fields
+                const team = customerDetail.Team || '';
+                const promo = customerDetail.Promo || '';
+                const customerType = team && promo ? `${team}-${promo}` : (team || promo || 'General Customer');
                 
-                customerCodeDiv.textContent = customerCode;
+                customerTypeDiv.textContent = customerType;
                 customerInfoDiv.style.display = 'block';
                 
-                console.log(`✅ Customer info updated: ${selectedPelanggan} - ${customerCode}`);
+                console.log(`✅ Customer info updated: ${selectedPelanggan} - ${customerType}`);
             } else {
                 customerInfoDiv.style.display = 'none';
                 console.log(`⚠️ No customer detail found for: ${selectedPelanggan}`);
             }
-        }
-
-        function normalizeHariFormat(hariString) {
-            if (!hariString) return '';
-            
-            const cleanHari = hariString.toString().replace(/^\[\d+\]/, '').trim().toUpperCase();
-            return cleanHari;
         }
 
         // ===== FILTER UPDATE FUNCTIONS =====
@@ -1081,33 +1092,34 @@
             const customerInfoDiv = document.getElementById('customerInfo');
             customerInfoDiv.style.display = 'none';
             
+            console.log(`🔍 Updating pelanggan options for hari: ${hariSelect.value}`);
+            console.log(`🧑‍💼 Current salesman: ${currentSalesman}`);
+            console.log(`📊 Pelanggan data length: ${pelangganData.length}`);
+            
             if (pelangganData.length === 0) {
                 const option = document.createElement('option');
                 option.value = '';
                 option.textContent = 'Data pelanggan tidak tersedia';
                 option.disabled = true;
                 pelangganSelect.appendChild(option);
-                showDebugInfo('No pelanggan data available');
                 return;
             }
 
             if (currentSalesman && hariSelect.value) {
                 const selectedHari = hariSelect.value.trim().toUpperCase();
                 
-                console.log(`🔍 Filtering for salesman: "${currentSalesman}", hari: "${selectedHari}"`);
+                console.log(`🔎 Filtering for hari: ${selectedHari}, salesman: ${currentSalesman}`);
                 
-                // FIXED: Use szname instead of Nama_Salesman
+                // Filter pelanggan using szname instead of Nama_Salesman
                 const filteredPelanggan = [...new Set(pelangganData
                     .filter(item => {
-                        const itemSalesman = (item.szname || '').toString().trim(); // FIXED: Use szname
+                        const itemSalesman = (item.szname || '').toString().trim(); // ✅ FIXED: Use szname
                         const itemHari = normalizeHariFormat(item.Hari_Kunjungan);
                         
                         const salesmanMatch = itemSalesman.toLowerCase() === currentSalesman.toLowerCase();
                         const hariMatch = itemHari === selectedHari;
                         
-                        if (salesmanMatch && hariMatch) {
-                            console.log(`✅ Match found: ${item.Nama_Pelanggan}`);
-                        }
+                        console.log(`Checking item: ${itemSalesman} vs ${currentSalesman}, ${itemHari} vs ${selectedHari}, matches: ${salesmanMatch && hariMatch}`);
                         
                         return salesmanMatch && hariMatch;
                     })
@@ -1116,7 +1128,7 @@
                             pelanggan !== 'No Pelanggan')
                 )];
 
-                console.log(`📋 Found ${filteredPelanggan.length} customers`);
+                console.log(`✅ Found ${filteredPelanggan.length} pelanggan options:`, filteredPelanggan);
 
                 filteredPelanggan.forEach(pelanggan => {
                     const option = document.createElement('option');
@@ -1132,10 +1144,6 @@
                     option.disabled = true;
                     option.style.color = '#cbd5e1';
                     pelangganSelect.appendChild(option);
-                    
-                    showDebugInfo(`No customers found for ${currentSalesman} on ${selectedHari}`);
-                } else {
-                    showDebugInfo(`Found ${filteredPelanggan.length} customers`);
                 }
                 
             } else {
@@ -1179,9 +1187,9 @@
             const selectedHari = hariSelect.value.trim().toUpperCase();
             const selectedPelanggan = pelangganSelect.value.trim();
             
-            // Filter pelanggan data for the selected criteria - FIXED: Use szname
+            // Filter data for the selected criteria using szname
             const filteredDetails = pelangganData.filter(item => {
-                const itemSalesman = (item.szname || '').toString().trim(); // FIXED: Use szname
+                const itemSalesman = (item.szname || '').toString().trim(); // ✅ FIXED: Use szname
                 const itemHari = normalizeHariFormat(item.Hari_Kunjungan);
                 const itemPelanggan = (item.Nama_Pelanggan || '').toString().trim();
                 
@@ -1372,9 +1380,9 @@
             const selectedHari = hariSelect.value.trim().toUpperCase();
             const selectedPelanggan = pelangganSelect.value.trim();
             
-            // FIXED: Use szname instead of Nama_Salesman
+            // Filter data using szname instead of Nama_Salesman
             const filteredData = pelangganData.filter(item => {
-                const itemSalesman = (item.szname || '').toString().trim(); // FIXED: Use szname
+                const itemSalesman = (item.szname || '').toString().trim(); // ✅ FIXED: Use szname
                 const itemHari = normalizeHariFormat(item.Hari_Kunjungan);
                 const itemPelanggan = (item.Nama_Pelanggan || '').toString().trim();
                 
@@ -1384,6 +1392,8 @@
                 
                 return salesmanMatch && hariMatch && pelangganMatch;
             });
+            
+            console.log(`🔍 Table filtered data: ${filteredData.length} rows`);
             
             currentFilteredData = [...filteredData];
             sortState = { column: null, direction: 'asc' };
@@ -1410,17 +1420,27 @@
                 updateSummary();
                 updateCustomerInfo();
             });
+            
+            // Enable debug mode with Ctrl+D
+            document.addEventListener('keydown', function(e) {
+                if (e.ctrlKey && e.key === 'd') {
+                    e.preventDefault();
+                    debugMode = !debugMode;
+                    if (!debugMode) {
+                        document.getElementById('debugPanel').style.display = 'none';
+                    }
+                    console.log(`Debug mode: ${debugMode ? 'ON' : 'OFF'}`);
+                }
+            });
         });
 
         // ===== NAVIGATION FUNCTIONS =====
         function goHome() { window.location.href = 'dashboard.html'; }
         function showVisitOutlet() { 
-            // Check if currentSalesmanId is available (from URL parameter)
             if (currentSalesmanId) {
                 console.log(`🏪 Redirecting to Visit Outlet with salesman ID: ${currentSalesmanId}`);
                 window.location.href = `visit.html?id=${currentSalesmanId}`;
             } else {
-                // Fallback to session user
                 const currentUser = sessionStorage.getItem('currentUser');
                 if (currentUser) {
                     console.log(`🏪 Redirecting to Visit Outlet with session user: ${currentUser}`);
@@ -1457,9 +1477,9 @@
                 console.log('🚀 Starting data initialization...');
                 
                 await loadSalesmanData(); // Load salesman first to get current user name
-                await loadPelangganData();
-                await loadHariData();
-                await loadDetailsData(); // Load details for summary
+                await loadPelangganData(); // Load pelanggan data
+                await loadHariData(); // Load hari data (with fallback to pelanggan data)
+                await loadDetailsData(); // Load details for additional info
                 
                 console.log('✅ All data loaded successfully');
                 
@@ -1492,7 +1512,7 @@
             initializeData();
         };
 
-        console.log('✅ Visit Outlet script loaded with fixed field mapping');
+        console.log('✅ Visit Outlet script loaded with fixed data mapping');
     </script>
 </body>
 </html>
