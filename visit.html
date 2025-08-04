@@ -90,6 +90,33 @@
             background: rgba(255, 255, 255, 0.3);
         }
 
+        /* Debug Info */
+        .debug-info {
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 10px;
+            margin: 10px 16px;
+            font-size: 11px;
+            color: #64748b;
+            display: none;
+        }
+
+        .debug-info.show {
+            display: block;
+        }
+
+        .debug-toggle {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 10px;
+            cursor: pointer;
+            margin: 0 16px 10px;
+        }
+
         /* Filters Section */
         .filters-section {
             padding: 0 16px;
@@ -262,6 +289,45 @@
             text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
         }
 
+        /* Sortable header styling */
+        .sortable-header {
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .sortable-header:hover {
+            background: linear-gradient(135deg, #5a67d8, #6b46c1);
+            transform: translateY(-1px);
+        }
+
+        .sortable-header::after {
+            content: '';
+            position: absolute;
+            right: 4px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 0;
+            height: 0;
+            border-left: 3px solid transparent;
+            border-right: 3px solid transparent;
+            border-bottom: 3px solid rgba(255, 255, 255, 0.7);
+            opacity: 0.5;
+        }
+
+        .sortable-header.asc::after {
+            border-bottom: 3px solid white;
+            border-top: none;
+            opacity: 1;
+        }
+
+        .sortable-header.desc::after {
+            border-top: 3px solid white;
+            border-bottom: none;
+            opacity: 1;
+        }
+
         /* Sticky columns - No, Promo, SKU */
         th:nth-child(1), th:nth-child(2), th:nth-child(3),
         td:nth-child(1), td:nth-child(2), td:nth-child(3) {
@@ -351,8 +417,14 @@
         .promo-bev { 
             background: linear-gradient(135deg, #059669, #10b981);
         }
-        .promo-others, .promo-sf, .promo-gen, .promo-go, .promo-solmed { 
+        .promo-others, .promo-sf, .promo-gen, .promo-go { 
             background: linear-gradient(135deg, #0369a1, #0284c7);
+        }
+        .promo-gbs { 
+            background: linear-gradient(135deg, #7c2d12, #ea580c);
+        }
+        .promo-solmed { 
+            background: linear-gradient(135deg, #d97706, #f59e0b);
         }
 
         .recommendation {
@@ -481,11 +553,6 @@
             font-weight: 500;
         }
 
-        .loading {
-            display: inline-block;
-            animation: spin 1s linear infinite;
-        }
-
         /* Responsive */
         @media (max-width: 480px) {
             th:nth-child(1), td:nth-child(1) { width: 25px; }
@@ -516,6 +583,15 @@
                 <div class="detail-subtitle">Sales Dashboard</div>
             </div>
             <button class="user-btn" onclick="showProfile()">👤</button>
+        </div>
+
+        <!-- Debug Toggle -->
+        <button class="debug-toggle" onclick="toggleDebug()">🔍 Toggle Debug</button>
+        
+        <!-- Debug Info -->
+        <div class="debug-info" id="debugInfo">
+            <strong>🔍 Debug Information:</strong><br>
+            <div id="debugContent">Ready for debugging...</div>
         </div>
 
         <!-- Loading State -->
@@ -566,7 +642,7 @@
                             <thead>
                                 <tr>
                                     <th>No</th>
-                                    <th>Promo</th>
+                                    <th class="sortable-header" onclick="sortTable('promo')">Promo</th>
                                     <th>SKU</th>
                                     <th>3LM</th>
                                     <th>LM</th>
@@ -614,12 +690,35 @@
     </div>
 
     <script>
-        // Global variables
+        // ===== GLOBAL VARIABLES =====
         let salesmenData = [];
         let hariData = [];
         let pelangganData = [];
+        let currentFilteredData = [];
+        let sortState = { column: null, direction: 'asc' };
+        let debugMode = false;
 
-        // Check if user is logged in
+        // ===== DEBUG FUNCTIONS =====
+        function toggleDebug() {
+            debugMode = !debugMode;
+            const debugInfo = document.getElementById('debugInfo');
+            if (debugMode) {
+                debugInfo.classList.add('show');
+                updateDebugInfo('Debug mode enabled');
+            } else {
+                debugInfo.classList.remove('show');
+            }
+        }
+
+        function updateDebugInfo(message) {
+            if (!debugMode) return;
+            const timestamp = new Date().toLocaleTimeString();
+            const debugContent = document.getElementById('debugContent');
+            debugContent.innerHTML += `<br>[${timestamp}] ${message}`;
+            console.log(`[DEBUG] ${message}`);
+        }
+
+        // ===== UTILITY FUNCTIONS =====
         function checkLoginStatus() {
             const isLoggedIn = sessionStorage.getItem('isLoggedIn');
             const currentUser = sessionStorage.getItem('currentUser');
@@ -631,7 +730,6 @@
             return true;
         }
 
-        // Parse JSONL (JSON Lines) format
         function parseJSONL(content) {
             const lines = content.trim().split('\n');
             const data = [];
@@ -650,7 +748,7 @@
             return data;
         }
 
-        // UI Control Functions
+        // ===== UI CONTROL FUNCTIONS =====
         function showLoading(show) {
             document.getElementById('loadingSpinner').style.display = show ? 'flex' : 'none';
         }
@@ -667,17 +765,16 @@
             }
         }
 
-        function hideError() {
-            showError(false);
-        }
+        function hideError() { showError(false); }
 
         function showMainContent(show) {
             document.getElementById('mainContent').style.display = show ? 'block' : 'none';
         }
 
-        // Load salesman data and populate combobox
+        // ===== DATA LOADING FUNCTIONS =====
         async function loadSalesmanData() {
             try {
+                updateDebugInfo('🧑‍💼 Loading salesman data...');
                 const response = await fetch('data/d.salesman.json');
                 if (!response.ok) throw new Error('Failed to load salesman data');
                 
@@ -687,7 +784,6 @@
                 const salesmanSelect = document.getElementById('salesman');
                 salesmanSelect.innerHTML = '<option value="">🧑‍💼 Pilih Salesman</option>';
                 
-                // Extract unique salesman names
                 const uniqueSalesmen = [...new Set(salesmenData
                     .map(item => item.szname)
                     .filter(name => name && name.trim() !== '')
@@ -700,32 +796,32 @@
                     salesmanSelect.appendChild(option);
                 });
                 
-                console.log('✅ Loaded', uniqueSalesmen.length, 'salesmen');
+                updateDebugInfo(`✅ Loaded ${uniqueSalesmen.length} salesmen`);
                 
             } catch (error) {
-                console.error('❌ Error loading salesman data:', error);
+                updateDebugInfo(`❌ Error loading salesman: ${error.message}`);
+                console.error('Error loading salesman data:', error);
             }
         }
 
-        // Load hari data and populate combobox immediately
         async function loadHariData() {
             try {
-                console.log('📅 Fetching d.harijks.json...');
+                updateDebugInfo('📅 Loading hari data...');
                 const response = await fetch('data/d.harijks.json');
                 if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: Failed to load hari data from d.harijks.json`);
+                    throw new Error(`HTTP ${response.status}: Failed to load hari data`);
                 }
                 
                 const content = await response.text();
                 hariData = parseJSONL(content);
                 
-                // Extract unique hari and populate dropdown immediately
+                // ✅ FIXED: Get unique hari and normalize format
                 const uniqueHari = [...new Set(hariData
                     .map(item => item.Hari_Kunjungan)
                     .filter(hari => hari && hari.trim() !== '')
-                )];
+                    .map(hari => normalizeHariFormat(hari)) // Normalize here too
+                )].filter(hari => hari); // Remove empty strings
                 
-                // Populate hari dropdown immediately
                 const hariSelect = document.getElementById('hari');
                 if (hariSelect) {
                     hariSelect.innerHTML = '<option value="">📅 Pilih Hari Kunjungan</option>';
@@ -738,64 +834,112 @@
                     });
                     
                     hariSelect.disabled = false;
-                    console.log(`✅ Hari dropdown populated with ${uniqueHari.length} options`);
                 }
                 
-                console.log('✅ Loaded hari data successfully:');
-                console.log(`   - Total records: ${hariData.length}`);
-                console.log(`   - Unique hari: ${uniqueHari.length}`);
-                console.log(`   - Hari list:`, uniqueHari);
+                updateDebugInfo(`✅ Loaded ${uniqueHari.length} hari options: ${uniqueHari.join(', ')}`);
+                
+                // Also check pelanggan data for available hari if loaded
+                if (pelangganData.length > 0) {
+                    const pelangganHari = [...new Set(pelangganData
+                        .map(item => normalizeHariFormat(item.Hari_Kunjungan))
+                        .filter(hari => hari)
+                    )];
+                    updateDebugInfo(`📅 Hari from pelanggan data: ${pelangganHari.join(', ')}`);
+                }
                 
             } catch (error) {
-                console.error('❌ Error loading hari data from d.harijks.json:', error);
-                throw error;
+                updateDebugInfo(`❌ Error loading hari: ${error.message}`);
+                
+                // ✅ FALLBACK: If d.harijks.json fails, extract unique hari from pelanggan data
+                if (pelangganData.length > 0) {
+                    updateDebugInfo('🔄 Fallback: Using hari from pelanggan data');
+                    
+                    const uniqueHari = [...new Set(pelangganData
+                        .map(item => normalizeHariFormat(item.Hari_Kunjungan))
+                        .filter(hari => hari)
+                    )];
+                    
+                    const hariSelect = document.getElementById('hari');
+                    if (hariSelect) {
+                        hariSelect.innerHTML = '<option value="">📅 Pilih Hari Kunjungan</option>';
+                        
+                        uniqueHari.forEach(hari => {
+                            const option = document.createElement('option');
+                            option.value = hari;
+                            option.textContent = hari;
+                            hariSelect.appendChild(option);
+                        });
+                        
+                        hariSelect.disabled = false;
+                    }
+                    
+                    updateDebugInfo(`✅ Fallback loaded ${uniqueHari.length} hari from pelanggan data`);
+                } else {
+                    throw error;
+                }
             }
         }
 
-        // Load pelanggan data for table
         async function loadPelangganData() {
             try {
+                updateDebugInfo('🏪 Loading pelanggan data...');
                 const response = await fetch('data/d.skupelanggan.json');
                 if (!response.ok) throw new Error('Failed to load pelanggan data');
                 
                 const content = await response.text();
                 
-                // Try JSONL first, then standard JSON array
                 try {
                     pelangganData = parseJSONL(content);
                 } catch (jsonlError) {
                     pelangganData = JSON.parse(content);
                 }
                 
-                console.log('✅ Loaded', pelangganData.length, 'pelanggan records');
+                updateDebugInfo(`✅ Loaded ${pelangganData.length} pelanggan records`);
+                
+                // 🔍 DEBUG: Show first few records structure
+                if (pelangganData.length > 0) {
+                    const firstRecord = pelangganData[0];
+                    updateDebugInfo(`📋 First record keys: ${Object.keys(firstRecord).join(', ')}`);
+                    updateDebugInfo(`📋 Sample salesman: ${firstRecord.Nama_Salesman || firstRecord.szname || 'NOT_FOUND'}`);
+                    updateDebugInfo(`📋 Sample hari: ${firstRecord.Hari_Kunjungan || firstRecord.Hari_JKS || 'NOT_FOUND'}`);
+                    updateDebugInfo(`📋 Sample pelanggan: ${firstRecord.Nama_Pelanggan || firstRecord.pelanggan || 'NOT_FOUND'}`);
+                }
                 
             } catch (error) {
-                console.error('❌ Error loading pelanggan data:', error);
+                updateDebugInfo(`❌ Error loading pelanggan: ${error.message}`);
+                console.error('Error loading pelanggan data:', error);
             }
         }
 
-        // Update hari options - NO FILTERING needed, just show all available hari
+        // ===== FILTER UPDATE FUNCTIONS =====
         function updateHariOptions() {
             const salesmanSelect = document.getElementById('salesman');
-            const hariSelect = document.getElementById('hari');
             const pelangganSelect = document.getElementById('pelanggan');
             
-            // Reset pelanggan dropdown
+            // Reset pelanggan
             pelangganSelect.innerHTML = '<option value="">🏪 Pilih Pelanggan</option>';
             pelangganSelect.disabled = true;
             
-            // ✅ NO FILTERING: Hari dropdown stays the same regardless of salesman selection
-            // The hari options are already populated from d.harijks.json in loadHariData()
+            updateDebugInfo(`📅 Salesman changed to: ${salesmanSelect.value}`);
             
-            console.log(`📅 Salesman selected: ${salesmanSelect.value} - Hari options remain the same`);
-            
-            // Update pelanggan options if hari is already selected
+            // Trigger pelanggan update if hari is already selected
+            const hariSelect = document.getElementById('hari');
             if (hariSelect.value) {
                 updatePelangganOptions();
             } else {
-                // Update table since filters changed
                 updateTable();
             }
+        }
+
+        // ===== HARI FORMAT NORMALIZATION =====
+        function normalizeHariFormat(hariString) {
+            if (!hariString) return '';
+            
+            // Remove prefix like [6], [1], etc. and keep only the day name
+            const cleanHari = hariString.toString().replace(/^\[\d+\]/, '').trim().toUpperCase();
+            updateDebugInfo(`🔄 Normalized "${hariString}" → "${cleanHari}"`);
+            console.log(`🔄 Normalized "${hariString}" → "${cleanHari}"`); // Also log to console
+            return cleanHari;
         }
 
         function updatePelangganOptions() {
@@ -806,60 +950,76 @@
             pelangganSelect.innerHTML = '<option value="">🏪 Pilih Pelanggan</option>';
             pelangganSelect.disabled = false;
             
-            // 🆕 DEBUG: Tampilkan semua salesman yang ada di pelangganData
-            if (pelangganData.length > 0) {
-                const availableSalesmen = [...new Set(pelangganData
-                    .map(item => item.Nama_Salesman)
-                    .filter(name => name && name !== 'No Salesman')
-                )];
-                console.log('👥 Available salesmen in d.skupelanggan.json:', availableSalesmen);
-                
-                const availableHari = [...new Set(pelangganData
-                    .map(item => item.Hari_Kunjungan)
-                    .filter(hari => hari && hari !== 'No JKS')
-                )];
-                console.log('📅 Available hari in d.skupelanggan.json:', availableHari);
-            }
+            updateDebugInfo(`🔍 Filtering pelanggan for: ${salesmanSelect.value} - ${hariSelect.value}`);
             
-            // Only filter pelanggan if both salesman and hari are selected
-            if (salesmanSelect.value && hariSelect.value && pelangganData.length > 0) {
-                console.log(`🔍 Filtering pelanggan for: ${salesmanSelect.value} - ${hariSelect.value}`);
+            if (pelangganData.length === 0) {
+                updateDebugInfo('⚠️ No pelanggan data available');
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = 'Data pelanggan tidak tersedia';
+                option.disabled = true;
+                pelangganSelect.appendChild(option);
+                return;
+            }
+
+            if (salesmanSelect.value && hariSelect.value) {
+                const selectedSalesman = salesmanSelect.value.trim();
+                const selectedHari = hariSelect.value.trim().toUpperCase();
                 
-                // 🆕 IMPROVED: Case-insensitive dan trim spaces untuk matching
-                const selectedSalesman = salesmanSelect.value.trim().toLowerCase();
-                const selectedHari = hariSelect.value.trim().toLowerCase();
+                updateDebugInfo(`🔍 Looking for: Salesman="${selectedSalesman}", Hari="${selectedHari}"`);
                 
-                // Filter pelanggan berdasarkan salesman dan hari dari d.skupelanggan.json
+                // 🔍 DEBUG: Show sample data format
+                const firstRecord = pelangganData[0];
+                updateDebugInfo(`📋 Sample data: ${JSON.stringify(firstRecord).substring(0, 300)}...`);
+                updateDebugInfo(`📋 Sample Nama_Salesman: "${firstRecord.Nama_Salesman}"`);
+                updateDebugInfo(`📋 Sample Hari_Kunjungan: "${firstRecord.Hari_Kunjungan}"`);
+                updateDebugInfo(`📋 Sample Normalized Hari: "${normalizeHariFormat(firstRecord.Hari_Kunjungan)}"`);
+
+                // ✅ FIXED: Use exact field names from the sample data and normalize hari format
                 const filteredPelanggan = [...new Set(pelangganData
                     .filter(item => {
-                        const itemSalesman = (item.Nama_Salesman || '').trim().toLowerCase();
-                        const itemHari = (item.Hari_Kunjungan || '').trim().toLowerCase();
+                        const itemSalesman = (item.Nama_Salesman || '').toString().trim();
+                        const itemHari = normalizeHariFormat(item.Hari_Kunjungan);
                         
-                        return itemSalesman === selectedSalesman && 
-                               itemHari === selectedHari;
+                        const salesmanMatch = itemSalesman.toLowerCase() === selectedSalesman.toLowerCase();
+                        const hariMatch = itemHari === selectedHari;
+                        
+                        // Debug individual matches
+                        if (salesmanMatch) {
+                            updateDebugInfo(`🔍 Salesman match found: "${itemSalesman}" ← Raw hari: "${item.Hari_Kunjungan}" → "${itemHari}"`);
+                        }
+                        
+                        return salesmanMatch && hariMatch;
                     })
                     .map(item => item.Nama_Pelanggan)
-                    .filter(pelanggan => pelanggan && pelanggan.trim() !== '' && pelanggan !== 'No Pelanggan')
+                    .filter(pelanggan => pelanggan && pelanggan.toString().trim() !== '' && 
+                            pelanggan !== 'No Pelanggan')
                 )];
-                
-                // 🆕 DEBUG: Tampilkan data yang match dengan filter
-                const matchingRecords = pelangganData.filter(item => {
-                    const itemSalesman = (item.Nama_Salesman || '').trim().toLowerCase();
-                    const itemHari = (item.Hari_Kunjungan || '').trim().toLowerCase();
+
+                updateDebugInfo(`✅ Found ${filteredPelanggan.length} unique pelanggan for ${selectedSalesman} - ${selectedHari}`);
+
+                if (filteredPelanggan.length === 0) {
+                    updateDebugInfo('❌ No matching pelanggan found');
                     
-                    return itemSalesman === selectedSalesman && 
-                           itemHari === selectedHari;
-                });
-                console.log(`📊 Matching records for ${salesmanSelect.value} - ${hariSelect.value}:`, matchingRecords);
-                
+                    // Show available combinations for this salesman
+                    const salesmanRecords = pelangganData.filter(item => 
+                        (item.Nama_Salesman || '').toString().trim().toLowerCase() === selectedSalesman.toLowerCase()
+                    );
+                    
+                    const availableHari = [...new Set(salesmanRecords.map(item => 
+                        normalizeHariFormat(item.Hari_Kunjungan)
+                    ))];
+                    
+                    updateDebugInfo(`📋 Available hari for ${selectedSalesman}: ${availableHari.join(', ')}`);
+                    updateDebugInfo(`📋 Looking for: ${selectedHari}`);
+                }
+
                 filteredPelanggan.forEach(pelanggan => {
                     const option = document.createElement('option');
                     option.value = pelanggan;
                     option.textContent = pelanggan;
                     pelangganSelect.appendChild(option);
                 });
-                
-                console.log(`✅ Found ${filteredPelanggan.length} pelanggan for ${salesmanSelect.value} - ${hariSelect.value}`);
                 
                 if (filteredPelanggan.length === 0) {
                     const option = document.createElement('option');
@@ -870,78 +1030,67 @@
                     pelangganSelect.appendChild(option);
                 }
                 
-            } else if (salesmanSelect.value || hariSelect.value) {
-                // Show message if only one filter is selected
+            } else {
+                updateDebugInfo('⚠️ Need both salesman and hari to show pelanggan');
                 const option = document.createElement('option');
                 option.value = '';
                 option.textContent = 'Pilih salesman dan hari terlebih dahulu';
                 option.disabled = true;
                 option.style.color = '#cbd5e1';
                 pelangganSelect.appendChild(option);
-                console.log('⚠️ Need both salesman and hari to show pelanggan');
             }
             
             updateTable();
         }
 
-        function updateTable() {
-            const tableBody = document.getElementById('tableBody');
-            const salesmanSelect = document.getElementById('salesman');
-            const hariSelect = document.getElementById('hari');
-            const pelangganSelect = document.getElementById('pelanggan');
-            
-            if (!tableBody || !salesmanSelect || !hariSelect || !pelangganSelect) {
-                console.error('Table or dropdown elements not found');
+        // ===== TABLE FUNCTIONS =====
+        function sortTable(column) {
+            if (currentFilteredData.length === 0) {
+                updateDebugInfo('No data to sort');
                 return;
             }
-            
-            if (pelangganData.length === 0) {
-                tableBody.innerHTML = `
-                    <tr>
-                        <td colspan="9">
-                            <div class="empty-state">
-                                <div class="empty-state-icon">⏳</div>
-                                <div>Loading data...</div>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-                return;
+
+            if (sortState.column === column) {
+                sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortState.column = column;
+                sortState.direction = 'asc';
             }
-            
-            if (!salesmanSelect.value || !hariSelect.value || !pelangganSelect.value) {
-                tableBody.innerHTML = `
-                    <tr>
-                        <td colspan="9">
-                            <div class="empty-state">
-                                <div class="empty-state-icon">📊</div>
-                                <div>Pilih filter untuk melihat data</div>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-                return;
+
+            if (column === 'promo') {
+                currentFilteredData.sort((a, b) => {
+                    const promoA = (a.Promo || '').toLowerCase();
+                    const promoB = (b.Promo || '').toLowerCase();
+                    
+                    if (sortState.direction === 'asc') {
+                        return promoA.localeCompare(promoB);
+                    } else {
+                        return promoB.localeCompare(promoA);
+                    }
+                });
             }
-            
-            // 🆕 IMPROVED: Case-insensitive matching
-            const selectedSalesman = salesmanSelect.value.trim().toLowerCase();
-            const selectedHari = hariSelect.value.trim().toLowerCase();
-            const selectedPelanggan = pelangganSelect.value.trim().toLowerCase();
-            
-            // Filter data based on selected criteria
-            const filteredData = pelangganData.filter(item => {
-                const itemSalesman = (item.Nama_Salesman || '').trim().toLowerCase();
-                const itemHari = (item.Hari_Kunjungan || '').trim().toLowerCase();
-                const itemPelanggan = (item.Nama_Pelanggan || '').trim().toLowerCase();
-                
-                return itemSalesman === selectedSalesman &&
-                       itemHari === selectedHari &&
-                       itemPelanggan === selectedPelanggan;
+
+            updateSortHeaders();
+            renderTableData(currentFilteredData);
+        }
+
+        function updateSortHeaders() {
+            document.querySelectorAll('.sortable-header').forEach(header => {
+                header.classList.remove('asc', 'desc');
             });
+
+            if (sortState.column === 'promo') {
+                const promoHeader = document.querySelector('.sortable-header');
+                if (promoHeader) {
+                    promoHeader.classList.add(sortState.direction);
+                }
+            }
+        }
+
+        function renderTableData(data) {
+            const tableBody = document.getElementById('tableBody');
             
-            console.log(`Filtered data for ${salesmanSelect.value} - ${hariSelect.value} - ${pelangganSelect.value}:`, filteredData.length, 'records');
-            
-            if (filteredData.length === 0) {
+            if (data.length === 0) {
                 tableBody.innerHTML = `
                     <tr>
                         <td colspan="9">
@@ -958,8 +1107,7 @@
             let html = '';
             let totalPlan = 0, totalMTD = 0;
             
-            filteredData.forEach((item, index) => {
-                // Map real data fields to display format
+            data.forEach((item, index) => {
                 const no = index + 1;
                 const promo = item.Promo || "Others";
                 const sku = item.SKU || "N/A";
@@ -992,7 +1140,6 @@
                 `;
             });
             
-            // Summary row
             const totalGap = totalMTD - totalPlan;
             const totalGapBadgeClass = totalGap > 0 ? 'gap-positive' : totalGap < 0 ? 'gap-negative' : 'gap-neutral';
             
@@ -1013,34 +1160,99 @@
             tableBody.innerHTML = html;
         }
 
-        function generateRecommendation(gap, plan, mtd) {
-            const gapPercentage = plan > 0 ? (gap / plan) * 100 : 0;
+        function updateTable() {
+            const tableBody = document.getElementById('tableBody');
+            const salesmanSelect = document.getElementById('salesman');
+            const hariSelect = document.getElementById('hari');
+            const pelangganSelect = document.getElementById('pelanggan');
             
-            if (gapPercentage > 20) return "Outstanding";
-            if (gapPercentage > 10) return "Above target";
-            if (gapPercentage > 0) return "On track";
-            if (gapPercentage > -10) return "Need attention";
-            if (gapPercentage > -25) return "Focus";
-            return "Urgent";
+            if (!tableBody || !salesmanSelect || !hariSelect || !pelangganSelect) {
+                updateDebugInfo('❌ Table or dropdown elements not found');
+                return;
+            }
+            
+            if (pelangganData.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="9">
+                            <div class="empty-state">
+                                <div class="empty-state-icon">⏳</div>
+                                <div>Loading data...</div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                currentFilteredData = [];
+                return;
+            }
+            
+            if (!salesmanSelect.value || !hariSelect.value || !pelangganSelect.value) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="9">
+                            <div class="empty-state">
+                                <div class="empty-state-icon">📊</div>
+                                <div>Pilih filter untuk melihat data</div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                currentFilteredData = [];
+                return;
+            }
+            
+            updateDebugInfo(`🔍 Filtering table data for: ${salesmanSelect.value} - ${hariSelect.value} - ${pelangganSelect.value}`);
+            
+            // ✅ FIXED: Use exact field names and normalize hari format
+            const selectedSalesman = salesmanSelect.value.trim();
+            const selectedHari = hariSelect.value.trim().toUpperCase();
+            const selectedPelanggan = pelangganSelect.value.trim();
+            
+            const filteredData = pelangganData.filter(item => {
+                const itemSalesman = (item.Nama_Salesman || '').toString().trim();
+                const itemHari = normalizeHariFormat(item.Hari_Kunjungan);
+                const itemPelanggan = (item.Nama_Pelanggan || '').toString().trim();
+                
+                const salesmanMatch = itemSalesman.toLowerCase() === selectedSalesman.toLowerCase();
+                const hariMatch = itemHari === selectedHari;
+                const pelangganMatch = itemPelanggan.toLowerCase() === selectedPelanggan.toLowerCase();
+                
+                return salesmanMatch && hariMatch && pelangganMatch;
+            });
+            
+            updateDebugInfo(`📊 Found ${filteredData.length} table records for: ${selectedSalesman} - ${selectedHari} - ${selectedPelanggan}`);
+            
+            if (filteredData.length > 0) {
+                updateDebugInfo(`📋 Sample table record: ${JSON.stringify(filteredData[0]).substring(0, 200)}...`);
+            }
+            
+            currentFilteredData = [...filteredData];
+            sortState = { column: null, direction: 'asc' };
+            updateSortHeaders();
+            renderTableData(currentFilteredData);
         }
 
-        // Event listeners
+        function generateRecommendation(gap, plan, mtd) {
+            if (mtd === 0 || mtd === null || mtd === undefined) {
+                return "Belum Aktif";
+            } else if (mtd > 0 && mtd < plan) {
+                return "Under Plan";
+            } else if (mtd > 0 && mtd >= plan) {
+                return "Over Plan";
+            }
+            return "Belum Aktif";
+        }
+
+        // ===== EVENT LISTENERS =====
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('salesman').addEventListener('change', updateHariOptions);
             document.getElementById('hari').addEventListener('change', updatePelangganOptions);
             document.getElementById('pelanggan').addEventListener('change', updateTable);
         });
 
-        // Navigation Functions
-        function goHome() {
-            window.location.href = 'dashboard.html';
-        }
-
-        function showVisitOutlet() {
-            // Already on visit page
-            console.log('Already on Visit Outlet page');
-        }
-
+        // ===== NAVIGATION FUNCTIONS =====
+        function goHome() { window.location.href = 'dashboard.html'; }
+        function showVisitOutlet() { console.log('Already on Visit Outlet page'); }
         function showIncentive() {
             const currentUser = sessionStorage.getItem('currentUser');
             if (currentUser) {
@@ -1049,7 +1261,6 @@
                 alert('🔜 Incentive: Please login first');
             }
         }
-
         function showProfile() {
             const currentUser = sessionStorage.getItem('currentUser');
             if (currentUser) {
@@ -1059,86 +1270,52 @@
             }
         }
 
-        // Initialize data loading
+        // ===== INITIALIZE =====
         async function initializeData() {
             try {
                 showLoading(true);
                 hideError();
                 
-                console.log('🚀 Loading data files...');
+                updateDebugInfo('🚀 Starting data initialization...');
                 
-                // Load all data files sequentially to ensure proper order
-                console.log('📊 Loading salesman data...');
+                // ✅ CHANGED ORDER: Load pelanggan first so we can use it as fallback for hari
                 await loadSalesmanData();
+                await loadPelangganData(); // Load this first
+                await loadHariData(); // Then load hari (can fallback to pelanggan hari if needed)
                 
-                console.log('📅 Loading hari data from d.harijks.json...');
-                await loadHariData();
+                updateDebugInfo(`✅ Data loaded: Salesmen(${salesmenData.length}), Hari(${hariData.length}), Pelanggan(${pelangganData.length})`);
                 
-                console.log('🏪 Loading pelanggan data...');
-                await loadPelangganData();
-                
-                // Verify data is loaded
-                console.log('✅ Data verification:');
-                console.log(`   - Salesmen: ${salesmenData.length} records`);
-                console.log(`   - Hari: ${hariData.length} records`);
-                console.log(`   - Pelanggan: ${pelangganData.length} records`);
-                
-                // Enable all dropdowns after data is loaded
-                const salesmanSelect = document.getElementById('salesman');
-                const hariSelect = document.getElementById('hari');
-                const pelangganSelect = document.getElementById('pelanggan');
-                
-                if (salesmanSelect) salesmanSelect.disabled = false;
-                if (hariSelect) hariSelect.disabled = false;
-                if (pelangganSelect) pelangganSelect.disabled = false;
-                
-                console.log('✅ All dropdowns enabled');
-                
-                if (hariData.length === 0) {
-                    console.warn('⚠️ No hari data loaded, but continuing with fallback');
-                }
-                
-                console.log('📅 Available hari from d.harijks.json:', 
-                    hariData.map(item => item.Hari_Kunjungan));
+                // Enable all dropdowns
+                ['salesman', 'hari', 'pelanggan'].forEach(id => {
+                    const element = document.getElementById(id);
+                    if (element) element.disabled = false;
+                });
                 
                 showLoading(false);
                 showMainContent(true);
                 
-                // Trigger initial update if salesman already selected
-                if (salesmanSelect && salesmanSelect.value) {
-                    console.log('🔄 Triggering hari options update for pre-selected salesman');
-                    updateHariOptions();
-                }
-                
             } catch (error) {
-                console.error('❌ Error loading data:', error);
+                updateDebugInfo(`❌ Initialization error: ${error.message}`);
+                console.error('Error loading data:', error);
                 showLoading(false);
                 showError(true, error.message);
                 
-                // Even if there's an error, try to enable dropdowns
-                const salesmanSelect = document.getElementById('salesman');
-                const hariSelect = document.getElementById('hari');
-                const pelangganSelect = document.getElementById('pelanggan');
-                
-                if (salesmanSelect) salesmanSelect.disabled = false;
-                if (hariSelect) hariSelect.disabled = false;  
-                if (pelangganSelect) pelangganSelect.disabled = false;
-                
-                console.log('⚠️ Enabled dropdowns despite error');
+                // Still enable dropdowns for manual testing
+                ['salesman', 'hari', 'pelanggan'].forEach(id => {
+                    const element = document.getElementById(id);
+                    if (element) element.disabled = false;
+                });
             }
         }
 
-        // Initialize on page load
+        // ===== PAGE LOAD =====
         window.onload = function() {
-            if (!checkLoginStatus()) {
-                return;
-            }
-            
-            console.log('📱 Starting Visit Outlet with mobile layout...');
+            if (!checkLoginStatus()) return;
+            updateDebugInfo('📱 Starting Visit Outlet...');
             initializeData();
-        }
+        };
 
-        console.log('✅ Visit Outlet mobile script loaded successfully');
+        console.log('✅ Visit Outlet script with enhanced debugging loaded');
     </script>
 </body>
 </html>
