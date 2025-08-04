@@ -764,7 +764,6 @@
 
     <script>
         // ===== GLOBAL VARIABLES =====
-        let salesmenData = [];
         let hariData = [];
         let pelangganData = [];
         let detailsData = [];
@@ -872,6 +871,36 @@
             }
         }
 
+        async function loadPelangganData() {
+            try {
+                console.log('🏪 Loading pelanggan data...');
+                const response = await fetch('data/d.skupelanggan.json');
+                if (!response.ok) throw new Error('Failed to load pelanggan data');
+                
+                const content = await response.text();
+                
+                try {
+                    pelangganData = parseJSONL(content);
+                } catch (jsonlError) {
+                    pelangganData = JSON.parse(content);
+                }
+                
+                console.log(`✅ Loaded ${pelangganData.length} pelanggan records`);
+                
+                // Update salesman name after pelanggan data is loaded
+                updateSalesmanNameFromData();
+                
+                // Debug: Show sample data
+                if (pelangganData.length > 0) {
+                    console.log('📋 Sample pelanggan data:', pelangganData[0]);
+                    updateDebugInfo(`Pelanggan: ${pelangganData.length} rows<br>Sample: ${JSON.stringify(pelangganData[0]).substring(0, 100)}...`);
+                }
+                
+            } catch (error) {
+                console.error('Error loading pelanggan data:', error);
+            }
+        }
+
         async function loadHariData() {
             try {
                 console.log('📅 Loading hari data...');
@@ -909,14 +938,14 @@
                 console.log(`❌ Error loading hari: ${error.message}`);
                 
                 // Fallback: Use hari from pelanggan data
-                if (pelangganData.length > 0) {
+                if (pelangganData.length > 0 && currentSalesmanId) {
                     console.log('🔄 Fallback: Using hari from pelanggan data');
                     
                     const uniqueHari = [...new Set(pelangganData
                         .filter(item => {
-                            // Use szname instead of Nama_Salesman
-                            const itemSalesman = (item.szname || '').toString().trim();
-                            return itemSalesman.toLowerCase() === currentSalesman.toLowerCase();
+                            // Use szEmployeeId instead of szname
+                            const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
+                            return itemSalesmanId === currentSalesmanId;
                         })
                         .map(item => normalizeHariFormat(item.Hari_Kunjungan))
                         .filter(hari => hari)
@@ -938,36 +967,6 @@
                     
                     console.log(`✅ Fallback loaded ${uniqueHari.length} hari options`);
                 }
-            }
-        }
-
-        async function loadPelangganData() {
-            try {
-                console.log('🏪 Loading pelanggan data...');
-                const response = await fetch('data/d.skupelanggan.json');
-                if (!response.ok) throw new Error('Failed to load pelanggan data');
-                
-                const content = await response.text();
-                
-                try {
-                    pelangganData = parseJSONL(content);
-                } catch (jsonlError) {
-                    pelangganData = JSON.parse(content);
-                }
-                
-                console.log(`✅ Loaded ${pelangganData.length} pelanggan records`);
-                
-                // Update salesman name after pelanggan data is loaded
-                updateSalesmanNameFromData();
-                
-                // Debug: Show sample data
-                if (pelangganData.length > 0) {
-                    console.log('📋 Sample pelanggan data:', pelangganData[0]);
-                    updateDebugInfo(`Pelanggan: ${pelangganData.length} rows<br>Sample: ${JSON.stringify(pelangganData[0]).substring(0, 100)}...`);
-                }
-                
-            } catch (error) {
-                console.error('Error loading pelanggan data:', error);
             }
         }
 
@@ -1439,8 +1438,8 @@
                 
                 console.log('🚀 Starting data initialization...');
                 
-                await loadSalesmanData(); // Load salesman first to get current user name
-                await loadPelangganData(); // Load pelanggan data
+                initializeSalesmanFromUrl(); // Get salesman ID from URL
+                await loadPelangganData(); // Load pelanggan data (which will update salesman name)
                 await loadHariData(); // Load hari data (with fallback to pelanggan data)
                 await loadDetailsData(); // Load details for additional info
                 
@@ -1471,11 +1470,11 @@
         // ===== PAGE LOAD =====
         window.onload = function() {
             if (!checkLoginStatus()) return;
-            console.log('📱 Starting Visit Outlet...');
+            console.log('📱 Starting Visit Outlet - Simplified Version...');
             initializeData();
         };
 
-        console.log('✅ Visit Outlet script loaded with fixed data mapping');
+        console.log('✅ Visit Outlet script loaded - Simplified version without d.salesman.json dependency');
     </script>
 </body>
 </html>
