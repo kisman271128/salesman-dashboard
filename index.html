@@ -303,27 +303,45 @@
             100% { transform: rotate(360deg); }
         }
 
-        .error-message, .success-message {
-            padding: 12px 15px;
-            border-radius: 10px;
-            font-size: 14px;
-            margin-bottom: 20px;
-            display: none;
+        /* ✅ UPDATED: Notification Frame (replacing demo-info) */
+        .notification-frame {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
             text-align: center;
-            color: white;
-            font-weight: 600;
-            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+            min-height: 90px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
         }
 
-        .error-message {
-            background: rgba(231, 76, 60, 0.3);
-            border: 1px solid rgba(231, 76, 60, 0.5);
+        .notification-frame.hidden {
+            opacity: 0;
+            transform: translateY(10px);
+            pointer-events: none;
+        }
+
+        .notification-frame.error {
+            background: rgba(231, 76, 60, 0.2);
+            border-color: rgba(231, 76, 60, 0.4);
             animation: shake 0.5s ease-in-out;
         }
 
-        .success-message {
-            background: rgba(46, 213, 115, 0.3);
-            border: 1px solid rgba(46, 213, 115, 0.5);
+        .notification-frame.success {
+            background: rgba(46, 213, 115, 0.2);
+            border-color: rgba(46, 213, 115, 0.4);
+            animation: slideUpNotification 0.5s ease-out;
+        }
+
+        .notification-frame.loading {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.3);
         }
 
         @keyframes shake {
@@ -332,28 +350,52 @@
             75% { transform: translateX(5px); }
         }
 
-        .demo-info {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: rgba(255, 255, 255, 0.8);
-            padding: 15px;
-            border-radius: 10px;
-            margin-top: 20px;
-            font-size: 12px;
-            text-align: center;
+        @keyframes slideUpNotification {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        .demo-info h4 {
-            margin-bottom: 8px;
+        .notification-icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .notification-title {
             color: white;
-            font-size: 14px;
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
         }
 
-        .demo-info p {
-            margin-bottom: 5px;
+        .notification-message {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 13px;
+            line-height: 1.4;
+            margin-bottom: 10px;
         }
 
-        /* ✅ NEW: Dashboard Selection Modal */
+        .notification-info {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 11px;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Loading spinner for notification frame */
+        .notification-spinner {
+            width: 25px;
+            height: 25px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 10px;
+        }
+
+        /* ✅ Dashboard Selection Modal */
         .dashboard-selection {
             position: fixed;
             top: 0;
@@ -628,7 +670,7 @@
         <div class="floating-circle circle-4"></div>
     </div>
 
-    <!-- ✅ NEW: Dashboard Selection Modal -->
+    <!-- ✅ Dashboard Selection Modal -->
     <div class="dashboard-selection" id="dashboardSelection">
         <div class="selection-modal">
             <h2 class="selection-title">Pilih Tampilan Dashboard</h2>
@@ -689,14 +731,6 @@
                 <p class="login-subtitle">Depo Tanjung - Region Kalimantan</p>
             </div>
 
-            <div class="error-message" id="errorMessage">
-                NIK atau password salah. Silakan coba lagi.
-            </div>
-
-            <div class="success-message" id="successMessage">
-                Login berhasil! Mengarahkan ke dashboard...
-            </div>
-
             <form class="login-form" id="loginForm">
                 <div class="input-group">
                     <input type="text" class="input-field" id="nikInput" placeholder="Username/NIK" required>
@@ -723,11 +757,15 @@
                 </button>
             </form>
 
-            <!-- Demo Info -->
-            <div class="demo-info">
-                <h4>🔑 Demo Account</h4>
-                <p><strong>Admin:</strong> admin / admin123</p>
-                <div id="lastUpdateInfo" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, 0.2);">
+            <!-- ✅ NEW: Notification Frame (replaces demo-info) -->
+            <div class="notification-frame hidden" id="notificationFrame">
+                <div class="notification-spinner" id="notificationSpinner" style="display: none;"></div>
+                <span class="notification-icon" id="notificationIcon">📋</span>
+                <div class="notification-title" id="notificationTitle">Sistem Login</div>
+                <div class="notification-message" id="notificationMessage">
+                    Masukkan username (admin/NIK) dan password untuk mengakses dashboard
+                </div>
+                <div class="notification-info" id="notificationInfo">
                     <div style="font-size: 14px; font-weight: 600; color: rgba(255, 255, 255, 0.95);">
                         <span>📅 Last Update: </span>
                         <span id="lastUpdateTime" style="color: white; font-weight: 700;">Loading...</span>
@@ -752,14 +790,20 @@
         const loginForm = document.getElementById('loginForm');
         const nikInput = document.getElementById('nikInput');
         const passwordInput = document.getElementById('password');
-        const errorMessage = document.getElementById('errorMessage');
-        const successMessage = document.getElementById('successMessage');
-        const buttonText = document.getElementById('buttonText');
-        const loading = document.getElementById('loading');
         const rememberMe = document.getElementById('rememberMe');
         const loginButton = document.getElementById('loginButton');
         const dashboardSelection = document.getElementById('dashboardSelection');
         const transitionOverlay = document.getElementById('transitionOverlay');
+        const buttonText = document.getElementById('buttonText');
+        const loading = document.getElementById('loading');
+
+        // Notification frame elements
+        const notificationFrame = document.getElementById('notificationFrame');
+        const notificationSpinner = document.getElementById('notificationSpinner');
+        const notificationIcon = document.getElementById('notificationIcon');
+        const notificationTitle = document.getElementById('notificationTitle');
+        const notificationMessage = document.getElementById('notificationMessage');
+        const notificationInfo = document.getElementById('notificationInfo');
 
         // ✅ DEVICE DETECTION FUNCTION
         function detectDevice() {
@@ -803,6 +847,44 @@
                     description: 'Device type unclear - Please choose manually'
                 };
             }
+        }
+
+        // ✅ NOTIFICATION FRAME FUNCTIONS
+        function showNotification(type, icon, title, message, showInfo = true) {
+            notificationFrame.className = `notification-frame ${type}`;
+            notificationIcon.textContent = icon;
+            notificationTitle.textContent = title;
+            notificationMessage.textContent = message;
+            notificationInfo.style.display = showInfo ? 'block' : 'none';
+            
+            // Show spinner for loading type
+            if (type === 'loading') {
+                notificationSpinner.style.display = 'block';
+                notificationIcon.style.display = 'none';
+            } else {
+                notificationSpinner.style.display = 'none';
+                notificationIcon.style.display = 'block';
+            }
+        }
+
+        function hideNotification() {
+            notificationFrame.className = 'notification-frame hidden';
+        }
+
+        function showLoadingNotification() {
+            showNotification('loading', '', 'Memverifikasi Login', 'Sedang memproses data login Anda...', false);
+        }
+
+        function showSuccessNotification(userName) {
+            showNotification('success', '✅', 'Login Berhasil!', `Selamat datang, ${userName}! Memilih dashboard terbaik untuk Anda...`, false);
+        }
+
+        function showErrorNotification(message) {
+            showNotification('error', '❌', 'Login Gagal', message, false);
+        }
+
+        function showDefaultNotification() {
+            showNotification('', '📋', 'Sistem Login', 'Masukkan username (admin/NIK) dan password untuk mengakses dashboard', true);
         }
 
         // ✅ SHOW DASHBOARD SELECTION
@@ -951,14 +1033,14 @@
             }
         }
 
-        // ✅ Load valid users dengan proper error handling
+        // ✅ UPDATED: Load valid users with new password "tanjung2025"
         async function loadValidUsers() {
             try {
                 console.log('🔄 Loading valid users...');
                 
-                // Set default users first (fallback)
+                // Set default users first (fallback) with new password
                 validUsers = {
-                    'admin': { password: 'admin123', name: 'Administrator', role: 'admin' }
+                    'admin': { password: 'tanjung2025', name: 'Administrator', role: 'admin' }
                 };
 
                 try {
@@ -967,10 +1049,10 @@
                     if (response.ok) {
                         const salesmanList = await response.json();
                         
-                        // Add all salesman from JSON
+                        // Add all salesman from JSON with new password
                         salesmanList.forEach(salesman => {
                             validUsers[salesman.id] = {
-                                password: 'sales123',
+                                password: 'tanjung2025',
                                 name: salesman.name,
                                 role: 'salesman'
                             };
@@ -978,32 +1060,32 @@
                         console.log('✅ Salesman data loaded from JSON');
                     } else {
                         console.warn('⚠️ Could not load salesman_list.json, using fallback data');
-                        // Add fallback salesman users
+                        // Add fallback salesman users with new password
                         const fallbackSalesman = {
-                            '17210032876': { password: 'sales123', name: 'Asman', role: 'salesman' },
-                            '17210036369': { password: 'sales123', name: 'Muhammad Tamrin', role: 'salesman' },
-                            '17210037632': { password: 'sales123', name: 'Robianor', role: 'salesman' },
-                            '17210037713': { password: 'sales123', name: 'Rahmani', role: 'salesman' },
-                            '17210037897': { password: 'sales123', name: 'Hindra', role: 'salesman' },
-                            '17210038077': { password: 'sales123', name: 'Sopian Sauri', role: 'salesman' }
+                            '17210032876': { password: 'tanjung2025', name: 'Asman', role: 'salesman' },
+                            '17210036369': { password: 'tanjung2025', name: 'Muhammad Tamrin', role: 'salesman' },
+                            '17210037632': { password: 'tanjung2025', name: 'Robianor', role: 'salesman' },
+                            '17210037713': { password: 'tanjung2025', name: 'Rahmani', role: 'salesman' },
+                            '17210037897': { password: 'tanjung2025', name: 'Hindra', role: 'salesman' },
+                            '17210038077': { password: 'tanjung2025', name: 'Sopian Sauri', role: 'salesman' }
                         };
                         Object.assign(validUsers, fallbackSalesman);
                     }
                 } catch (fetchError) {
                     console.warn('⚠️ Fetch error, using fallback data:', fetchError);
-                    // Add fallback salesman users
+                    // Add fallback salesman users with new password
                     const fallbackSalesman = {
-                        '17210032876': { password: 'sales123', name: 'Asman', role: 'salesman' },
-                        '17210036369': { password: 'sales123', name: 'Muhammad Tamrin', role: 'salesman' },
-                        '17210037632': { password: 'sales123', name: 'Robianor', role: 'salesman' },
-                        '17210037713': { password: 'sales123', name: 'Rahmani', role: 'salesman' },
-                        '17210037897': { password: 'sales123', name: 'Hindra', role: 'salesman' },
-                        '17210038077': { password: 'sales123', name: 'Sopian Sauri', role: 'salesman' }
+                        '17210032876': { password: 'tanjung2025', name: 'Asman', role: 'salesman' },
+                        '17210036369': { password: 'tanjung2025', name: 'Muhammad Tamrin', role: 'salesman' },
+                        '17210037632': { password: 'tanjung2025', name: 'Robianor', role: 'salesman' },
+                        '17210037713': { password: 'tanjung2025', name: 'Rahmani', role: 'salesman' },
+                        '17210037897': { password: 'tanjung2025', name: 'Hindra', role: 'salesman' },
+                        '17210038077': { password: 'tanjung2025', name: 'Sopian Sauri', role: 'salesman' }
                     };
                     Object.assign(validUsers, fallbackSalesman);
                 }
 
-                // Load saved passwords from localStorage
+                // Load saved passwords from localStorage (if any custom passwords were set)
                 const storedPasswords = JSON.parse(localStorage.getItem('userPasswords')) || {};
                 for (const nik in storedPasswords) {
                     if (validUsers[nik]) {
@@ -1013,7 +1095,7 @@
                 
                 usersLoaded = true;
                 loginButton.disabled = false;
-                console.log('✅ Valid users loaded:', Object.keys(validUsers));
+                console.log('✅ Valid users loaded with new password "tanjung2025":', Object.keys(validUsers));
                 
             } catch (error) {
                 console.error('❌ Error loading valid users:', error);
@@ -1029,6 +1111,9 @@
             // Disable login button until users are loaded
             loginButton.disabled = true;
             buttonText.textContent = 'Loading...';
+            
+            // Show default notification
+            showDefaultNotification();
             
             // Load users and last update info in parallel
             await Promise.all([
@@ -1046,7 +1131,7 @@
                 rememberMe.checked = true;
             }
             
-            console.log('✅ Sales Dashboard login system ready');
+            console.log('✅ Sales Dashboard login system ready with new password');
         });
 
         // ✅ Enhanced Login Form Handler
@@ -1063,16 +1148,16 @@
             
             // Validation
             if (!nik || !password) {
-                showError('Username dan password harus diisi!');
+                showErrorNotification('Username dan password harus diisi!');
                 return;
             }
             
             console.log(`🔍 Attempting login for: ${nik}`);
             
-            // Hide messages
-            hideMessages();
+            // Show loading notification
+            showLoadingNotification();
             
-            // Show loading
+            // Show loading on button
             setLoading(true);
             
             // Add delay for better UX
@@ -1104,11 +1189,20 @@
                 sessionStorage.setItem('userName', user.name);
                 sessionStorage.setItem('userRole', user.role);
                 
-                showSuccess(user.name);
+                // Show success notification
+                showSuccessNotification(user.name);
+                
+                // Show dashboard selection after delay
+                setTimeout(() => {
+                    showDashboardSelection(user.name);
+                    setLoading(false);
+                }, 2000);
+                
             } else {
                 console.log(`❌ Login failed for: ${nik}`);
                 console.log(`❌ User exists: ${!!user}, Password match: ${user ? user.password === password : false}`);
-                showError('Username atau password salah. Silakan coba lagi.');
+                
+                showErrorNotification('Username atau password salah. Periksa kembali data login Anda.');
                 setLoading(false);
             }
         }
@@ -1119,40 +1213,6 @@
             loginButton.disabled = loading;
             buttonText.style.display = loading ? 'none' : 'block';
             document.getElementById('loading').style.display = loading ? 'block' : 'none';
-        }
-
-        function showSuccess(userName) {
-            successMessage.innerHTML = `Selamat datang, ${userName}! Pilih versi dashboard...`;
-            successMessage.style.display = 'block';
-            
-            // Animate card out slightly
-            const card = document.querySelector('.login-card');
-            card.style.transform = 'scale(0.98)';
-            card.style.opacity = '0.9';
-            
-            // Show dashboard selection after short delay
-            setTimeout(() => {
-                showDashboardSelection(userName);
-                setLoading(false);
-            }, 1500);
-        }
-
-        function showError(message) {
-            errorMessage.textContent = message;
-            errorMessage.style.display = 'block';
-            
-            // Shake animation
-            const card = document.querySelector('.login-card');
-            card.style.animation = 'shake 0.5s ease-in-out';
-            
-            setTimeout(() => {
-                card.style.animation = '';
-            }, 500);
-        }
-
-        function hideMessages() {
-            errorMessage.style.display = 'none';
-            successMessage.style.display = 'none';
         }
 
         // ✅ Input field enhancements
@@ -1194,7 +1254,7 @@
             }
         });
 
-        console.log('🔧 Sales Dashboard login script loaded with date-only last update display');
+        console.log('🔧 Sales Dashboard login script loaded with notification frame and new password "tanjung2025"');
     </script>
 </body>
 </html>
