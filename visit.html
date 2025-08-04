@@ -842,73 +842,33 @@
         }
 
         // ===== DATA LOADING FUNCTIONS =====
-        async function loadSalesmanData() {
-            try {
-                console.log('🧑‍💼 Loading salesman data...');
-                const response = await fetch('data/d.salesman.json');
-                if (!response.ok) throw new Error('Failed to load salesman data');
-                
-                const content = await response.text();
-                salesmenData = parseJSONL(content);
-                
-                // Get salesman ID from URL parameter
-                currentSalesmanId = getUrlParameter('id') || getUrlParameter('user');
-                console.log(`📍 Looking for salesman with ID: ${currentSalesmanId}`);
-                
-                if (currentSalesmanId && salesmenData.length > 0) {
-                    // Try to find by szEmployeeId first (NIK)
-                    let salesmanRecord = salesmenData.find(s => s.szEmployeeId === currentSalesmanId);
-                    
-                    // If not found, try to find by szid (for backward compatibility)
-                    if (!salesmanRecord) {
-                        salesmanRecord = salesmenData.find(s => s.szid === currentSalesmanId);
-                        if (salesmanRecord) {
-                            currentSalesmanId = salesmanRecord.szEmployeeId;
-                        }
-                    }
-                    
-                    if (salesmanRecord) {
-                        currentSalesman = salesmanRecord.szname;
-                        document.getElementById('salesmanName').textContent = currentSalesman;
-                        console.log(`✅ Found salesman: ${currentSalesman} (Employee ID: ${currentSalesmanId})`);
-                        
-                        updateDebugInfo(`Salesman: ${currentSalesman}<br>ID: ${currentSalesmanId}`);
-                    } else {
-                        console.log(`⚠️ Salesman not found with ID: ${currentSalesmanId}`);
-                        // Fallback: try to get from session if URL param fails
-                        const currentUser = sessionStorage.getItem('currentUser');
-                        if (currentUser) {
-                            const fallbackRecord = salesmenData.find(s => s.szid === currentUser);
-                            if (fallbackRecord) {
-                                currentSalesman = fallbackRecord.szname;
-                                currentSalesmanId = fallbackRecord.szEmployeeId;
-                                document.getElementById('salesmanName').textContent = currentSalesman;
-                                console.log(`✅ Fallback found salesman: ${currentSalesman} (Employee ID: ${currentSalesmanId})`);
-                            }
-                        }
-                    }
-                } else {
-                    // Fallback: try to get from session storage
-                    const currentUser = sessionStorage.getItem('currentUser');
-                    if (currentUser && salesmenData.length > 0) {
-                        const salesmanRecord = salesmenData.find(s => s.szid === currentUser);
-                        if (salesmanRecord) {
-                            currentSalesman = salesmanRecord.szname;
-                            currentSalesmanId = salesmanRecord.szEmployeeId;
-                            document.getElementById('salesmanName').textContent = currentSalesman;
-                            console.log(`✅ Session fallback found salesman: ${currentSalesman} (Employee ID: ${currentSalesmanId})`);
-                        }
-                    }
-                }
-                
-                if (!currentSalesman) {
-                    document.getElementById('salesmanName').textContent = 'Unknown Salesman';
-                    console.log(`❌ No salesman found`);
-                }
-                
-            } catch (error) {
-                console.error('Error loading salesman data:', error);
+        function initializeSalesmanFromUrl() {
+            // Get salesman ID from URL parameter
+            currentSalesmanId = getUrlParameter('id') || getUrlParameter('user');
+            console.log(`📍 Current Salesman ID from URL: ${currentSalesmanId}`);
+            
+            if (currentSalesmanId) {
+                updateDebugInfo(`Salesman ID: ${currentSalesmanId}<br>Status: Ready`);
+            } else {
+                console.log(`⚠️ No salesman ID found in URL`);
                 document.getElementById('salesmanName').textContent = 'Unknown Salesman';
+            }
+        }
+
+        function updateSalesmanNameFromData() {
+            // Get salesman name from pelanggan data after it's loaded
+            if (currentSalesmanId && pelangganData.length > 0) {
+                const salesmanRecord = pelangganData.find(item => item.szEmployeeId === currentSalesmanId);
+                if (salesmanRecord) {
+                    currentSalesman = salesmanRecord.szname;
+                    document.getElementById('salesmanName').textContent = currentSalesman;
+                    console.log(`✅ Found salesman: ${currentSalesman} (Employee ID: ${currentSalesmanId})`);
+                    
+                    updateDebugInfo(`Salesman: ${currentSalesman}<br>ID: ${currentSalesmanId}`);
+                } else {
+                    console.log(`⚠️ Salesman not found with ID: ${currentSalesmanId}`);
+                    document.getElementById('salesmanName').textContent = 'Salesman Not Found';
+                }
             }
         }
 
@@ -997,6 +957,9 @@
                 
                 console.log(`✅ Loaded ${pelangganData.length} pelanggan records`);
                 
+                // Update salesman name after pelanggan data is loaded
+                updateSalesmanNameFromData();
+                
                 // Debug: Show sample data
                 if (pelangganData.length > 0) {
                     console.log('📋 Sample pelanggan data:', pelangganData[0]);
@@ -1055,11 +1018,11 @@
             
             // Find customer info from pelanggan data
             const customerDetail = pelangganData.find(item => {
-                const itemSalesman = (item.szname || '').toString().trim(); 
+                const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
                 const itemHari = normalizeHariFormat(item.Hari_Kunjungan);
                 const itemPelanggan = (item.Nama_Pelanggan || '').toString().trim();
                 
-                return itemSalesman.toLowerCase() === currentSalesman.toLowerCase() &&
+                return itemSalesmanId === currentSalesmanId &&
                        itemHari === selectedHari &&
                        itemPelanggan.toLowerCase() === selectedPelanggan.toLowerCase();
             });
@@ -1093,7 +1056,7 @@
             customerInfoDiv.style.display = 'none';
             
             console.log(`🔍 Updating pelanggan options for hari: ${hariSelect.value}`);
-            console.log(`🧑‍💼 Current salesman: ${currentSalesman}`);
+            console.log(`🧑‍💼 Current salesman ID: ${currentSalesmanId}`);
             console.log(`📊 Pelanggan data length: ${pelangganData.length}`);
             
             if (pelangganData.length === 0) {
@@ -1105,21 +1068,21 @@
                 return;
             }
 
-            if (currentSalesman && hariSelect.value) {
+            if (currentSalesmanId && hariSelect.value) {
                 const selectedHari = hariSelect.value.trim().toUpperCase();
                 
-                console.log(`🔎 Filtering for hari: ${selectedHari}, salesman: ${currentSalesman}`);
+                console.log(`🔎 Filtering for hari: ${selectedHari}, salesman ID: ${currentSalesmanId}`);
                 
-                // Filter pelanggan using szname instead of Nama_Salesman
+                // Filter pelanggan using szEmployeeId for more reliable matching
                 const filteredPelanggan = [...new Set(pelangganData
                     .filter(item => {
-                        const itemSalesman = (item.szname || '').toString().trim(); // ✅ FIXED: Use szname
+                        const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
                         const itemHari = normalizeHariFormat(item.Hari_Kunjungan);
                         
-                        const salesmanMatch = itemSalesman.toLowerCase() === currentSalesman.toLowerCase();
+                        const salesmanMatch = itemSalesmanId === currentSalesmanId;
                         const hariMatch = itemHari === selectedHari;
                         
-                        console.log(`Checking item: ${itemSalesman} vs ${currentSalesman}, ${itemHari} vs ${selectedHari}, matches: ${salesmanMatch && hariMatch}`);
+                        console.log(`Checking item: ${itemSalesmanId} vs ${currentSalesmanId}, ${itemHari} vs ${selectedHari}, matches: ${salesmanMatch && hariMatch}`);
                         
                         return salesmanMatch && hariMatch;
                     })
@@ -1168,7 +1131,7 @@
             const actualElement = document.getElementById('summaryActual');
             const gapElement = document.getElementById('summaryGap');
             
-            if (!currentSalesman || !hariSelect.value || !pelangganSelect.value) {
+            if (!currentSalesmanId || !hariSelect.value || !pelangganSelect.value) {
                 targetElement.textContent = '-';
                 actualElement.textContent = '-';
                 gapElement.textContent = '-';
@@ -1187,13 +1150,13 @@
             const selectedHari = hariSelect.value.trim().toUpperCase();
             const selectedPelanggan = pelangganSelect.value.trim();
             
-            // Filter data for the selected criteria using szname
+            // Filter data for the selected criteria using szEmployeeId
             const filteredDetails = pelangganData.filter(item => {
-                const itemSalesman = (item.szname || '').toString().trim(); // ✅ FIXED: Use szname
+                const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
                 const itemHari = normalizeHariFormat(item.Hari_Kunjungan);
                 const itemPelanggan = (item.Nama_Pelanggan || '').toString().trim();
                 
-                return itemSalesman.toLowerCase() === currentSalesman.toLowerCase() &&
+                return itemSalesmanId === currentSalesmanId &&
                        itemHari === selectedHari &&
                        itemPelanggan.toLowerCase() === selectedPelanggan.toLowerCase();
             });
@@ -1362,7 +1325,7 @@
                 return;
             }
             
-            if (!currentSalesman || !hariSelect.value || !pelangganSelect.value) {
+            if (!currentSalesmanId || !hariSelect.value || !pelangganSelect.value) {
                 tableBody.innerHTML = `
                     <tr>
                         <td colspan="9">
@@ -1380,13 +1343,13 @@
             const selectedHari = hariSelect.value.trim().toUpperCase();
             const selectedPelanggan = pelangganSelect.value.trim();
             
-            // Filter data using szname instead of Nama_Salesman
+            // Filter data using szEmployeeId instead of szname
             const filteredData = pelangganData.filter(item => {
-                const itemSalesman = (item.szname || '').toString().trim(); // ✅ FIXED: Use szname
+                const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
                 const itemHari = normalizeHariFormat(item.Hari_Kunjungan);
                 const itemPelanggan = (item.Nama_Pelanggan || '').toString().trim();
                 
-                const salesmanMatch = itemSalesman.toLowerCase() === currentSalesman.toLowerCase();
+                const salesmanMatch = itemSalesmanId === currentSalesmanId;
                 const hariMatch = itemHari === selectedHari;
                 const pelangganMatch = itemPelanggan.toLowerCase() === selectedPelanggan.toLowerCase();
                 
