@@ -271,28 +271,35 @@
             -webkit-overflow-scrolling: touch;
             position: relative;
             max-height: calc(100vh - 500px);
+            width: 100%;
+            scroll-behavior: smooth;
         }
 
         .table-container::-webkit-scrollbar {
-            width: 4px;
-            height: 4px;
+            width: 6px;
+            height: 6px;
         }
 
         .table-container::-webkit-scrollbar-track {
             background: #f1f5f9;
-            border-radius: 2px;
+            border-radius: 3px;
         }
 
         .table-container::-webkit-scrollbar-thumb {
             background: #cbd5e1;
-            border-radius: 2px;
+            border-radius: 3px;
+        }
+
+        .table-container::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
             font-size: 12px;
-            min-width: 700px;
+            min-width: 800px;
+            table-layout: auto;
         }
 
         th {
@@ -362,13 +369,13 @@
             z-index: 100;
         }
 
-        th:nth-child(1), td:nth-child(1) { left: 0; width: 30px; }
-        th:nth-child(2), td:nth-child(2) { left: 30px; width: 70px; }
-        th:nth-child(3), td:nth-child(3) { left: 100px; width: 60px; }
+        th:nth-child(1), td:nth-child(1) { left: 0; width: 35px; }
+        th:nth-child(2), td:nth-child(2) { left: 35px; width: 75px; }
+        th:nth-child(3), td:nth-child(3) { left: 110px; width: 65px; }
 
         th:nth-child(3), td:nth-child(3) {
             border-right: 2px solid #e2e8f0;
-            box-shadow: 2px 0 4px rgba(0,0,0,0.1);
+            box-shadow: 3px 0 5px rgba(0,0,0,0.15);
         }
 
         td {
@@ -609,12 +616,12 @@
                 gap: 8px;
             }
             
-            th:nth-child(1), td:nth-child(1) { width: 25px; }
-            th:nth-child(2), td:nth-child(2) { width: 60px; left: 25px; }
-            th:nth-child(3), td:nth-child(3) { width: 50px; left: 85px; }
+            th:nth-child(1), td:nth-child(1) { width: 30px; }
+            th:nth-child(2), td:nth-child(2) { width: 70px; left: 30px; }
+            th:nth-child(3), td:nth-child(3) { width: 60px; left: 100px; }
             
             table {
-                min-width: 600px;
+                min-width: 750px;
             }
             
             th, td {
@@ -624,6 +631,10 @@
             .sku-code {
                 font-size: 9px;
                 padding: 1px 3px;
+            }
+            
+            .table-container {
+                max-height: calc(100vh - 450px);
             }
         }
     </style>
@@ -767,6 +778,7 @@
         let hariData = [];
         let pelangganData = [];
         let detailsData = [];
+        let salesmanData = [];  // Add salesman data
         let currentFilteredData = [];
         let sortState = { column: null, direction: 'asc' };
         let currentSalesman = '';
@@ -855,15 +867,64 @@
         }
 
         function updateSalesmanNameFromData() {
-            // Get salesman name from pelanggan data after it's loaded
-            if (currentSalesmanId && pelangganData.length > 0) {
-                const salesmanRecord = pelangganData.find(item => item.szEmployeeId === currentSalesmanId);
+            // Get salesman name from salesman data after it's loaded
+            if (currentSalesmanId && salesmanData.length > 0) {
+                const salesmanRecord = salesmanData.find(item => item.szEmployeeId.toString() === currentSalesmanId);
                 if (salesmanRecord) {
                     currentSalesman = salesmanRecord.szname;
                     document.getElementById('salesmanName').textContent = currentSalesman;
                     console.log(`✅ Found salesman: ${currentSalesman} (Employee ID: ${currentSalesmanId})`);
                     
-                    updateDebugInfo(`Salesman: ${currentSalesman}<br>ID: ${currentSalesmanId}`);
+                    updateDebugInfo(`Salesman: ${currentSalesman}<br>ID: ${currentSalesmanId}<br>Type: ${salesmanRecord['Tipe Salesman']}<br>Dept: ${salesmanRecord.Dept}`);
+                } else {
+                    console.log(`⚠️ Salesman not found with ID: ${currentSalesmanId}`);
+                    document.getElementById('salesmanName').textContent = 'Salesman Not Found';
+                }
+            }
+        }
+
+        async function loadSalesmanData() {
+            try {
+                console.log('👤 Loading salesman data...');
+                const response = await fetch('data/d.salesman.json');
+                if (!response.ok) throw new Error('Failed to load salesman data');
+                
+                const content = await response.text();
+                
+                try {
+                    salesmanData = parseJSONL(content);
+                } catch (jsonlError) {
+                    salesmanData = JSON.parse(content);
+                }
+                
+                console.log(`✅ Loaded ${salesmanData.length} salesman records`);
+                
+                // Update salesman name after salesman data is loaded
+                updateSalesmanNameFromData();
+                
+                // Debug: Show sample data
+                if (salesmanData.length > 0) {
+                    console.log('📋 Sample salesman data:', salesmanData[0]);
+                }
+                
+            } catch (error) {
+                console.error('Error loading salesman data:', error);
+                // Fallback to pelanggan data if salesman data fails
+                console.log('🔄 Fallback: Using pelanggan data for salesman name');
+                updateSalesmanNameFromPelangganData();
+            }
+        }
+
+        function updateSalesmanNameFromPelangganData() {
+            // Fallback method using pelanggan data
+            if (currentSalesmanId && pelangganData.length > 0) {
+                const salesmanRecord = pelangganData.find(item => item.szEmployeeId === currentSalesmanId);
+                if (salesmanRecord) {
+                    currentSalesman = salesmanRecord.szName;
+                    document.getElementById('salesmanName').textContent = currentSalesman;
+                    console.log(`✅ Fallback - Found salesman: ${currentSalesman} (Employee ID: ${currentSalesmanId})`);
+                    
+                    updateDebugInfo(`Salesman: ${currentSalesman}<br>ID: ${currentSalesmanId}<br>Source: Fallback`);
                 } else {
                     console.log(`⚠️ Salesman not found with ID: ${currentSalesmanId}`);
                     document.getElementById('salesmanName').textContent = 'Salesman Not Found';
@@ -887,13 +948,9 @@
                 
                 console.log(`✅ Loaded ${pelangganData.length} pelanggan records`);
                 
-                // Update salesman name after pelanggan data is loaded
-                updateSalesmanNameFromData();
-                
                 // Debug: Show sample data
                 if (pelangganData.length > 0) {
                     console.log('📋 Sample pelanggan data:', pelangganData[0]);
-                    updateDebugInfo(`Pelanggan: ${pelangganData.length} rows<br>Sample: ${JSON.stringify(pelangganData[0]).substring(0, 100)}...`);
                 }
                 
             } catch (error) {
@@ -1093,7 +1150,10 @@
                         const salesmanMatch = itemSalesmanId === currentSalesmanId;
                         const hariMatch = itemHari === selectedHari;
                         
-                        console.log(`Checking item: ${itemSalesmanId} vs ${currentSalesmanId}, ${itemHari} vs ${selectedHari}, matches: ${salesmanMatch && hariMatch}`);
+                        // Only log mismatches in debug mode
+                        if (debugMode && !(salesmanMatch && hariMatch)) {
+                            console.log(`Debug: ${itemSalesmanId} vs ${currentSalesmanId}, ${itemHari} vs ${selectedHari}, matches: false`);
+                        }
                         
                         return salesmanMatch && hariMatch;
                     })
@@ -1196,9 +1256,9 @@
             });
             
             // 5. Update display
-			targetElement.textContent = Math.round(totalTarget).toLocaleString();
-			actualElement.textContent = Math.round(totalActual).toLocaleString();
-			gapElement.textContent = (totalGap > 0 ? '+' : '') + Math.round(totalGap).toLocaleString();
+            targetElement.textContent = Math.round(totalTarget).toLocaleString();
+            actualElement.textContent = Math.round(totalActual).toLocaleString();
+            gapElement.textContent = (totalGap > 0 ? '+' : '') + Math.round(totalGap).toLocaleString();
             
             // Update gap styling
             gapElement.className = totalGap > 0 ? 'summary-value positive' : 
@@ -1464,7 +1524,8 @@
                 console.log('🚀 Starting data initialization...');
                 
                 initializeSalesmanFromUrl(); // Get salesman ID from URL
-                await loadPelangganData(); // Load pelanggan data (which will update salesman name)
+                await loadSalesmanData(); // Load salesman data first (faster, smaller file)
+                await loadPelangganData(); // Load pelanggan data
                 await loadHariData(); // Load hari data (with fallback to pelanggan data)
                 await loadDetailsData(); // Load details for additional info
                 
@@ -1495,11 +1556,11 @@
         // ===== PAGE LOAD =====
         window.onload = function() {
             if (!checkLoginStatus()) return;
-            console.log('📱 Starting Visit Outlet - Simplified Version...');
+            console.log('📱 Starting Visit Outlet - Optimized Version...');
             initializeData();
         };
 
-        console.log('✅ Visit Outlet script loaded - Simplified version without d.salesman.json dependency');
+        console.log('✅ Visit Outlet script loaded - Optimized version using d.salesman.json for header display');
     </script>
 </body>
 </html>
