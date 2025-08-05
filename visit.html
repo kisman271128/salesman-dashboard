@@ -415,7 +415,35 @@
             border-radius: 4px;
             font-size: 10px;
             font-weight: 600;
-            color: #000000;
+            color: #374151;
+        }
+
+        /* 🔥 TPOM SKU STYLING - WARNA MERAH */
+        .sku-code.tpom-sku {
+            background: linear-gradient(135deg, #dc2626, #ef4444) !important;
+            color: white !important;
+            font-weight: 700 !important;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3) !important;
+            border: 1px solid #b91c1c !important;
+            animation: tpom-glow 2s ease-in-out infinite alternate;
+        }
+
+        /* Animasi glow untuk SKU TPOM */
+        @keyframes tpom-glow {
+            from { box-shadow: 0 2px 4px rgba(220, 38, 38, 0.3); }
+            to { box-shadow: 0 2px 8px rgba(220, 38, 38, 0.6), 0 0 0 1px rgba(220, 38, 38, 0.2); }
+        }
+
+        /* Row untuk SKU missing dari TPOM */
+        .missing-sku-row {
+            background: linear-gradient(135deg, #fef3c7, #fde68a) !important;
+            border: 2px solid #f59e0b !important;
+        }
+
+        .missing-sku-row td {
+            background: linear-gradient(135deg, #fef3c7, #fde68a) !important;
+            font-style: italic !important;
+            color: #92400e !important;
         }
 
         .promo-tag {
@@ -444,6 +472,20 @@
         }
         .promo-solmed { 
             background: linear-gradient(135deg, #d97706, #f59e0b);
+        }
+        .promo-rans { 
+            background: linear-gradient(135deg, #dc3545, #e74c3c) !important;
+        }
+
+        /* Promo tag untuk TPOM */
+        .promo-tpom { 
+            background: linear-gradient(135deg, #7c3aed, #8b5cf6) !important;
+            position: relative;
+        }
+
+        .promo-tpom::after {
+            content: " ✨";
+            font-size: 8px;
         }
 
         .recommendation {
@@ -719,7 +761,7 @@
 
             <!-- Table Section -->
             <div class="table-section">
-                <div class="section-title">List SKU :</div>
+                <div class="section-title">Visit Data :</div>
                 <div class="table-wrapper">
                     <div class="table-container">
                         <table id="dataTable">
@@ -778,7 +820,8 @@
         let hariData = [];
         let pelangganData = [];
         let detailsData = [];
-        let salesmanData = [];  // Add salesman data
+        let salesmanData = [];
+        let tpomData = []; // 🔥 TPOM DATA
         let currentFilteredData = [];
         let sortState = { column: null, direction: 'asc' };
         let currentSalesman = '';
@@ -850,6 +893,91 @@
 
         function showMainContent(show) {
             document.getElementById('mainContent').style.display = show ? 'block' : 'none';
+        }
+
+        // ===== 🔥 TPOM DATA LOADING FUNCTIONS =====
+        async function loadTpomData() {
+            try {
+                console.log('📋 Loading TPOM data...');
+                const response = await fetch('data/d.tpom.json');
+                if (!response.ok) throw new Error('Failed to load TPOM data');
+                
+                const content = await response.text();
+                
+                try {
+                    tpomData = parseJSONL(content);
+                } catch (jsonlError) {
+                    tpomData = JSON.parse(content);
+                }
+                
+                console.log(`✅ Loaded ${tpomData.length} TPOM records`);
+                
+                // Debug: Show sample and unique data
+                if (tpomData.length > 0) {
+                    console.log('📋 Sample TPOM data:', tpomData[0]);
+                    
+                    const uniqueSKUs = [...new Set(tpomData.map(item => item.SKU))];
+                    const uniqueSalesman = [...new Set(tpomData.map(item => ({
+                        nik: item.NIK,
+                        nama: item['Nama Salesman']
+                    })))];
+                    
+                    console.log('🔍 Unique SKUs in TPOM:', uniqueSKUs);
+                    console.log('👥 Unique Salesman in TPOM:', uniqueSalesman);
+                }
+                
+            } catch (error) {
+                console.error('❌ Error loading TPOM data:', error);
+            }
+        }
+
+        // ===== 🔥 TPOM HELPER FUNCTIONS =====
+        function getTPOMSKUsForSalesman(salesmanId) {
+            if (!tpomData.length || !salesmanId) {
+                console.log('⚠️ No TPOM data or salesman ID');
+                return [];
+            }
+            
+            // Convert salesmanId to number untuk matching
+            const salesmanIdNum = parseInt(salesmanId);
+            
+            console.log(`🔍 Looking for TPOM SKUs for salesman: ${salesmanId} (${salesmanIdNum})`);
+            
+            // Filter TPOM data berdasarkan NIK salesman
+            const salesmanTPOM = tpomData.filter(item => {
+                const itemNIK = parseInt(item.NIK);
+                const match = itemNIK === salesmanIdNum;
+                
+                if (match) {
+                    console.log(`✅ Found TPOM record: ${item['Nama Salesman']} - ${item.SKU}`);
+                }
+                
+                return match;
+            });
+            
+            // Ambil semua SKU unik untuk salesman ini
+            const tpomSKUs = [...new Set(salesmanTPOM
+                .map(item => item.SKU)
+                .filter(sku => sku && sku.trim() !== '')
+            )];
+            
+            console.log(`🎯 TPOM SKUs for salesman ${salesmanId}:`, tpomSKUs);
+            console.log(`📊 Total TPOM records for this salesman: ${salesmanTPOM.length}`);
+            
+            return tpomSKUs;
+        }
+
+        function isSKUInTPOM(sku, salesmanId) {
+            const tpomSKUs = getTPOMSKUsForSalesman(salesmanId);
+            const isInTPOM = tpomSKUs.includes(sku);
+            
+            if (isInTPOM) {
+                console.log(`🔴 SKU ${sku} IS in TPOM for salesman ${salesmanId}`);
+            } else {
+                console.log(`⚪ SKU ${sku} is NOT in TPOM for salesman ${salesmanId}`);
+            }
+            
+            return isInTPOM;
         }
 
         // ===== DATA LOADING FUNCTIONS =====
@@ -1312,6 +1440,7 @@
             }
         }
 
+        // ===== 🔥 UPDATED RENDER TABLE DATA WITH TPOM INTEGRATION =====
         function renderTableData(data) {
             const tableBody = document.getElementById('tableBody');
             
@@ -1331,7 +1460,11 @@
             
             let html = '';
             let totalPlan = 0, totalMTD = 0;
+            const existingSKUs = new Set(); // Track SKU yang sudah ada
             
+            console.log(`🔄 Rendering ${data.length} rows, checking TPOM for salesman: ${currentSalesmanId}`);
+            
+            // Render data existing
             data.forEach((item, index) => {
                 const no = index + 1;
                 const promo = item.Promo || "Others";
@@ -1343,6 +1476,9 @@
                 const gap = Number(item.Gap) || (mtd - plan);
                 const rekomendasi = generateRecommendation(gap, plan, mtd);
                 
+                // Track existing SKUs
+                existingSKUs.add(sku);
+                
                 totalPlan += plan;
                 totalMTD += mtd;
                 
@@ -1350,11 +1486,17 @@
                 const gapBadgeClass = gap > 0 ? 'gap-positive' : gap < 0 ? 'gap-negative' : 'gap-neutral';
                 const promoClass = `promo-${promo.toLowerCase().replace(/\s+/g, '')}`;
                 
+                // 🔥 CEK APAKAH SKU ADA DI TPOM (FIXED)
+                const isTpomSKU = currentSalesmanId ? isSKUInTPOM(sku, currentSalesmanId) : false;
+                const skuClass = isTpomSKU ? 'sku-code tpom-sku' : 'sku-code';
+                
+                console.log(`📊 Row ${no}: SKU=${sku}, TPOM=${isTpomSKU ? '🔴' : '⚪'}`);
+                
                 html += `
                     <tr>
                         <td>${no}</td>
                         <td><span class="promo-tag ${promoClass}">${promo}</span></td>
-                        <td><span class="sku-code">${sku}</span></td>
+                        <td><span class="${skuClass}">${sku}</span></td>
                         <td>${threeLM.toFixed(2)}</td>
                         <td>${lm.toFixed(2)}</td>
                         <td class="metric-value">${plan.toFixed(2)}</td>
@@ -1365,6 +1507,36 @@
                 `;
             });
             
+            // 🔥 TAMBAHKAN SKU MISSING DARI TPOM (FIXED)
+            if (currentSalesmanId) {
+                const tpomSKUs = getTPOMSKUsForSalesman(currentSalesmanId);
+                const missingSKUs = tpomSKUs.filter(sku => !existingSKUs.has(sku));
+                
+                if (missingSKUs.length > 0) {
+                    console.log(`📋 Adding ${missingSKUs.length} missing TPOM SKUs:`, missingSKUs);
+                    
+                    missingSKUs.forEach((sku, index) => {
+                        const no = data.length + index + 1;
+                        html += `
+                            <tr class="missing-sku-row">
+                                <td>${no}</td>
+                                <td><span class="promo-tag promo-tpom">POM</span></td>
+                                <td><span class="sku-code tpom-sku">${sku}</span></td>
+                                <td>0.00</td>
+                                <td>0.00</td>
+                                <td class="metric-value">0.00</td>
+                                <td class="metric-value">0.00</td>
+                                <td><span class="gap-badge gap-neutral">0.00</span></td>
+                                <td><span class="recommendation">TPOM Only</span></td>
+                            </tr>
+                        `;
+                    });
+                } else {
+                    console.log('✅ No missing TPOM SKUs - all covered in visit data');
+                }
+            }
+            
+            // Total row
             const totalGap = totalMTD - totalPlan;
             const totalGapBadgeClass = totalGap > 0 ? 'gap-positive' : totalGap < 0 ? 'gap-negative' : 'gap-neutral';
             
@@ -1383,6 +1555,8 @@
             `;
             
             tableBody.innerHTML = html;
+            
+            console.log('✅ Table rendered with TPOM integration');
         }
 
         function updateTable() {
@@ -1515,7 +1689,7 @@
             }
         }
 
-        // ===== INITIALIZE =====
+        // ===== 🔥 UPDATED INITIALIZE WITH TPOM =====
         async function initializeData() {
             try {
                 showLoading(true);
@@ -1528,8 +1702,16 @@
                 await loadPelangganData(); // Load pelanggan data
                 await loadHariData(); // Load hari data (with fallback to pelanggan data)
                 await loadDetailsData(); // Load details for additional info
+                await loadTpomData(); // 🔥 LOAD TPOM DATA
                 
                 console.log('✅ All data loaded successfully');
+                console.log(`🎯 Current salesman ID: ${currentSalesmanId}`);
+                
+                // Test TPOM integration immediately
+                if (currentSalesmanId && tpomData.length > 0) {
+                    const testTPOMSKUs = getTPOMSKUsForSalesman(currentSalesmanId);
+                    console.log(`🧪 TEST: TPOM SKUs for current salesman:`, testTPOMSKUs);
+                }
                 
                 // Enable dropdowns
                 ['hari', 'pelanggan'].forEach(id => {
@@ -1541,7 +1723,7 @@
                 showMainContent(true);
                 
             } catch (error) {
-                console.error('Error loading data:', error);
+                console.error('❌ Error loading data:', error);
                 showLoading(false);
                 showError(true, error.message);
                 
@@ -1556,11 +1738,11 @@
         // ===== PAGE LOAD =====
         window.onload = function() {
             if (!checkLoginStatus()) return;
-            console.log('📱 Starting Visit Outlet - Optimized Version...');
+            console.log('📱 Starting Visit Outlet with TPOM Integration...');
             initializeData();
         };
 
-        console.log('✅ Visit Outlet script loaded - Optimized version using d.salesman.json for header display');
+        console.log('✅ Visit Outlet script loaded with TPOM integration');
     </script>
 </body>
 </html>
