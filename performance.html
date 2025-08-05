@@ -629,9 +629,22 @@
                                     <th class="col-wide value-currency">Gap</th>
                                 </tr>
                             </thead>
-                            <tbody id="pomTableBody"></tbody>
+                            <tbody id="pomTableBody">
+                                <tr>
+                                    <td colspan="6" class="empty-state">
+                                        <div class="icon">⏳</div>
+                                        <div>Loading POM data...</div>
+                                    </td>
+                                </tr>
+                            </tbody>
                         </table>
                     </div>
+                </div>
+                
+                <!-- Debug Info Panel -->
+                <div style="margin: 16px; padding: 12px; background: #f8fafc; border-radius: 8px; font-size: 11px; display: none;" id="pomDebugPanel">
+                    <strong>🔍 Debug Info:</strong>
+                    <div id="pomDebugInfo" style="margin-top: 4px; color: #64748b;"></div>
                 </div>
             </div>
         </div>
@@ -769,8 +782,26 @@
             try {
                 const pomText = await loadFile('d.tpom.json');
                 pomData = parseJSONLines(pomText);
-            } catch {
-                console.warn('POM data not found');
+                console.log('✅ POM data loaded successfully:', pomData.length, 'records');
+                if (pomData.length > 0) {
+                    console.log('📋 Sample POM data structure:', Object.keys(pomData[0]));
+                }
+            } catch (error) {
+                console.warn('❌ POM data loading failed:', error.message);
+                console.log('🔍 Trying alternative POM file names...');
+                
+                // Try alternative file names
+                const alternativeNames = ['d.pom.json', 'pom.json', 'd.tpom.jsonl'];
+                for (const altName of alternativeNames) {
+                    try {
+                        const altText = await loadFile(altName);
+                        pomData = parseJSONLines(altText);
+                        console.log('✅ POM data loaded from alternative file:', altName, pomData.length, 'records');
+                        break;
+                    } catch (altError) {
+                        console.log('❌ Alternative file', altName, 'not found');
+                    }
+                }
             }
         }
 
@@ -974,11 +1005,85 @@
         }
 
         function updatePOMTable(salesmanName) {
-            const salesmanPOMData = pomData.filter(item => item.szname === salesmanName);
             const tbody = document.getElementById('pomTableBody');
+            const debugPanel = document.getElementById('pomDebugPanel');
+            const debugInfo = document.getElementById('pomDebugInfo');
+            
+            // Debug logging
+            console.log('🔍 POM Debug Info:');
+            console.log('- POM data length:', pomData.length);
+            console.log('- Salesman name:', salesmanName);
+            console.log('- Current salesman ID:', currentSalesmanId);
+            
+            let debugText = `
+                • Total POM records: ${pomData.length}<br>
+                • Salesman: ${salesmanName}<br>
+                • Salesman ID: ${currentSalesmanId}<br>
+            `;
+            
+            if (pomData.length > 0) {
+                console.log('- Sample POM data:', pomData[0]);
+                console.log('- Available salesman names:', [...new Set(pomData.map(item => item['Nama Salesman']))]);
+                const sampleData = pomData[0];
+                debugText += `• Sample fields: ${Object.keys(sampleData).join(', ')}<br>`;
+                debugText += `• Available names: ${[...new Set(pomData.map(item => item['Nama Salesman']))].slice(0, 5).join(', ')}...<br>`;
+            }
+            
+            // Try multiple filtering approaches with CORRECT field names
+            let salesmanPOMData = [];
+            let filterMethod = '';
+            
+            // Method 1: Exact match using "Nama Salesman" field
+            salesmanPOMData = pomData.filter(item => item['Nama Salesman'] === salesmanName);
+            if (salesmanPOMData.length > 0) filterMethod = 'Exact name match (Nama Salesman)';
+            
+            // Method 2: Case insensitive match if Method 1 fails
+            if (salesmanPOMData.length === 0) {
+                salesmanPOMData = pomData.filter(item => 
+                    (item['Nama Salesman'] || '').toLowerCase() === (salesmanName || '').toLowerCase()
+                );
+                if (salesmanPOMData.length > 0) filterMethod = 'Case insensitive match (Nama Salesman)';
+            }
+            
+            // Method 3: Try with NIK (Employee ID) if we have currentSalesmanId
+            if (salesmanPOMData.length === 0 && currentSalesmanId) {
+                salesmanPOMData = pomData.filter(item => 
+                    item.NIK && item.NIK.toString() === currentSalesmanId.toString()
+                );
+                if (salesmanPOMData.length > 0) filterMethod = 'Employee ID match (NIK)';
+            }
+            
+            // Method 4: Partial name match as last resort
+            if (salesmanPOMData.length === 0 && salesmanName) {
+                salesmanPOMData = pomData.filter(item => 
+                    (item['Nama Salesman'] || '').includes(salesmanName) || 
+                    (salesmanName || '').includes(item['Nama Salesman'] || '')
+                );
+                if (salesmanPOMData.length > 0) filterMethod = 'Partial name match (Nama Salesman)';
+            }
+            
+            debugText += `• Filter method: ${filterMethod || 'No match found'}<br>`;
+            debugText += `• Filtered records: ${salesmanPOMData.length}`;
+            
+            console.log('- Filtered POM data length:', salesmanPOMData.length);
+            console.log('- Filter method used:', filterMethod);
+            
+            // Show debug panel
+            if (debugInfo) debugInfo.innerHTML = debugText;
+            if (debugPanel) debugPanel.style.display = 'block';
             
             if (salesmanPOMData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><div class="icon">📋</div><div>No POM data available</div></td></tr>';
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="empty-state">
+                            <div class="icon">📋</div>
+                            <div>No POM data found for ${salesmanName}</div>
+                            <small style="color: #64748b; margin-top: 8px; display: block;">
+                                Check Console (F12) for detailed debug info
+                            </small>
+                        </td>
+                    </tr>
+                `;
                 return;
             }
 
@@ -988,12 +1093,14 @@
                 const actual = parseFloat(item['A.POM'] || 0);
                 const gap = actual - target;
                 const gapClass = gap >= 0 ? 'value-positive' : 'value-negative';
+                
+                // Use Ach_POM field from the actual data structure
                 const achPercentage = Math.round((item['Ach_POM'] || 0) * 100);
                 
                 html += `
                     <tr>
                         <td class="sticky-col pom-sku-col col-text">
-                            <strong style="font-size: 10px;">${item.SKU || ''}</strong>
+                            <strong style="font-size: 10px;">${item.SKU || 'N/A'}</strong>
                         </td>
                         <td class="col-narrow">${item['CR JKS'] || 0}</td>
                         <td class="value-currency col-wide">${formatCurrencyIndonesia(target)}</td>
@@ -1005,6 +1112,12 @@
             });
 
             tbody.innerHTML = html;
+            console.log('✅ POM table updated with', salesmanPOMData.length, 'records');
+            
+            // Hide debug panel if data found
+            if (debugPanel && salesmanPOMData.length > 0) {
+                debugPanel.style.display = 'none';
+            }
         }
 
         // ===== STICKY COLUMN ADJUSTMENT =====
@@ -1066,10 +1179,16 @@
                 // Show/hide tabs based on data availability
                 ['channel', 'project', 'pareto', 'pom'].forEach(tabName => {
                     const tab = document.querySelector(`[onclick="switchTab('${tabName}')"]`);
+                    
+                    // For POM, always show the tab for debugging purposes
+                    if (tabName === 'pom') {
+                        if (tab) tab.style.display = 'block';
+                        return;
+                    }
+                    
                     const hasData = tabName === 'channel' ? channelProjData.length > 0 :
                                    tabName === 'project' ? projectData.length > 0 :
-                                   tabName === 'pareto' ? paretoData.length > 0 :
-                                   tabName === 'pom' ? pomData.length > 0 : false;
+                                   tabName === 'pareto' ? paretoData.length > 0 : false;
                     if (tab) tab.style.display = hasData ? 'block' : 'none';
                 });
 
