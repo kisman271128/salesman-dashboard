@@ -1122,6 +1122,25 @@
             return true;
         }
 
+        // 🔄 ADDED: Parse JSONL function for performance data
+        function parseJSONL(content) {
+            const lines = content.trim().split('\n');
+            const data = [];
+            
+            lines.forEach((line, index) => {
+                try {
+                    if (line.trim()) {
+                        const obj = JSON.parse(line.trim());
+                        data.push(obj);
+                    }
+                } catch (error) {
+                    console.error(`Error parsing line ${index + 1}:`, line, error);
+                }
+            });
+            
+            return data;
+        }
+
         // Load dashboard data from JSON
         async function loadDashboardData() {
             try {
@@ -1130,10 +1149,10 @@
 
                 console.log('🔄 Loading dashboard data...');
                 
-                // Load all data files
+                // Load all data files - UPDATED to use d.performance.json
                 const responses = await Promise.all([
                     fetch('data/dashboard.json'),
-                    fetch('data/salesman_list.json'),
+                    fetch('data/d.performance.json'),  // 🔄 CHANGED: Using d.performance.json
                     fetch('data/chart_data.json')
                 ]);
 
@@ -1144,19 +1163,23 @@
                     }
                 }
 
-                // Parse JSON data
-                [dashboardData, salesmanData, chartData] = await Promise.all(
-                    responses.map(response => response.json())
-                );
+                // Parse JSON data - UPDATED to handle JSONL format for performance data
+                dashboardData = await responses[0].json();
+                
+                // 🔄 PARSE d.performance.json as JSONL format
+                const performanceText = await responses[1].text();
+                salesmanData = parseJSONL(performanceText);
+                
+                chartData = await responses[2].json();
 
                 console.log('✅ Dashboard data loaded:', dashboardData);
-                console.log('✅ Salesman data loaded:', salesmanData);
+                console.log('✅ Performance data loaded:', salesmanData);
                 console.log('✅ Chart data loaded:', chartData);
 
                 // Update UI with loaded data
                 updateHeader(dashboardData);
                 updateLOBCards(dashboardData.lob_cards);
-                updateSalesmanList(salesmanData);
+                updateSalesmanList(salesmanData);  // Now using performance data
                 updateModernChart(chartData);
 
                 showLoading(false);
@@ -1704,38 +1727,61 @@
             console.log('✅ Chart stats updated with Indonesia format');
         }
 
-        // ✅ UPDATE SALESMAN LIST dengan click handler untuk detail dan STATUS LOGIC YANG DIPERBAIKI
-        function updateSalesmanList(salesmanList) {
+        // ✅ UPDATE SALESMAN LIST menggunakan d.performance.json dengan format yang tepat
+        function updateSalesmanList(performanceList) {
             const salesmanListElement = document.getElementById('salesmanList');
             salesmanListElement.innerHTML = '';
 
-            console.log('🎯 Updating salesman list with new status logic...');
+            console.log('🎯 Updating salesman list from d.performance.json with new status logic...');
 
-            salesmanList.forEach((salesman, index) => {
-                // ✅ Parse achievement percentage and determine correct status
-                const achievementPercentage = parseAchievementPercentage(salesman.achievement);
+            // 🔄 Sort by Rank (ascending) to maintain proper ranking order
+            const sortedPerformanceList = [...performanceList].sort((a, b) => a.Rank - b.Rank);
+
+            sortedPerformanceList.forEach((salesman, index) => {
+                // 🔄 Convert Ach from decimal to percentage (e.g., 0.0774810818 → 7.75%)
+                const achievementPercentage = Math.round((salesman.Ach || 0) * 100);
+                const achievementDisplay = `${achievementPercentage}%`;
+                
+                // 🔄 Calculate status based on achievement percentage
                 const calculatedStatus = determineStatusFromAchievement(achievementPercentage);
                 
-                // ✅ Override the status with calculated status
-                const updatedSalesman = {
-                    ...salesman,
-                    status: calculatedStatus
+                // 🔄 Format monetary values to Indonesia format
+                const targetFormatted = formatCurrencyIndonesia(salesman.Target);
+                const actualFormatted = formatCurrencyIndonesia(salesman.Actual);
+                const gapFormatted = formatCurrencyIndonesia(salesman.Gap);
+                
+                // 🔄 Create salesman object with proper structure for createSalesmanItem
+                const formattedSalesman = {
+                    id: salesman.szEmployeeId,
+                    name: salesman.szname,
+                    type: salesman['Tipe Salesman'],
+                    achievement: achievementDisplay,
+                    status: calculatedStatus,
+                    rank: salesman.Rank,
+                    target: targetFormatted,
+                    actual: actualFormatted,
+                    gap: gapFormatted,
+                    achPercentage: achievementPercentage
                 };
                 
-                console.log(`📋 ${salesman.name}: ${salesman.achievement} → Status: ${calculatedStatus}`);
+                console.log(`📋 ${salesman.szname}: ${achievementDisplay} (${salesman.Ach}) → Status: ${calculatedStatus}, Rank: ${salesman.Rank}`);
                 
-                const item = createSalesmanItem(updatedSalesman, index);
+                const item = createSalesmanItem(formattedSalesman, index);
                 salesmanListElement.appendChild(item);
             });
             
-            console.log('✅ Salesman list updated with corrected status logic');
+            console.log('✅ Salesman list updated from d.performance.json with corrected status logic');
         }
 
+        // 🔄 ENHANCED: createSalesmanItem dengan data performance dan hover tooltip
         function createSalesmanItem(salesman, index) {
             const item = document.createElement('div');
             item.className = 'salesman-item';
             
             const statusClass = getStatusClass(salesman.status);
+            
+            // 🔄 Enhanced dengan tooltip untuk menampilkan detail performance
+            item.title = `Target: ${salesman.target}\nActual: ${salesman.actual}\nGap: ${salesman.gap}`;
             
             item.innerHTML = `
                 <div class="rank-number">${salesman.rank}</div>
@@ -1743,20 +1789,23 @@
                     <div class="salesman-avatar" data-nik="${salesman.id}">
                         <img src="photos/${salesman.id}.jpg" 
                              alt="${salesman.name}" 
-                             style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+                             style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;"
+                             onerror="this.style.display='none'; this.parentElement.textContent='${salesman.name.charAt(0).toUpperCase()}';">
                     </div>
                     <div class="salesman-details">
                         <h4>${salesman.name}</h4>
                         <p>${salesman.type}</p>
+                        <p style="font-size: 10px; color: #95a5a6; margin-top: 2px;">Target: ${salesman.target}</p>
                     </div>
                 </div>
                 <div class="salesman-amount">
                     <div class="amount">${salesman.achievement}</div>
                     <div class="status ${statusClass}">${salesman.status}</div>
+                    <div style="font-size: 10px; color: #7f8c8d; margin-top: 2px;">Actual: ${salesman.actual}</div>
                 </div>
             `;
 
-            // ✅ CLICK HANDLER untuk navigasi ke detail
+            // ✅ CLICK HANDLER untuk navigasi ke detail dengan ID yang benar
             item.addEventListener('click', () => {
                 console.log(`🔍 Clicking salesman: ${salesman.name} (ID: ${salesman.id})`);
                 openSalesmanDetail(salesman.id);
@@ -1776,9 +1825,9 @@
             }
         }
 
-        // ✅ NAVIGATION FUNCTIONS
+        // ✅ NAVIGATION FUNCTIONS - Updated untuk menggunakan salesman-details.html
         function openSalesmanDetail(salesmanId) {
-            console.log(`🚀 Navigating to salesman detail: ${salesmanId}`);
+            console.log(`🚀 Navigating to salesman detail for salesman: ${salesmanId}`);
             window.location.href = `salesman-detail.html?id=${salesmanId}`;
         }
 
@@ -1796,7 +1845,7 @@
         }
 
         function showPerformance() {
-            alert('🔍 Klik terlebih dahulu, pada nama salesman yang ingin anda lihat performancenya ..');
+            alert('📊 Performance data is now live!\n\n🔍 Klik pada nama salesman untuk melihat detail Visit Outlet mereka.\n\nData diambil dari d.performance.json dengan ranking dan achievement real-time.');
         }
 
         function showProfile() {
@@ -1838,11 +1887,12 @@
                 return;
             }
 
-            console.log('🚀 Initializing dashboard with Indonesia format, target=0 → 100% logic, and corrected status criteria...');
+            console.log('🚀 Initializing dashboard with d.performance.json data, Indonesia format, target=0 → 100% logic, and corrected status criteria...');
             console.log('📊 STATUS CRITERIA: Extra Effort <90%, Good ≥90%, Very Good ≥100%, Excellent ≥110%');
+            console.log('📋 DATA SOURCE: d.performance.json (Real performance data with ranking)');
             loadDashboardData();
             startAutoRefresh();
-            console.log('✅ Dashboard initialized with all enhanced features');
+            console.log('✅ Dashboard initialized with all enhanced features and performance data');
         });
 
         // Handle offline/online status
