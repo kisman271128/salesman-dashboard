@@ -1321,7 +1321,7 @@
             updateSummary();
         }
 
-        // ===== SUMMARY UPDATE FUNCTION =====
+        // ===== SUMMARY UPDATE FUNCTION (FIXED FOR SALESMAN FILTERING) =====
         function updateSummary() {
             const hariSelect = document.getElementById('hari');
             const pelangganSelect = document.getElementById('pelanggan');
@@ -1349,6 +1349,8 @@
             const selectedHari = hariSelect.value.trim().toUpperCase();
             const selectedPelanggan = pelangganSelect.value.trim();
             
+            console.log(`🔍 Summary filtering for: Salesman=${currentSalesmanId}, Hari=${selectedHari}, Pelanggan=${selectedPelanggan}`);
+            
             // 1. Get all Kode_Pelanggan for the selected criteria from skupelanggan data
             const matchingPelangganRecords = pelangganData.filter(item => {
                 const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
@@ -1366,11 +1368,31 @@
                 .filter(kode => kode && kode.trim() !== '')
             )];
             
-            // 3. Find matching records in d.details.json using Kode_Pelanggan
+            console.log(`📋 Found ${kodePelangganList.length} Kode_Pelanggan for this salesman: ${kodePelangganList.join(', ')}`);
+            
+            // 🔥 3. FIXED: Filter d.details.json by BOTH Kode_Pelanggan AND Salesman
             const matchingDetailsRecords = detailsData.filter(item => {
                 const itemKodePelanggan = (item.Kode_Pelanggan || '').toString().trim();
-                return kodePelangganList.includes(itemKodePelanggan);
+                const itemSalesmanId = (item.szEmployeeId || item.NIK || '').toString().trim();
+                
+                // Must match both Kode_Pelanggan and Salesman
+                const kodePelangganMatch = kodePelangganList.includes(itemKodePelanggan);
+                const salesmanMatch = itemSalesmanId === currentSalesmanId;
+                
+                const isMatch = kodePelangganMatch && salesmanMatch;
+                
+                if (kodePelangganMatch && !salesmanMatch) {
+                    console.log(`⚠️ Found Kode_Pelanggan ${itemKodePelanggan} but different salesman: ${itemSalesmanId} vs ${currentSalesmanId}`);
+                }
+                
+                if (isMatch) {
+                    console.log(`✅ Details match: Kode=${itemKodePelanggan}, Salesman=${itemSalesmanId}, Target=${item['T.MTD']}, Actual=${item['A.MTD']}`);
+                }
+                
+                return isMatch;
             });
+            
+            console.log(`📊 Found ${matchingDetailsRecords.length} matching detail records for this specific salesman`);
             
             // 4. Calculate totals using T.MTD, A.MTD, and Gap MTD from d.details.json
             let totalTarget = 0;
@@ -1378,9 +1400,15 @@
             let totalGap = 0;
             
             matchingDetailsRecords.forEach(item => {
-                totalTarget += Number(item['T.MTD'] || 0);
-                totalActual += Number(item['A.MTD'] || 0);
-                totalGap += Number(item['Gap MTD'] || 0);
+                const target = Number(item['T.MTD'] || 0);
+                const actual = Number(item['A.MTD'] || 0);
+                const gap = Number(item['Gap MTD'] || 0);
+                
+                totalTarget += target;
+                totalActual += actual;
+                totalGap += gap;
+                
+                console.log(`➕ Adding: Target=${target}, Actual=${actual}, Gap=${gap} from Kode_Pelanggan=${item.Kode_Pelanggan}`);
             });
             
             // 5. Update display
@@ -1393,8 +1421,8 @@
                                   totalGap < 0 ? 'summary-value negative' : 
                                   'summary-value neutral';
                                   
-            console.log(`✅ Summary updated from d.details.json - Target: ${totalTarget}, Actual: ${totalActual}, Gap: ${totalGap}`);
-            console.log(`📋 Used ${kodePelangganList.length} Kode_Pelanggan: ${kodePelangganList.join(', ')}`);
+            console.log(`✅ Summary FINAL for salesman ${currentSalesmanId}: Target=${totalTarget}, Actual=${totalActual}, Gap=${totalGap}`);
+            console.log(`📋 Based on ${matchingDetailsRecords.length} detail records (filtered by salesman)`);
         }
 
         // ===== TABLE FUNCTIONS =====
@@ -1520,7 +1548,7 @@
                         html += `
                             <tr class="missing-sku-row">
                                 <td>${no}</td>
-                                <td><span class="promo-tag promo-tpom">POM</span></td>
+                                <td><span class="promo-tag promo-tpom">TPOM</span></td>
                                 <td><span class="sku-code tpom-sku">${sku}</span></td>
                                 <td>0.00</td>
                                 <td>0.00</td>
