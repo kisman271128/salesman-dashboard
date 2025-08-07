@@ -791,6 +791,448 @@
             }
         }
     </style>
+	<!-- ===== TAMBAHKAN DI SEMUA FILE HTML (index.html, dashboard.html, visit.html, dll) ===== -->
+<!-- Letakkan SEBELUM </head> closing tag -->
+
+<script>
+// ===== MOBILE SALES ANALYTICS CORE MODULE =====
+class MobileSalesAnalytics {
+    constructor() {
+        this.sessionId = this.generateSessionId();
+        this.sessionStart = Date.now();
+        this.pageStartTime = Date.now();
+        this.events = [];
+        this.isInitialized = false;
+        this.batchTimer = null;
+        this.heartbeatTimer = null;
+        this.isOnline = navigator.onLine;
+        this.isMobile = this.detectMobile();
+        
+        this.init();
+    }
+    
+    init() {
+        if (this.isInitialized) return;
+        
+        // Generate unique session ID
+        if (!sessionStorage.getItem('analytics_session_id')) {
+            sessionStorage.setItem('analytics_session_id', this.sessionId);
+            sessionStorage.setItem('session_start_time', this.sessionStart.toString());
+        } else {
+            this.sessionId = sessionStorage.getItem('analytics_session_id');
+            this.sessionStart = parseInt(sessionStorage.getItem('session_start_time'));
+        }
+        
+        // Track device info
+        this.trackDeviceInfo();
+        
+        // Track page load
+        this.trackPageView();
+        
+        // Setup event listeners
+        this.setupEventListeners();
+        this.setupMobileEventListeners();
+        
+        // Start heartbeat
+        this.startHeartbeat();
+        
+        this.isInitialized = true;
+        console.log('📊 Mobile Analytics initialized:', this.sessionId);
+    }
+    
+    generateSessionId() {
+        return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
+    
+    detectMobile() {
+        const userAgent = navigator.userAgent.toLowerCase();
+        return /mobile|android|iphone|ipad|phone|tablet/i.test(userAgent);
+    }
+    
+    trackDeviceInfo() {
+        const deviceInfo = {
+            user_agent: navigator.userAgent,
+            screen_resolution: `${screen.width}x${screen.height}`,
+            viewport_size: `${window.innerWidth}x${window.innerHeight}`,
+            device_type: this.getDeviceType(),
+            is_mobile: this.isMobile,
+            connection_type: this.getConnectionType(),
+            device_memory: navigator.deviceMemory || 'unknown',
+            hardware_concurrency: navigator.hardwareConcurrency || 'unknown',
+            platform: navigator.platform,
+            language: navigator.language,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        };
+        
+        this.track('device_info', deviceInfo);
+    }
+    
+    getConnectionType() {
+        if (navigator.connection) {
+            return {
+                effective_type: navigator.connection.effectiveType,
+                downlink: navigator.connection.downlink,
+                rtt: navigator.connection.rtt,
+                save_data: navigator.connection.saveData
+            };
+        }
+        return 'unknown';
+    }
+    
+    getDeviceType() {
+        const userAgent = navigator.userAgent.toLowerCase();
+        const screenWidth = window.screen.width;
+        
+        if (/mobile|android|iphone|ipod/i.test(userAgent) || screenWidth < 768) {
+            return 'mobile';
+        } else if (/tablet|ipad/i.test(userAgent) || (screenWidth >= 768 && screenWidth < 1024)) {
+            return 'tablet';
+        }
+        return 'desktop';
+    }
+    
+    track(eventName, eventData = {}) {
+        const event = {
+            session_id: this.sessionId,
+            salesman_id: window.currentSalesmanId || 'unknown',
+            salesman_name: window.currentSalesman || 'unknown',
+            event_name: eventName,
+            event_data: eventData,
+            timestamp: new Date().toISOString(),
+            page_url: window.location.href,
+            page_path: window.location.pathname,
+            referrer: document.referrer,
+            user_agent: navigator.userAgent,
+            screen_resolution: `${screen.width}x${screen.height}`,
+            viewport_size: `${window.innerWidth}x${window.innerHeight}`,
+            device_type: this.getDeviceType(),
+            is_mobile: this.isMobile,
+            session_duration: Date.now() - this.sessionStart,
+            page_duration: Date.now() - this.pageStartTime,
+            connection_status: this.isOnline ? 'online' : 'offline',
+            scroll_position: window.pageYOffset,
+            is_focused: !document.hidden
+        };
+        
+        this.events.push(event);
+        console.log('📈 Analytics Event:', eventName, eventData);
+        
+        // Auto batch send
+        if (this.events.length >= 5 || !this.isOnline) {
+            this.sendBatch();
+        } else {
+            this.scheduleBatchSend();
+        }
+        
+        this.storeLocalBackup(event);
+    }
+    
+    trackPageView() {
+        const pageLoadData = {
+            title: document.title,
+            load_time: Date.now() - this.pageStartTime,
+            viewport_size: `${window.innerWidth}x${window.innerHeight}`,
+            device_pixel_ratio: window.devicePixelRatio || 1
+        };
+        
+        this.track('page_view', pageLoadData);
+    }
+    
+    trackSalesEvent(eventType, data = {}) {
+        this.track(`sales_${eventType}`, {
+            ...data,
+            device_type: this.getDeviceType(),
+            connection_quality: this.getConnectionType()
+        });
+    }
+    
+    trackUserInteraction(action, element, details = {}) {
+        this.track('user_interaction', {
+            action: action,
+            element: element,
+            details: details,
+            is_mobile: this.isMobile,
+            timestamp: Date.now()
+        });
+    }
+    
+    setupEventListeners() {
+        // Basic event listeners
+        window.addEventListener('beforeunload', () => {
+            this.trackSessionEnd();
+        });
+        
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                this.track('page_hidden');
+            } else {
+                this.track('page_visible');
+                this.pageStartTime = Date.now();
+            }
+        });
+        
+        // Click tracking
+        document.addEventListener('click', (event) => {
+            const element = event.target;
+            
+            if (element.tagName === 'BUTTON') {
+                this.trackUserInteraction('button_click', element.textContent.trim(), {
+                    button_id: element.id,
+                    button_class: element.className,
+                    is_touch_device: this.isMobile
+                });
+            }
+            
+            if (element.tagName === 'A' || element.closest('a')) {
+                const link = element.tagName === 'A' ? element : element.closest('a');
+                this.trackUserInteraction('link_click', link.href, {
+                    link_text: link.textContent.trim(),
+                    is_external: !link.href.includes(window.location.hostname)
+                });
+            }
+            
+            if (element.tagName === 'SELECT') {
+                this.trackUserInteraction('dropdown_select', element.value, {
+                    select_id: element.id,
+                    select_name: element.name,
+                    options_count: element.options.length
+                });
+            }
+        }, { passive: true });
+    }
+    
+    setupMobileEventListeners() {
+        if (!this.isMobile) return;
+        
+        // Touch events
+        let touchStartTime = 0;
+        document.addEventListener('touchstart', (event) => {
+            touchStartTime = Date.now();
+        }, { passive: true });
+        
+        document.addEventListener('touchend', (event) => {
+            const touchDuration = Date.now() - touchStartTime;
+            if (touchDuration > 50) {
+                this.track('touch_interaction', {
+                    duration: touchDuration,
+                    target_element: event.target.tagName.toLowerCase()
+                });
+            }
+        }, { passive: true });
+        
+        // Orientation change
+        window.addEventListener('orientationchange', () => {
+            setTimeout(() => {
+                this.track('orientation_change', {
+                    orientation: window.orientation || 'unknown',
+                    viewport_size: `${window.innerWidth}x${window.innerHeight}`
+                });
+            }, 500);
+        });
+        
+        // Network status
+        window.addEventListener('online', () => {
+            this.isOnline = true;
+            this.track('network_online');
+            this.sendPendingEvents();
+        });
+        
+        window.addEventListener('offline', () => {
+            this.isOnline = false;
+            this.track('network_offline');
+        });
+    }
+    
+    trackSessionStart() {
+        this.track('session_start', {
+            login_method: 'form_login',
+            timestamp: new Date().toISOString(),
+            device_info: {
+                type: this.getDeviceType(),
+                is_mobile: this.isMobile,
+                connection: this.getConnectionType()
+            }
+        });
+    }
+    
+    trackSessionEnd() {
+        this.track('session_end', {
+            session_duration: Date.now() - this.sessionStart,
+            total_events: this.events.length
+        });
+        
+        this.sendBatch(true);
+    }
+    
+    startHeartbeat() {
+        const interval = this.isMobile ? 120000 : 60000;
+        
+        this.heartbeatTimer = setInterval(() => {
+            if (!document.hidden) {
+                this.track('heartbeat', {
+                    session_duration: Date.now() - this.sessionStart,
+                    is_active: !document.hidden
+                });
+            }
+        }, interval);
+    }
+    
+    scheduleBatchSend() {
+        if (this.batchTimer) return;
+        
+        const delay = this.isMobile ? 60000 : 30000;
+        
+        this.batchTimer = setTimeout(() => {
+            this.sendBatch();
+            this.batchTimer = null;
+        }, delay);
+    }
+    
+    sendBatch(forceSend = false) {
+        if (this.events.length === 0 && !forceSend) return;
+        
+        const batchData = {
+            session_id: this.sessionId,
+            events: [...this.events],
+            batch_timestamp: new Date().toISOString(),
+            batch_size: this.events.length,
+            device_info: {
+                type: this.getDeviceType(),
+                is_mobile: this.isMobile,
+                is_online: this.isOnline
+            }
+        };
+        
+        this.events = [];
+        this.sendToServer(batchData);
+        
+        console.log('📤 Analytics batch sent:', batchData.batch_size, 'events');
+    }
+    
+    async sendToServer(data) {
+        try {
+            if (!this.isOnline) {
+                this.storePendingEvents(data);
+                return;
+            }
+            
+            this.storeToLocalStorage(data);
+            
+        } catch (error) {
+            console.error('❌ Analytics send error:', error);
+            this.events.unshift(...data.events);
+            this.storePendingEvents(data);
+        }
+    }
+    
+    storePendingEvents(data) {
+        try {
+            const pendingKey = 'analytics_pending';
+            const existingPending = JSON.parse(localStorage.getItem(pendingKey) || '[]');
+            existingPending.push(data);
+            
+            if (existingPending.length > 50) {
+                existingPending.shift();
+            }
+            
+            localStorage.setItem(pendingKey, JSON.stringify(existingPending));
+        } catch (error) {
+            console.warn('⚠️ Failed to store pending events:', error);
+        }
+    }
+    
+    sendPendingEvents() {
+        try {
+            const pendingKey = 'analytics_pending';
+            const pendingEvents = JSON.parse(localStorage.getItem(pendingKey) || '[]');
+            
+            if (pendingEvents.length > 0) {
+                console.log('📤 Sending', pendingEvents.length, 'pending batches');
+                
+                pendingEvents.forEach(batch => {
+                    this.sendToServer(batch);
+                });
+                
+                localStorage.removeItem(pendingKey);
+            }
+        } catch (error) {
+            console.warn('⚠️ Failed to send pending events:', error);
+        }
+    }
+    
+    storeLocalBackup(event) {
+        try {
+            const backupKey = `analytics_backup_${new Date().toISOString().split('T')[0]}`;
+            const existingData = JSON.parse(localStorage.getItem(backupKey) || '[]');
+            existingData.push(event);
+            
+            const maxEvents = this.isMobile ? 500 : 1000;
+            if (existingData.length > maxEvents) {
+                existingData.shift();
+            }
+            
+            localStorage.setItem(backupKey, JSON.stringify(existingData));
+        } catch (error) {
+            console.warn('⚠️ Analytics backup failed:', error);
+            this.cleanupOldData(7);
+        }
+    }
+    
+    storeToLocalStorage(batchData) {
+        try {
+            const storageKey = `analytics_${new Date().toISOString().split('T')[0]}`;
+            const existingData = JSON.parse(localStorage.getItem(storageKey) || '[]');
+            existingData.push(batchData);
+            
+            localStorage.setItem(storageKey, JSON.stringify(existingData));
+            console.log('💾 Analytics stored locally:', storageKey);
+        } catch (error) {
+            console.warn('⚠️ Analytics storage failed:', error);
+            this.cleanupOldData(7);
+        }
+    }
+    
+    cleanupOldData(daysToKeep = 30) {
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
+        
+        let deletedCount = 0;
+        const keysToDelete = [];
+        
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && (key.startsWith('analytics_') || key.startsWith('analytics_backup_'))) {
+                const dateStr = key.replace('analytics_', '').replace('analytics_backup_', '');
+                const date = new Date(dateStr);
+                if (date < cutoffDate) {
+                    keysToDelete.push(key);
+                }
+            }
+        }
+        
+        keysToDelete.forEach(key => {
+            localStorage.removeItem(key);
+            deletedCount++;
+        });
+        
+        console.log('🗑️ Cleaned up', deletedCount, 'old entries');
+        return deletedCount;
+    }
+}
+
+// ===== INITIALIZE ANALYTICS =====
+// Auto-initialize when script loads
+if (!window.salesAnalytics) {
+    window.salesAnalytics = new MobileSalesAnalytics();
+}
+
+// ===== CONVENIENCE FUNCTIONS =====
+window.trackEvent = (eventName, data) => window.salesAnalytics.track(eventName, data);
+window.trackSales = (eventType, data) => window.salesAnalytics.trackSalesEvent(eventType, data);
+window.trackInteraction = (action, element, details) => window.salesAnalytics.trackUserInteraction(action, element, details);
+
+console.log('✅ Mobile Sales Analytics Core Module loaded');
+</script>
 </head>
 <body>
     <div class="container">
