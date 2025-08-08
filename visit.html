@@ -90,6 +90,51 @@
             background: rgba(255, 255, 255, 0.3);
         }
 
+        /* Analytics Status Indicator */
+        .analytics-status {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(16, 185, 129, 0.9);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .analytics-status.tracking {
+            background: rgba(239, 68, 68, 0.9);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.9; }
+            50% { opacity: 1; }
+        }
+
+        /* Time Display */
+        .session-info {
+            background: rgba(255, 255, 255, 0.95);
+            margin: 16px;
+            padding: 12px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            font-size: 11px;
+            color: #64748b;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+        }
+
+        .session-info strong {
+            color: #1e293b;
+        }
+
         /* Loading States */
         .loading-spinner {
             display: flex;
@@ -794,6 +839,11 @@
 </head>
 <body>
     <div class="container">
+        <!-- Analytics Status Indicator -->
+        <div class="analytics-status" id="analyticsStatus">
+            📊 Tracking Active
+        </div>
+
         <div class="detail-header">
             <a href="dashboard.html" class="back-btn">←</a>
             <div class="detail-title-container">
@@ -801,6 +851,13 @@
                 <div class="salesman-name" id="salesmanName">Loading...</div>
             </div>
             <button class="user-btn" onclick="showProfile()">👤</button>
+        </div>
+
+        <!-- Session Info Display -->
+        <div class="session-info" id="sessionInfo">
+            <strong>🕐 First Access Today:</strong> <span id="firstAccessTime">Not recorded</span><br>
+            <strong>⏱️ Current Customer:</strong> <span id="currentCustomer">None selected</span><br>
+            <strong>⌛ Time on Customer:</strong> <span id="customerDuration">00:00:00</span>
         </div>
 
         <!-- Debug Panel -->
@@ -1020,7 +1077,7 @@
         let pelangganData = [];
         let detailsData = [];
         let salesmanData = [];
-        let tpomData = []; // 🔥 TPOM DATA
+        let tpomData = [];
         let currentFilteredData = [];
         let sortState = { column: null, direction: 'asc' };
         let currentSalesman = '';
@@ -1030,6 +1087,372 @@
         // ===== DAP VARIABLES =====
         let currentDAPData = [];
         let dapSortState = { column: null, direction: 'asc' };
+
+        // ===== 🆕 ENHANCED ANALYTICS VARIABLES =====
+        let visitAnalytics = null;
+        let sessionStartTime = null;
+        let firstAccessToday = null;
+        let currentCustomerStartTime = null;
+        let currentSelectedCustomer = null;
+        let customerDurations = {};
+        let todayDateString = new Date().toISOString().split('T')[0];
+
+        // ===== 🆕 ENHANCED ANALYTICS CLASS =====
+        class VisitAnalyticsTracker {
+            constructor() {
+                this.sessionId = this.generateSessionId();
+                this.sessionStart = Date.now();
+                this.salesmanId = null;
+                this.salesmanName = null;
+                this.isInitialized = false;
+                this.currentCustomer = null;
+                this.customerStartTime = null;
+                this.dailyData = this.loadDailyData();
+                
+                this.init();
+            }
+            
+            init() {
+                if (this.isInitialized) return;
+                
+                console.log('🚀 Enhanced Visit Analytics initialized');
+                this.isInitialized = true;
+                
+                // Track page access and first access
+                this.trackPageAccess();
+                
+                // Setup visibility change tracking
+                this.setupVisibilityTracking();
+                
+                // Setup unload tracking
+                this.setupUnloadTracking();
+                
+                // Start UI updates
+                this.startUIUpdates();
+            }
+            
+            generateSessionId() {
+                return 'visit_session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            }
+            
+            setSalesman(salesmanId, salesmanName) {
+                this.salesmanId = salesmanId;
+                this.salesmanName = salesmanName;
+                console.log(`👤 Analytics salesman set: ${salesmanName} (${salesmanId})`);
+            }
+            
+            loadDailyData() {
+                const today = new Date().toISOString().split('T')[0];
+                const storageKey = `visit_daily_${today}`;
+                
+                try {
+                    const stored = localStorage.getItem(storageKey);
+                    return stored ? JSON.parse(stored) : {
+                        date: today,
+                        firstAccess: null,
+                        customers: {},
+                        totalDuration: 0,
+                        accessCount: 0
+                    };
+                } catch (error) {
+                    console.error('Error loading daily data:', error);
+                    return {
+                        date: today,
+                        firstAccess: null,
+                        customers: {},
+                        totalDuration: 0,
+                        accessCount: 0
+                    };
+                }
+            }
+            
+            saveDailyData() {
+                const today = new Date().toISOString().split('T')[0];
+                const storageKey = `visit_daily_${today}`;
+                
+                try {
+                    localStorage.setItem(storageKey, JSON.stringify(this.dailyData));
+                } catch (error) {
+                    console.error('Error saving daily data:', error);
+                }
+            }
+            
+            trackPageAccess() {
+                const now = new Date();
+                const nowISO = now.toISOString();
+                
+                // Update daily access count
+                this.dailyData.accessCount++;
+                
+                // Track first access today if not set
+                if (!this.dailyData.firstAccess && this.salesmanId) {
+                    this.dailyData.firstAccess = nowISO;
+                    this.saveDailyData();
+                    
+                    console.log(`🌅 First access today recorded: ${now.toLocaleTimeString()}`);
+                    
+                    // Track the analytics event
+                    this.track('visit_first_access_today', {
+                        first_access_time: nowISO,
+                        date: todayDateString,
+                        access_count: this.dailyData.accessCount
+                    });
+                }
+                
+                // Always track page access
+                this.track('visit_page_access', {
+                    access_time: nowISO,
+                    session_start: new Date(this.sessionStart).toISOString(),
+                    access_count: this.dailyData.accessCount
+                });
+                
+                // Update UI
+                this.updateFirstAccessDisplay();
+            }
+            
+            trackCustomerSelection(customerName, hariJKS) {
+                const now = Date.now();
+                const nowISO = new Date(now).toISOString();
+                
+                // End previous customer tracking
+                if (this.currentCustomer && this.customerStartTime) {
+                    this.endCustomerTracking();
+                }
+                
+                // Start new customer tracking
+                this.currentCustomer = customerName;
+                this.customerStartTime = now;
+                
+                // Initialize customer in daily data if not exists
+                if (!this.dailyData.customers[customerName]) {
+                    this.dailyData.customers[customerName] = {
+                        name: customerName,
+                        hari_jks: hariJKS,
+                        totalDuration: 0,
+                        visitCount: 0,
+                        sessions: []
+                    };
+                }
+                
+                this.dailyData.customers[customerName].visitCount++;
+                
+                // Add new session
+                this.dailyData.customers[customerName].sessions.push({
+                    start: nowISO,
+                    end: null,
+                    duration: 0
+                });
+                
+                this.saveDailyData();
+                
+                console.log(`👥 Customer selected: ${customerName} at ${new Date(now).toLocaleTimeString()}`);
+                
+                // Track analytics event
+                this.track('visit_customer_selected', {
+                    customer_name: customerName,
+                    hari_jks: hariJKS,
+                    selection_time: nowISO,
+                    previous_customer: this.currentCustomer !== customerName ? this.currentCustomer : null,
+                    session_id: this.sessionId
+                });
+                
+                // Update UI displays
+                this.updateCustomerDisplay();
+                this.updateAnalyticsStatus('tracking');
+            }
+            
+            endCustomerTracking() {
+                if (!this.currentCustomer || !this.customerStartTime) {
+                    return;
+                }
+                
+                const now = Date.now();
+                const duration = now - this.customerStartTime;
+                const durationSeconds = Math.floor(duration / 1000);
+                const nowISO = new Date(now).toISOString();
+                
+                // Update daily data
+                const customerData = this.dailyData.customers[this.currentCustomer];
+                if (customerData && customerData.sessions.length > 0) {
+                    const lastSession = customerData.sessions[customerData.sessions.length - 1];
+                    lastSession.end = nowISO;
+                    lastSession.duration = durationSeconds;
+                    
+                    customerData.totalDuration += durationSeconds;
+                    this.dailyData.totalDuration += durationSeconds;
+                }
+                
+                this.saveDailyData();
+                
+                console.log(`⏱️ Customer session ended: ${this.currentCustomer}, Duration: ${this.formatDuration(durationSeconds)}`);
+                
+                // Track analytics event
+                this.track('visit_customer_duration', {
+                    customer_name: this.currentCustomer,
+                    duration_seconds: durationSeconds,
+                    duration_formatted: this.formatDuration(durationSeconds),
+                    end_time: nowISO,
+                    session_id: this.sessionId
+                });
+                
+                // Clear current tracking
+                this.currentCustomer = null;
+                this.customerStartTime = null;
+                
+                this.updateAnalyticsStatus('active');
+            }
+            
+            setupVisibilityTracking() {
+                document.addEventListener('visibilitychange', () => {
+                    if (document.hidden) {
+                        this.track('visit_page_hidden');
+                        // Don't end customer tracking when page is hidden, just pause
+                    } else {
+                        this.track('visit_page_visible');
+                        // Resume any customer tracking if needed
+                    }
+                });
+            }
+            
+            setupUnloadTracking() {
+                window.addEventListener('beforeunload', () => {
+                    this.endCustomerTracking();
+                    this.track('visit_session_end', {
+                        session_duration: Date.now() - this.sessionStart,
+                        customers_visited: Object.keys(this.dailyData.customers).length,
+                        total_duration: this.dailyData.totalDuration
+                    });
+                });
+                
+                // Fallback for mobile
+                window.addEventListener('pagehide', () => {
+                    this.endCustomerTracking();
+                });
+            }
+            
+            startUIUpdates() {
+                // Update UI every second
+                setInterval(() => {
+                    this.updateCustomerDurationDisplay();
+                }, 1000);
+            }
+            
+            updateFirstAccessDisplay() {
+                const firstAccessElement = document.getElementById('firstAccessTime');
+                if (this.dailyData.firstAccess) {
+                    const time = new Date(this.dailyData.firstAccess).toLocaleTimeString();
+                    firstAccessElement.textContent = time;
+                } else {
+                    firstAccessElement.textContent = 'Not recorded';
+                }
+            }
+            
+            updateCustomerDisplay() {
+                const currentCustomerElement = document.getElementById('currentCustomer');
+                if (this.currentCustomer) {
+                    currentCustomerElement.textContent = this.currentCustomer;
+                } else {
+                    currentCustomerElement.textContent = 'None selected';
+                }
+            }
+            
+            updateCustomerDurationDisplay() {
+                const durationElement = document.getElementById('customerDuration');
+                
+                if (this.currentCustomer && this.customerStartTime) {
+                    const elapsed = Date.now() - this.customerStartTime;
+                    const seconds = Math.floor(elapsed / 1000);
+                    durationElement.textContent = this.formatDuration(seconds);
+                } else {
+                    durationElement.textContent = '00:00:00';
+                }
+            }
+            
+            updateAnalyticsStatus(status) {
+                const statusElement = document.getElementById('analyticsStatus');
+                
+                if (status === 'tracking' && this.currentCustomer) {
+                    statusElement.innerHTML = '🔴 Tracking Customer';
+                    statusElement.className = 'analytics-status tracking';
+                } else {
+                    statusElement.innerHTML = '📊 Tracking Active';
+                    statusElement.className = 'analytics-status';
+                }
+            }
+            
+            formatDuration(seconds) {
+                const hours = Math.floor(seconds / 3600);
+                const minutes = Math.floor((seconds % 3600) / 60);
+                const secs = seconds % 60;
+                
+                return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            }
+            
+            track(eventName, eventData = {}) {
+                const event = {
+                    session_id: this.sessionId,
+                    salesman_id: this.salesmanId || 'unknown',
+                    salesman_name: this.salesmanName || 'Unknown',
+                    event_name: eventName,
+                    event_data: eventData,
+                    timestamp: new Date().toISOString(),
+                    page_url: window.location.href,
+                    page_path: window.location.pathname,
+                    user_agent: navigator.userAgent,
+                    device_type: this.detectDeviceType(),
+                    session_duration: Date.now() - this.sessionStart
+                };
+                
+                // Store in analytics format
+                this.storeAnalyticsEvent(event);
+                
+                console.log('📈 Visit Analytics Event:', eventName, eventData);
+            }
+            
+            detectDeviceType() {
+                const userAgent = navigator.userAgent.toLowerCase();
+                if (/mobile|android|iphone|ipod/i.test(userAgent)) {
+                    return 'mobile';
+                } else if (/tablet|ipad/i.test(userAgent)) {
+                    return 'tablet';
+                }
+                return 'desktop';
+            }
+            
+            storeAnalyticsEvent(event) {
+                try {
+                    const storageKey = `visit_analytics_${todayDateString}`;
+                    let analyticsData = JSON.parse(localStorage.getItem(storageKey) || '[]');
+                    
+                    analyticsData.push(event);
+                    
+                    // Keep only last 1000 events per day to prevent storage overflow
+                    if (analyticsData.length > 1000) {
+                        analyticsData = analyticsData.slice(-1000);
+                    }
+                    
+                    localStorage.setItem(storageKey, JSON.stringify(analyticsData));
+                } catch (error) {
+                    console.error('Error storing analytics event:', error);
+                }
+            }
+            
+            getCustomerDurations() {
+                return this.dailyData.customers;
+            }
+            
+            getTodaysSummary() {
+                const customers = Object.values(this.dailyData.customers);
+                return {
+                    firstAccess: this.dailyData.firstAccess,
+                    totalCustomers: customers.length,
+                    totalDuration: this.dailyData.totalDuration,
+                    averageDuration: customers.length > 0 ? this.dailyData.totalDuration / customers.length : 0,
+                    accessCount: this.dailyData.accessCount,
+                    customers: customers
+                };
+            }
+        }
 
         // ===== UTILITY FUNCTIONS =====
         function checkLoginStatus() {
@@ -1086,15 +1509,12 @@
             const sign = num < 0 ? '-' : '';
             
             if (absNum >= 1000000) {
-                // Format in millions (Jt)
                 const millions = (absNum / 1000000).toFixed(2);
                 return `${sign}${millions}Jt`;
             } else if (absNum >= 1000) {
-                // Format in thousands (Rb)
                 const thousands = (absNum / 1000).toFixed(2);
                 return `${sign}${thousands}Rb`;
             } else {
-                // Less than 1000, show as is with 2 decimal places
                 return `${sign}${absNum.toFixed(2)}`;
             }
         }
@@ -1132,19 +1552,15 @@
 
         // ===== TAB MANAGEMENT FUNCTIONS =====
         function showTab(tabName) {
-            // Update tab buttons
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
 
-            // Show/hide tab content
             if (tabName === 'visit') {
                 document.getElementById('visitTab').style.display = 'block';
                 document.getElementById('dapTab').style.display = 'none';
             } else if (tabName === 'dap') {
                 document.getElementById('visitTab').style.display = 'none';
                 document.getElementById('dapTab').style.display = 'block';
-                
-                // Initialize DAP data when tab is opened
                 initializeDAPData();
             }
         }
@@ -1163,7 +1579,6 @@
                 return;
             }
 
-            // Get unique Hari JKS values for current salesman from details data
             const uniqueHariJKS = [...new Set(detailsData
                 .filter(item => {
                     const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
@@ -1208,7 +1623,6 @@
 
             const selectedHari = dapHariSelect.value.trim();
             
-            // Filter details data by current salesman and selected day
             const filteredData = detailsData.filter(item => {
                 const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
                 const itemHariJKS = (item['Hari JKS'] || '').toString().trim();
@@ -1247,7 +1661,6 @@
                 const no = index + 1;
                 const namaPelanggan = item['Nama Pelanggan'] || 'N/A';
                 
-                // Combine Channel Group + Project for channel display
                 const channelGroup = item['Channel Group'] || '';
                 const project = item.Project || '';
                 const channel = channelGroup && project ? `${channelGroup} - ${project}` : (channelGroup || project || 'N/A');
@@ -1279,7 +1692,6 @@
                 `;
             });
 
-            // Add summary row
             const totalGapBEBadge = totalGapBE > 0 ? 'gap-positive' : totalGapBE < 0 ? 'gap-negative' : 'gap-neutral';
             
             html += `
@@ -1325,7 +1737,6 @@
             totalActualElement.textContent = formatNumber(totalActual);
             totalGapElement.textContent = formatNumberWithSign(totalGap);
 
-            // Update styling for Total Actual and Total Gap in the left frame
             totalActualElement.className = totalActual > totalTarget ? 'summary-value positive' : 
                                          totalActual < totalTarget ? 'summary-value negative' : 
                                          'summary-value neutral';
@@ -1359,7 +1770,7 @@
             renderDAPTable(currentDAPData);
         }
 
-        // ===== 🔥 TPOM DATA LOADING FUNCTIONS =====
+        // ===== TPOM DATA LOADING FUNCTIONS =====
         async function loadTpomData() {
             try {
                 console.log('📋 Loading TPOM data...');
@@ -1376,77 +1787,39 @@
                 
                 console.log(`✅ Loaded ${tpomData.length} TPOM records`);
                 
-                // Debug: Show sample and unique data
-                if (tpomData.length > 0) {
-                    console.log('📋 Sample TPOM data:', tpomData[0]);
-                    
-                    const uniqueSKUs = [...new Set(tpomData.map(item => item.SKU))];
-                    const uniqueSalesman = [...new Set(tpomData.map(item => ({
-                        nik: item.NIK,
-                        nama: item['Nama Salesman']
-                    })))];
-                    
-                    console.log('🔍 Unique SKUs in TPOM:', uniqueSKUs);
-                    console.log('👥 Unique Salesman in TPOM:', uniqueSalesman);
-                }
-                
             } catch (error) {
                 console.error('❌ Error loading TPOM data:', error);
             }
         }
 
-        // ===== 🔥 TPOM HELPER FUNCTIONS =====
+        // ===== TPOM HELPER FUNCTIONS =====
         function getTPOMSKUsForSalesman(salesmanId) {
             if (!tpomData.length || !salesmanId) {
-                console.log('⚠️ No TPOM data or salesman ID');
                 return [];
             }
             
-            // Convert salesmanId to number untuk matching
             const salesmanIdNum = parseInt(salesmanId);
             
-            console.log(`🔍 Looking for TPOM SKUs for salesman: ${salesmanId} (${salesmanIdNum})`);
-            
-            // Filter TPOM data berdasarkan NIK salesman
             const salesmanTPOM = tpomData.filter(item => {
                 const itemNIK = parseInt(item.NIK);
-                const match = itemNIK === salesmanIdNum;
-                
-                if (match) {
-                    console.log(`✅ Found TPOM record: ${item['Nama Salesman']} - ${item.SKU}`);
-                }
-                
-                return match;
+                return itemNIK === salesmanIdNum;
             });
             
-            // Ambil semua SKU unik untuk salesman ini
             const tpomSKUs = [...new Set(salesmanTPOM
                 .map(item => item.SKU)
                 .filter(sku => sku && sku.trim() !== '')
             )];
-            
-            console.log(`🎯 TPOM SKUs for salesman ${salesmanId}:`, tpomSKUs);
-            console.log(`📊 Total TPOM records for this salesman: ${salesmanTPOM.length}`);
             
             return tpomSKUs;
         }
 
         function isSKUInTPOM(sku, salesmanId) {
             const tpomSKUs = getTPOMSKUsForSalesman(salesmanId);
-            const isInTPOM = tpomSKUs.includes(sku);
-            
-            if (isInTPOM) {
-                console.log(`🔴 SKU ${sku} IS in TPOM for salesman ${salesmanId}`);
-            } else {
-                console.log(`⚪ SKU ${sku} is NOT in TPOM for salesman ${salesmanId}`);
-            }
-            
-            return isInTPOM;
+            return tpomSKUs.includes(sku);
         }
 
         // ===== DATA LOADING FUNCTIONS =====
         function initializeSalesmanFromUrl() {
-            // Get salesman ID from URL parameter
             currentSalesmanId = getUrlParameter('id') || getUrlParameter('user');
             console.log(`📍 Current Salesman ID from URL: ${currentSalesmanId}`);
             
@@ -1459,13 +1832,17 @@
         }
 
         function updateSalesmanNameFromData() {
-            // Get salesman name from salesman data after it's loaded
             if (currentSalesmanId && salesmanData.length > 0) {
                 const salesmanRecord = salesmanData.find(item => item.szEmployeeId.toString() === currentSalesmanId);
                 if (salesmanRecord) {
                     currentSalesman = salesmanRecord.szname;
                     document.getElementById('salesmanName').textContent = currentSalesman;
                     console.log(`✅ Found salesman: ${currentSalesman} (Employee ID: ${currentSalesmanId})`);
+                    
+                    // 🆕 Set salesman in analytics tracker
+                    if (visitAnalytics) {
+                        visitAnalytics.setSalesman(currentSalesmanId, currentSalesman);
+                    }
                     
                     updateDebugInfo(`Salesman: ${currentSalesman}<br>ID: ${currentSalesmanId}<br>Type: ${salesmanRecord['Tipe Salesman']}<br>Dept: ${salesmanRecord.Dept}`);
                 } else {
@@ -1490,32 +1867,27 @@
                 }
                 
                 console.log(`✅ Loaded ${salesmanData.length} salesman records`);
-                
-                // Update salesman name after salesman data is loaded
                 updateSalesmanNameFromData();
-                
-                // Debug: Show sample data
-                if (salesmanData.length > 0) {
-                    console.log('📋 Sample salesman data:', salesmanData[0]);
-                }
                 
             } catch (error) {
                 console.error('Error loading salesman data:', error);
-                // Fallback to pelanggan data if salesman data fails
-                console.log('🔄 Fallback: Using pelanggan data for salesman name');
                 updateSalesmanNameFromPelangganData();
             }
         }
 
         function updateSalesmanNameFromPelangganData() {
-            // Fallback method using pelanggan data
             if (currentSalesmanId && pelangganData.length > 0) {
                 const salesmanRecord = pelangganData.find(item => item.szEmployeeId === currentSalesmanId);
                 if (salesmanRecord) {
                     currentSalesman = salesmanRecord.szName;
                     document.getElementById('salesmanName').textContent = currentSalesman;
-                    console.log(`✅ Fallback - Found salesman: ${currentSalesman} (Employee ID: ${currentSalesmanId})`);
                     
+                    // 🆕 Set salesman in analytics tracker
+                    if (visitAnalytics) {
+                        visitAnalytics.setSalesman(currentSalesmanId, currentSalesman);
+                    }
+                    
+                    console.log(`✅ Fallback - Found salesman: ${currentSalesman} (Employee ID: ${currentSalesmanId})`);
                     updateDebugInfo(`Salesman: ${currentSalesman}<br>ID: ${currentSalesmanId}<br>Source: Fallback`);
                 } else {
                     console.log(`⚠️ Salesman not found with ID: ${currentSalesmanId}`);
@@ -1539,11 +1911,6 @@
                 }
                 
                 console.log(`✅ Loaded ${pelangganData.length} pelanggan records`);
-                
-                // Debug: Show sample data
-                if (pelangganData.length > 0) {
-                    console.log('📋 Sample pelanggan data:', pelangganData[0]);
-                }
                 
             } catch (error) {
                 console.error('Error loading pelanggan data:', error);
@@ -1586,13 +1953,11 @@
             } catch (error) {
                 console.log(`❌ Error loading hari: ${error.message}`);
                 
-                // Fallback: Use hari from pelanggan data
                 if (pelangganData.length > 0 && currentSalesmanId) {
                     console.log('🔄 Fallback: Using hari from pelanggan data');
                     
                     const uniqueHari = [...new Set(pelangganData
                         .filter(item => {
-                            // Use szEmployeeId instead of szname
                             const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
                             return itemSalesmanId === currentSalesmanId;
                         })
@@ -1643,8 +2008,6 @@
         // ===== FORMAT NORMALIZATION =====
         function normalizeHariFormat(hariString) {
             if (!hariString) return '';
-            
-            // Remove bracketed numbers like [6] and clean up
             const cleanHari = hariString.toString().replace(/^\[\d+\]/, '').trim().toUpperCase();
             return cleanHari;
         }
@@ -1664,7 +2027,6 @@
             const selectedHari = hariSelect.value.trim().toUpperCase();
             const selectedPelanggan = pelangganSelect.value.trim();
             
-            // 1. Find Kode_Pelanggan from skupelanggan data
             const pelangganDetail = pelangganData.find(item => {
                 const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
                 const itemHari = normalizeHariFormat(item.Hari_Kunjungan);
@@ -1681,14 +2043,12 @@
                 return;
             }
             
-            // 2. Find customer details from d.details.json using Kode_Pelanggan
             const customerDetail = detailsData.find(item => {
                 const itemKodePelanggan = (item.Kode_Pelanggan || '').toString().trim();
                 return itemKodePelanggan === pelangganDetail.Kode_Pelanggan;
             });
             
             if (customerDetail) {
-                // Use Channel Group and Project from d.details.json
                 const channelGroup = customerDetail['Channel Group'] || '';
                 const project = customerDetail.Project || '';
                 const customerType = channelGroup && project ? `${channelGroup}-${project}` : (channelGroup || project || 'General Customer');
@@ -1703,7 +2063,7 @@
             }
         }
 
-        // ===== FILTER UPDATE FUNCTIONS =====
+        // ===== 🆕 ENHANCED FILTER UPDATE FUNCTIONS =====
         function updatePelangganOptions() {
             const hariSelect = document.getElementById('hari');
             const pelangganSelect = document.getElementById('pelanggan');
@@ -1711,13 +2071,15 @@
             pelangganSelect.innerHTML = '<option value="">🏪 Pilih Pelanggan</option>';
             pelangganSelect.disabled = false;
             
-            // Clear customer info when hari changes
             const customerInfoDiv = document.getElementById('customerInfo');
             customerInfoDiv.style.display = 'none';
             
+            // 🆕 End current customer tracking when hari changes
+            if (visitAnalytics && visitAnalytics.currentCustomer) {
+                visitAnalytics.endCustomerTracking();
+            }
+            
             console.log(`🔍 Updating pelanggan options for hari: ${hariSelect.value}`);
-            console.log(`🧑‍💼 Current salesman ID: ${currentSalesmanId}`);
-            console.log(`📊 Pelanggan data length: ${pelangganData.length}`);
             
             if (pelangganData.length === 0) {
                 const option = document.createElement('option');
@@ -1731,23 +2093,12 @@
             if (currentSalesmanId && hariSelect.value) {
                 const selectedHari = hariSelect.value.trim().toUpperCase();
                 
-                console.log(`🔎 Filtering for hari: ${selectedHari}, salesman ID: ${currentSalesmanId}`);
-                
-                // Filter pelanggan using szEmployeeId for more reliable matching
                 const filteredPelanggan = [...new Set(pelangganData
                     .filter(item => {
                         const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
                         const itemHari = normalizeHariFormat(item.Hari_Kunjungan);
                         
-                        const salesmanMatch = itemSalesmanId === currentSalesmanId;
-                        const hariMatch = itemHari === selectedHari;
-                        
-                        // Only log mismatches in debug mode
-                        if (debugMode && !(salesmanMatch && hariMatch)) {
-                            console.log(`Debug: ${itemSalesmanId} vs ${currentSalesmanId}, ${itemHari} vs ${selectedHari}, matches: false`);
-                        }
-                        
-                        return salesmanMatch && hariMatch;
+                        return itemSalesmanId === currentSalesmanId && itemHari === selectedHari;
                     })
                     .map(item => item.Nama_Pelanggan)
                     .filter(pelanggan => pelanggan && pelanggan.toString().trim() !== '' && 
@@ -1785,7 +2136,25 @@
             updateSummary();
         }
 
-        // ===== SUMMARY UPDATE FUNCTION (FIXED FOR SALESMAN FILTERING) =====
+        // ===== 🆕 ENHANCED PELANGGAN SELECTION HANDLER =====
+        function handlePelangganSelection() {
+            const hariSelect = document.getElementById('hari');
+            const pelangganSelect = document.getElementById('pelanggan');
+            
+            if (visitAnalytics && pelangganSelect.value && hariSelect.value) {
+                // Track customer selection
+                visitAnalytics.trackCustomerSelection(pelangganSelect.value, hariSelect.value);
+            } else if (visitAnalytics && !pelangganSelect.value) {
+                // End tracking if no customer selected
+                visitAnalytics.endCustomerTracking();
+            }
+            
+            updateTable();
+            updateSummary();
+            updateCustomerInfo();
+        }
+
+        // ===== SUMMARY UPDATE FUNCTION =====
         function updateSummary() {
             const hariSelect = document.getElementById('hari');
             const pelangganSelect = document.getElementById('pelanggan');
@@ -1813,9 +2182,6 @@
             const selectedHari = hariSelect.value.trim().toUpperCase();
             const selectedPelanggan = pelangganSelect.value.trim();
             
-            console.log(`🔍 Summary filtering for: Salesman=${currentSalesmanId}, Hari=${selectedHari}, Pelanggan=${selectedPelanggan}`);
-            
-            // 1. Get all Kode_Pelanggan for the selected criteria from skupelanggan data
             const matchingPelangganRecords = pelangganData.filter(item => {
                 const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
                 const itemHari = normalizeHariFormat(item.Hari_Kunjungan);
@@ -1826,39 +2192,18 @@
                        itemPelanggan.toLowerCase() === selectedPelanggan.toLowerCase();
             });
             
-            // 2. Get unique Kode_Pelanggan values
             const kodePelangganList = [...new Set(matchingPelangganRecords
                 .map(item => item.Kode_Pelanggan)
                 .filter(kode => kode && kode.trim() !== '')
             )];
             
-            console.log(`📋 Found ${kodePelangganList.length} Kode_Pelanggan for this salesman: ${kodePelangganList.join(', ')}`);
-            
-            // 🔥 3. FIXED: Filter d.details.json by BOTH Kode_Pelanggan AND Salesman
             const matchingDetailsRecords = detailsData.filter(item => {
                 const itemKodePelanggan = (item.Kode_Pelanggan || '').toString().trim();
                 const itemSalesmanId = (item.szEmployeeId || item.NIK || '').toString().trim();
                 
-                // Must match both Kode_Pelanggan and Salesman
-                const kodePelangganMatch = kodePelangganList.includes(itemKodePelanggan);
-                const salesmanMatch = itemSalesmanId === currentSalesmanId;
-                
-                const isMatch = kodePelangganMatch && salesmanMatch;
-                
-                if (kodePelangganMatch && !salesmanMatch) {
-                    console.log(`⚠️ Found Kode_Pelanggan ${itemKodePelanggan} but different salesman: ${itemSalesmanId} vs ${currentSalesmanId}`);
-                }
-                
-                if (isMatch) {
-                    console.log(`✅ Details match: Kode=${itemKodePelanggan}, Salesman=${itemSalesmanId}, Target=${item['T.MTD']}, Actual=${item['A.MTD']}`);
-                }
-                
-                return isMatch;
+                return kodePelangganList.includes(itemKodePelanggan) && itemSalesmanId === currentSalesmanId;
             });
             
-            console.log(`📊 Found ${matchingDetailsRecords.length} matching detail records for this specific salesman`);
-            
-            // 4. Calculate totals using T.MTD, A.MTD, and Gap MTD from d.details.json
             let totalTarget = 0;
             let totalActual = 0;
             let totalGap = 0;
@@ -1871,22 +2216,15 @@
                 totalTarget += target;
                 totalActual += actual;
                 totalGap += gap;
-                
-                console.log(`➕ Adding: Target=${target}, Actual=${actual}, Gap=${gap} from Kode_Pelanggan=${item.Kode_Pelanggan}`);
             });
             
-            // 5. Update display
             targetElement.textContent = formatNumber(totalTarget);
             actualElement.textContent = formatNumber(totalActual);
             gapElement.textContent = formatNumberWithSign(totalGap);
             
-            // Update gap styling
             gapElement.className = totalGap > 0 ? 'summary-value positive' : 
                                   totalGap < 0 ? 'summary-value negative' : 
                                   'summary-value neutral';
-                                  
-            console.log(`✅ Summary FINAL for salesman ${currentSalesmanId}: Target=${totalTarget}, Actual=${totalActual}, Gap=${totalGap}`);
-            console.log(`📋 Based on ${matchingDetailsRecords.length} detail records (filtered by salesman)`);
         }
 
         // ===== TABLE FUNCTIONS =====
@@ -1932,7 +2270,6 @@
             }
         }
 
-        // ===== 🔥 UPDATED RENDER TABLE DATA WITH TPOM INTEGRATION =====
         function renderTableData(data) {
             const tableBody = document.getElementById('tableBody');
             
@@ -1952,11 +2289,8 @@
             
             let html = '';
             let totalPlan = 0, totalMTD = 0;
-            const existingSKUs = new Set(); // Track SKU yang sudah ada
+            const existingSKUs = new Set();
             
-            console.log(`🔄 Rendering ${data.length} rows, checking TPOM for salesman: ${currentSalesmanId}`);
-            
-            // Render data existing
             data.forEach((item, index) => {
                 const no = index + 1;
                 const promo = item.Promo || "Others";
@@ -1968,7 +2302,6 @@
                 const gap = Number(item.Gap) || (mtd - plan);
                 const rekomendasi = generateRecommendation(gap, plan, mtd);
                 
-                // Track existing SKUs
                 existingSKUs.add(sku);
                 
                 totalPlan += plan;
@@ -1978,11 +2311,8 @@
                 const gapBadgeClass = gap > 0 ? 'gap-positive' : gap < 0 ? 'gap-negative' : 'gap-neutral';
                 const promoClass = `promo-${promo.toLowerCase().replace(/\s+/g, '')}`;
                 
-                // 🔥 CEK APAKAH SKU ADA DI TPOM (FIXED)
                 const isTpomSKU = currentSalesmanId ? isSKUInTPOM(sku, currentSalesmanId) : false;
                 const skuClass = isTpomSKU ? 'sku-code tpom-sku' : 'sku-code';
-                
-                console.log(`📊 Row ${no}: SKU=${sku}, TPOM=${isTpomSKU ? '🔴' : '⚪'}`);
                 
                 html += `
                     <tr>
@@ -1999,14 +2329,11 @@
                 `;
             });
             
-            // 🔥 TAMBAHKAN SKU MISSING DARI TPOM (FIXED)
             if (currentSalesmanId) {
                 const tpomSKUs = getTPOMSKUsForSalesman(currentSalesmanId);
                 const missingSKUs = tpomSKUs.filter(sku => !existingSKUs.has(sku));
                 
                 if (missingSKUs.length > 0) {
-                    console.log(`📋 Adding ${missingSKUs.length} missing TPOM SKUs:`, missingSKUs);
-                    
                     missingSKUs.forEach((sku, index) => {
                         const no = data.length + index + 1;
                         html += `
@@ -2023,8 +2350,6 @@
                             </tr>
                         `;
                     });
-                } else {
-                    console.log('✅ No missing TPOM SKUs - all covered in visit data');
                 }
             }
             
@@ -2047,8 +2372,6 @@
             `;
             
             tableBody.innerHTML = html;
-            
-            console.log('✅ Table rendered with TPOM integration');
         }
 
         function updateTable() {
@@ -2093,7 +2416,6 @@
             const selectedHari = hariSelect.value.trim().toUpperCase();
             const selectedPelanggan = pelangganSelect.value.trim();
             
-            // Filter data using szEmployeeId instead of szname
             const filteredData = pelangganData.filter(item => {
                 const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
                 const itemHari = normalizeHariFormat(item.Hari_Kunjungan);
@@ -2107,6 +2429,16 @@
             });
             
             console.log(`🔍 Table filtered data: ${filteredData.length} rows`);
+            
+            // 🆕 Track table view analytics
+            if (visitAnalytics && filteredData.length > 0) {
+                visitAnalytics.track('visit_table_viewed', {
+                    hari_jks: selectedHari,
+                    customer_name: selectedPelanggan,
+                    sku_count: filteredData.length,
+                    view_time: new Date().toISOString()
+                });
+            }
             
             currentFilteredData = [...filteredData];
             sortState = { column: null, direction: 'asc' };
@@ -2125,14 +2457,10 @@
             return "Belum Aktif";
         }
 
-        // ===== UPDATED EVENT LISTENERS =====
+        // ===== 🆕 ENHANCED EVENT LISTENERS =====
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('hari').addEventListener('change', updatePelangganOptions);
-            document.getElementById('pelanggan').addEventListener('change', function() {
-                updateTable();
-                updateSummary();
-                updateCustomerInfo();
-            });
+            document.getElementById('pelanggan').addEventListener('change', handlePelangganSelection);
             
             // DAP event listener
             document.getElementById('dapHari').addEventListener('change', updateDAPTable);
@@ -2151,7 +2479,17 @@
         });
 
         // ===== NAVIGATION FUNCTIONS =====
-        function goHome() { window.location.href = 'dashboard.html'; }
+        function goHome() { 
+            // Track navigation
+            if (visitAnalytics) {
+                visitAnalytics.track('visit_navigation', {
+                    destination: 'dashboard',
+                    navigation_time: new Date().toISOString()
+                });
+            }
+            window.location.href = 'dashboard.html'; 
+        }
+        
         function showVisitOutlet() { 
             if (currentSalesmanId) {
                 console.log(`🏪 Redirecting to Visit Outlet with salesman ID: ${currentSalesmanId}`);
@@ -2167,7 +2505,16 @@
                 }
             }
         }
+        
         function showIncentive() {
+            // Track navigation
+            if (visitAnalytics) {
+                visitAnalytics.track('visit_navigation', {
+                    destination: 'incentive',
+                    navigation_time: new Date().toISOString()
+                });
+            }
+            
             const currentUser = sessionStorage.getItem('currentUser');
             if (currentUser) {
                 window.location.href = `dashboard_insentif_sales.html?id=${currentSalesmanId}`;
@@ -2175,7 +2522,16 @@
                 alert('🔜 Incentive: Please login first');
             }
         }
+        
         function showProfile() {
+            // Track navigation
+            if (visitAnalytics) {
+                visitAnalytics.track('visit_navigation', {
+                    destination: 'profile',
+                    navigation_time: new Date().toISOString()
+                });
+            }
+            
             const currentUser = sessionStorage.getItem('currentUser');
             if (currentUser) {
                 window.location.href = `profile.html?id=${currentSalesmanId}`;
@@ -2184,31 +2540,37 @@
             }
         }
 
-        // ===== 🔥 UPDATED INITIALIZE WITH TPOM =====
+        // ===== 🆕 ENHANCED INITIALIZE WITH ANALYTICS =====
         async function initializeData() {
             try {
                 showLoading(true);
                 hideError();
                 
-                console.log('🚀 Starting data initialization...');
+                console.log('🚀 Starting enhanced data initialization with analytics...');
                 
-                initializeSalesmanFromUrl(); // Get salesman ID from URL
-                await loadSalesmanData(); // Load salesman data first (faster, smaller file)
-                await loadPelangganData(); // Load pelanggan data
-                await loadHariData(); // Load hari data (with fallback to pelanggan data)
-                await loadDetailsData(); // Load details for additional info
-                await loadTpomData(); // 🔥 LOAD TPOM DATA
+                // Initialize analytics tracker first
+                visitAnalytics = new VisitAnalyticsTracker();
                 
-                console.log('✅ All data loaded successfully');
+                initializeSalesmanFromUrl();
+                await loadSalesmanData();
+                await loadPelangganData();
+                await loadHariData();
+                await loadDetailsData();
+                await loadTpomData();
+                
+                console.log('✅ All data loaded successfully with analytics tracking');
                 console.log(`🎯 Current salesman ID: ${currentSalesmanId}`);
                 
-                // Test TPOM integration immediately
-                if (currentSalesmanId && tpomData.length > 0) {
-                    const testTPOMSKUs = getTPOMSKUsForSalesman(currentSalesmanId);
-                    console.log(`🧪 TEST: TPOM SKUs for current salesman:`, testTPOMSKUs);
+                // Test analytics integration
+                if (visitAnalytics && currentSalesmanId) {
+                    visitAnalytics.track('visit_data_loaded', {
+                        pelanggan_count: pelangganData.length,
+                        details_count: detailsData.length,
+                        tpom_count: tpomData.length,
+                        load_time: new Date().toISOString()
+                    });
                 }
                 
-                // Enable dropdowns
                 ['hari', 'pelanggan', 'dapHari'].forEach(id => {
                     const element = document.getElementById(id);
                     if (element) element.disabled = false;
@@ -2217,27 +2579,72 @@
                 showLoading(false);
                 showMainContent(true);
                 
+                console.log('📊 Visit analytics and tracking system ready');
+                
             } catch (error) {
                 console.error('❌ Error loading data:', error);
                 showLoading(false);
                 showError(true, error.message);
                 
-                // Still enable dropdowns for manual testing
                 ['hari', 'pelanggan', 'dapHari'].forEach(id => {
                     const element = document.getElementById(id);
                     if (element) element.disabled = false;
                 });
+                
+                // Track error
+                if (visitAnalytics) {
+                    visitAnalytics.track('visit_data_load_error', {
+                        error_message: error.message,
+                        error_time: new Date().toISOString()
+                    });
+                }
             }
         }
 
-        // ===== PAGE LOAD =====
+        // ===== 🆕 ENHANCED PAGE LOAD WITH ANALYTICS =====
         window.onload = function() {
             if (!checkLoginStatus()) return;
-            console.log('📱 Starting Visit Outlet with TPOM Integration and DAP Feature...');
+            
+            console.log('📱 Starting Enhanced Visit Outlet with Analytics Tracking...');
+            console.log('📊 Features: Customer duration tracking, first access monitoring, detailed reporting');
+            
             initializeData();
         };
 
-        console.log('✅ Visit Outlet script loaded with TPOM integration and DAP functionality');
+        // ===== 🆕 ANALYTICS HELPER FUNCTIONS FOR EXTERNAL ACCESS =====
+        window.getVisitAnalytics = function() {
+            return visitAnalytics ? visitAnalytics.getTodaysSummary() : null;
+        };
+
+        window.getCustomerDurations = function() {
+            return visitAnalytics ? visitAnalytics.getCustomerDurations() : {};
+        };
+
+        window.generateVisitReport = function(date = null) {
+            const targetDate = date || new Date().toISOString().split('T')[0];
+            const storageKey = `visit_analytics_${targetDate}`;
+            
+            try {
+                const analyticsData = JSON.parse(localStorage.getItem(storageKey) || '[]');
+                const dailyData = JSON.parse(localStorage.getItem(`visit_daily_${targetDate}`) || '{}');
+                
+                return {
+                    date: targetDate,
+                    summary: dailyData,
+                    events: analyticsData,
+                    salesman_id: currentSalesmanId,
+                    salesman_name: currentSalesman,
+                    generated_at: new Date().toISOString()
+                };
+            } catch (error) {
+                console.error('Error generating visit report:', error);
+                return null;
+            }
+        };
+
+        console.log('✅ Enhanced Visit Outlet script loaded with comprehensive analytics tracking');
+        console.log('📋 Analytics features: First access time, customer duration tracking, detailed event logging');
+        console.log('🔧 Debug: Press Ctrl+D to toggle debug mode');
     </script>
 </body>
 </html>
