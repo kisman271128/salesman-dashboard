@@ -735,7 +735,7 @@
             box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3);
         }
 
-        /* ✅ UPDATED BOTTOM NAVIGATION - 4 icons */
+        /* ✅ ENHANCED: BOTTOM NAVIGATION - 4 icons with disabled state */
         .bottom-nav {
             position: fixed;
             bottom: 0;
@@ -763,6 +763,7 @@
             padding: 8px 12px;
             border-radius: 12px;
             min-width: 60px;
+            position: relative;
         }
 
         .nav-item.active {
@@ -770,9 +771,42 @@
             background: rgba(102, 126, 234, 0.1);
         }
 
-        .nav-item:hover {
+        .nav-item:hover:not(.disabled) {
             color: #667eea;
             transform: translateY(-2px);
+        }
+
+        /* ✅ NEW: Disabled state for Activity menu */
+        .nav-item.disabled {
+            color: #bdc3c7 !important;
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .nav-item.disabled .nav-icon {
+            opacity: 0.5;
+        }
+
+        .nav-item.disabled .nav-label {
+            opacity: 0.5;
+        }
+
+        /* ✅ NEW: Admin badge for Activity menu */
+        .nav-item.admin-only::after {
+            content: '👑';
+            position: absolute;
+            top: -2px;
+            right: 8px;
+            font-size: 10px;
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
         }
 
         .nav-icon {
@@ -983,13 +1017,13 @@
             </div>
         </div>
 
-        <!-- ✅ UPDATED BOTTOM NAVIGATION - 4 icons -->
+        <!-- ✅ ENHANCED BOTTOM NAVIGATION - Role-based Activity Access -->
         <div class="bottom-nav">
             <div class="nav-item active" onclick="logout()">
                 <div class="nav-icon">🏠</div>
                 <div class="nav-label">Home</div>
             </div>
-            <div class="nav-item" onclick="showActivity()">
+            <div class="nav-item" id="activityNavItem" onclick="showActivity()">
                 <div class="nav-icon">📊</div>
                 <div class="nav-label">Activity</div>
             </div>
@@ -1009,6 +1043,7 @@
         let dashboardData = null;
         let salesmanData = null;
         let chartData = null;
+        let currentUserRole = null;
 
         // ✅ ADDED: Format Currency Indonesia function
         function formatCurrencyIndonesia(value) {
@@ -1109,6 +1144,28 @@
             } else {
                 console.log(`→ Extra Effort (<90%)`);
                 return 'Extra Effort';
+            }
+        }
+
+        // ✅ NEW: Check user role and setup activity access
+        function checkUserRoleAndSetupActivity() {
+            const currentUser = sessionStorage.getItem('currentUser');
+            currentUserRole = currentUser ? currentUser.toLowerCase() : null;
+            
+            const activityNavItem = document.getElementById('activityNavItem');
+            
+            console.log(`🔐 Checking user role: ${currentUser} (${currentUserRole})`);
+            
+            if (currentUserRole === 'admin') {
+                // Enable Activity menu for admin
+                activityNavItem.classList.remove('disabled');
+                activityNavItem.classList.add('admin-only');
+                console.log('✅ Activity menu enabled for admin user');
+            } else {
+                // Disable Activity menu for non-admin
+                activityNavItem.classList.add('disabled');
+                activityNavItem.classList.remove('admin-only');
+                console.log('❌ Activity menu disabled for non-admin user');
             }
         }
 
@@ -1831,7 +1888,7 @@
             window.location.href = `salesman-detail.html?id=${salesmanId}`;
         }
 
-        // ✅ BOTTOM NAVIGATION FUNCTIONS
+        // ✅ ENHANCED BOTTOM NAVIGATION FUNCTIONS dengan Role-Based Access
         function logout() {
             if (confirm('Apakah Anda yakin ingin logout?')) {
                 sessionStorage.removeItem('isLoggedIn');
@@ -1840,8 +1897,15 @@
             }
         }
 
+        // ✅ ENHANCED: Activity function dengan role-based access
         function showActivity() {
-            alert('🔜 Activity module coming soon!');
+            if (currentUserRole === 'admin') {
+                console.log('✅ Admin user accessing Activity dashboard');
+                window.location.href = 'activity.html';
+            } else {
+                console.log('❌ Non-admin user attempted to access Activity');
+                alert(`🚫 Access Denied\n\nActivity dashboard is restricted to administrators only.\n\nCurrent user: ${sessionStorage.getItem('currentUser') || 'Unknown'}\nRequired role: admin`);
+            }
         }
 
         function showPerformance() {
@@ -1887,12 +1951,17 @@
                 return;
             }
 
-            console.log('🚀 Initializing dashboard with d.performance.json data, Indonesia format, target=0 → 100% logic, and corrected status criteria...');
+            // ✅ Setup role-based activity access
+            checkUserRoleAndSetupActivity();
+
+            console.log('🚀 Initializing enhanced dashboard with role-based Activity access...');
             console.log('📊 STATUS CRITERIA: Extra Effort <90%, Good ≥90%, Very Good ≥100%, Excellent ≥110%');
             console.log('📋 DATA SOURCE: d.performance.json (Real performance data with ranking)');
+            console.log('🔐 ROLE-BASED ACCESS: Activity menu restricted to admin users');
+            
             loadDashboardData();
             startAutoRefresh();
-            console.log('✅ Dashboard initialized with all enhanced features and performance data');
+            console.log('✅ Dashboard initialized with all enhanced features, performance data, and role-based access control');
         });
 
         // Handle offline/online status
