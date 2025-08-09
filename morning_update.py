@@ -1157,6 +1157,7 @@ class SalesmanDashboardUpdater:
                 'dashboard_insentif_sales_desktop.html',
                 'visit.html',
                 'performance.html',
+                'activity.html',
                 'morning_update.py',
                 'morning_update.log'
             ]
