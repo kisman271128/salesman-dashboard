@@ -502,8 +502,8 @@
 		}
 
 		#dataTable th:nth-child(1), #dataTable td:nth-child(1) { left: 0; }
-		#dataTable th:nth-child(2), #dataTable td:nth-child(2) { left: 30px; }
-		#dataTable th:nth-child(3), #dataTable td:nth-child(3) { left: 90px; }
+		#dataTable th:nth-child(2), #dataTable td:nth-child(2) { left: 35px; }
+		#dataTable th:nth-child(3), #dataTable td:nth-child(3) { left: 115px; }
 
 		#dataTable th:nth-child(3), #dataTable td:nth-child(3) {
 			border-right: 2px solid #e2e8f0;
@@ -673,6 +673,9 @@
             z-index: 20;
         }
 
+        .summary-row td:nth-child(1) { left: 0; }
+        .summary-row td:nth-child(2) { left: 35px; }
+
         .empty-state {
             text-align: center;
             padding: 40px 20px;
@@ -799,7 +802,7 @@
         /* Debug Panel */
         .debug-panel {
             position: fixed;
-            top: 10px;
+            top: 50px;
             right: 10px;
             background: rgba(0, 0, 0, 0.8);
             color: white;
@@ -820,6 +823,7 @@
             
             #dataTable th:nth-child(1), #dataTable td:nth-child(1) { width: 30px; }
             #dataTable th:nth-child(2), #dataTable td:nth-child(2) { width: 70px; left: 30px; }
+            #dataTable th:nth-child(3), #dataTable td:nth-child(3) { left: 100px; }
             
             #dataTable th, #dataTable td,
             #dapTable th, #dapTable td {
@@ -834,6 +838,8 @@
             .table-container {
                 max-height: calc(100vh - 450px);
             }
+
+            .summary-row td:nth-child(2) { left: 30px; }
         }
     </style>
 </head>
@@ -1097,7 +1103,7 @@
         let customerDurations = {};
         let todayDateString = new Date().toISOString().split('T')[0];
 
-        // ===== 🆕 ENHANCED ANALYTICS CLASS =====
+        // ===== 🆕 FIXED ENHANCED ANALYTICS CLASS - ISOLATED PER SALESMAN =====
         class VisitAnalyticsTracker {
             constructor() {
                 this.sessionId = this.generateSessionId();
@@ -1107,7 +1113,7 @@
                 this.isInitialized = false;
                 this.currentCustomer = null;
                 this.customerStartTime = null;
-                this.dailyData = this.loadDailyData();
+                this.dailyData = null; // Will be loaded when salesman is set
                 
                 this.init();
             }
@@ -1115,11 +1121,8 @@
             init() {
                 if (this.isInitialized) return;
                 
-                console.log('🚀 Enhanced Visit Analytics initialized');
+                console.log('🚀 Enhanced Visit Analytics initialized (Per Salesman)');
                 this.isInitialized = true;
-                
-                // Track page access and first access
-                this.trackPageAccess();
                 
                 // Setup visibility change tracking
                 this.setupVisibilityTracking();
@@ -1138,46 +1141,85 @@
             setSalesman(salesmanId, salesmanName) {
                 this.salesmanId = salesmanId;
                 this.salesmanName = salesmanName;
+                
+                // Load daily data for this specific salesman
+                this.dailyData = this.loadDailyData();
+                
                 console.log(`👤 Analytics salesman set: ${salesmanName} (${salesmanId})`);
+                
+                // Track page access and first access after salesman is set
+                this.trackPageAccess();
             }
             
+            // 🔧 FIXED: Include salesman ID in storage key
             loadDailyData() {
+                if (!this.salesmanId) {
+                    console.warn('⚠️ Cannot load daily data: salesman ID not set');
+                    return this.getDefaultDailyData();
+                }
+                
                 const today = new Date().toISOString().split('T')[0];
-                const storageKey = `visit_daily_${today}`;
+                const storageKey = `visit_daily_${today}_${this.salesmanId}`;
                 
                 try {
                     const stored = localStorage.getItem(storageKey);
-                    return stored ? JSON.parse(stored) : {
-                        date: today,
-                        firstAccess: null,
-                        customers: {},
-                        totalDuration: 0,
-                        accessCount: 0
-                    };
+                    const defaultData = this.getDefaultDailyData();
+                    
+                    if (stored) {
+                        const parsed = JSON.parse(stored);
+                        console.log(`📦 Loaded daily data for salesman ${this.salesmanId}:`, parsed);
+                        return { ...defaultData, ...parsed };
+                    }
+                    
+                    console.log(`📦 No existing daily data for salesman ${this.salesmanId}, using defaults`);
+                    return defaultData;
                 } catch (error) {
-                    console.error('Error loading daily data:', error);
-                    return {
-                        date: today,
-                        firstAccess: null,
-                        customers: {},
-                        totalDuration: 0,
-                        accessCount: 0
-                    };
+                    console.error('❌ Error loading daily data:', error);
+                    return this.getDefaultDailyData();
                 }
             }
             
+            getDefaultDailyData() {
+                return {
+                    date: new Date().toISOString().split('T')[0],
+                    salesman_id: this.salesmanId,
+                    salesman_name: this.salesmanName,
+                    firstAccess: null,
+                    customers: {},
+                    totalDuration: 0,
+                    accessCount: 0
+                };
+            }
+            
+            // 🔧 FIXED: Include salesman ID in storage key
             saveDailyData() {
+                if (!this.salesmanId || !this.dailyData) {
+                    console.warn('⚠️ Cannot save daily data: salesman ID or daily data not available');
+                    return;
+                }
+                
                 const today = new Date().toISOString().split('T')[0];
-                const storageKey = `visit_daily_${today}`;
+                const storageKey = `visit_daily_${today}_${this.salesmanId}`;
                 
                 try {
+                    // Update metadata
+                    this.dailyData.salesman_id = this.salesmanId;
+                    this.dailyData.salesman_name = this.salesmanName;
+                    this.dailyData.last_updated = new Date().toISOString();
+                    
                     localStorage.setItem(storageKey, JSON.stringify(this.dailyData));
+                    console.log(`💾 Saved daily data for salesman ${this.salesmanId}`);
                 } catch (error) {
-                    console.error('Error saving daily data:', error);
+                    console.error('❌ Error saving daily data:', error);
                 }
             }
             
             trackPageAccess() {
+                if (!this.salesmanId || !this.dailyData) {
+                    console.warn('⚠️ Cannot track page access: salesman not set or daily data not available');
+                    return;
+                }
+                
                 const now = new Date();
                 const nowISO = now.toISOString();
                 
@@ -1185,11 +1227,11 @@
                 this.dailyData.accessCount++;
                 
                 // Track first access today if not set
-                if (!this.dailyData.firstAccess && this.salesmanId) {
+                if (!this.dailyData.firstAccess) {
                     this.dailyData.firstAccess = nowISO;
                     this.saveDailyData();
                     
-                    console.log(`🌅 First access today recorded: ${now.toLocaleTimeString()}`);
+                    console.log(`🌅 First access today recorded for ${this.salesmanName}: ${now.toLocaleTimeString()}`);
                     
                     // Track the analytics event
                     this.track('visit_first_access_today', {
@@ -1211,6 +1253,11 @@
             }
             
             trackCustomerSelection(customerName, hariJKS) {
+                if (!this.salesmanId || !this.dailyData) {
+                    console.warn('⚠️ Cannot track customer selection: salesman not set');
+                    return;
+                }
+                
                 const now = Date.now();
                 const nowISO = new Date(now).toISOString();
                 
@@ -1245,7 +1292,7 @@
                 
                 this.saveDailyData();
                 
-                console.log(`👥 Customer selected: ${customerName} at ${new Date(now).toLocaleTimeString()}`);
+                console.log(`👥 Customer selected by ${this.salesmanName}: ${customerName} at ${new Date(now).toLocaleTimeString()}`);
                 
                 // Track analytics event
                 this.track('visit_customer_selected', {
@@ -1262,7 +1309,7 @@
             }
             
             endCustomerTracking() {
-                if (!this.currentCustomer || !this.customerStartTime) {
+                if (!this.currentCustomer || !this.customerStartTime || !this.dailyData) {
                     return;
                 }
                 
@@ -1284,7 +1331,7 @@
                 
                 this.saveDailyData();
                 
-                console.log(`⏱️ Customer session ended: ${this.currentCustomer}, Duration: ${this.formatDuration(durationSeconds)}`);
+                console.log(`⏱️ Customer session ended for ${this.salesmanName}: ${this.currentCustomer}, Duration: ${this.formatDuration(durationSeconds)}`);
                 
                 // Track analytics event
                 this.track('visit_customer_duration', {
@@ -1319,8 +1366,8 @@
                     this.endCustomerTracking();
                     this.track('visit_session_end', {
                         session_duration: Date.now() - this.sessionStart,
-                        customers_visited: Object.keys(this.dailyData.customers).length,
-                        total_duration: this.dailyData.totalDuration
+                        customers_visited: this.dailyData ? Object.keys(this.dailyData.customers).length : 0,
+                        total_duration: this.dailyData ? this.dailyData.totalDuration : 0
                     });
                 });
                 
@@ -1339,7 +1386,7 @@
             
             updateFirstAccessDisplay() {
                 const firstAccessElement = document.getElementById('firstAccessTime');
-                if (this.dailyData.firstAccess) {
+                if (this.dailyData && this.dailyData.firstAccess) {
                     const time = new Date(this.dailyData.firstAccess).toLocaleTimeString();
                     firstAccessElement.textContent = time;
                 } else {
@@ -1389,10 +1436,15 @@
             }
             
             track(eventName, eventData = {}) {
+                if (!this.salesmanId) {
+                    console.warn('⚠️ Cannot track event: salesman ID not set');
+                    return;
+                }
+                
                 const event = {
                     session_id: this.sessionId,
-                    salesman_id: this.salesmanId || 'unknown',
-                    salesman_name: this.salesmanName || 'Unknown',
+                    salesman_id: this.salesmanId,
+                    salesman_name: this.salesmanName,
                     event_name: eventName,
                     event_data: eventData,
                     timestamp: new Date().toISOString(),
@@ -1406,7 +1458,7 @@
                 // Store in analytics format
                 this.storeAnalyticsEvent(event);
                 
-                console.log('📈 Visit Analytics Event:', eventName, eventData);
+                console.log(`📈 Visit Analytics Event for ${this.salesmanName}:`, eventName, eventData);
             }
             
             detectDeviceType() {
@@ -1419,31 +1471,37 @@
                 return 'desktop';
             }
             
+            // 🔧 FIXED: Include salesman ID in analytics storage key
             storeAnalyticsEvent(event) {
                 try {
-                    const storageKey = `visit_analytics_${todayDateString}`;
+                    const storageKey = `visit_analytics_${todayDateString}_${this.salesmanId}`;
                     let analyticsData = JSON.parse(localStorage.getItem(storageKey) || '[]');
                     
                     analyticsData.push(event);
                     
-                    // Keep only last 1000 events per day to prevent storage overflow
+                    // Keep only last 1000 events per day per salesman to prevent storage overflow
                     if (analyticsData.length > 1000) {
                         analyticsData = analyticsData.slice(-1000);
                     }
                     
                     localStorage.setItem(storageKey, JSON.stringify(analyticsData));
+                    console.log(`💾 Stored analytics event for salesman ${this.salesmanId}`);
                 } catch (error) {
-                    console.error('Error storing analytics event:', error);
+                    console.error('❌ Error storing analytics event:', error);
                 }
             }
             
             getCustomerDurations() {
-                return this.dailyData.customers;
+                return this.dailyData ? this.dailyData.customers : {};
             }
             
             getTodaysSummary() {
+                if (!this.dailyData) return null;
+                
                 const customers = Object.values(this.dailyData.customers);
                 return {
+                    salesman_id: this.salesmanId,
+                    salesman_name: this.salesmanName,
                     firstAccess: this.dailyData.firstAccess,
                     totalCustomers: customers.length,
                     totalDuration: this.dailyData.totalDuration,
@@ -1839,7 +1897,7 @@
                     document.getElementById('salesmanName').textContent = currentSalesman;
                     console.log(`✅ Found salesman: ${currentSalesman} (Employee ID: ${currentSalesmanId})`);
                     
-                    // 🆕 Set salesman in analytics tracker
+                    // 🆕 Set salesman in analytics tracker AFTER data is loaded
                     if (visitAnalytics) {
                         visitAnalytics.setSalesman(currentSalesmanId, currentSalesman);
                     }
@@ -2605,8 +2663,8 @@
         window.onload = function() {
             if (!checkLoginStatus()) return;
             
-            console.log('📱 Starting Enhanced Visit Outlet with Analytics Tracking...');
-            console.log('📊 Features: Customer duration tracking, first access monitoring, detailed reporting');
+            console.log('📱 Starting Enhanced Visit Outlet with Per-Salesman Analytics Tracking...');
+            console.log('📊 Features: Isolated customer duration tracking, first access monitoring, salesman-specific reporting');
             
             initializeData();
         };
@@ -2620,20 +2678,28 @@
             return visitAnalytics ? visitAnalytics.getCustomerDurations() : {};
         };
 
-        window.generateVisitReport = function(date = null) {
+        window.generateVisitReport = function(date = null, salesmanId = null) {
             const targetDate = date || new Date().toISOString().split('T')[0];
-            const storageKey = `visit_analytics_${targetDate}`;
+            const targetSalesmanId = salesmanId || currentSalesmanId;
+            
+            if (!targetSalesmanId) {
+                console.error('❌ Cannot generate report: salesman ID required');
+                return null;
+            }
+            
+            const storageKey = `visit_analytics_${targetDate}_${targetSalesmanId}`;
+            const dailyKey = `visit_daily_${targetDate}_${targetSalesmanId}`;
             
             try {
                 const analyticsData = JSON.parse(localStorage.getItem(storageKey) || '[]');
-                const dailyData = JSON.parse(localStorage.getItem(`visit_daily_${targetDate}`) || '{}');
+                const dailyData = JSON.parse(localStorage.getItem(dailyKey) || '{}');
                 
                 return {
                     date: targetDate,
                     summary: dailyData,
                     events: analyticsData,
-                    salesman_id: currentSalesmanId,
-                    salesman_name: currentSalesman,
+                    salesman_id: targetSalesmanId,
+                    salesman_name: dailyData.salesman_name || 'Unknown',
                     generated_at: new Date().toISOString()
                 };
             } catch (error) {
@@ -2642,8 +2708,8 @@
             }
         };
 
-        console.log('✅ Enhanced Visit Outlet script loaded with comprehensive analytics tracking');
-        console.log('📋 Analytics features: First access time, customer duration tracking, detailed event logging');
+        console.log('✅ Enhanced Visit Outlet script loaded with per-salesman analytics tracking');
+        console.log('📋 Analytics features: Isolated data per salesman, first access time, customer duration tracking, detailed event logging');
         console.log('🔧 Debug: Press Ctrl+D to toggle debug mode');
     </script>
 </body>
