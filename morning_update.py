@@ -1158,6 +1158,7 @@ class SalesmanDashboardUpdater:
                 'visit.html',
                 'performance.html',
                 'activity.html',
+                'analytics.html',
                 'morning_update.py',
                 'morning_update.log'
             ]
