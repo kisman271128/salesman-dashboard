@@ -8,6 +8,10 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#667eea">
     <title>Activity - Administrator Dashboard</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    
     <style>
         * {
             margin: 0;
@@ -24,7 +28,6 @@
             overflow-x: hidden;
         }
 
-        /* Container */
         .container {
             max-width: 1200px;
             margin: 0 auto;
@@ -34,7 +37,6 @@
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
         }
 
-        /* Header */
         .header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -98,7 +100,6 @@
             color: #475569;
         }
 
-        /* Content Area */
         .content-area {
             min-height: calc(100vh - 200px);
         }
@@ -111,149 +112,425 @@
             display: block;
         }
 
-        /* Analytics Content - Embedded */
-        .analytics-content {
+        /* ===== MAP ANALYTICS STYLES ===== */
+        .map-analytics-content {
             padding: 0;
         }
 
-        /* Project Content Layout */
-        .project-content {
-            display: flex;
-            height: calc(100vh - 200px);
+        .map-controls {
+            background: white;
+            margin: 16px;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
 
-        /* Project Sidebar */
-        .project-sidebar {
-            width: 200px;
-            background: #f8fafc;
-            border-right: 1px solid #e2e8f0;
-            padding: 24px 0;
-            flex-shrink: 0;
-        }
-
-        .project-menu-item {
-            display: block;
-            width: 100%;
-            padding: 16px 24px;
-            background: none;
-            border: none;
+        .map-controls h3 {
             font-size: 14px;
-            font-weight: 600;
-            color: #64748b;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-align: left;
-            border-left: 4px solid transparent;
+            color: #4a5568;
+            margin-bottom: 12px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-        }
-
-        .project-menu-item:hover {
-            background: #f1f5f9;
-            color: #475569;
-            border-left-color: #cbd5e1;
-        }
-
-        .project-menu-item.active {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            border-left-color: #4c51bf;
-            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
-        }
-
-        /* Project Main Area */
-        .project-main {
-            flex: 1;
-            padding: 24px;
-            overflow-y: auto;
-        }
-
-        .project-section {
-            display: none;
-        }
-
-        .project-section.active {
-            display: block;
-        }
-
-        .project-section h2 {
-            font-size: 24px;
-            font-weight: 700;
-            color: #1e293b;
-            margin-bottom: 16px;
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 6px;
         }
 
-        .project-section p {
-            font-size: 16px;
-            color: #64748b;
-            line-height: 1.6;
-            margin-bottom: 24px;
-        }
-
-        /* Project Cards */
-        .project-cards {
+        .control-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin-top: 24px;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 16px;
         }
 
-        .project-card {
+        .control-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .control-item label {
+            font-size: 12px;
+            color: #64748b;
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+
+        .control-item select,
+        .control-item input {
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            background: #f8fafc;
+            transition: all 0.3s ease;
+            min-height: 44px;
+        }
+
+        .control-item select:focus,
+        .control-item input:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .map-action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .map-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            min-height: 44px;
+        }
+
+        .map-btn:active {
+            transform: scale(0.98);
+        }
+
+        .map-btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .map-btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .map-btn-secondary {
+            background: #f1f5f9;
+            color: #4a5568;
+            border: 1px solid #e2e8f0;
+        }
+
+        .map-btn-secondary:hover {
+            background: #e2e8f0;
+        }
+
+        /* Map Container */
+        .map-section {
+            padding: 0 16px;
+            margin-bottom: 20px;
+        }
+
+        .map-wrapper {
             background: white;
             border-radius: 16px;
-            padding: 24px;
+            overflow: hidden;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            border: 1px solid #e2e8f0;
+            position: relative;
+        }
+
+        .map-header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 16px;
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .map-stats {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        #visitMap {
+            height: 500px;
+            width: 100%;
+        }
+
+        /* Map Legend */
+        .map-legend {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 12px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            font-size: 12px;
+        }
+
+        .legend-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #1e293b;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .legend-marker {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        .marker-actual { background: #ef4444; }
+        .marker-master { background: #10b981; }
+        .marker-correct { background: #3b82f6; }
+        .marker-warning { background: #f59e0b; }
+
+        /* Statistics Cards */
+        .map-stats-section {
+            padding: 0 16px;
+            margin-bottom: 20px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            text-align: center;
             transition: all 0.3s ease;
         }
 
-        .project-card:hover {
+        .stat-card:hover {
             transform: translateY(-4px);
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
         }
 
-        .project-card h3 {
-            font-size: 18px;
-            font-weight: 600;
-            color: #1e293b;
+        .stat-icon {
+            font-size: 32px;
             margin-bottom: 12px;
+            display: block;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #64748b;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-change {
+            font-size: 12px;
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 12px;
+            margin-top: 8px;
+            display: inline-block;
+        }
+
+        .change-positive { 
+            background: #ecfdf5; 
+            color: #10b981; 
+        }
+        .change-negative { 
+            background: #fef2f2; 
+            color: #ef4444; 
+        }
+        .change-neutral { 
+            background: #f8fafc; 
+            color: #64748b; 
+        }
+
+        /* Location Analysis List */
+        .location-analysis-section {
+            padding: 0 16px;
+            margin-bottom: 20px;
+        }
+
+        .analysis-card {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            margin-bottom: 16px;
+        }
+
+        .analysis-header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 16px;
+            font-size: 16px;
+            font-weight: 600;
             display: flex;
             align-items: center;
             gap: 8px;
         }
 
-        .project-card p {
-            font-size: 14px;
-            color: #64748b;
-            margin-bottom: 16px;
+        .analysis-content {
+            max-height: 400px;
+            overflow-y: auto;
         }
 
-        .project-status {
-            display: inline-block;
-            padding: 6px 12px;
-            border-radius: 20px;
+        .location-item {
+            padding: 16px;
+            border-bottom: 1px solid #f1f5f9;
+            transition: background 0.2s ease;
+            cursor: pointer;
+        }
+
+        .location-item:hover {
+            background: #f8fafc;
+        }
+
+        .location-item:last-child {
+            border-bottom: none;
+        }
+
+        .location-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .salesman-info {
+            flex: 1;
+        }
+
+        .salesman-name {
+            font-weight: 600;
+            font-size: 14px;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+
+        .customer-name {
             font-size: 12px;
+            color: #64748b;
+            margin-bottom: 8px;
+        }
+
+        .distance-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 10px;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
 
-        .status-active {
+        .distance-perfect {
             background: #ecfdf5;
             color: #10b981;
         }
 
-        .status-planning {
+        .distance-good {
+            background: #dbeafe;
+            color: #3b82f6;
+        }
+
+        .distance-warning {
             background: #fef3c7;
             color: #f59e0b;
         }
 
-        .status-development {
-            background: #dbeafe;
-            color: #3b82f6;
+        .distance-error {
+            background: #fef2f2;
+            color: #ef4444;
+        }
+
+        .location-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .coord-info {
+            background: #f8fafc;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .coord-label {
+            font-size: 10px;
+            color: #64748b;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .coord-value {
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            color: #1e293b;
+            font-weight: 500;
+        }
+
+        .distance-info {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 8px;
+            background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+            border: 1px solid #0ea5e9;
+            border-radius: 6px;
+        }
+
+        .distance-value {
+            font-size: 14px;
+            font-weight: 700;
+            color: #0369a1;
+        }
+
+        /* Loading and Empty States */
+        .loading-state, .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #64748b;
+        }
+
+        .loading-spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
         }
 
         /* Responsive Design */
@@ -275,392 +552,33 @@
                 font-size: 14px;
             }
 
-            .project-content {
+            .control-grid {
+                grid-template-columns: 1fr;
+                gap: 8px;
+            }
+
+            .map-action-buttons {
                 flex-direction: column;
-                height: auto;
             }
 
-            .project-sidebar {
-                width: 100%;
-                padding: 16px 0;
+            #visitMap {
+                height: 400px;
             }
 
-            .project-menu-item {
-                padding: 12px 16px;
-                border-left: none;
-                border-bottom: 2px solid transparent;
+            .map-legend {
+                position: relative;
+                bottom: auto;
+                left: auto;
+                margin: 16px;
             }
 
-            .project-menu-item.active {
-                border-left: none;
-                border-bottom-color: #667eea;
-            }
-
-            .project-main {
-                padding: 16px;
-            }
-
-            .project-cards {
+            .stats-grid {
                 grid-template-columns: 1fr;
             }
-        }
 
-        /* Analytics Embedded Styles */
-        .analytics-embedded {
-            width: 100%;
-            min-height: calc(100vh - 200px);
-        }
-
-        .analytics-embedded .mobile-container {
-            max-width: 100%;
-            box-shadow: none;
-            background: transparent;
-        }
-
-        .analytics-embedded .header {
-            display: none;
-        }
-
-        .analytics-embedded .bottom-actions {
-            position: relative;
-            max-width: 100%;
-            box-shadow: none;
-            border-top: 1px solid #e2e8f0;
-            margin-top: 20px;
-        }
-
-        /* Copy all the analytics styles here */
-        .date-selector {
-            background: white;
-            margin: 16px;
-            border-radius: 12px;
-            padding: 16px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        }
-
-        .date-selector h3 {
-            font-size: 14px;
-            color: #4a5568;
-            margin-bottom: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .date-inputs {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin-bottom: 16px;
-        }
-
-        .date-input-group {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .date-input-group label {
-            font-size: 12px;
-            color: #64748b;
-            margin-bottom: 4px;
-            font-weight: 500;
-        }
-
-        .date-input-group input {
-            padding: 12px;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 14px;
-            background: #f8fafc;
-            transition: all 0.3s ease;
-            min-height: 44px;
-        }
-
-        .date-input-group input:focus {
-            outline: none;
-            border-color: #667eea;
-            background: white;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        .action-buttons {
-            display: flex;
-            gap: 8px;
-        }
-
-        .btn {
-            flex: 1;
-            padding: 12px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 14px;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            min-height: 44px;
-        }
-
-        .btn:active {
-            transform: scale(0.98);
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
-        }
-
-        .btn-secondary {
-            background: #f1f5f9;
-            color: #4a5568;
-            border: 1px solid #e2e8f0;
-        }
-
-        .btn-secondary:hover {
-            background: #e2e8f0;
-        }
-
-        .stats-section {
-            padding: 0 16px;
-            margin-bottom: 20px;
-        }
-
-        .section-title {
-            font-size: 16px;
-            font-weight: 600;
-            color: #2c3e50;
-            margin-bottom: 12px;
-            padding-left: 4px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 12px;
-        }
-
-        .stat-card {
-            background: white;
-            padding: 16px;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            text-align: center;
-            transition: all 0.3s ease;
-            min-height: 120px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-
-        .stat-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
-        }
-
-        .stat-card .icon {
-            font-size: 24px;
-            margin-bottom: 8px;
-            display: block;
-        }
-
-        .stat-card h3 {
-            font-size: 11px;
-            color: #64748b;
-            margin-bottom: 6px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            line-height: 1.2;
-        }
-
-        .stat-card .value {
-            font-size: 24px;
-            font-weight: 700;
-            color: #1e293b;
-            margin-bottom: 4px;
-        }
-
-        .stat-card .change {
-            font-size: 10px;
-            font-weight: 600;
-            padding: 2px 6px;
-            border-radius: 4px;
-        }
-
-        .change.positive { 
-            background: #ecfdf5; 
-            color: #10b981; 
-        }
-        .change.negative { 
-            background: #fef2f2; 
-            color: #ef4444; 
-        }
-        .change.neutral { 
-            background: #f8fafc; 
-            color: #64748b; 
-        }
-
-        .activity-section {
-            padding: 0 16px;
-            margin-bottom: 20px;
-        }
-
-        .activity-card {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-            margin-bottom: 16px;
-        }
-
-        .activity-header {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            padding: 16px;
-            font-size: 16px;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .activity-list {
-            max-height: 400px;
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        .activity-item {
-            padding: 16px;
-            border-bottom: 1px solid #f1f5f9;
-            transition: background 0.2s ease;
-            cursor: pointer;
-        }
-
-        .activity-item:hover {
-            background: #f8fafc;
-        }
-
-        .activity-item:last-child {
-            border-bottom: none;
-        }
-
-        .loading, .no-data {
-            text-align: center;
-            padding: 40px 20px;
-            color: #64748b;
-        }
-
-        .loading-spinner {
-            width: 24px;
-            height: 24px;
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #667eea;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 16px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .bottom-actions {
-            background: white;
-            border-top: 1px solid #f1f2f6;
-            padding: 12px 16px;
-            display: flex;
-            gap: 8px;
-            box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.1);
-            margin: 20px 16px 0 16px;
-            border-radius: 12px;
-        }
-
-        .bottom-btn {
-            flex: 1;
-            padding: 12px 8px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 12px;
-            transition: all 0.3s ease;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-            min-height: 50px;
-        }
-
-        .bottom-btn-export {
-            background: #f1f5f9;
-            color: #4a5568;
-        }
-
-        .bottom-btn-detail {
-            background: #ecfdf5;
-            color: #10b981;
-        }
-
-        .bottom-btn-clean {
-            background: #fef2f2;
-            color: #ef4444;
-        }
-
-        .bottom-btn:hover {
-            transform: translateY(-2px);
-        }
-
-        .bottom-btn:active {
-            transform: scale(0.95);
-        }
-
-        .toast {
-            position: fixed;
-            bottom: 100px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #1e293b;
-            color: white;
-            padding: 12px 20px;
-            border-radius: 8px;
-            font-size: 14px;
-            z-index: 2000;
-            opacity: 0;
-            transition: all 0.3s ease;
-            max-width: 300px;
-            text-align: center;
-        }
-
-        .toast.show {
-            opacity: 1;
-            bottom: 120px;
-        }
-
-        .toast.success {
-            background: #10b981;
-        }
-
-        .toast.error {
-            background: #ef4444;
-        }
-
-        .toast.neutral {
-            background: #64748b;
+            .location-details {
+                grid-template-columns: 1fr;
+            }
         }
 
         /* Status indicator */
@@ -695,311 +613,180 @@
     <div class="container">
         <!-- Status Indicator -->
         <div class="status-indicator" id="statusIndicator">
-            📊 Analytics Ready
+            🗺️ Map Analytics Ready
         </div>
 
         <!-- Header -->
         <div class="header">
-            <h1>🏢 Activity</h1>
-            <div class="header-subtitle">Administrator Dashboard</div>
+            <h1>🗺️ Location Analytics</h1>
+            <div class="header-subtitle">Geolocation Visit Tracking & Analysis</div>
         </div>
 
         <!-- Main Tab Navigation -->
         <div class="main-tabs">
-            <button class="main-tab-btn active" onclick="showMainTab('analytics')">
+            <button class="main-tab-btn active" onclick="showMainTab('map')">
+                🗺️ Map View
+            </button>
+            <button class="main-tab-btn" onclick="showMainTab('analytics')">
                 📊 Analytics
             </button>
-            <button class="main-tab-btn" onclick="showMainTab('project')">
-                🚀 Project
+            <button class="main-tab-btn" onclick="showMainTab('reports')">
+                📋 Reports
             </button>
         </div>
 
         <!-- Content Area -->
         <div class="content-area">
-            <!-- Analytics Tab Content -->
-            <div id="analyticsTab" class="tab-content active">
-                <div class="analytics-content">
-                    <div class="analytics-embedded">
-                        <!-- Embedded Analytics Dashboard -->
-                        <div class="mobile-container">
-                            <!-- Date Selector -->
-                            <div class="date-selector">
-                                <h3>📅 Select Date Range</h3>
-                                <div class="date-inputs">
-                                    <div class="date-input-group">
-                                        <label>From</label>
-                                        <input type="date" id="dateFrom">
-                                    </div>
-                                    <div class="date-input-group">
-                                        <label>To</label>
-                                        <input type="date" id="dateTo">
-                                    </div>
-                                </div>
-                                <div class="action-buttons">
-                                    <button class="btn btn-primary" onclick="loadVisitAnalytics()">
-                                        📈 Load Data
-                                    </button>
-                                    <button class="btn btn-secondary" onclick="loadTodayData()">
-                                        📅 Today
-                                    </button>
-                                </div>
+            <!-- Map Tab Content -->
+            <div id="mapTab" class="tab-content active">
+                <div class="map-analytics-content">
+                    <!-- Map Controls -->
+                    <div class="map-controls">
+                        <h3>🎛️ Map Controls</h3>
+                        <div class="control-grid">
+                            <div class="control-item">
+                                <label>Date From</label>
+                                <input type="date" id="mapDateFrom">
                             </div>
-
-                            <!-- Enhanced Stats Overview -->
-                            <div class="stats-section">
-                                <div class="section-title">📊 Visit Overview</div>
-                                <div class="stats-grid">
-                                    <div class="stat-card">
-                                        <div class="icon">👥</div>
-                                        <h3>Active Salesman</h3>
-                                        <div class="value" id="totalSalesman">-</div>
-                                        <div class="change neutral">Today</div>
-                                    </div>
-                                    <div class="stat-card">
-                                        <div class="icon">⏰</div>
-                                        <h3>Avg First Access</h3>
-                                        <div class="value" id="avgFirstAccess" style="font-size: 16px;">-</div>
-                                        <div class="change neutral">Time</div>
-                                    </div>
-                                    <div class="stat-card">
-                                        <div class="icon">👨‍💼</div>
-                                        <h3>Total Customers</h3>
-                                        <div class="value" id="totalCustomers">-</div>
-                                        <div class="change neutral">Viewed</div>
-                                    </div>
-                                    <div class="stat-card">
-                                        <div class="icon">⌛</div>
-                                        <h3>Avg Duration</h3>
-                                        <div class="value" id="avgDuration" style="font-size: 16px;">-</div>
-                                        <div class="change neutral">Per Customer</div>
-                                    </div>
-                                </div>
+                            <div class="control-item">
+                                <label>Date To</label>
+                                <input type="date" id="mapDateTo">
                             </div>
-
-                            <!-- Enhanced Visit Activity -->
-                            <div class="activity-section">
-                                <div class="section-title">👥 Detailed Visit Activity by Salesman</div>
-                                <div class="activity-card">
-                                    <div class="activity-header">
-                                        📋 Visit Usage & Customer Duration Analysis
-                                    </div>
-                                    <div class="activity-list" id="activityList">
-                                        <div class="loading">
-                                            <div class="loading-spinner"></div>
-                                            <div>Loading enhanced visit analytics...</div>
-                                        </div>
-                                    </div>
-                                </div>
+                            <div class="control-item">
+                                <label>Salesman</label>
+                                <select id="mapSalesmanFilter">
+                                    <option value="">All Salesman</option>
+                                </select>
                             </div>
+                        </div>
+                        <div class="map-action-buttons">
+                            <button class="map-btn map-btn-primary" onclick="loadMapData()">
+                                🗺️ Load Map Data
+                            </button>
+                            <button class="map-btn map-btn-secondary" onclick="clearMapData()">
+                                🧹 Clear Map
+                            </button>
+                            <button class="map-btn map-btn-secondary" onclick="exportMapData()">
+                                📤 Export Data
+                            </button>
+                        </div>
+                    </div>
 
-                            <!-- Bottom Actions -->
-                            <div class="bottom-actions">
-                                <button class="bottom-btn bottom-btn-export" onclick="exportVisitData()">
-                                    📤
-                                    <span>Export Report</span>
-                                </button>
-                                <button class="bottom-btn bottom-btn-detail" onclick="showDetailedReport()">
-                                    📊
-                                    <span>Detailed View</span>
-                                </button>
-                                <button class="bottom-btn bottom-btn-clean" onclick="clearOldData()">
-                                    🗑️
-                                    <span>Cleanup</span>
-                                </button>
+                    <!-- Map Statistics -->
+                    <div class="map-stats-section">
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-icon">📍</div>
+                                <div class="stat-value" id="totalVisits">-</div>
+                                <div class="stat-label">Total Visits</div>
+                                <div class="stat-change change-neutral" id="visitsChange">Today</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon">👥</div>
+                                <div class="stat-value" id="activeSalesman">-</div>
+                                <div class="stat-label">Active Salesman</div>
+                                <div class="stat-change change-neutral" id="salesmanChange">Tracked</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon">✅</div>
+                                <div class="stat-value" id="correctLocations">-</div>
+                                <div class="stat-label">Correct Locations</div>
+                                <div class="stat-change change-positive" id="correctPercentage">-</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon">⚠️</div>
+                                <div class="stat-value" id="locationWarnings">-</div>
+                                <div class="stat-label">Location Alerts</div>
+                                <div class="stat-change change-warning" id="warningPercentage">-</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Map Container -->
+                    <div class="map-section">
+                        <div class="map-wrapper">
+                            <div class="map-header">
+                                <div>📍 Visit Locations Map</div>
+                                <div class="map-stats" id="mapStats">Loading...</div>
+                            </div>
+                            <div id="visitMap"></div>
+                            <div class="map-legend">
+                                <div class="legend-title">Legend</div>
+                                <div class="legend-item">
+                                    <div class="legend-marker marker-actual"></div>
+                                    <span>Actual Visit Location</span>
+                                </div>
+                                <div class="legend-item">
+                                    <div class="legend-marker marker-master"></div>
+                                    <span>Master Customer Location</span>
+                                </div>
+                                <div class="legend-item">
+                                    <div class="legend-marker marker-correct"></div>
+                                    <span>Correct Visit (≤100m)</span>
+                                </div>
+                                <div class="legend-item">
+                                    <div class="legend-marker marker-warning"></div>
+                                    <span>Warning Visit (>100m)</span>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Project Tab Content -->
-            <div id="projectTab" class="tab-content">
-                <div class="project-content">
-                    <!-- Project Sidebar -->
-                    <div class="project-sidebar">
-                        <button class="project-menu-item active" onclick="showProjectSection('pom')">
-                            POM
-                        </button>
-                        <button class="project-menu-item" onclick="showProjectSection('itg')">
-                            ITG
-                        </button>
-                        <button class="project-menu-item" onclick="showProjectSection('category')">
-                            By Category
-                        </button>
-                        <button class="project-menu-item" onclick="showProjectSection('channel')">
-                            By Channel
-                        </button>
+            <!-- Analytics Tab Content -->
+            <div id="analyticsTab" class="tab-content">
+                <div class="location-analysis-section">
+                    <div class="analysis-card">
+                        <div class="analysis-header">
+                            📊 Location Analysis Details
+                        </div>
+                        <div class="analysis-content" id="locationAnalysisContent">
+                            <div class="loading-state">
+                                <div class="loading-spinner"></div>
+                                <div>Loading location analysis...</div>
+                            </div>
+                        </div>
                     </div>
+                </div>
+            </div>
 
-                    <!-- Project Main Area -->
-                    <div class="project-main">
-                        <!-- POM Section -->
-                        <div id="pomSection" class="project-section active">
-                            <h2>📋 POM (Performance Optimization Management)</h2>
-                            <p>Manage and monitor performance optimization metrics across all sales channels and product categories.</p>
-                            
-                            <div class="project-cards">
-                                <div class="project-card">
-                                    <h3>🎯 Sales Target Optimization</h3>
-                                    <p>Real-time monitoring of sales targets vs actual performance with predictive analytics.</p>
-                                    <span class="project-status status-active">Active</span>
-                                </div>
-                                <div class="project-card">
-                                    <h3>📊 Performance Metrics Dashboard</h3>
-                                    <p>Comprehensive dashboard showing KPIs, trends, and performance indicators.</p>
-                                    <span class="project-status status-development">In Development</span>
-                                </div>
-                                <div class="project-card">
-                                    <h3>⚡ Process Automation</h3>
-                                    <p>Automated workflows for performance tracking and reporting processes.</p>
-                                    <span class="project-status status-planning">Planning</span>
-                                </div>
-                            </div>
+            <!-- Reports Tab Content -->
+            <div id="reportsTab" class="tab-content">
+                <div class="location-analysis-section">
+                    <div class="analysis-card">
+                        <div class="analysis-header">
+                            📋 Location Compliance Reports
                         </div>
-
-                        <!-- ITG Section -->
-                        <div id="itgSection" class="project-section">
-                            <h2>🔧 ITG (IT Governance & Infrastructure)</h2>
-                            <p>IT infrastructure management, system governance, and technical project oversight.</p>
-                            
-                            <div class="project-cards">
-                                <div class="project-card">
-                                    <h3>🖥️ System Architecture</h3>
-                                    <p>Design and implementation of scalable system architecture for enterprise solutions.</p>
-                                    <span class="project-status status-active">Active</span>
-                                </div>
-                                <div class="project-card">
-                                    <h3>🔐 Security Management</h3>
-                                    <p>Comprehensive security protocols and access management systems.</p>
-                                    <span class="project-status status-active">Active</span>
-                                </div>
-                                <div class="project-card">
-                                    <h3>📱 Mobile App Infrastructure</h3>
-                                    <p>Backend services and API management for mobile applications.</p>
-                                    <span class="project-status status-development">In Development</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- By Category Section -->
-                        <div id="categorySection" class="project-section">
-                            <h2>🏷️ By Category</h2>
-                            <p>Project management and analytics organized by product categories and business segments.</p>
-                            
-                            <div class="project-cards">
-                                <div class="project-card">
-                                    <h3>🍪 Biscuit Category Management</h3>
-                                    <p>Specialized tools and analytics for biscuit product line management.</p>
-                                    <span class="project-status status-active">Active</span>
-                                </div>
-                                <div class="project-card">
-                                    <h3>🥤 Beverage Category Analytics</h3>
-                                    <p>Comprehensive beverage category performance tracking and optimization.</p>
-                                    <span class="project-status status-active">Active</span>
-                                </div>
-                                <div class="project-card">
-                                    <h3>🍿 Snackfood Operations</h3>
-                                    <p>Operations management and performance tracking for snackfood categories.</p>
-                                    <span class="project-status status-development">In Development</span>
-                                </div>
-                                <div class="project-card">
-                                    <h3>🎁 General Products Hub</h3>
-                                    <p>Unified management system for miscellaneous and general product categories.</p>
-                                    <span class="project-status status-planning">Planning</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- By Channel Section -->
-                        <div id="channelSection" class="project-section">
-                            <h2>📺 By Channel</h2>
-                            <p>Channel-specific project management and performance optimization across distribution networks.</p>
-                            
-                            <div class="project-cards">
-                                <div class="project-card">
-                                    <h3>🏪 Traditional Trade</h3>
-                                    <p>Traditional trade channel optimization and relationship management systems.</p>
-                                    <span class="project-status status-active">Active</span>
-                                </div>
-                                <div class="project-card">
-                                    <h3>🏬 Modern Trade</h3>
-                                    <p>Modern retail channel management with advanced POS integration.</p>
-                                    <span class="project-status status-active">Active</span>
-                                </div>
-                                <div class="project-card">
-                                    <h3>🌐 E-Commerce Platform</h3>
-                                    <p>Digital commerce channel management and online marketplace optimization.</p>
-                                    <span class="project-status status-development">In Development</span>
-                                </div>
-                                <div class="project-card">
-                                    <h3>🚚 Direct Distribution</h3>
-                                    <p>Direct-to-consumer distribution channel management and logistics optimization.</p>
-                                    <span class="project-status status-planning">Planning</span>
-                                </div>
+                        <div class="analysis-content" id="reportsContent">
+                            <div class="empty-state">
+                                <div class="empty-icon">📋</div>
+                                <div>Advanced reporting features coming soon</div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-
-        <!-- Toast Notification -->
-        <div class="toast" id="toast"></div>
     </div>
 
+    <!-- Leaflet JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
     <script>
-        // ===== MAIN TAB MANAGEMENT =====
-        function showMainTab(tabName) {
-            // Update tab buttons
-            document.querySelectorAll('.main-tab-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
+        // ===== GLOBAL VARIABLES =====
+        let visitMap = null;
+        let mapMarkers = [];
+        let locationData = [];
+        let detailsData = [];
+        let salesmanData = [];
+        let currentMapData = [];
 
-            // Show/hide tab content
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-            
-            if (tabName === 'analytics') {
-                document.getElementById('analyticsTab').classList.add('active');
-                // Load analytics data when tab is opened
-                setTimeout(() => {
-                    if (typeof loadTodayData === 'function') {
-                        loadTodayData();
-                    } else {
-                        initializeAnalytics();
-                    }
-                }, 100);
-            } else if (tabName === 'project') {
-                document.getElementById('projectTab').classList.add('active');
-            }
-        }
-
-        // ===== PROJECT SUB MENU MANAGEMENT =====
-        function showProjectSection(sectionName) {
-            // Update menu buttons
-            document.querySelectorAll('.project-menu-item').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-
-            // Show/hide sections
-            document.querySelectorAll('.project-section').forEach(section => section.classList.remove('active'));
-            
-            const sectionMap = {
-                'pom': 'pomSection',
-                'itg': 'itgSection', 
-                'category': 'categorySection',
-                'channel': 'channelSection'
-            };
-            
-            const targetSection = document.getElementById(sectionMap[sectionName]);
-            if (targetSection) {
-                targetSection.classList.add('active');
-            }
-        }
-
-        // ===== 🔧 FIXED ENHANCED ANALYTICS CLASS - COMPATIBLE WITH PER-SALESMAN DATA =====
-        class EnhancedVisitAnalytics {
+        // ===== MAP ANALYTICS CLASS =====
+        class LocationAnalytics {
             constructor() {
-                this.visitData = [];
-                this.dailyData = {};
-                this.salesmanData = {};
+                this.visitLocations = [];
+                this.salesmanLocations = {};
                 this.isInitialized = false;
                 
                 this.init();
@@ -1007,381 +794,587 @@
             
             init() {
                 if (this.isInitialized) return;
-                console.log('🚀 Enhanced Visit Analytics initialized in Activity page');
+                console.log('🗺️ Location Analytics initialized');
                 this.isInitialized = true;
+                
+                // Initialize map
+                this.initializeMap();
             }
             
-            // 🆕 FIXED: Load data from per-salesman storage keys
-            loadVisitData(dateFrom, dateTo) {
-                this.visitData = [];
-                this.dailyData = {};
-                this.salesmanData = {};
+            initializeMap() {
+                // Initialize Leaflet map centered on Jakarta
+                visitMap = L.map('visitMap').setView([-6.2088, 106.8456], 11);
+                
+                // Add OpenStreetMap tiles
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors',
+                    maxZoom: 18
+                }).addTo(visitMap);
+                
+                console.log('🗺️ Map initialized successfully');
+            }
+            
+            loadLocationData(dateFrom, dateTo, salesmanFilter = '') {
+                this.visitLocations = [];
+                this.salesmanLocations = {};
+                
+                console.log(`🗺️ Loading location data from ${dateFrom} to ${dateTo}`);
                 
                 let currentDate = new Date(dateFrom);
                 const endDate = new Date(dateTo);
                 
-                console.log(`📊 Loading visit data from ${dateFrom} to ${dateTo}`);
-                
                 while (currentDate <= endDate) {
                     const dateStr = currentDate.toISOString().split('T')[0];
-                    
-                    // 🔧 FIXED: Scan all localStorage keys for this date
-                    this.loadDataForDate(dateStr);
-                    
+                    this.loadLocationDataForDate(dateStr, salesmanFilter);
                     currentDate.setDate(currentDate.getDate() + 1);
                 }
                 
-                // Process the loaded data
-                this.processDailyData();
-                
-                console.log(`✅ Loaded visit data: ${this.visitData.length} events, ${Object.keys(this.salesmanData).length} salesman`);
+                console.log(`✅ Loaded ${this.visitLocations.length} location points from ${Object.keys(this.salesmanLocations).length} salesman`);
+                return this.visitLocations;
             }
             
-            // 🆕 NEW: Scan localStorage for all salesman data on a specific date
-            loadDataForDate(dateStr) {
-                const analyticsPattern = `visit_analytics_${dateStr}_`;
-                const dailyPattern = `visit_daily_${dateStr}_`;
+            loadLocationDataForDate(dateStr, salesmanFilter) {
+                // Load geolocation analytics data
+                const geoAnalyticsPattern = `visit_analytics_geo_${dateStr}_`;
+                const geoDailyPattern = `visit_daily_geo_${dateStr}_`;
                 
-                // Scan all localStorage keys
                 for (let i = 0; i < localStorage.length; i++) {
                     const key = localStorage.key(i);
                     
-                    if (key && key.startsWith(analyticsPattern)) {
-                        // Extract salesman ID from key
-                        const salesmanId = key.replace(analyticsPattern, '');
+                    if (key && key.startsWith(geoAnalyticsPattern)) {
+                        const salesmanId = key.replace(geoAnalyticsPattern, '');
+                        
+                        // Apply salesman filter
+                        if (salesmanFilter && salesmanId !== salesmanFilter) {
+                            continue;
+                        }
                         
                         try {
                             const analyticsData = JSON.parse(localStorage.getItem(key) || '[]');
                             
-                            if (analyticsData.length > 0) {
-                                console.log(`📅 Loaded ${analyticsData.length} events for salesman ${salesmanId} on ${dateStr}`);
-                                
-                                // Add to visitData
-                                this.visitData.push(...analyticsData);
-                                
-                                // Process analytics data for this salesman
-                                analyticsData.forEach(event => {
-                                    if (!this.salesmanData[salesmanId]) {
-                                        this.salesmanData[salesmanId] = {
-                                            salesman_id: salesmanId,
+                            // Process location events
+                            analyticsData.forEach(event => {
+                                if (event.location && (event.event_name === 'visit_customer_selected' || event.event_name === 'visit_location_verification')) {
+                                    const locationPoint = {
+                                        salesman_id: salesmanId,
+                                        salesman_name: event.salesman_name,
+                                        customer_name: event.event_data.customer_name,
+                                        actual_location: {
+                                            latitude: event.location.latitude,
+                                            longitude: event.location.longitude,
+                                            accuracy: event.location.accuracy
+                                        },
+                                        master_location: event.event_data.master_coordinates,
+                                        distance: event.event_data.distance_meters,
+                                        timestamp: event.timestamp,
+                                        event_type: event.event_name,
+                                        date: dateStr
+                                    };
+                                    
+                                    this.visitLocations.push(locationPoint);
+                                    
+                                    // Group by salesman
+                                    if (!this.salesmanLocations[salesmanId]) {
+                                        this.salesmanLocations[salesmanId] = {
                                             salesman_name: event.salesman_name,
-                                            first_access_times: {},
-                                            customers: {},
-                                            total_duration: 0,
-                                            session_count: 0,
-                                            events: []
+                                            locations: []
                                         };
                                     }
-                                    
-                                    this.salesmanData[salesmanId].events.push(event);
-                                });
-                            }
-                        } catch (error) {
-                            console.error(`❌ Error loading analytics data for ${key}:`, error);
-                        }
-                    }
-                    
-                    if (key && key.startsWith(dailyPattern)) {
-                        // Extract salesman ID from key
-                        const salesmanId = key.replace(dailyPattern, '');
-                        
-                        try {
-                            const dailyInfo = JSON.parse(localStorage.getItem(key) || '{}');
-                            
-                            if (Object.keys(dailyInfo).length > 0) {
-                                if (!this.dailyData[dateStr]) {
-                                    this.dailyData[dateStr] = {};
+                                    this.salesmanLocations[salesmanId].locations.push(locationPoint);
                                 }
-                                
-                                this.dailyData[dateStr][salesmanId] = {
-                                    analytics: [], // Will be populated from analytics data
-                                    daily: dailyInfo
-                                };
-                                
-                                console.log(`📦 Loaded daily data for salesman ${salesmanId} on ${dateStr}`);
-                            }
-                        } catch (error) {
-                            console.error(`❌ Error loading daily data for ${key}:`, error);
-                        }
-                    }
-                }
-            }
-            
-            // 🔧 FIXED: Process daily data with new structure
-            processDailyData() {
-                Object.keys(this.dailyData).forEach(date => {
-                    const dateData = this.dailyData[date];
-                    
-                    Object.keys(dateData).forEach(salesmanId => {
-                        const salesmanDateData = dateData[salesmanId];
-                        const dailyInfo = salesmanDateData.daily;
-                        
-                        if (dailyInfo.date) {
-                            // Process first access time
-                            if (dailyInfo.firstAccess) {
-                                if (this.salesmanData[salesmanId]) {
-                                    this.salesmanData[salesmanId].first_access_times[date] = dailyInfo.firstAccess;
-                                }
-                            }
-                            
-                            // Process customer durations
-                            if (dailyInfo.customers && Object.keys(dailyInfo.customers).length > 0) {
-                                if (this.salesmanData[salesmanId]) {
-                                    Object.keys(dailyInfo.customers).forEach(customerName => {
-                                        const customerData = dailyInfo.customers[customerName];
-                                        
-                                        if (!this.salesmanData[salesmanId].customers[customerName]) {
-                                            this.salesmanData[salesmanId].customers[customerName] = {
-                                                name: customerName,
-                                                total_duration: 0,
-                                                visit_count: 0,
-                                                sessions: []
-                                            };
-                                        }
-                                        
-                                        this.salesmanData[salesmanId].customers[customerName].total_duration += customerData.totalDuration || 0;
-                                        this.salesmanData[salesmanId].customers[customerName].visit_count += customerData.visitCount || 0;
-                                        
-                                        if (customerData.sessions) {
-                                            this.salesmanData[salesmanId].customers[customerName].sessions.push(...customerData.sessions);
-                                        }
-                                        
-                                        this.salesmanData[salesmanId].total_duration += customerData.totalDuration || 0;
-                                    });
-                                }
-                            }
-                        }
-                    });
-                });
-            }
-            
-            getSummaryStats() {
-                const totalSalesman = Object.keys(this.salesmanData).length;
-                let totalCustomers = 0;
-                let totalDuration = 0;
-                let firstAccessTimes = [];
-                
-                Object.values(this.salesmanData).forEach(salesman => {
-                    totalCustomers += Object.keys(salesman.customers).length;
-                    totalDuration += salesman.total_duration;
-                    
-                    Object.values(salesman.first_access_times).forEach(time => {
-                        if (time) {
-                            firstAccessTimes.push(new Date(time));
-                        }
-                    });
-                });
-                
-                const avgFirstAccess = firstAccessTimes.length > 0 ? 
-                    this.calculateAverageTime(firstAccessTimes) : null;
-                
-                const avgDuration = totalCustomers > 0 ? 
-                    Math.floor(totalDuration / totalCustomers) : 0;
-                
-                return {
-                    totalSalesman,
-                    totalCustomers,
-                    avgFirstAccess: avgFirstAccess ? this.formatTime(avgFirstAccess) : 'N/A',
-                    avgDuration: this.formatDuration(avgDuration)
-                };
-            }
-            
-            calculateAverageTime(times) {
-                if (times.length === 0) return null;
-                
-                const totalMinutes = times.reduce((sum, time) => {
-                    return sum + (time.getHours() * 60 + time.getMinutes());
-                }, 0);
-                
-                const avgMinutes = Math.floor(totalMinutes / times.length);
-                const avgHours = Math.floor(avgMinutes / 60);
-                const remainingMinutes = avgMinutes % 60;
-                
-                const avgDate = new Date();
-                avgDate.setHours(avgHours, remainingMinutes, 0, 0);
-                
-                return avgDate;
-            }
-            
-            formatTime(date) {
-                return date.toLocaleTimeString('id-ID', {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
-            }
-            
-            formatDuration(seconds) {
-                if (seconds <= 0) return '00:00';
-                
-                const hours = Math.floor(seconds / 3600);
-                const minutes = Math.floor((seconds % 3600) / 60);
-                const secs = seconds % 60;
-                
-                if (hours > 0) {
-                    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-                } else {
-                    return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-                }
-            }
-            
-            getSalesmanData() {
-                return Object.values(this.salesmanData).sort((a, b) => {
-                    // Sort by most recent first access
-                    const aLatestAccess = Math.max(...Object.keys(a.first_access_times).map(d => new Date(d).getTime()));
-                    const bLatestAccess = Math.max(...Object.keys(b.first_access_times).map(d => new Date(d).getTime()));
-                    
-                    return bLatestAccess - aLatestAccess;
-                });
-            }
-            
-            // 🆕 NEW: Export function compatible with per-salesman data
-            exportToCSV() {
-                const salesmanData = this.getSalesmanData();
-                
-                if (salesmanData.length === 0) {
-                    return null;
-                }
-                
-                // Enhanced CSV with customer duration details
-                const csvHeaders = [
-                    'Date', 'Salesman_ID', 'Salesman_Name', 'First_Access_Time', 
-                    'Customer_Name', 'Customer_Duration_Seconds', 'Customer_Duration_Formatted', 
-                    'Visit_Count', 'Total_Customers', 'Total_Duration_Seconds'
-                ];
-                
-                const csvRows = [];
-                
-                salesmanData.forEach(salesman => {
-                    const customers = Object.values(salesman.customers);
-                    const firstAccessEntries = Object.entries(salesman.first_access_times);
-                    
-                    if (customers.length > 0) {
-                        customers.forEach(customer => {
-                            firstAccessEntries.forEach(([date, firstAccess]) => {
-                                csvRows.push([
-                                    date,
-                                    salesman.salesman_id,
-                                    salesman.salesman_name,
-                                    new Date(firstAccess).toLocaleTimeString('id-ID'),
-                                    customer.name,
-                                    customer.total_duration,
-                                    this.formatDuration(customer.total_duration),
-                                    customer.visit_count,
-                                    customers.length,
-                                    salesman.total_duration
-                                ]);
                             });
-                        });
-                    } else {
-                        firstAccessEntries.forEach(([date, firstAccess]) => {
-                            csvRows.push([
-                                date,
-                                salesman.salesman_id,
-                                salesman.salesman_name,
-                                new Date(firstAccess).toLocaleTimeString('id-ID'),
-                                'No Customers',
-                                0,
-                                '00:00',
-                                0,
-                                0,
-                                0
-                            ]);
-                        });
+                            
+                        } catch (error) {
+                            console.error(`❌ Error loading geo analytics for ${key}:`, error);
+                        }
+                    }
+                }
+            }
+            
+            renderMapMarkers() {
+                // Clear existing markers
+                this.clearMapMarkers();
+                
+                if (this.visitLocations.length === 0) {
+                    console.log('⚠️ No location data to display');
+                    return;
+                }
+                
+                // Group locations by customer and salesman
+                const locationGroups = {};
+                
+                this.visitLocations.forEach(location => {
+                    const key = `${location.salesman_id}_${location.customer_name}`;
+                    if (!locationGroups[key]) {
+                        locationGroups[key] = [];
+                    }
+                    locationGroups[key].push(location);
+                });
+                
+                Object.values(locationGroups).forEach(group => {
+                    const latest = group[group.length - 1]; // Get latest visit
+                    
+                    // Add actual location marker
+                    this.addActualLocationMarker(latest);
+                    
+                    // Add master location marker if available
+                    if (latest.master_location) {
+                        this.addMasterLocationMarker(latest);
+                        
+                        // Add connection line
+                        this.addConnectionLine(latest);
                     }
                 });
                 
-                const csvContent = [csvHeaders, ...csvRows]
-                    .map(row => row.map(cell => `"${cell}"`).join(','))
-                    .join('\n');
-                
-                return csvContent;
-            }
-            
-            // 🆕 NEW: Get analytics data for specific salesman
-            getSalesmanAnalytics(salesmanId) {
-                return this.salesmanData[salesmanId] || null;
-            }
-            
-            // 🆕 NEW: Get all available salesman IDs from stored data
-            getAvailableSalesmanIds(dateFrom, dateTo) {
-                const salesmanIds = new Set();
-                
-                let currentDate = new Date(dateFrom);
-                const endDate = new Date(dateTo);
-                
-                while (currentDate <= endDate) {
-                    const dateStr = currentDate.toISOString().split('T')[0];
-                    const analyticsPattern = `visit_analytics_${dateStr}_`;
-                    
-                    for (let i = 0; i < localStorage.length; i++) {
-                        const key = localStorage.key(i);
-                        if (key && key.startsWith(analyticsPattern)) {
-                            const salesmanId = key.replace(analyticsPattern, '');
-                            salesmanIds.add(salesmanId);
-                        }
-                    }
-                    
-                    currentDate.setDate(currentDate.getDate() + 1);
+                // Fit map to show all markers
+                if (mapMarkers.length > 0) {
+                    const group = new L.featureGroup(mapMarkers);
+                    visitMap.fitBounds(group.getBounds().pad(0.1));
                 }
                 
-                return Array.from(salesmanIds);
+                console.log(`🗺️ Rendered ${mapMarkers.length} markers on map`);
+            }
+            
+            addActualLocationMarker(location) {
+                const isCorrect = location.distance <= 100;
+                const isWarning = location.distance > 100 && location.distance <= 500;
+                
+                let markerColor = '#ef4444'; // Default red for actual location
+                if (isCorrect) markerColor = '#3b82f6'; // Blue for correct
+                else if (isWarning) markerColor = '#f59e0b'; // Orange for warning
+                
+                const marker = L.circleMarker([location.actual_location.latitude, location.actual_location.longitude], {
+                    radius: 8,
+                    fillColor: markerColor,
+                    color: 'white',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                });
+                
+                const popupContent = `
+                    <div style="font-family: 'Segoe UI', sans-serif; min-width: 200px;">
+                        <h4 style="margin: 0 0 8px 0; color: #1e293b; font-size: 14px;">📍 Actual Visit</h4>
+                        <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Salesman:</strong> ${location.salesman_name}</p>
+                        <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Customer:</strong> ${location.customer_name}</p>
+                        <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Coordinates:</strong> ${location.actual_location.latitude.toFixed(6)}, ${location.actual_location.longitude.toFixed(6)}</p>
+                        <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Accuracy:</strong> ±${Math.round(location.actual_location.accuracy)}m</p>
+                        ${location.distance !== undefined ? `<p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Distance from Master:</strong> ${Math.round(location.distance)}m</p>` : ''}
+                        <p style="margin: 0; font-size: 11px; color: #64748b;">${new Date(location.timestamp).toLocaleString()}</p>
+                    </div>
+                `;
+                
+                marker.bindPopup(popupContent);
+                marker.addTo(visitMap);
+                mapMarkers.push(marker);
+            }
+            
+            addMasterLocationMarker(location) {
+                const marker = L.circleMarker([location.master_location.latitude, location.master_location.longitude], {
+                    radius: 6,
+                    fillColor: '#10b981',
+                    color: 'white',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                });
+                
+                const popupContent = `
+                    <div style="font-family: 'Segoe UI', sans-serif; min-width: 200px;">
+                        <h4 style="margin: 0 0 8px 0; color: #1e293b; font-size: 14px;">🏪 Master Location</h4>
+                        <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Customer:</strong> ${location.customer_name}</p>
+                        <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Coordinates:</strong> ${location.master_location.latitude.toFixed(6)}, ${location.master_location.longitude.toFixed(6)}</p>
+                        <p style="margin: 0; font-size: 11px; color: #64748b;">From Master Data</p>
+                    </div>
+                `;
+                
+                marker.bindPopup(popupContent);
+                marker.addTo(visitMap);
+                mapMarkers.push(marker);
+            }
+            
+            addConnectionLine(location) {
+                const isCorrect = location.distance <= 100;
+                const isWarning = location.distance > 100 && location.distance <= 500;
+                
+                let lineColor = '#ef4444'; // Red for incorrect
+                if (isCorrect) lineColor = '#10b981'; // Green for correct
+                else if (isWarning) lineColor = '#f59e0b'; // Orange for warning
+                
+                const line = L.polyline([
+                    [location.actual_location.latitude, location.actual_location.longitude],
+                    [location.master_location.latitude, location.master_location.longitude]
+                ], {
+                    color: lineColor,
+                    weight: 2,
+                    opacity: 0.7,
+                    dashArray: isCorrect ? null : '5, 5'
+                });
+                
+                line.addTo(visitMap);
+                mapMarkers.push(line);
+            }
+            
+            clearMapMarkers() {
+                mapMarkers.forEach(marker => {
+                    visitMap.removeLayer(marker);
+                });
+                mapMarkers = [];
+            }
+            
+            getStatistics() {
+                const stats = {
+                    totalVisits: this.visitLocations.length,
+                    activeSalesman: Object.keys(this.salesmanLocations).length,
+                    correctLocations: 0,
+                    warningLocations: 0,
+                    errorLocations: 0
+                };
+                
+                this.visitLocations.forEach(location => {
+                    if (location.distance !== undefined) {
+                        if (location.distance <= 100) {
+                            stats.correctLocations++;
+                        } else if (location.distance <= 500) {
+                            stats.warningLocations++;
+                        } else {
+                            stats.errorLocations++;
+                        }
+                    }
+                });
+                
+                return stats;
+            }
+            
+            getSalesmanList() {
+                return Object.keys(this.salesmanLocations).map(id => ({
+                    id: id,
+                    name: this.salesmanLocations[id].salesman_name
+                }));
+            }
+            
+            getLocationAnalysisData() {
+                return this.visitLocations.map(location => {
+                    const distanceCategory = this.getDistanceCategory(location.distance);
+                    
+                    return {
+                        ...location,
+                        distance_category: distanceCategory,
+                        compliance_status: distanceCategory.status
+                    };
+                }).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            }
+            
+            getDistanceCategory(distance) {
+                if (distance === undefined) {
+                    return { status: 'unknown', label: 'No Master Data', class: 'distance-error' };
+                }
+                
+                if (distance <= 50) {
+                    return { status: 'perfect', label: 'Perfect Match', class: 'distance-perfect' };
+                } else if (distance <= 100) {
+                    return { status: 'good', label: 'Good Match', class: 'distance-good' };
+                } else if (distance <= 500) {
+                    return { status: 'warning', label: 'Distance Warning', class: 'distance-warning' };
+                } else {
+                    return { status: 'error', label: 'Location Error', class: 'distance-error' };
+                }
             }
         }
 
-        // ===== GLOBAL VARIABLES =====
-        let visitAnalytics = new EnhancedVisitAnalytics();
+        // ===== GLOBAL ANALYTICS INSTANCE =====
+        let locationAnalytics = null;
 
-        // ===== ANALYTICS FUNCTIONS =====
-        function initializeAnalytics() {
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('dateFrom').value = today;
-            document.getElementById('dateTo').value = today;
-            loadTodayData();
+        // ===== MAIN TAB MANAGEMENT =====
+        function showMainTab(tabName) {
+            document.querySelectorAll('.main-tab-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            if (tabName === 'map') {
+                document.getElementById('mapTab').classList.add('active');
+                setTimeout(() => {
+                    if (visitMap) {
+                        visitMap.invalidateSize();
+                    }
+                }, 100);
+            } else if (tabName === 'analytics') {
+                document.getElementById('analyticsTab').classList.add('active');
+                loadLocationAnalysis();
+            } else if (tabName === 'reports') {
+                document.getElementById('reportsTab').classList.add('active');
+                loadReportsData();
+            }
         }
 
-        function loadTodayData() {
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('dateFrom').value = today;
-            document.getElementById('dateTo').value = today;
-            loadVisitAnalytics();
-        }
-
-        function loadVisitAnalytics() {
-            const dateFrom = document.getElementById('dateFrom').value;
-            const dateTo = document.getElementById('dateTo').value;
+        // ===== MAP FUNCTIONS =====
+        function loadMapData() {
+            const dateFrom = document.getElementById('mapDateFrom').value;
+            const dateTo = document.getElementById('mapDateTo').value;
+            const salesmanFilter = document.getElementById('mapSalesmanFilter').value;
             
             if (!dateFrom || !dateTo) {
-                showToast('Please select date range', 'error');
+                alert('Please select date range');
                 return;
             }
-
-            console.log('📊 Loading enhanced visit analytics for:', dateFrom, 'to', dateTo);
-            updateStatusIndicator('loading', 'Loading Analytics Data...');
-            showLoading();
+            
+            updateStatusIndicator('loading', 'Loading map data...');
             
             setTimeout(() => {
-                visitAnalytics.loadVisitData(dateFrom, dateTo);
+                const locationData = locationAnalytics.loadLocationData(dateFrom, dateTo, salesmanFilter);
+                locationAnalytics.renderMapMarkers();
                 
-                updateStatsOverview();
-                updateActivityList();
+                updateMapStatistics();
+                updateMapStats();
                 
-                const totalEvents = visitAnalytics.visitData.length;
-                const totalSalesman = Object.keys(visitAnalytics.salesmanData).length;
+                updateStatusIndicator('ready', `${locationData.length} locations loaded`);
                 
-                updateStatusIndicator('ready', `${totalSalesman} Salesman Loaded`);
-                showToast(`Loaded ${totalEvents} visit events from ${totalSalesman} salesman`, 'success');
+                console.log(`🗺️ Map loaded with ${locationData.length} location points`);
             }, 800);
         }
 
-        function showLoading() {
-            document.getElementById('activityList').innerHTML = `
-                <div class="loading">
-                    <div class="loading-spinner"></div>
-                    <div>Loading enhanced visit analytics...</div>
+        function clearMapData() {
+            if (locationAnalytics) {
+                locationAnalytics.clearMapMarkers();
+                locationAnalytics.visitLocations = [];
+                locationAnalytics.salesmanLocations = {};
+                
+                updateMapStatistics();
+                updateMapStats();
+                
+                console.log('🧹 Map data cleared');
+            }
+        }
+
+        function exportMapData() {
+            if (!locationAnalytics || locationAnalytics.visitLocations.length === 0) {
+                alert('No map data to export');
+                return;
+            }
+            
+            const csvHeaders = [
+                'Date', 'Timestamp', 'Salesman_ID', 'Salesman_Name', 'Customer_Name', 
+                'Actual_Latitude', 'Actual_Longitude', 'Actual_Accuracy',
+                'Master_Latitude', 'Master_Longitude', 'Distance_Meters', 'Compliance_Status'
+            ];
+            
+            const csvRows = locationAnalytics.visitLocations.map(location => [
+                location.date,
+                location.timestamp,
+                location.salesman_id,
+                location.salesman_name,
+                location.customer_name,
+                location.actual_location.latitude,
+                location.actual_location.longitude,
+                location.actual_location.accuracy,
+                location.master_location ? location.master_location.latitude : '',
+                location.master_location ? location.master_location.longitude : '',
+                location.distance || '',
+                location.distance <= 100 ? 'Compliant' : location.distance <= 500 ? 'Warning' : 'Non-Compliant'
+            ]);
+            
+            const csvContent = [csvHeaders, ...csvRows]
+                .map(row => row.map(cell => `"${cell}"`).join(','))
+                .join('\n');
+            
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `location_analytics_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+            
+            console.log('📤 Map data exported successfully');
+        }
+
+        function updateMapStatistics() {
+            const stats = locationAnalytics ? locationAnalytics.getStatistics() : {
+                totalVisits: 0,
+                activeSalesman: 0,
+                correctLocations: 0,
+                warningLocations: 0
+            };
+            
+            document.getElementById('totalVisits').textContent = stats.totalVisits;
+            document.getElementById('activeSalesman').textContent = stats.activeSalesman;
+            document.getElementById('correctLocations').textContent = stats.correctLocations;
+            document.getElementById('locationWarnings').textContent = stats.warningLocations + stats.errorLocations;
+            
+            // Calculate percentages
+            const total = stats.totalVisits;
+            if (total > 0) {
+                const correctPercentage = Math.round((stats.correctLocations / total) * 100);
+                const warningPercentage = Math.round(((stats.warningLocations + stats.errorLocations) / total) * 100);
+                
+                document.getElementById('correctPercentage').textContent = `${correctPercentage}%`;
+                document.getElementById('warningPercentage').textContent = `${warningPercentage}%`;
+            } else {
+                document.getElementById('correctPercentage').textContent = '-';
+                document.getElementById('warningPercentage').textContent = '-';
+            }
+        }
+
+        function updateMapStats() {
+            const stats = locationAnalytics ? locationAnalytics.getStatistics() : { totalVisits: 0, activeSalesman: 0 };
+            document.getElementById('mapStats').textContent = `${stats.totalVisits} visits • ${stats.activeSalesman} salesman`;
+        }
+
+        // ===== ANALYTICS FUNCTIONS =====
+        function loadLocationAnalysis() {
+            const analysisContent = document.getElementById('locationAnalysisContent');
+            
+            if (!locationAnalytics || locationAnalytics.visitLocations.length === 0) {
+                analysisContent.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">📍</div>
+                        <div>No location data available. Load map data first.</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            const analysisData = locationAnalytics.getLocationAnalysisData();
+            
+            let html = '';
+            
+            analysisData.forEach((location, index) => {
+                const distanceCategory = locationAnalytics.getDistanceCategory(location.distance);
+                const formattedDistance = location.distance !== undefined ? 
+                    (location.distance < 1000 ? `${Math.round(location.distance)}m` : `${(location.distance/1000).toFixed(2)}km`) : 
+                    'N/A';
+                
+                html += `
+                    <div class="location-item" onclick="focusMapOnLocation(${index})">
+                        <div class="location-header">
+                            <div class="salesman-info">
+                                <div class="salesman-name">${location.salesman_name}</div>
+                                <div class="customer-name">📍 ${location.customer_name}</div>
+                            </div>
+                            <div class="distance-badge ${distanceCategory.class}">
+                                ${distanceCategory.label}
+                            </div>
+                        </div>
+                        
+                        <div class="location-details">
+                            <div class="coord-info">
+                                <div class="coord-label">Actual Location</div>
+                                <div class="coord-value">${location.actual_location.latitude.toFixed(6)}, ${location.actual_location.longitude.toFixed(6)}</div>
+                            </div>
+                            <div class="coord-info">
+                                <div class="coord-label">Master Location</div>
+                                <div class="coord-value">${location.master_location ? 
+                                    `${location.master_location.latitude.toFixed(6)}, ${location.master_location.longitude.toFixed(6)}` : 
+                                    'Not Available'}</div>
+                            </div>
+                            <div class="distance-info">
+                                <div class="distance-value">Distance: ${formattedDistance}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            analysisContent.innerHTML = html;
+        }
+
+        function focusMapOnLocation(index) {
+            // Switch to map tab
+            showMainTab('map');
+            
+            if (locationAnalytics && locationAnalytics.visitLocations[index]) {
+                const location = locationAnalytics.visitLocations[index];
+                visitMap.setView([location.actual_location.latitude, location.actual_location.longitude], 16);
+            }
+        }
+
+        function loadReportsData() {
+            const reportsContent = document.getElementById('reportsContent');
+            
+            reportsContent.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">📋</div>
+                    <div>Advanced location compliance reports</div>
+                    <div style="font-size: 12px; margin-top: 8px; opacity: 0.7;">
+                        Features include: Daily compliance reports, Salesman performance tracking, 
+                        Location accuracy trends, Customer visit verification summaries
+                    </div>
                 </div>
             `;
         }
 
+        // ===== DATA LOADING FUNCTIONS =====
+        async function loadDetailsData() {
+            try {
+                console.log('📊 Loading details data for location mapping...');
+                const response = await fetch('data/d.details.json');
+                if (!response.ok) throw new Error('Failed to load details data');
+                
+                const content = await response.text();
+                
+                try {
+                    detailsData = parseJSONL(content);
+                } catch (jsonlError) {
+                    detailsData = JSON.parse(content);
+                }
+                
+                console.log(`✅ Loaded ${detailsData.length} detail records for location mapping`);
+                
+            } catch (error) {
+                console.error('Error loading details data:', error);
+            }
+        }
+
+        function parseJSONL(content) {
+            const lines = content.trim().split('\n');
+            const data = [];
+            
+            lines.forEach((line, index) => {
+                try {
+                    if (line.trim()) {
+                        const obj = JSON.parse(line.trim());
+                        data.push(obj);
+                    }
+                } catch (error) {
+                    console.error(`Error parsing line ${index + 1}:`, line, error);
+                }
+            });
+            
+            return data;
+        }
+
+        function loadSalesmanOptions() {
+            if (!locationAnalytics) return;
+            
+            const salesmanSelect = document.getElementById('mapSalesmanFilter');
+            salesmanSelect.innerHTML = '<option value="">All Salesman</option>';
+            
+            // Get salesman list from stored data
+            const salesmanIds = new Set();
+            
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith('visit_analytics_geo_')) {
+                    const parts = key.split('_');
+                    if (parts.length >= 4) {
+                        const salesmanId = parts[3];
+                        salesmanIds.add(salesmanId);
+                    }
+                }
+            }
+            
+            Array.from(salesmanIds).forEach(salesmanId => {
+                const option = document.createElement('option');
+                option.value = salesmanId;
+                option.textContent = `Salesman ${salesmanId}`;
+                salesmanSelect.appendChild(option);
+            });
+            
+            console.log(`👥 Loaded ${salesmanIds.size} salesman options`);
+        }
+
+        // ===== UTILITY FUNCTIONS =====
         function updateStatusIndicator(status, message) {
             const indicator = document.getElementById('statusIndicator');
             
@@ -1389,345 +1382,58 @@
                 indicator.innerHTML = `🔄 ${message}`;
                 indicator.className = 'status-indicator loading';
             } else if (status === 'ready') {
-                indicator.innerHTML = `📊 ${message}`;
+                indicator.innerHTML = `🗺️ ${message}`;
                 indicator.className = 'status-indicator';
             } else {
-                indicator.innerHTML = `📊 Analytics Ready`;
+                indicator.innerHTML = `🗺️ Map Analytics Ready`;
                 indicator.className = 'status-indicator';
             }
         }
 
-        function updateStatsOverview() {
-            const stats = visitAnalytics.getSummaryStats();
-            
-            animateValue('totalSalesman', 0, stats.totalSalesman, 1000);
-            document.getElementById('avgFirstAccess').textContent = stats.avgFirstAccess;
-            animateValue('totalCustomers', 0, stats.totalCustomers, 1000);
-            document.getElementById('avgDuration').textContent = stats.avgDuration;
+        function initializeDateInputs() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('mapDateFrom').value = today;
+            document.getElementById('mapDateTo').value = today;
         }
 
-        function animateValue(elementId, start, end, duration) {
-            const element = document.getElementById(elementId);
-            if (!element) return;
-            
-            const range = end - start;
-            const increment = end > start ? 1 : -1;
-            const stepTime = Math.abs(Math.floor(duration / range));
-            let current = start;
-            
-            const timer = setInterval(() => {
-                current += increment;
-                element.textContent = current;
-                if (current === end) {
-                    clearInterval(timer);
-                }
-            }, stepTime);
-        }
-
-        // 🔧 FIXED: Update activity list display function
-        function updateActivityList() {
-            const activityList = document.getElementById('activityList');
-            const salesmanData = visitAnalytics.getSalesmanData();
-            
-            if (salesmanData.length === 0) {
-                activityList.innerHTML = `
-                    <div class="no-data">
-                        <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;">📭</div>
-                        <div>No visit data available for selected date range</div>
-                        <div style="font-size: 12px; margin-top: 8px; opacity: 0.7;">Salesman need to access visit.html to generate data</div>
-                    </div>
-                `;
-                return;
-            }
-
-            let html = '';
-            
-            salesmanData.forEach(salesman => {
-                const initials = salesman.salesman_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+        // ===== INITIALIZATION =====
+        async function initializeLocationAnalytics() {
+            try {
+                console.log('🚀 Initializing Location Analytics Dashboard...');
                 
-                // Get first access times
-                const firstAccessTimes = Object.entries(salesman.first_access_times)
-                    .map(([date, time]) => ({
-                        date: date,
-                        time: new Date(time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
-                    }))
-                    .sort((a, b) => new Date(b.date) - new Date(a.date));
+                // Initialize analytics
+                locationAnalytics = new LocationAnalytics();
                 
-                const firstAccessDisplay = firstAccessTimes.length > 0 ? 
-                    firstAccessTimes[0].time : 'Not recorded';
+                // Load supporting data
+                await loadDetailsData();
                 
-                // Get customer data
-                const customers = Object.values(salesman.customers);
-                const totalCustomers = customers.length;
-                const totalDuration = salesman.total_duration;
+                // Initialize UI
+                initializeDateInputs();
+                loadSalesmanOptions();
                 
-                html += `
-                    <div class="activity-item" onclick="showSalesmanDetail('${salesman.salesman_id}')">
-                        <div style="display: flex; align-items: flex-start; gap: 12px;">
-                            <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 14px; flex-shrink: 0;">
-                                ${initials}
-                            </div>
-                            <div style="flex: 1;">
-                                <div style="font-weight: 600; font-size: 14px; color: #1e293b; margin-bottom: 4px;">
-                                    ${salesman.salesman_name} <span style="font-size: 11px; color: #64748b;">(ID: ${salesman.salesman_id})</span>
-                                </div>
-                                <div style="font-size: 12px; color: #64748b; margin-bottom: 8px;">
-                                    <strong>First Access:</strong> ${firstAccessDisplay}
-                                    ${firstAccessTimes.length > 0 ? `<span style="background: #fef3c7; color: #92400e; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; margin-left: 8px;">${firstAccessTimes[0].date}</span>` : ''}
-                                </div>
-                                
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                                    <div style="background: #f8fafc; padding: 6px 8px; border-radius: 6px; text-align: center; border: 1px solid #e2e8f0;">
-                                        <div style="font-size: 9px; color: #64748b; text-transform: uppercase; margin-bottom: 2px;">Customers</div>
-                                        <div style="font-size: 12px; font-weight: 700; color: #1e293b;">${totalCustomers}</div>
-                                    </div>
-                                    <div style="background: #f8fafc; padding: 6px 8px; border-radius: 6px; text-align: center; border: 1px solid #e2e8f0;">
-                                        <div style="font-size: 9px; color: #64748b; text-transform: uppercase; margin-bottom: 2px;">Total Time</div>
-                                        <div style="font-size: 12px; font-weight: 700; color: #1e293b;">${visitAnalytics.formatDuration(totalDuration)}</div>
-                                    </div>
-                                </div>
-                                
-                                ${customers.length > 0 ? `
-                                    <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 8px; margin-top: 8px;">
-                                        <div style="font-size: 11px; font-weight: 600; color: #0369a1; margin-bottom: 6px; display: flex; align-items: center; gap: 4px;">
-                                            ⏱️ Customer Duration Breakdown
-                                        </div>
-                                        <div style="display: flex; flex-direction: column; gap: 4px;">
-                                            ${customers.slice(0, 3).map(customer => `
-                                                <div style="display: flex; justify-content: space-between; align-items: center; background: white; padding: 4px 8px; border-radius: 4px; font-size: 10px;">
-                                                    <span style="font-weight: 500; color: #1e293b; flex: 1; margin-right: 8px;">${customer.name}</span>
-                                                    <span style="font-weight: 700; color: #0369a1; font-family: 'Courier New', monospace;">${visitAnalytics.formatDuration(customer.total_duration)}</span>
-                                                </div>
-                                            `).join('')}
-                                            ${customers.length > 3 ? `
-                                                <div style="display: flex; justify-content: space-between; align-items: center; background: white; padding: 4px 8px; border-radius: 4px; font-size: 10px; font-style: italic; opacity: 0.7;">
-                                                    <span style="font-weight: 500; color: #1e293b; flex: 1; margin-right: 8px;">... and ${customers.length - 3} more</span>
-                                                    <span style="font-weight: 700; color: #0369a1; font-family: 'Courier New', monospace;">+${visitAnalytics.formatDuration(customers.slice(3).reduce((sum, c) => sum + c.total_duration, 0))}</span>
-                                                </div>
-                                            ` : ''}
-                                        </div>
-                                    </div>
-                                ` : ''}
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-            
-            activityList.innerHTML = html;
-        }
-
-        // ===== 🔧 FIXED ENHANCED ANALYTICS FUNCTIONS - COMPATIBLE WITH PER-SALESMAN DATA =====
-        
-        function exportVisitData() {
-            const csvContent = visitAnalytics.exportToCSV();
-            
-            if (!csvContent) {
-                showToast('No visit data to export', 'error');
-                return;
+                // Load initial map data for today
+                setTimeout(() => {
+                    loadMapData();
+                }, 1000);
+                
+                console.log('✅ Location Analytics Dashboard ready');
+                
+            } catch (error) {
+                console.error('❌ Error initializing location analytics:', error);
+                updateStatusIndicator('error', 'Initialization failed');
             }
-            
-            showToast('Preparing enhanced visit report...', 'neutral');
-            
-            const blob = new Blob([csvContent], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `enhanced_visit_analytics_${new Date().toISOString().split('T')[0]}.csv`;
-            a.click();
-            window.URL.revokeObjectURL(url);
-            
-            showToast('Enhanced visit report exported successfully!', 'success');
         }
 
-        function showDetailedReport() {
-            // Open detailed report in new window
-            window.open('analytics.html', '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes');
-        }
-
-        // 🔧 FIXED: Cleanup function compatible with per-salesman storage
-        function clearOldData() {
-            if (!confirm('Are you sure you want to clear old visit analytics data? This cannot be undone.')) {
-                return;
-            }
-            
-            showToast('Cleaning up old visit analytics data...', 'neutral');
-            
-            let deletedCount = 0;
-            const cutoffDate = new Date();
-            cutoffDate.setDate(cutoffDate.getDate() - 30);
-            
-            for (let i = localStorage.length - 1; i >= 0; i--) {
-                const key = localStorage.key(i);
-                if (key && (key.startsWith('visit_analytics_') || key.startsWith('visit_daily_'))) {
-                    // Extract date from key (format: visit_analytics_YYYY-MM-DD_salesmanId)
-                    const parts = key.split('_');
-                    if (parts.length >= 3) {
-                        const dateStr = parts[2]; // YYYY-MM-DD
-                        const date = new Date(dateStr);
-                        if (date < cutoffDate) {
-                            localStorage.removeItem(key);
-                            deletedCount++;
-                        }
-                    }
-                }
-            }
-            
-            showToast(`Cleaned up ${deletedCount} old visit analytics entries`, 'success');
-        }
-
-        // 🆕 NEW: Function to show analytics for specific salesman
-        function showSalesmanDetail(salesmanId) {
-            const analytics = visitAnalytics.getSalesmanAnalytics(salesmanId);
-            if (!analytics) {
-                showToast('No data found for this salesman', 'error');
-                return;
-            }
-            
-            // Show detailed information in console for now
-            console.log('📊 Detailed Salesman Analytics:', analytics);
-            
-            // Create summary message
-            const customerCount = Object.keys(analytics.customers).length;
-            const totalDuration = visitAnalytics.formatDuration(analytics.total_duration);
-            const firstAccessDates = Object.keys(analytics.first_access_times).join(', ');
-            
-            const message = `${analytics.salesman_name} (ID: ${salesmanId})
-📅 Active Days: ${firstAccessDates}
-👥 Customers: ${customerCount}
-⏱️ Total Time: ${totalDuration}`;
-            
-            alert(message);
-            showToast(`Showing details for ${analytics.salesman_name}`, 'success');
-        }
-
-        // 🆕 NEW: Function to scan available salesman
-        function scanAvailableSalesman() {
-            const dateFrom = document.getElementById('dateFrom').value;
-            const dateTo = document.getElementById('dateTo').value;
-            
-            if (!dateFrom || !dateTo) {
-                showToast('Please select date range first', 'error');
-                return;
-            }
-            
-            const salesmanIds = visitAnalytics.getAvailableSalesmanIds(dateFrom, dateTo);
-            console.log('📋 Available salesman with data:', salesmanIds);
-            showToast(`Found data for ${salesmanIds.length} salesman`, 'success');
-            
-            return salesmanIds;
-        }
-
-        function showToast(message, type = 'neutral') {
-            const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.className = `toast ${type}`;
-            toast.classList.add('show');
-            
-            setTimeout(() => {
-                toast.classList.remove('show');
-            }, 3000);
-        }
-
-        // ===== PAGE INITIALIZATION =====
+        // ===== PAGE LOAD =====
         window.onload = function() {
-            console.log('✅ Activity Administrator Dashboard loaded');
-            console.log('📊 Features: Enhanced Analytics + Project Management');
-            console.log('🔧 Fixed: Compatible with per-salesman visit.html tracking');
+            console.log('🗺️ Starting Location Analytics Dashboard...');
+            console.log('📍 Features: Interactive map, location verification, distance analysis, compliance tracking');
             
-            // Initialize analytics when page loads
-            initializeAnalytics();
+            initializeLocationAnalytics();
         };
 
-        // ===== 🧪 ANALYTICS COMPATIBILITY TEST FUNCTIONS (for debugging) =====
-        window.testAnalyticsCompatibility = function() {
-            console.log('🧪 Testing Analytics Compatibility...');
-            
-            // Test 1: Check localStorage structure
-            console.log('\n📦 1. Checking localStorage structure:');
-            let analyticsKeys = [];
-            let dailyKeys = [];
-            
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if (key && key.startsWith('visit_analytics_')) {
-                    analyticsKeys.push(key);
-                }
-                if (key && key.startsWith('visit_daily_')) {
-                    dailyKeys.push(key);
-                }
-            }
-            
-            console.log(`Analytics keys found: ${analyticsKeys.length}`);
-            console.log('Sample keys:', analyticsKeys.slice(0, 3));
-            console.log(`Daily keys found: ${dailyKeys.length}`);
-            console.log('Sample daily keys:', dailyKeys.slice(0, 3));
-            
-            // Test 2: Check data structure compatibility
-            console.log('\n📊 2. Testing data structure:');
-            if (analyticsKeys.length > 0) {
-                const sampleKey = analyticsKeys[0];
-                const sampleData = JSON.parse(localStorage.getItem(sampleKey) || '[]');
-                
-                console.log(`Sample data from ${sampleKey}:`, {
-                    eventCount: sampleData.length,
-                    firstEvent: sampleData[0],
-                    hasRequiredFields: sampleData[0] && 
-                        sampleData[0].salesman_id && 
-                        sampleData[0].salesman_name && 
-                        sampleData[0].event_name
-                });
-            }
-            
-            // Test 3: Check available salesman IDs
-            console.log('\n👥 3. Available salesman IDs:');
-            const salesmanIds = new Set();
-            analyticsKeys.forEach(key => {
-                const parts = key.split('_');
-                if (parts.length >= 4) {
-                    const salesmanId = parts[3]; // Format: visit_analytics_date_salesmanId
-                    salesmanIds.add(salesmanId);
-                }
-            });
-            
-            console.log('Salesman IDs found:', Array.from(salesmanIds));
-            
-            // Test 4: Test compatibility result
-            console.log('\n✅ Compatibility Test Results:');
-            const isCompatible = analyticsKeys.length > 0 && Array.from(salesmanIds).length > 0;
-            
-            console.log(`Status: ${isCompatible ? '✅ COMPATIBLE' : '❌ NEEDS FIXING'}`);
-            
-            if (!isCompatible) {
-                console.log('\n🔧 Recommendations:');
-                if (analyticsKeys.length === 0) {
-                    console.log('- No analytics data found. Salesman need to visit visit.html first.');
-                }
-                if (Array.from(salesmanIds).length === 0) {
-                    console.log('- No salesman IDs found in storage keys.');
-                }
-                console.log('- Make sure visit.html script is running with per-salesman tracking.');
-            }
-            
-            return {
-                compatible: isCompatible,
-                analyticsKeysCount: analyticsKeys.length,
-                salesmanCount: Array.from(salesmanIds).length,
-                salesmanIds: Array.from(salesmanIds)
-            };
-        };
-
-        // Debug mode toggle (Ctrl+D)
-        document.addEventListener('keydown', function(e) {
-            if (e.ctrlKey && e.key === 'd') {
-                e.preventDefault();
-                const result = window.testAnalyticsCompatibility();
-                alert(`Analytics Compatibility Test:\n\nStatus: ${result.compatible ? 'COMPATIBLE ✅' : 'NEEDS FIXING ❌'}\nAnalytics Keys: ${result.analyticsKeysCount}\nSalesman Found: ${result.salesmanCount}\n\nCheck console for details.`);
-            }
-        });
-
-        console.log('✅ Enhanced Activity Dashboard loaded with per-salesman analytics compatibility');
-        console.log('🔧 Debug: Press Ctrl+D to run compatibility test');
+        console.log('✅ Enhanced Location Analytics Dashboard loaded');
+        console.log('🗺️ Map Features: Real-time tracking visualization, master vs actual comparison, compliance analysis');
     </script>
 </body>
 </html>

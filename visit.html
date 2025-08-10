@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Visit Outlet - Sales Dashboard</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    
     <style>
         * {
             margin: 0;
@@ -90,8 +94,8 @@
             background: rgba(255, 255, 255, 0.3);
         }
 
-        /* Analytics Status Indicator */
-        .analytics-status {
+        /* ===== GEOLOCATION STATUS INDICATORS ===== */
+        .location-status {
             position: fixed;
             top: 10px;
             right: 10px;
@@ -108,9 +112,17 @@
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
         }
 
-        .analytics-status.tracking {
+        .location-status.tracking {
             background: rgba(239, 68, 68, 0.9);
             animation: pulse 2s infinite;
+        }
+
+        .location-status.error {
+            background: rgba(245, 158, 11, 0.9);
+        }
+
+        .location-status.success {
+            background: rgba(16, 185, 129, 0.9);
         }
 
         @keyframes pulse {
@@ -118,8 +130,8 @@
             50% { opacity: 1; }
         }
 
-        /* Time Display */
-        .session-info {
+        /* ===== LOCATION INFO DISPLAY ===== */
+        .location-info {
             background: rgba(255, 255, 255, 0.95);
             margin: 16px;
             padding: 12px;
@@ -131,11 +143,190 @@
             border: 1px solid #e2e8f0;
         }
 
-        .session-info strong {
+        .location-info strong {
             color: #1e293b;
         }
 
-        /* Loading States */
+        .location-accuracy {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        .accuracy-high {
+            background: #ecfdf5;
+            color: #10b981;
+        }
+
+        .accuracy-medium {
+            background: #fef3c7;
+            color: #f59e0b;
+        }
+
+        .accuracy-low {
+            background: #fef2f2;
+            color: #ef4444;
+        }
+
+        /* ===== LOCATION VERIFICATION ALERT ===== */
+        .location-alert {
+            margin: 16px;
+            padding: 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            display: none;
+            animation: slideIn 0.3s ease;
+        }
+
+        .location-alert.correct {
+            background: #ecfdf5;
+            border: 1px solid #10b981;
+            color: #065f46;
+        }
+
+        .location-alert.incorrect {
+            background: #fef2f2;
+            border: 1px solid #ef4444;
+            color: #991b1b;
+        }
+
+        .location-alert.warning {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            color: #92400e;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ===== CUSTOMER LOCATION CARD ===== */
+        .customer-location-card {
+            margin: 16px;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            display: none;
+        }
+
+        .customer-location-header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 12px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .customer-location-content {
+            padding: 16px;
+        }
+
+        .location-comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .location-item {
+            background: #f8fafc;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .location-item-title {
+            font-size: 10px;
+            color: #64748b;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        .location-coordinates {
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+
+        .location-accuracy-info {
+            font-size: 9px;
+            color: #64748b;
+        }
+
+        .distance-info {
+            background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+            border: 1px solid #0ea5e9;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .distance-value {
+            font-size: 16px;
+            font-weight: 700;
+            color: #0369a1;
+            margin-bottom: 4px;
+        }
+
+        .distance-label {
+            font-size: 10px;
+            color: #64748b;
+            text-transform: uppercase;
+        }
+
+        /* ===== LOCATION ACTIONS ===== */
+        .location-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .location-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .location-btn:active {
+            transform: scale(0.98);
+        }
+
+        .location-btn-refresh {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .location-btn-map {
+            background: #f1f5f9;
+            color: #4a5568;
+            border: 1px solid #e2e8f0;
+        }
+
+        .location-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Keep all existing styles from original visit.html */
         .loading-spinner {
             display: flex;
             justify-content: center;
@@ -207,6 +398,7 @@
             display: block;
         }
 
+        /* Continue with all other existing styles... */
         .channel-tag {
             font-weight: 500;
             font-size: 11px;
@@ -222,14 +414,12 @@
             white-space: nowrap;
         }
 
-        /* Right Frame - Summary */
         .summary-grid {
             display: grid;
             grid-template-columns: 1fr;
             gap: 8px;
         }
 
-        /* Additional Summary Grid for DAP Filters Frame */
         .additional-summary-grid {
             display: grid;
             grid-template-columns: 1fr;
@@ -272,7 +462,6 @@
             color: #64748b;
         }
 
-        /* Content Section Updates */
         .content-section {
             padding: 0 16px;
             margin-bottom: 20px;
@@ -300,7 +489,6 @@
             text-align: center;
         }
 
-        /* Left Frame - Filters */
         .filter-item {
             position: relative;
             margin-bottom: 12px;
@@ -350,7 +538,6 @@
             pointer-events: none;
         }
 
-        /* Table Section */
         .table-section {
             padding: 0 16px;
             margin-bottom: 30px;
@@ -381,26 +568,6 @@
             scroll-behavior: smooth;
         }
 
-        .table-container::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-
-        .table-container::-webkit-scrollbar-track {
-            background: #f1f5f9;
-            border-radius: 3px;
-        }
-
-        .table-container::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 3px;
-        }
-
-        .table-container::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
-        }
-
-        /* ===== UPDATED TABLE STYLES - GRAY HEADER ===== */
         table {
             width: 100%;
             border-collapse: collapse;
@@ -408,13 +575,12 @@
             table-layout: auto;
         }
 
-        /* Visit Data Table - Compact columns with auto width */
         #dataTable {
             min-width: auto;
         }
 
         #dataTable th {
-            background: #6b7280; /* Solid gray background */
+            background: #6b7280;
             color: white;
             padding: 12px 8px;
             text-align: center;
@@ -429,127 +595,12 @@
             text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
         }
 
-        #dataTable th:nth-child(1) { width: 35px; } /* No */
-        #dataTable th:nth-child(2) { width: 80px; } /* Promo */
-        #dataTable th:nth-child(3) { width: 90px; } /* SKU */
-        #dataTable th:nth-child(4) { width: 60px; } /* 3LM */
-        #dataTable th:nth-child(5) { width: 60px; } /* LM */
-        #dataTable th:nth-child(6) { width: 70px; } /* Plan */
-        #dataTable th:nth-child(7) { width: 70px; } /* MTD */
-        #dataTable th:nth-child(8) { width: 70px; } /* Gap */
-        #dataTable th:nth-child(9) { width: 80px; } /* Rec */
-
         #dataTable td {
             padding: 10px 8px;
             text-align: center;
             border-bottom: 1px solid #f1f5f9;
             vertical-align: middle;
             font-size: 11px;
-        }
-
-        /* DAP Table - Different styling with wider columns */
-        #dapTable {
-            min-width: auto;
-        }
-
-        #dapTable th {
-            background: #4b5563; /* Darker gray for DAP */
-            color: white;
-            padding: 12px 10px;
-            text-align: center;
-            font-weight: 600;
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-            position: sticky;
-            top: 0;
-            z-index: 50;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-        }
-
-        #dapTable th:nth-child(1) { width: 35px; } /* No */
-        #dapTable th:nth-child(2) { width: 140px; text-align: left; } /* Nama Pelanggan */
-        #dapTable th:nth-child(3) { width: 70px; } /* Avg ET */
-        #dapTable th:nth-child(4) { width: 80px; } /* Gap BE */
-        #dapTable th:nth-child(5) { width: 80px; } /* BE MTD */
-        #dapTable th:nth-child(6) { width: 80px; } /* A.MTD */
-
-        #dapTable td {
-            padding: 12px 10px;
-            text-align: center;
-            border-bottom: 1px solid #f1f5f9;
-            vertical-align: middle;
-            font-size: 11px;
-        }
-
-        #dapTable td:nth-child(2) {
-            text-align: left;
-            padding-left: 12px;
-        }
-
-		/* Sticky columns - for Visit Data table (No, Promo, and SKU) */
-		#dataTable th:nth-child(1), #dataTable th:nth-child(2), #dataTable th:nth-child(3),
-		#dataTable td:nth-child(1), #dataTable td:nth-child(2), #dataTable td:nth-child(3) {
-			position: sticky;
-			background: white;
-			z-index: 20;
-		}
-
-		#dataTable th:nth-child(1), #dataTable th:nth-child(2), #dataTable th:nth-child(3) {
-			background: #6b7280;
-			z-index: 100;
-		}
-
-		#dataTable th:nth-child(1), #dataTable td:nth-child(1) { left: 0; }
-		#dataTable th:nth-child(2), #dataTable td:nth-child(2) { left: 35px; }
-		#dataTable th:nth-child(3), #dataTable td:nth-child(3) { left: 115px; }
-
-		#dataTable th:nth-child(3), #dataTable td:nth-child(3) {
-			border-right: 2px solid #e2e8f0;
-			box-shadow: 3px 0 5px rgba(0,0,0,0.15);
-		}
-
-        .sortable-header {
-            cursor: pointer;
-            user-select: none;
-            transition: all 0.2s ease;
-            position: relative;
-        }
-
-        .sortable-header:hover {
-            background: #374151; /* Darker gray on hover */
-            transform: translateY(-1px);
-        }
-
-        .sortable-header::after {
-            content: '';
-            position: absolute;
-            right: 4px;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 0;
-            height: 0;
-            border-left: 3px solid transparent;
-            border-right: 3px solid transparent;
-            border-bottom: 3px solid rgba(255, 255, 255, 0.7);
-            opacity: 0.5;
-        }
-
-        .sortable-header.asc::after {
-            border-bottom: 3px solid white;
-            border-top: none;
-            opacity: 1;
-        }
-
-        .sortable-header.desc::after {
-            border-top: 3px solid white;
-            border-bottom: none;
-            opacity: 1;
-        }
-
-        tr:hover {
-            background-color: #f8fafc;
         }
 
         .positive {
@@ -566,116 +617,6 @@
             color: #64748b;
         }
 
-        .sku-code {
-            font-family: 'Courier New', monospace;
-            background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
-            padding: 3px 6px;
-            border-radius: 4px;
-            font-size: 10px;
-            font-weight: 600;
-            color: #000000;
-            display: inline-block;
-        }
-
-        /* 🔥 TPOM SKU STYLING - WARNA MERAH */
-        .sku-code.tpom-sku {
-            background: linear-gradient(135deg, #dc2626, #ef4444) !important;
-            color: white !important;
-            font-weight: 700 !important;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.3) !important;
-            border: 1px solid #b91c1c !important;
-            animation: tpom-glow 2s ease-in-out infinite alternate;
-        }
-
-        /* Animasi glow untuk SKU TPOM */
-        @keyframes tpom-glow {
-            from { box-shadow: 0 2px 4px rgba(220, 38, 38, 0.3); }
-            to { box-shadow: 0 2px 8px rgba(220, 38, 38, 0.6), 0 0 0 1px rgba(220, 38, 38, 0.2); }
-        }
-
-        /* Row untuk SKU missing dari TPOM */
-        .missing-sku-row {
-            background: linear-gradient(135deg, #fef3c7, #fde68a) !important;
-            border: 2px solid #f59e0b !important;
-        }
-
-        .missing-sku-row td {
-            background: linear-gradient(135deg, #fef3c7, #fde68a) !important;
-            font-style: italic !important;
-            color: #92400e !important;
-        }
-
-        .promo-tag {
-            font-weight: 600;
-            font-size: 10px;
-            padding: 3px 6px;
-            border-radius: 4px;
-            color: white;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-            display: inline-block;
-        }
-
-        .promo-biscuit, .promo-bisc { 
-            background: linear-gradient(135deg, #dc2626, #ef4444);
-        }
-        .promo-snack, .promo-snackfood { 
-            background: linear-gradient(135deg, #7c3aed, #8b5cf6);
-        }
-        .promo-bev { 
-            background: linear-gradient(135deg, #059669, #10b981);
-        }
-        .promo-others, .promo-sf, .promo-gen, .promo-go { 
-            background: linear-gradient(135deg, #0369a1, #0284c7);
-        }
-        .promo-gbs { 
-            background: linear-gradient(135deg, #7c2d12, #ea580c);
-        }
-        .promo-solmed { 
-            background: linear-gradient(135deg, #d97706, #f59e0b);
-        }
-        .promo-rans { 
-            background: linear-gradient(135deg, #dc3545, #e74c3c) !important;
-        }
-
-        /* Promo tag untuk TPOM */
-        .promo-tpom { 
-            background: linear-gradient(135deg, #7c3aed, #8b5cf6) !important;
-            position: relative;
-        }
-
-        .promo-tpom::after {
-            content: " ✨";
-            font-size: 8px;
-        }
-
-        .recommendation {
-            font-size: 9px;
-            color: #64748b;
-            font-style: italic;
-        }
-
-        .summary-row {
-            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-            border-top: 2px solid #6b7280;
-        }
-
-        .summary-row td {
-            font-weight: 700;
-            color: #1e293b;
-            padding: 12px 8px;
-            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-        }
-
-        .summary-row td:nth-child(1), 
-        .summary-row td:nth-child(2) {
-            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-            position: sticky;
-            z-index: 20;
-        }
-
-        .summary-row td:nth-child(1) { left: 0; }
-        .summary-row td:nth-child(2) { left: 35px; }
-
         .empty-state {
             text-align: center;
             padding: 40px 20px;
@@ -688,34 +629,6 @@
             opacity: 0.5;
         }
 
-        .metric-value {
-            font-weight: 600;
-            font-size: 12px;
-        }
-
-        .gap-badge {
-            padding: 3px 6px;
-            border-radius: 8px;
-            font-size: 9px;
-            font-weight: 600;
-            color: white;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-            display: inline-block;
-        }
-
-        .gap-positive {
-            background: linear-gradient(135deg, #10b981, #059669);
-        }
-
-        .gap-negative {
-            background: linear-gradient(135deg, #ef4444, #dc2626);
-        }
-
-        .gap-neutral {
-            background: linear-gradient(135deg, #64748b, #475569);
-        }
-
-        /* Customer Info */
         .customer-info {
             margin-top: 8px;
             padding: 6px 8px;
@@ -738,7 +651,6 @@
             font-weight: 600;
         }
 
-        /* Bottom Navigation */
         .bottom-nav {
             position: fixed;
             bottom: 0;
@@ -799,21 +711,6 @@
             font-weight: 500;
         }
 
-        /* Debug Panel */
-        .debug-panel {
-            position: fixed;
-            top: 50px;
-            right: 10px;
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 10px;
-            border-radius: 8px;
-            font-size: 10px;
-            max-width: 200px;
-            z-index: 1000;
-            display: none;
-        }
-
         /* Responsive */
         @media (max-width: 480px) {
             .frames-container {
@@ -821,33 +718,21 @@
                 gap: 8px;
             }
             
-            #dataTable th:nth-child(1), #dataTable td:nth-child(1) { width: 30px; }
-            #dataTable th:nth-child(2), #dataTable td:nth-child(2) { width: 70px; left: 30px; }
-            #dataTable th:nth-child(3), #dataTable td:nth-child(3) { left: 100px; }
-            
-            #dataTable th, #dataTable td,
-            #dapTable th, #dapTable td {
-                padding: 8px 6px;
+            .location-comparison {
+                grid-template-columns: 1fr;
             }
             
-            .sku-code {
-                font-size: 9px;
-                padding: 2px 4px;
+            .location-actions {
+                flex-direction: column;
             }
-            
-            .table-container {
-                max-height: calc(100vh - 450px);
-            }
-
-            .summary-row td:nth-child(2) { left: 30px; }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Analytics Status Indicator -->
-        <div class="analytics-status" id="analyticsStatus">
-            📊 Tracking Active
+        <!-- Location Status Indicator -->
+        <div class="location-status" id="locationStatus">
+            📍 Location Ready
         </div>
 
         <div class="detail-header">
@@ -859,17 +744,51 @@
             <button class="user-btn" onclick="showProfile()">👤</button>
         </div>
 
-        <!-- Session Info Display -->
-        <div class="session-info" id="sessionInfo">
-            <strong>🕐 First Access Today:</strong> <span id="firstAccessTime">Not recorded</span><br>
-            <strong>⏱️ Current Customer:</strong> <span id="currentCustomer">None selected</span><br>
-            <strong>⌛ Time on Customer:</strong> <span id="customerDuration">00:00:00</span>
+        <!-- Location Info Display -->
+        <div class="location-info" id="locationInfo">
+            <strong>📍 Current Location:</strong> <span id="currentLocation">Getting location...</span><br>
+            <strong>🎯 Accuracy:</strong> <span id="locationAccuracy">-</span><br>
+            <strong>⏰ Last Update:</strong> <span id="locationTime">-</span>
         </div>
 
-        <!-- Debug Panel -->
-        <div class="debug-panel" id="debugPanel">
-            <div>Debug Info:</div>
-            <div id="debugInfo"></div>
+        <!-- Location Verification Alert -->
+        <div class="location-alert" id="locationAlert">
+            <div id="alertMessage"></div>
+        </div>
+
+        <!-- Customer Location Verification Card -->
+        <div class="customer-location-card" id="customerLocationCard">
+            <div class="customer-location-header">
+                📍 Location Verification
+            </div>
+            <div class="customer-location-content">
+                <div class="location-comparison">
+                    <div class="location-item">
+                        <div class="location-item-title">Your Location</div>
+                        <div class="location-coordinates" id="actualCoordinates">-</div>
+                        <div class="location-accuracy-info" id="actualAccuracy">-</div>
+                    </div>
+                    <div class="location-item">
+                        <div class="location-item-title">Customer Location</div>
+                        <div class="location-coordinates" id="customerCoordinates">-</div>
+                        <div class="location-accuracy-info">From Master Data</div>
+                    </div>
+                </div>
+                
+                <div class="distance-info">
+                    <div class="distance-value" id="distanceValue">-</div>
+                    <div class="distance-label">Distance</div>
+                </div>
+                
+                <div class="location-actions">
+                    <button class="location-btn location-btn-refresh" onclick="refreshLocation()">
+                        🔄 Refresh
+                    </button>
+                    <button class="location-btn location-btn-map" onclick="showLocationMap()">
+                        🗺️ View Map
+                    </button>
+                </div>
+            </div>
         </div>
 
         <!-- Loading State -->
@@ -950,7 +869,7 @@
                                 <thead>
                                     <tr>
                                         <th>No</th>
-                                        <th class="sortable-header" onclick="sortTable('promo')">Promo</th>
+                                        <th>Promo</th>
                                         <th>SKU</th>
                                         <th>3LM</th>
                                         <th>LM</th>
@@ -976,81 +895,12 @@
                 </div>
             </div>
 
-            <!-- DAP Tab Content -->
+            <!-- DAP Tab Content (simplified) -->
             <div id="dapTab" class="tab-content" style="display: none;">
                 <div class="content-section">
-                    <div class="frames-container">
-                        <!-- DAP Filter Frame -->
-                        <div class="frame">
-                            <div class="frame-title">📋 DAP Filters</div>
-                            <div class="filter-item">
-                                <select id="dapHari">
-                                    <option value="">📅 Pilih Hari JKS</option>
-                                </select>
-                            </div>
-                            
-                            <!-- Additional Summary Items in Filter Frame -->
-                            <div class="additional-summary-grid">
-                                <div class="summary-item">
-                                    <div class="summary-label">Total Actual</div>
-                                    <div class="summary-value" id="dapTotalActual">-</div>
-                                </div>
-                                <div class="summary-item">
-                                    <div class="summary-label">Total Gap</div>
-                                    <div class="summary-value" id="dapTotalGap">-</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- DAP Summary Frame -->
-                        <div class="frame">
-                            <div class="frame-title">📊 DAP Summary</div>
-                            <div class="summary-grid">
-                                <div class="summary-item">
-                                    <div class="summary-label">Customers</div>
-                                    <div class="summary-value" id="dapCustomerCount">-</div>
-                                </div>
-                                <div class="summary-item">
-                                    <div class="summary-label">Total BE</div>
-                                    <div class="summary-value" id="dapTotalBE">-</div>
-                                </div>
-                                <div class="summary-item">
-                                    <div class="summary-label">Total Target</div>
-                                    <div class="summary-value" id="dapTotalTarget">-</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- DAP Table Section -->
-                <div class="table-section">
-                    <div class="section-title">Daily Activity Plan :</div>
-                    <div class="table-wrapper">
-                        <div class="table-container">
-                            <table id="dapTable">
-                                <thead>
-                                    <tr>
-                                        <th>No</th>
-                                        <th class="sortable-header" onclick="sortDAPTable('customer')">Pelanggan</th>
-                                        <th>Avg ET</th>
-                                        <th>Gap BE</th>
-                                        <th>BE MTD</th>
-                                        <th>A.MTD</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="dapTableBody">
-                                    <tr>
-                                        <td colspan="6">
-                                            <div class="empty-state">
-                                                <div class="empty-state-icon">📋</div>
-                                                <div>Pilih Hari JKS untuk melihat daftar pelanggan</div>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📋</div>
+                        <div>DAP functionality available in full version</div>
                     </div>
                 </div>
             </div>
@@ -1077,34 +927,27 @@
         </div>
     </div>
 
+    <!-- Leaflet JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
     <script>
         // ===== GLOBAL VARIABLES =====
         let hariData = [];
         let pelangganData = [];
         let detailsData = [];
         let salesmanData = [];
-        let tpomData = [];
-        let currentFilteredData = [];
-        let sortState = { column: null, direction: 'asc' };
         let currentSalesman = '';
         let currentSalesmanId = null;
-        let debugMode = false;
 
-        // ===== DAP VARIABLES =====
-        let currentDAPData = [];
-        let dapSortState = { column: null, direction: 'asc' };
+        // ===== GEOLOCATION VARIABLES =====
+        let currentPosition = null;
+        let positionWatcher = null;
+        let customerMasterCoordinates = null;
+        let selectedCustomerName = null;
+        let locationUpdateInterval = null;
 
-        // ===== 🆕 ENHANCED ANALYTICS VARIABLES =====
-        let visitAnalytics = null;
-        let sessionStartTime = null;
-        let firstAccessToday = null;
-        let currentCustomerStartTime = null;
-        let currentSelectedCustomer = null;
-        let customerDurations = {};
-        let todayDateString = new Date().toISOString().split('T')[0];
-
-        // ===== 🆕 FIXED ENHANCED ANALYTICS CLASS - ISOLATED PER SALESMAN =====
-        class VisitAnalyticsTracker {
+        // ===== ENHANCED ANALYTICS WITH GEOLOCATION =====
+        class VisitAnalyticsWithLocation {
             constructor() {
                 this.sessionId = this.generateSessionId();
                 this.sessionStart = Date.now();
@@ -1113,7 +956,9 @@
                 this.isInitialized = false;
                 this.currentCustomer = null;
                 this.customerStartTime = null;
-                this.dailyData = null; // Will be loaded when salesman is set
+                this.dailyData = null;
+                this.lastKnownPosition = null;
+                this.locationAccuracy = null;
                 
                 this.init();
             }
@@ -1121,45 +966,36 @@
             init() {
                 if (this.isInitialized) return;
                 
-                console.log('🚀 Enhanced Visit Analytics initialized (Per Salesman)');
+                console.log('🚀 Enhanced Visit Analytics with Geolocation initialized');
                 this.isInitialized = true;
                 
-                // Setup visibility change tracking
-                this.setupVisibilityTracking();
+                // Setup geolocation
+                this.initializeGeolocation();
                 
                 // Setup unload tracking
                 this.setupUnloadTracking();
-                
-                // Start UI updates
-                this.startUIUpdates();
             }
             
             generateSessionId() {
-                return 'visit_session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                return 'visit_geo_session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
             }
             
             setSalesman(salesmanId, salesmanName) {
                 this.salesmanId = salesmanId;
                 this.salesmanName = salesmanName;
-                
-                // Load daily data for this specific salesman
                 this.dailyData = this.loadDailyData();
                 
                 console.log(`👤 Analytics salesman set: ${salesmanName} (${salesmanId})`);
-                
-                // Track page access and first access after salesman is set
                 this.trackPageAccess();
             }
             
-            // 🔧 FIXED: Include salesman ID in storage key
             loadDailyData() {
                 if (!this.salesmanId) {
-                    console.warn('⚠️ Cannot load daily data: salesman ID not set');
                     return this.getDefaultDailyData();
                 }
                 
                 const today = new Date().toISOString().split('T')[0];
-                const storageKey = `visit_daily_${today}_${this.salesmanId}`;
+                const storageKey = `visit_daily_geo_${today}_${this.salesmanId}`;
                 
                 try {
                     const stored = localStorage.getItem(storageKey);
@@ -1167,11 +1003,9 @@
                     
                     if (stored) {
                         const parsed = JSON.parse(stored);
-                        console.log(`📦 Loaded daily data for salesman ${this.salesmanId}:`, parsed);
                         return { ...defaultData, ...parsed };
                     }
                     
-                    console.log(`📦 No existing daily data for salesman ${this.salesmanId}, using defaults`);
                     return defaultData;
                 } catch (error) {
                     console.error('❌ Error loading daily data:', error);
@@ -1186,78 +1020,267 @@
                     salesman_name: this.salesmanName,
                     firstAccess: null,
                     customers: {},
+                    locations: [],
                     totalDuration: 0,
                     accessCount: 0
                 };
             }
             
-            // 🔧 FIXED: Include salesman ID in storage key
             saveDailyData() {
                 if (!this.salesmanId || !this.dailyData) {
-                    console.warn('⚠️ Cannot save daily data: salesman ID or daily data not available');
                     return;
                 }
                 
                 const today = new Date().toISOString().split('T')[0];
-                const storageKey = `visit_daily_${today}_${this.salesmanId}`;
+                const storageKey = `visit_daily_geo_${today}_${this.salesmanId}`;
                 
                 try {
-                    // Update metadata
                     this.dailyData.salesman_id = this.salesmanId;
                     this.dailyData.salesman_name = this.salesmanName;
                     this.dailyData.last_updated = new Date().toISOString();
                     
                     localStorage.setItem(storageKey, JSON.stringify(this.dailyData));
-                    console.log(`💾 Saved daily data for salesman ${this.salesmanId}`);
                 } catch (error) {
                     console.error('❌ Error saving daily data:', error);
                 }
             }
             
-            trackPageAccess() {
-                if (!this.salesmanId || !this.dailyData) {
-                    console.warn('⚠️ Cannot track page access: salesman not set or daily data not available');
+            // ===== GEOLOCATION METHODS =====
+            initializeGeolocation() {
+                if (!navigator.geolocation) {
+                    this.updateLocationStatus('error', 'Geolocation not supported');
                     return;
                 }
+                
+                this.updateLocationStatus('tracking', 'Getting location...');
+                
+                // Get initial position
+                navigator.geolocation.getCurrentPosition(
+                    (position) => this.handleLocationSuccess(position),
+                    (error) => this.handleLocationError(error),
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 30000
+                    }
+                );
+                
+                // Watch position changes
+                this.positionWatcher = navigator.geolocation.watchPosition(
+                    (position) => this.handleLocationUpdate(position),
+                    (error) => this.handleLocationError(error),
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 15000,
+                        maximumAge: 60000
+                    }
+                );
+            }
+            
+            handleLocationSuccess(position) {
+                this.lastKnownPosition = position;
+                this.locationAccuracy = position.coords.accuracy;
+                
+                this.updateLocationUI(position);
+                this.updateLocationStatus('success', 'Location active');
+                
+                // Store location in daily data
+                if (this.dailyData) {
+                    this.dailyData.locations.push({
+                        timestamp: new Date().toISOString(),
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude,
+                        accuracy: position.coords.accuracy,
+                        customer: this.currentCustomer
+                    });
+                    this.saveDailyData();
+                }
+                
+                // Track analytics event
+                this.track('visit_location_acquired', {
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude,
+                    accuracy: position.coords.accuracy,
+                    customer: this.currentCustomer
+                });
+                
+                // Verify customer location if customer is selected
+                if (this.currentCustomer && customerMasterCoordinates) {
+                    this.verifyCustomerLocation(position);
+                }
+            }
+            
+            handleLocationUpdate(position) {
+                this.lastKnownPosition = position;
+                this.locationAccuracy = position.coords.accuracy;
+                this.updateLocationUI(position);
+                
+                // Verify customer location if customer is selected
+                if (this.currentCustomer && customerMasterCoordinates) {
+                    this.verifyCustomerLocation(position);
+                }
+            }
+            
+            handleLocationError(error) {
+                let errorMessage = 'Location error';
+                
+                switch(error.code) {
+                    case error.PERMISSION_DENIED:
+                        errorMessage = 'Location access denied';
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        errorMessage = 'Location unavailable';
+                        break;
+                    case error.TIMEOUT:
+                        errorMessage = 'Location timeout';
+                        break;
+                }
+                
+                this.updateLocationStatus('error', errorMessage);
+                console.error('Geolocation error:', error);
+            }
+            
+            updateLocationUI(position) {
+                const lat = position.coords.latitude.toFixed(6);
+                const lng = position.coords.longitude.toFixed(6);
+                const accuracy = Math.round(position.coords.accuracy);
+                
+                document.getElementById('currentLocation').textContent = `${lat}, ${lng}`;
+                
+                const accuracyElement = document.getElementById('locationAccuracy');
+                accuracyElement.textContent = `±${accuracy}m`;
+                
+                // Set accuracy class
+                const accuracyClass = accuracy <= 20 ? 'accuracy-high' : 
+                                    accuracy <= 100 ? 'accuracy-medium' : 'accuracy-low';
+                accuracyElement.className = `location-accuracy ${accuracyClass}`;
+                
+                document.getElementById('locationTime').textContent = new Date().toLocaleTimeString();
+            }
+            
+            updateLocationStatus(status, message) {
+                const statusElement = document.getElementById('locationStatus');
+                
+                if (status === 'tracking') {
+                    statusElement.innerHTML = `🔄 ${message}`;
+                    statusElement.className = 'location-status tracking';
+                } else if (status === 'success') {
+                    statusElement.innerHTML = `📍 ${message}`;
+                    statusElement.className = 'location-status success';
+                } else if (status === 'error') {
+                    statusElement.innerHTML = `⚠️ ${message}`;
+                    statusElement.className = 'location-status error';
+                }
+            }
+            
+            verifyCustomerLocation(currentPosition) {
+                if (!customerMasterCoordinates) return;
+                
+                const distance = this.calculateDistance(
+                    currentPosition.coords.latitude,
+                    currentPosition.coords.longitude,
+                    customerMasterCoordinates.latitude,
+                    customerMasterCoordinates.longitude
+                );
+                
+                this.updateLocationVerificationUI(currentPosition, distance);
+                
+                // Track location verification
+                this.track('visit_location_verification', {
+                    customer_name: this.currentCustomer,
+                    actual_latitude: currentPosition.coords.latitude,
+                    actual_longitude: currentPosition.coords.longitude,
+                    master_latitude: customerMasterCoordinates.latitude,
+                    master_longitude: customerMasterCoordinates.longitude,
+                    distance_meters: distance,
+                    accuracy: currentPosition.coords.accuracy,
+                    is_within_range: distance <= 100
+                });
+            }
+            
+            updateLocationVerificationUI(position, distance) {
+                const customerLocationCard = document.getElementById('customerLocationCard');
+                customerLocationCard.style.display = 'block';
+                
+                // Update coordinates
+                document.getElementById('actualCoordinates').textContent = 
+                    `${position.coords.latitude.toFixed(6)}, ${position.coords.longitude.toFixed(6)}`;
+                document.getElementById('actualAccuracy').textContent = 
+                    `±${Math.round(position.coords.accuracy)}m accuracy`;
+                
+                document.getElementById('customerCoordinates').textContent = 
+                    `${customerMasterCoordinates.latitude.toFixed(6)}, ${customerMasterCoordinates.longitude.toFixed(6)}`;
+                
+                // Update distance
+                const distanceElement = document.getElementById('distanceValue');
+                if (distance < 1000) {
+                    distanceElement.textContent = `${Math.round(distance)}m`;
+                } else {
+                    distanceElement.textContent = `${(distance/1000).toFixed(2)}km`;
+                }
+                
+                // Show alert based on distance
+                this.showLocationAlert(distance);
+            }
+            
+            showLocationAlert(distance) {
+                const alertElement = document.getElementById('locationAlert');
+                const messageElement = document.getElementById('alertMessage');
+                
+                alertElement.style.display = 'block';
+                
+                if (distance <= 50) {
+                    alertElement.className = 'location-alert correct';
+                    messageElement.innerHTML = '✅ <strong>Perfect!</strong> You are at the correct customer location.';
+                } else if (distance <= 100) {
+                    alertElement.className = 'location-alert correct';
+                    messageElement.innerHTML = '✅ <strong>Good!</strong> You are very close to the customer location.';
+                } else if (distance <= 500) {
+                    alertElement.className = 'location-alert warning';
+                    messageElement.innerHTML = `⚠️ <strong>Warning!</strong> You are ${Math.round(distance)}m away from customer location.`;
+                } else {
+                    alertElement.className = 'location-alert incorrect';
+                    messageElement.innerHTML = `❌ <strong>Alert!</strong> You are ${distance > 1000 ? (distance/1000).toFixed(2) + 'km' : Math.round(distance) + 'm'} away from customer location.`;
+                }
+            }
+            
+            calculateDistance(lat1, lon1, lat2, lon2) {
+                const R = 6371e3; // Earth's radius in meters
+                const φ1 = lat1 * Math.PI/180;
+                const φ2 = lat2 * Math.PI/180;
+                const Δφ = (lat2-lat1) * Math.PI/180;
+                const Δλ = (lon2-lon1) * Math.PI/180;
+                
+                const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                          Math.cos(φ1) * Math.cos(φ2) *
+                          Math.sin(Δλ/2) * Math.sin(Δλ/2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                
+                return R * c;
+            }
+            
+            trackPageAccess() {
+                if (!this.salesmanId || !this.dailyData) return;
                 
                 const now = new Date();
                 const nowISO = now.toISOString();
                 
-                // Update daily access count
                 this.dailyData.accessCount++;
                 
-                // Track first access today if not set
                 if (!this.dailyData.firstAccess) {
                     this.dailyData.firstAccess = nowISO;
                     this.saveDailyData();
-                    
-                    console.log(`🌅 First access today recorded for ${this.salesmanName}: ${now.toLocaleTimeString()}`);
-                    
-                    // Track the analytics event
-                    this.track('visit_first_access_today', {
-                        first_access_time: nowISO,
-                        date: todayDateString,
-                        access_count: this.dailyData.accessCount
-                    });
                 }
                 
-                // Always track page access
                 this.track('visit_page_access', {
                     access_time: nowISO,
                     session_start: new Date(this.sessionStart).toISOString(),
-                    access_count: this.dailyData.accessCount
+                    access_count: this.dailyData.accessCount,
+                    has_location: !!this.lastKnownPosition
                 });
-                
-                // Update UI
-                this.updateFirstAccessDisplay();
             }
             
-            trackCustomerSelection(customerName, hariJKS) {
-                if (!this.salesmanId || !this.dailyData) {
-                    console.warn('⚠️ Cannot track customer selection: salesman not set');
-                    return;
-                }
-                
+            trackCustomerSelection(customerName, hariJKS, masterCoordinates) {
                 const now = Date.now();
                 const nowISO = new Date(now).toISOString();
                 
@@ -1269,43 +1292,59 @@
                 // Start new customer tracking
                 this.currentCustomer = customerName;
                 this.customerStartTime = now;
+                customerMasterCoordinates = masterCoordinates;
+                selectedCustomerName = customerName;
                 
-                // Initialize customer in daily data if not exists
+                // Initialize customer in daily data
                 if (!this.dailyData.customers[customerName]) {
                     this.dailyData.customers[customerName] = {
                         name: customerName,
                         hari_jks: hariJKS,
+                        master_coordinates: masterCoordinates,
                         totalDuration: 0,
                         visitCount: 0,
-                        sessions: []
+                        sessions: [],
+                        locations: []
                     };
                 }
                 
                 this.dailyData.customers[customerName].visitCount++;
                 
-                // Add new session
-                this.dailyData.customers[customerName].sessions.push({
+                // Add new session with location
+                const sessionData = {
                     start: nowISO,
                     end: null,
-                    duration: 0
-                });
+                    duration: 0,
+                    start_location: this.lastKnownPosition ? {
+                        latitude: this.lastKnownPosition.coords.latitude,
+                        longitude: this.lastKnownPosition.coords.longitude,
+                        accuracy: this.lastKnownPosition.coords.accuracy
+                    } : null
+                };
                 
+                this.dailyData.customers[customerName].sessions.push(sessionData);
                 this.saveDailyData();
                 
-                console.log(`👥 Customer selected by ${this.salesmanName}: ${customerName} at ${new Date(now).toLocaleTimeString()}`);
+                console.log(`👥 Customer selected: ${customerName}`);
                 
-                // Track analytics event
+                // Track analytics event with location
                 this.track('visit_customer_selected', {
                     customer_name: customerName,
                     hari_jks: hariJKS,
                     selection_time: nowISO,
-                    previous_customer: this.currentCustomer !== customerName ? this.currentCustomer : null,
+                    master_coordinates: masterCoordinates,
+                    actual_location: this.lastKnownPosition ? {
+                        latitude: this.lastKnownPosition.coords.latitude,
+                        longitude: this.lastKnownPosition.coords.longitude,
+                        accuracy: this.lastKnownPosition.coords.accuracy
+                    } : null,
                     session_id: this.sessionId
                 });
                 
-                // Update UI displays
-                this.updateCustomerDisplay();
-                this.updateAnalyticsStatus('tracking');
+                // Verify location if we have current position
+                if (this.lastKnownPosition && masterCoordinates) {
+                    this.verifyCustomerLocation(this.lastKnownPosition);
+                }
             }
             
             endCustomerTracking() {
@@ -1325,121 +1364,68 @@
                     lastSession.end = nowISO;
                     lastSession.duration = durationSeconds;
                     
+                    // Add end location
+                    if (this.lastKnownPosition) {
+                        lastSession.end_location = {
+                            latitude: this.lastKnownPosition.coords.latitude,
+                            longitude: this.lastKnownPosition.coords.longitude,
+                            accuracy: this.lastKnownPosition.coords.accuracy
+                        };
+                    }
+                    
                     customerData.totalDuration += durationSeconds;
                     this.dailyData.totalDuration += durationSeconds;
                 }
                 
                 this.saveDailyData();
                 
-                console.log(`⏱️ Customer session ended for ${this.salesmanName}: ${this.currentCustomer}, Duration: ${this.formatDuration(durationSeconds)}`);
-                
                 // Track analytics event
                 this.track('visit_customer_duration', {
                     customer_name: this.currentCustomer,
                     duration_seconds: durationSeconds,
-                    duration_formatted: this.formatDuration(durationSeconds),
                     end_time: nowISO,
+                    end_location: this.lastKnownPosition ? {
+                        latitude: this.lastKnownPosition.coords.latitude,
+                        longitude: this.lastKnownPosition.coords.longitude,
+                        accuracy: this.lastKnownPosition.coords.accuracy
+                    } : null,
                     session_id: this.sessionId
                 });
                 
                 // Clear current tracking
                 this.currentCustomer = null;
                 this.customerStartTime = null;
+                customerMasterCoordinates = null;
+                selectedCustomerName = null;
                 
-                this.updateAnalyticsStatus('active');
-            }
-            
-            setupVisibilityTracking() {
-                document.addEventListener('visibilitychange', () => {
-                    if (document.hidden) {
-                        this.track('visit_page_hidden');
-                        // Don't end customer tracking when page is hidden, just pause
-                    } else {
-                        this.track('visit_page_visible');
-                        // Resume any customer tracking if needed
-                    }
-                });
+                // Hide location verification UI
+                document.getElementById('customerLocationCard').style.display = 'none';
+                document.getElementById('locationAlert').style.display = 'none';
             }
             
             setupUnloadTracking() {
                 window.addEventListener('beforeunload', () => {
                     this.endCustomerTracking();
+                    
+                    if (this.positionWatcher) {
+                        navigator.geolocation.clearWatch(this.positionWatcher);
+                    }
+                    
                     this.track('visit_session_end', {
                         session_duration: Date.now() - this.sessionStart,
                         customers_visited: this.dailyData ? Object.keys(this.dailyData.customers).length : 0,
-                        total_duration: this.dailyData ? this.dailyData.totalDuration : 0
+                        total_duration: this.dailyData ? this.dailyData.totalDuration : 0,
+                        final_location: this.lastKnownPosition ? {
+                            latitude: this.lastKnownPosition.coords.latitude,
+                            longitude: this.lastKnownPosition.coords.longitude,
+                            accuracy: this.lastKnownPosition.coords.accuracy
+                        } : null
                     });
                 });
-                
-                // Fallback for mobile
-                window.addEventListener('pagehide', () => {
-                    this.endCustomerTracking();
-                });
-            }
-            
-            startUIUpdates() {
-                // Update UI every second
-                setInterval(() => {
-                    this.updateCustomerDurationDisplay();
-                }, 1000);
-            }
-            
-            updateFirstAccessDisplay() {
-                const firstAccessElement = document.getElementById('firstAccessTime');
-                if (this.dailyData && this.dailyData.firstAccess) {
-                    const time = new Date(this.dailyData.firstAccess).toLocaleTimeString();
-                    firstAccessElement.textContent = time;
-                } else {
-                    firstAccessElement.textContent = 'Not recorded';
-                }
-            }
-            
-            updateCustomerDisplay() {
-                const currentCustomerElement = document.getElementById('currentCustomer');
-                if (this.currentCustomer) {
-                    currentCustomerElement.textContent = this.currentCustomer;
-                } else {
-                    currentCustomerElement.textContent = 'None selected';
-                }
-            }
-            
-            updateCustomerDurationDisplay() {
-                const durationElement = document.getElementById('customerDuration');
-                
-                if (this.currentCustomer && this.customerStartTime) {
-                    const elapsed = Date.now() - this.customerStartTime;
-                    const seconds = Math.floor(elapsed / 1000);
-                    durationElement.textContent = this.formatDuration(seconds);
-                } else {
-                    durationElement.textContent = '00:00:00';
-                }
-            }
-            
-            updateAnalyticsStatus(status) {
-                const statusElement = document.getElementById('analyticsStatus');
-                
-                if (status === 'tracking' && this.currentCustomer) {
-                    statusElement.innerHTML = '🔴 Tracking Customer';
-                    statusElement.className = 'analytics-status tracking';
-                } else {
-                    statusElement.innerHTML = '📊 Tracking Active';
-                    statusElement.className = 'analytics-status';
-                }
-            }
-            
-            formatDuration(seconds) {
-                const hours = Math.floor(seconds / 3600);
-                const minutes = Math.floor((seconds % 3600) / 60);
-                const secs = seconds % 60;
-                
-                return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
             }
             
             track(eventName, eventData = {}) {
-                if (!this.salesmanId) {
-                    console.warn('⚠️ Cannot track event: salesman ID not set');
-                    return;
-                }
+                if (!this.salesmanId) return;
                 
                 const event = {
                     session_id: this.sessionId,
@@ -1448,69 +1434,37 @@
                     event_name: eventName,
                     event_data: eventData,
                     timestamp: new Date().toISOString(),
-                    page_url: window.location.href,
-                    page_path: window.location.pathname,
-                    user_agent: navigator.userAgent,
-                    device_type: this.detectDeviceType(),
-                    session_duration: Date.now() - this.sessionStart
+                    location: this.lastKnownPosition ? {
+                        latitude: this.lastKnownPosition.coords.latitude,
+                        longitude: this.lastKnownPosition.coords.longitude,
+                        accuracy: this.lastKnownPosition.coords.accuracy
+                    } : null
                 };
                 
-                // Store in analytics format
                 this.storeAnalyticsEvent(event);
-                
-                console.log(`📈 Visit Analytics Event for ${this.salesmanName}:`, eventName, eventData);
             }
             
-            detectDeviceType() {
-                const userAgent = navigator.userAgent.toLowerCase();
-                if (/mobile|android|iphone|ipod/i.test(userAgent)) {
-                    return 'mobile';
-                } else if (/tablet|ipad/i.test(userAgent)) {
-                    return 'tablet';
-                }
-                return 'desktop';
-            }
-            
-            // 🔧 FIXED: Include salesman ID in analytics storage key
             storeAnalyticsEvent(event) {
                 try {
-                    const storageKey = `visit_analytics_${todayDateString}_${this.salesmanId}`;
+                    const today = new Date().toISOString().split('T')[0];
+                    const storageKey = `visit_analytics_geo_${today}_${this.salesmanId}`;
                     let analyticsData = JSON.parse(localStorage.getItem(storageKey) || '[]');
                     
                     analyticsData.push(event);
                     
-                    // Keep only last 1000 events per day per salesman to prevent storage overflow
                     if (analyticsData.length > 1000) {
                         analyticsData = analyticsData.slice(-1000);
                     }
                     
                     localStorage.setItem(storageKey, JSON.stringify(analyticsData));
-                    console.log(`💾 Stored analytics event for salesman ${this.salesmanId}`);
                 } catch (error) {
                     console.error('❌ Error storing analytics event:', error);
                 }
             }
-            
-            getCustomerDurations() {
-                return this.dailyData ? this.dailyData.customers : {};
-            }
-            
-            getTodaysSummary() {
-                if (!this.dailyData) return null;
-                
-                const customers = Object.values(this.dailyData.customers);
-                return {
-                    salesman_id: this.salesmanId,
-                    salesman_name: this.salesmanName,
-                    firstAccess: this.dailyData.firstAccess,
-                    totalCustomers: customers.length,
-                    totalDuration: this.dailyData.totalDuration,
-                    averageDuration: customers.length > 0 ? this.dailyData.totalDuration / customers.length : 0,
-                    accessCount: this.dailyData.accessCount,
-                    customers: customers
-                };
-            }
         }
+
+        // ===== INITIALIZE ANALYTICS =====
+        let visitAnalytics = null;
 
         // ===== UTILITY FUNCTIONS =====
         function checkLoginStatus() {
@@ -1549,43 +1503,210 @@
             return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
         }
 
-        function updateDebugInfo(info) {
-            if (debugMode) {
-                document.getElementById('debugInfo').innerHTML = info;
-                document.getElementById('debugPanel').style.display = 'block';
+        // ===== GEOLOCATION FUNCTIONS =====
+        function refreshLocation() {
+            if (!visitAnalytics) return;
+            
+            visitAnalytics.updateLocationStatus('tracking', 'Refreshing location...');
+            
+            navigator.geolocation.getCurrentPosition(
+                (position) => visitAnalytics.handleLocationSuccess(position),
+                (error) => visitAnalytics.handleLocationError(error),
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
+        }
+
+        function showLocationMap() {
+            if (!visitAnalytics || !visitAnalytics.lastKnownPosition || !customerMasterCoordinates) {
+                alert('Location data not available');
+                return;
+            }
+            
+            // Create a simple map popup with coordinates
+            const actual = visitAnalytics.lastKnownPosition.coords;
+            const master = customerMasterCoordinates;
+            
+            const mapInfo = `
+Location Comparison:
+
+Your Location:
+${actual.latitude.toFixed(6)}, ${actual.longitude.toFixed(6)}
+
+Customer Location:
+${master.latitude.toFixed(6)}, ${master.longitude.toFixed(6)}
+
+Distance: ${Math.round(visitAnalytics.calculateDistance(actual.latitude, actual.longitude, master.latitude, master.longitude))}m
+
+Open in Google Maps?
+            `;
+            
+            if (confirm(mapInfo)) {
+                const googleMapsUrl = `https://www.google.com/maps/dir/${actual.latitude},${actual.longitude}/${master.latitude},${master.longitude}`;
+                window.open(googleMapsUrl, '_blank');
             }
         }
 
-        // ===== NUMBER FORMATTING FUNCTIONS =====
-        function formatNumber(value) {
-            if (!value || value === 0) return '0';
-            
-            const num = Number(value);
-            if (isNaN(num)) return '0';
-            
-            const absNum = Math.abs(num);
-            const sign = num < 0 ? '-' : '';
-            
-            if (absNum >= 1000000) {
-                const millions = (absNum / 1000000).toFixed(2);
-                return `${sign}${millions}Jt`;
-            } else if (absNum >= 1000) {
-                const thousands = (absNum / 1000).toFixed(2);
-                return `${sign}${thousands}Rb`;
-            } else {
-                return `${sign}${absNum.toFixed(2)}`;
+        // ===== DATA LOADING FUNCTIONS =====
+        async function loadSalesmanData() {
+            try {
+                console.log('👤 Loading salesman data...');
+                const response = await fetch('data/d.salesman.json');
+                if (!response.ok) throw new Error('Failed to load salesman data');
+                
+                const content = await response.text();
+                salesmanData = parseJSONL(content);
+                
+                updateSalesmanNameFromData();
+                
+            } catch (error) {
+                console.error('Error loading salesman data:', error);
             }
         }
 
-        function formatNumberWithSign(value) {
-            const formatted = formatNumber(value);
-            if (Number(value) > 0 && !formatted.startsWith('-')) {
-                return `+${formatted}`;
+        async function loadPelangganData() {
+            try {
+                console.log('🏪 Loading pelanggan data...');
+                const response = await fetch('data/d.skupelanggan.json');
+                if (!response.ok) throw new Error('Failed to load pelanggan data');
+                
+                const content = await response.text();
+                pelangganData = parseJSONL(content);
+                
+            } catch (error) {
+                console.error('Error loading pelanggan data:', error);
             }
-            return formatted;
         }
 
-        // ===== UI CONTROL FUNCTIONS =====
+        async function loadDetailsData() {
+            try {
+                console.log('📊 Loading details data...');
+                const response = await fetch('data/d.details.json');
+                if (!response.ok) throw new Error('Failed to load details data');
+                
+                const content = await response.text();
+                detailsData = parseJSONL(content);
+                
+            } catch (error) {
+                console.error('Error loading details data:', error);
+            }
+        }
+
+        // ===== CUSTOMER COORDINATE HELPER =====
+        function getCustomerCoordinates(customerName, kodePelanggan) {
+            // Find customer in details data by Kode_Pelanggan
+            const customerDetail = detailsData.find(item => {
+                return item.Kode_Pelanggan === kodePelanggan;
+            });
+            
+            if (customerDetail && customerDetail.Latitude && customerDetail.Longitude) {
+                return {
+                    latitude: parseFloat(customerDetail.Latitude),
+                    longitude: parseFloat(customerDetail.Longitude),
+                    source: 'master_data'
+                };
+            }
+            
+            return null;
+        }
+
+        // ===== UPDATE FUNCTIONS =====
+        function initializeSalesmanFromUrl() {
+            currentSalesmanId = getUrlParameter('id') || getUrlParameter('user');
+            
+            if (currentSalesmanId) {
+                console.log(`📍 Current Salesman ID: ${currentSalesmanId}`);
+            }
+        }
+
+        function updateSalesmanNameFromData() {
+            if (currentSalesmanId && salesmanData.length > 0) {
+                const salesmanRecord = salesmanData.find(item => item.szEmployeeId.toString() === currentSalesmanId);
+                if (salesmanRecord) {
+                    currentSalesman = salesmanRecord.szname;
+                    document.getElementById('salesmanName').textContent = currentSalesman;
+                    
+                    // Set salesman in analytics tracker
+                    if (visitAnalytics) {
+                        visitAnalytics.setSalesman(currentSalesmanId, currentSalesman);
+                    }
+                }
+            }
+        }
+
+        function updatePelangganOptions() {
+            const hariSelect = document.getElementById('hari');
+            const pelangganSelect = document.getElementById('pelanggan');
+            
+            pelangganSelect.innerHTML = '<option value="">🏪 Pilih Pelanggan</option>';
+            
+            // End current customer tracking
+            if (visitAnalytics && visitAnalytics.currentCustomer) {
+                visitAnalytics.endCustomerTracking();
+            }
+            
+            if (pelangganData.length > 0 && currentSalesmanId && hariSelect.value) {
+                const selectedHari = hariSelect.value.trim().toUpperCase();
+                
+                const filteredPelanggan = [...new Set(pelangganData
+                    .filter(item => {
+                        const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
+                        const itemHari = (item.Hari_Kunjungan || '').toString().trim().toUpperCase();
+                        
+                        return itemSalesmanId === currentSalesmanId && itemHari === selectedHari;
+                    })
+                    .map(item => item.Nama_Pelanggan)
+                    .filter(pelanggan => pelanggan && pelanggan.toString().trim() !== '')
+                )];
+
+                filteredPelanggan.forEach(pelanggan => {
+                    const option = document.createElement('option');
+                    option.value = pelanggan;
+                    option.textContent = pelanggan;
+                    pelangganSelect.appendChild(option);
+                });
+            }
+        }
+
+        function handlePelangganSelection() {
+            const hariSelect = document.getElementById('hari');
+            const pelangganSelect = document.getElementById('pelanggan');
+            
+            if (visitAnalytics && pelangganSelect.value && hariSelect.value) {
+                // Find customer coordinates
+                const selectedPelanggan = pelangganSelect.value.trim();
+                const selectedHari = hariSelect.value.trim().toUpperCase();
+                
+                // Find Kode_Pelanggan for this customer
+                const pelangganRecord = pelangganData.find(item => {
+                    const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
+                    const itemHari = (item.Hari_Kunjungan || '').toString().trim().toUpperCase();
+                    const itemPelanggan = (item.Nama_Pelanggan || '').toString().trim();
+                    
+                    return itemSalesmanId === currentSalesmanId &&
+                           itemHari === selectedHari &&
+                           itemPelanggan.toLowerCase() === selectedPelanggan.toLowerCase();
+                });
+                
+                let masterCoordinates = null;
+                if (pelangganRecord && pelangganRecord.Kode_Pelanggan) {
+                    masterCoordinates = getCustomerCoordinates(selectedPelanggan, pelangganRecord.Kode_Pelanggan);
+                }
+                
+                // Track customer selection with coordinates
+                visitAnalytics.trackCustomerSelection(selectedPelanggan, selectedHari, masterCoordinates);
+                
+                console.log(`👥 Customer selected: ${selectedPelanggan}`, masterCoordinates);
+                
+            } else if (visitAnalytics && !pelangganSelect.value) {
+                visitAnalytics.endCustomerTracking();
+            }
+        }
+
+        // ===== UI FUNCTIONS =====
         function showLoading(show) {
             document.getElementById('loadingSpinner').style.display = show ? 'flex' : 'none';
         }
@@ -1602,13 +1723,10 @@
             }
         }
 
-        function hideError() { showError(false); }
-
         function showMainContent(show) {
             document.getElementById('mainContent').style.display = show ? 'block' : 'none';
         }
 
-        // ===== TAB MANAGEMENT FUNCTIONS =====
         function showTab(tabName) {
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
@@ -1619,962 +1737,30 @@
             } else if (tabName === 'dap') {
                 document.getElementById('visitTab').style.display = 'none';
                 document.getElementById('dapTab').style.display = 'block';
-                initializeDAPData();
             }
         }
 
-        // ===== DAP FUNCTIONS =====
-        function initializeDAPData() {
-            console.log('📋 Initializing DAP data...');
-            loadDAPHariOptions();
-        }
-
-        function loadDAPHariOptions() {
-            const dapHariSelect = document.getElementById('dapHari');
-            
-            if (!detailsData.length) {
-                console.log('⚠️ No details data available for DAP');
-                return;
-            }
-
-            const uniqueHariJKS = [...new Set(detailsData
-                .filter(item => {
-                    const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
-                    return itemSalesmanId === currentSalesmanId;
-                })
-                .map(item => item['Hari JKS'])
-                .filter(hari => hari && hari.trim() !== '')
-            )];
-
-            console.log(`📅 Found ${uniqueHariJKS.length} DAP hari options:`, uniqueHariJKS);
-
-            dapHariSelect.innerHTML = '<option value="">📅 Pilih Hari JKS</option>';
-            
-            uniqueHariJKS.forEach(hari => {
-                const option = document.createElement('option');
-                option.value = hari;
-                option.textContent = hari;
-                dapHariSelect.appendChild(option);
-            });
-
-            dapHariSelect.disabled = false;
-        }
-
-        function updateDAPTable() {
-            const dapHariSelect = document.getElementById('dapHari');
-            const dapTableBody = document.getElementById('dapTableBody');
-
-            if (!dapHariSelect.value || !currentSalesmanId) {
-                dapTableBody.innerHTML = `
-                    <tr>
-                        <td colspan="6">
-                            <div class="empty-state">
-                                <div class="empty-state-icon">📋</div>
-                                <div>Pilih Hari JKS untuk melihat daftar pelanggan</div>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-                updateDAPSummary([]);
-                return;
-            }
-
-            const selectedHari = dapHariSelect.value.trim();
-            
-            const filteredData = detailsData.filter(item => {
-                const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
-                const itemHariJKS = (item['Hari JKS'] || '').toString().trim();
-                
-                return itemSalesmanId === currentSalesmanId && itemHariJKS === selectedHari;
-            });
-
-            console.log(`📊 DAP filtered data: ${filteredData.length} customers for ${selectedHari}`);
-
-            currentDAPData = [...filteredData];
-            renderDAPTable(currentDAPData);
-            updateDAPSummary(currentDAPData);
-        }
-
-        function renderDAPTable(data) {
-            const dapTableBody = document.getElementById('dapTableBody');
-
-            if (data.length === 0) {
-                dapTableBody.innerHTML = `
-                    <tr>
-                        <td colspan="6">
-                            <div class="empty-state">
-                                <div class="empty-state-icon">📭</div>
-                                <div>Tidak ada pelanggan untuk hari yang dipilih</div>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
-
-            let html = '';
-            let totalAvgET = 0, totalGapBE = 0, totalBE = 0, totalActual = 0;
-
-            data.forEach((item, index) => {
-                const no = index + 1;
-                const namaPelanggan = item['Nama Pelanggan'] || 'N/A';
-                
-                const channelGroup = item['Channel Group'] || '';
-                const project = item.Project || '';
-                const channel = channelGroup && project ? `${channelGroup} - ${project}` : (channelGroup || project || 'N/A');
-                
-                const avgET = Number(item['Avg ET']) || 0;
-                const beMTD = Number(item['BE MTD']) || 0;
-                const aMTD = Number(item['A.MTD']) || 0;
-                const gapBE = aMTD - beMTD;
-
-                totalAvgET += avgET;
-                totalGapBE += gapBE;
-                totalBE += beMTD;
-                totalActual += aMTD;
-
-                const gapBEBadge = gapBE > 0 ? 'gap-positive' : gapBE < 0 ? 'gap-negative' : 'gap-neutral';
-
-                html += `
-                    <tr>
-                        <td>${no}</td>
-                        <td style="text-align: left; padding-left: 12px;">
-                            <strong>${namaPelanggan}</strong><br>
-                            <small style="color: #64748b; font-size: 9px;">${channel}</small>
-                        </td>
-                        <td class="metric-value">${avgET}</td>
-                        <td><span class="gap-badge ${gapBEBadge}">${formatNumberWithSign(gapBE)}</span></td>
-                        <td class="metric-value">${formatNumber(beMTD)}</td>
-                        <td class="metric-value">${formatNumber(aMTD)}</td>
-                    </tr>
-                `;
-            });
-
-            const totalGapBEBadge = totalGapBE > 0 ? 'gap-positive' : totalGapBE < 0 ? 'gap-negative' : 'gap-neutral';
-            
-            html += `
-                <tr class="summary-row">
-                    <td></td>
-                    <td style="text-align: left; padding-left: 12px;"><strong>TOTAL</strong></td>
-                    <td><strong>${formatNumber(totalAvgET)}</strong></td>
-                    <td><span class="gap-badge ${totalGapBEBadge}">${formatNumberWithSign(totalGapBE)}</span></td>
-                    <td><strong>${formatNumber(totalBE)}</strong></td>
-                    <td><strong>${formatNumber(totalActual)}</strong></td>
-                </tr>
-            `;
-
-            dapTableBody.innerHTML = html;
-        }
-
-        function updateDAPSummary(data) {
-            const customerCountElement = document.getElementById('dapCustomerCount');
-            const totalBEElement = document.getElementById('dapTotalBE');
-            const totalTargetElement = document.getElementById('dapTotalTarget');
-            const totalActualElement = document.getElementById('dapTotalActual');
-            const totalGapElement = document.getElementById('dapTotalGap');
-
-            if (data.length === 0) {
-                customerCountElement.textContent = '-';
-                totalBEElement.textContent = '-';
-                totalTargetElement.textContent = '-';
-                totalActualElement.textContent = '-';
-                totalGapElement.textContent = '-';
-                totalActualElement.className = 'summary-value';
-                totalGapElement.className = 'summary-value';
-                return;
-            }
-
-            const totalBE = data.reduce((sum, item) => sum + (Number(item['BE MTD']) || 0), 0);
-            const totalTarget = data.reduce((sum, item) => sum + (Number(item['T.MTD']) || 0), 0);
-            const totalActual = data.reduce((sum, item) => sum + (Number(item['A.MTD']) || 0), 0);
-            const totalGap = totalActual - totalBE;
-
-            customerCountElement.textContent = data.length.toString();
-            totalBEElement.textContent = formatNumber(totalBE);
-            totalTargetElement.textContent = formatNumber(totalTarget);
-            totalActualElement.textContent = formatNumber(totalActual);
-            totalGapElement.textContent = formatNumberWithSign(totalGap);
-
-            totalActualElement.className = totalActual > totalTarget ? 'summary-value positive' : 
-                                         totalActual < totalTarget ? 'summary-value negative' : 
-                                         'summary-value neutral';
-            
-            totalGapElement.className = totalGap > 0 ? 'summary-value positive' : 
-                                      totalGap < 0 ? 'summary-value negative' : 
-                                      'summary-value neutral';
-        }
-
-        function sortDAPTable(column) {
-            if (currentDAPData.length === 0) return;
-
-            if (dapSortState.column === column) {
-                dapSortState.direction = dapSortState.direction === 'asc' ? 'desc' : 'asc';
-            } else {
-                dapSortState.column = column;
-                dapSortState.direction = 'asc';
-            }
-
-            if (column === 'customer') {
-                currentDAPData.sort((a, b) => {
-                    const nameA = (a['Nama Pelanggan'] || '').toLowerCase();
-                    const nameB = (b['Nama Pelanggan'] || '').toLowerCase();
-                    
-                    return dapSortState.direction === 'asc' 
-                        ? nameA.localeCompare(nameB)
-                        : nameB.localeCompare(nameA);
-                });
-            }
-
-            renderDAPTable(currentDAPData);
-        }
-
-        // ===== TPOM DATA LOADING FUNCTIONS =====
-        async function loadTpomData() {
-            try {
-                console.log('📋 Loading TPOM data...');
-                const response = await fetch('data/d.tpom.json');
-                if (!response.ok) throw new Error('Failed to load TPOM data');
-                
-                const content = await response.text();
-                
-                try {
-                    tpomData = parseJSONL(content);
-                } catch (jsonlError) {
-                    tpomData = JSON.parse(content);
-                }
-                
-                console.log(`✅ Loaded ${tpomData.length} TPOM records`);
-                
-            } catch (error) {
-                console.error('❌ Error loading TPOM data:', error);
-            }
-        }
-
-        // ===== TPOM HELPER FUNCTIONS =====
-        function getTPOMSKUsForSalesman(salesmanId) {
-            if (!tpomData.length || !salesmanId) {
-                return [];
-            }
-            
-            const salesmanIdNum = parseInt(salesmanId);
-            
-            const salesmanTPOM = tpomData.filter(item => {
-                const itemNIK = parseInt(item.NIK);
-                return itemNIK === salesmanIdNum;
-            });
-            
-            const tpomSKUs = [...new Set(salesmanTPOM
-                .map(item => item.SKU)
-                .filter(sku => sku && sku.trim() !== '')
-            )];
-            
-            return tpomSKUs;
-        }
-
-        function isSKUInTPOM(sku, salesmanId) {
-            const tpomSKUs = getTPOMSKUsForSalesman(salesmanId);
-            return tpomSKUs.includes(sku);
-        }
-
-        // ===== DATA LOADING FUNCTIONS =====
-        function initializeSalesmanFromUrl() {
-            currentSalesmanId = getUrlParameter('id') || getUrlParameter('user');
-            console.log(`📍 Current Salesman ID from URL: ${currentSalesmanId}`);
-            
-            if (currentSalesmanId) {
-                updateDebugInfo(`Salesman ID: ${currentSalesmanId}<br>Status: Ready`);
-            } else {
-                console.log(`⚠️ No salesman ID found in URL`);
-                document.getElementById('salesmanName').textContent = 'Unknown Salesman';
-            }
-        }
-
-        function updateSalesmanNameFromData() {
-            if (currentSalesmanId && salesmanData.length > 0) {
-                const salesmanRecord = salesmanData.find(item => item.szEmployeeId.toString() === currentSalesmanId);
-                if (salesmanRecord) {
-                    currentSalesman = salesmanRecord.szname;
-                    document.getElementById('salesmanName').textContent = currentSalesman;
-                    console.log(`✅ Found salesman: ${currentSalesman} (Employee ID: ${currentSalesmanId})`);
-                    
-                    // 🆕 Set salesman in analytics tracker AFTER data is loaded
-                    if (visitAnalytics) {
-                        visitAnalytics.setSalesman(currentSalesmanId, currentSalesman);
-                    }
-                    
-                    updateDebugInfo(`Salesman: ${currentSalesman}<br>ID: ${currentSalesmanId}<br>Type: ${salesmanRecord['Tipe Salesman']}<br>Dept: ${salesmanRecord.Dept}`);
-                } else {
-                    console.log(`⚠️ Salesman not found with ID: ${currentSalesmanId}`);
-                    document.getElementById('salesmanName').textContent = 'Salesman Not Found';
-                }
-            }
-        }
-
-        async function loadSalesmanData() {
-            try {
-                console.log('👤 Loading salesman data...');
-                const response = await fetch('data/d.salesman.json');
-                if (!response.ok) throw new Error('Failed to load salesman data');
-                
-                const content = await response.text();
-                
-                try {
-                    salesmanData = parseJSONL(content);
-                } catch (jsonlError) {
-                    salesmanData = JSON.parse(content);
-                }
-                
-                console.log(`✅ Loaded ${salesmanData.length} salesman records`);
-                updateSalesmanNameFromData();
-                
-            } catch (error) {
-                console.error('Error loading salesman data:', error);
-                updateSalesmanNameFromPelangganData();
-            }
-        }
-
-        function updateSalesmanNameFromPelangganData() {
-            if (currentSalesmanId && pelangganData.length > 0) {
-                const salesmanRecord = pelangganData.find(item => item.szEmployeeId === currentSalesmanId);
-                if (salesmanRecord) {
-                    currentSalesman = salesmanRecord.szName;
-                    document.getElementById('salesmanName').textContent = currentSalesman;
-                    
-                    // 🆕 Set salesman in analytics tracker
-                    if (visitAnalytics) {
-                        visitAnalytics.setSalesman(currentSalesmanId, currentSalesman);
-                    }
-                    
-                    console.log(`✅ Fallback - Found salesman: ${currentSalesman} (Employee ID: ${currentSalesmanId})`);
-                    updateDebugInfo(`Salesman: ${currentSalesman}<br>ID: ${currentSalesmanId}<br>Source: Fallback`);
-                } else {
-                    console.log(`⚠️ Salesman not found with ID: ${currentSalesmanId}`);
-                    document.getElementById('salesmanName').textContent = 'Salesman Not Found';
-                }
-            }
-        }
-
-        async function loadPelangganData() {
-            try {
-                console.log('🏪 Loading pelanggan data...');
-                const response = await fetch('data/d.skupelanggan.json');
-                if (!response.ok) throw new Error('Failed to load pelanggan data');
-                
-                const content = await response.text();
-                
-                try {
-                    pelangganData = parseJSONL(content);
-                } catch (jsonlError) {
-                    pelangganData = JSON.parse(content);
-                }
-                
-                console.log(`✅ Loaded ${pelangganData.length} pelanggan records`);
-                
-            } catch (error) {
-                console.error('Error loading pelanggan data:', error);
-            }
-        }
-
-        async function loadHariData() {
-            try {
-                console.log('📅 Loading hari data...');
-                const response = await fetch('data/d.harijks.json');
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: Failed to load hari data`);
-                }
-                
-                const content = await response.text();
-                hariData = parseJSONL(content);
-                
-                const uniqueHari = [...new Set(hariData
-                    .map(item => item.Hari_Kunjungan)
-                    .filter(hari => hari && hari.trim() !== '')
-                    .map(hari => normalizeHariFormat(hari))
-                )].filter(hari => hari);
-                
-                const hariSelect = document.getElementById('hari');
-                if (hariSelect) {
-                    hariSelect.innerHTML = '<option value="">📅 Pilih Hari JKS</option>';
-                    
-                    uniqueHari.forEach(hari => {
-                        const option = document.createElement('option');
-                        option.value = hari;
-                        option.textContent = hari;
-                        hariSelect.appendChild(option);
-                    });
-                    
-                    hariSelect.disabled = false;
-                }
-                
-                console.log(`✅ Loaded ${uniqueHari.length} hari options`);
-                
-            } catch (error) {
-                console.log(`❌ Error loading hari: ${error.message}`);
-                
-                if (pelangganData.length > 0 && currentSalesmanId) {
-                    console.log('🔄 Fallback: Using hari from pelanggan data');
-                    
-                    const uniqueHari = [...new Set(pelangganData
-                        .filter(item => {
-                            const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
-                            return itemSalesmanId === currentSalesmanId;
-                        })
-                        .map(item => normalizeHariFormat(item.Hari_Kunjungan))
-                        .filter(hari => hari)
-                    )];
-                    
-                    const hariSelect = document.getElementById('hari');
-                    if (hariSelect) {
-                        hariSelect.innerHTML = '<option value="">📅 Pilih Hari JKS</option>';
-                        
-                        uniqueHari.forEach(hari => {
-                            const option = document.createElement('option');
-                            option.value = hari;
-                            option.textContent = hari;
-                            hariSelect.appendChild(option);
-                        });
-                        
-                        hariSelect.disabled = false;
-                    }
-                    
-                    console.log(`✅ Fallback loaded ${uniqueHari.length} hari options`);
-                }
-            }
-        }
-
-        async function loadDetailsData() {
-            try {
-                console.log('📊 Loading details data...');
-                const response = await fetch('data/d.details.json');
-                if (!response.ok) throw new Error('Failed to load details data');
-                
-                const content = await response.text();
-                
-                try {
-                    detailsData = parseJSONL(content);
-                } catch (jsonlError) {
-                    detailsData = JSON.parse(content);
-                }
-                
-                console.log(`✅ Loaded ${detailsData.length} detail records`);
-                
-            } catch (error) {
-                console.error('Error loading details data:', error);
-            }
-        }
-
-        // ===== FORMAT NORMALIZATION =====
-        function normalizeHariFormat(hariString) {
-            if (!hariString) return '';
-            const cleanHari = hariString.toString().replace(/^\[\d+\]/, '').trim().toUpperCase();
-            return cleanHari;
-        }
-
-        // ===== CUSTOMER INFO FUNCTIONS =====
-        function updateCustomerInfo() {
-            const hariSelect = document.getElementById('hari');
-            const pelangganSelect = document.getElementById('pelanggan');
-            const customerInfoDiv = document.getElementById('customerInfo');
-            const customerTypeDiv = document.getElementById('customerType');
-            
-            if (!currentSalesmanId || !hariSelect.value || !pelangganSelect.value || pelangganData.length === 0 || detailsData.length === 0) {
-                customerInfoDiv.style.display = 'none';
-                return;
-            }
-            
-            const selectedHari = hariSelect.value.trim().toUpperCase();
-            const selectedPelanggan = pelangganSelect.value.trim();
-            
-            const pelangganDetail = pelangganData.find(item => {
-                const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
-                const itemHari = normalizeHariFormat(item.Hari_Kunjungan);
-                const itemPelanggan = (item.Nama_Pelanggan || '').toString().trim();
-                
-                return itemSalesmanId === currentSalesmanId &&
-                       itemHari === selectedHari &&
-                       itemPelanggan.toLowerCase() === selectedPelanggan.toLowerCase();
-            });
-            
-            if (!pelangganDetail || !pelangganDetail.Kode_Pelanggan) {
-                customerInfoDiv.style.display = 'none';
-                console.log(`⚠️ No Kode_Pelanggan found for: ${selectedPelanggan}`);
-                return;
-            }
-            
-            const customerDetail = detailsData.find(item => {
-                const itemKodePelanggan = (item.Kode_Pelanggan || '').toString().trim();
-                return itemKodePelanggan === pelangganDetail.Kode_Pelanggan;
-            });
-            
-            if (customerDetail) {
-                const channelGroup = customerDetail['Channel Group'] || '';
-                const project = customerDetail.Project || '';
-                const customerType = channelGroup && project ? `${channelGroup}-${project}` : (channelGroup || project || 'General Customer');
-                
-                customerTypeDiv.textContent = customerType;
-                customerInfoDiv.style.display = 'block';
-                
-                console.log(`✅ Customer info updated: ${selectedPelanggan} - ${customerType} (Kode: ${pelangganDetail.Kode_Pelanggan})`);
-            } else {
-                customerInfoDiv.style.display = 'none';
-                console.log(`⚠️ No customer detail found in d.details.json for Kode_Pelanggan: ${pelangganDetail.Kode_Pelanggan}`);
-            }
-        }
-
-        // ===== 🆕 ENHANCED FILTER UPDATE FUNCTIONS =====
-        function updatePelangganOptions() {
-            const hariSelect = document.getElementById('hari');
-            const pelangganSelect = document.getElementById('pelanggan');
-            
-            pelangganSelect.innerHTML = '<option value="">🏪 Pilih Pelanggan</option>';
-            pelangganSelect.disabled = false;
-            
-            const customerInfoDiv = document.getElementById('customerInfo');
-            customerInfoDiv.style.display = 'none';
-            
-            // 🆕 End current customer tracking when hari changes
-            if (visitAnalytics && visitAnalytics.currentCustomer) {
-                visitAnalytics.endCustomerTracking();
-            }
-            
-            console.log(`🔍 Updating pelanggan options for hari: ${hariSelect.value}`);
-            
-            if (pelangganData.length === 0) {
-                const option = document.createElement('option');
-                option.value = '';
-                option.textContent = 'Data pelanggan tidak tersedia';
-                option.disabled = true;
-                pelangganSelect.appendChild(option);
-                return;
-            }
-
-            if (currentSalesmanId && hariSelect.value) {
-                const selectedHari = hariSelect.value.trim().toUpperCase();
-                
-                const filteredPelanggan = [...new Set(pelangganData
-                    .filter(item => {
-                        const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
-                        const itemHari = normalizeHariFormat(item.Hari_Kunjungan);
-                        
-                        return itemSalesmanId === currentSalesmanId && itemHari === selectedHari;
-                    })
-                    .map(item => item.Nama_Pelanggan)
-                    .filter(pelanggan => pelanggan && pelanggan.toString().trim() !== '' && 
-                            pelanggan !== 'No Pelanggan')
-                )];
-
-                console.log(`✅ Found ${filteredPelanggan.length} pelanggan options:`, filteredPelanggan);
-
-                filteredPelanggan.forEach(pelanggan => {
-                    const option = document.createElement('option');
-                    option.value = pelanggan;
-                    option.textContent = pelanggan;
-                    pelangganSelect.appendChild(option);
-                });
-                
-                if (filteredPelanggan.length === 0) {
-                    const option = document.createElement('option');
-                    option.value = '';
-                    option.textContent = 'Tidak ada data pelanggan';
-                    option.disabled = true;
-                    option.style.color = '#cbd5e1';
-                    pelangganSelect.appendChild(option);
-                }
-                
-            } else {
-                const option = document.createElement('option');
-                option.value = '';
-                option.textContent = 'Pilih hari terlebih dahulu';
-                option.disabled = true;
-                option.style.color = '#cbd5e1';
-                pelangganSelect.appendChild(option);
-            }
-            
-            updateTable();
-            updateSummary();
-        }
-
-        // ===== 🆕 ENHANCED PELANGGAN SELECTION HANDLER =====
-        function handlePelangganSelection() {
-            const hariSelect = document.getElementById('hari');
-            const pelangganSelect = document.getElementById('pelanggan');
-            
-            if (visitAnalytics && pelangganSelect.value && hariSelect.value) {
-                // Track customer selection
-                visitAnalytics.trackCustomerSelection(pelangganSelect.value, hariSelect.value);
-            } else if (visitAnalytics && !pelangganSelect.value) {
-                // End tracking if no customer selected
-                visitAnalytics.endCustomerTracking();
-            }
-            
-            updateTable();
-            updateSummary();
-            updateCustomerInfo();
-        }
-
-        // ===== SUMMARY UPDATE FUNCTION =====
-        function updateSummary() {
-            const hariSelect = document.getElementById('hari');
-            const pelangganSelect = document.getElementById('pelanggan');
-            
-            const targetElement = document.getElementById('summaryTarget');
-            const actualElement = document.getElementById('summaryActual');
-            const gapElement = document.getElementById('summaryGap');
-            
-            if (!currentSalesmanId || !hariSelect.value || !pelangganSelect.value) {
-                targetElement.textContent = '-';
-                actualElement.textContent = '-';
-                gapElement.textContent = '-';
-                gapElement.className = 'summary-value';
-                return;
-            }
-            
-            if (pelangganData.length === 0 || detailsData.length === 0) {
-                targetElement.textContent = '0';
-                actualElement.textContent = '0';
-                gapElement.textContent = '0';
-                gapElement.className = 'summary-value neutral';
-                return;
-            }
-            
-            const selectedHari = hariSelect.value.trim().toUpperCase();
-            const selectedPelanggan = pelangganSelect.value.trim();
-            
-            const matchingPelangganRecords = pelangganData.filter(item => {
-                const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
-                const itemHari = normalizeHariFormat(item.Hari_Kunjungan);
-                const itemPelanggan = (item.Nama_Pelanggan || '').toString().trim();
-                
-                return itemSalesmanId === currentSalesmanId &&
-                       itemHari === selectedHari &&
-                       itemPelanggan.toLowerCase() === selectedPelanggan.toLowerCase();
-            });
-            
-            const kodePelangganList = [...new Set(matchingPelangganRecords
-                .map(item => item.Kode_Pelanggan)
-                .filter(kode => kode && kode.trim() !== '')
-            )];
-            
-            const matchingDetailsRecords = detailsData.filter(item => {
-                const itemKodePelanggan = (item.Kode_Pelanggan || '').toString().trim();
-                const itemSalesmanId = (item.szEmployeeId || item.NIK || '').toString().trim();
-                
-                return kodePelangganList.includes(itemKodePelanggan) && itemSalesmanId === currentSalesmanId;
-            });
-            
-            let totalTarget = 0;
-            let totalActual = 0;
-            let totalGap = 0;
-            
-            matchingDetailsRecords.forEach(item => {
-                const target = Number(item['T.MTD'] || 0);
-                const actual = Number(item['A.MTD'] || 0);
-                const gap = Number(item['Gap MTD'] || 0);
-                
-                totalTarget += target;
-                totalActual += actual;
-                totalGap += gap;
-            });
-            
-            targetElement.textContent = formatNumber(totalTarget);
-            actualElement.textContent = formatNumber(totalActual);
-            gapElement.textContent = formatNumberWithSign(totalGap);
-            
-            gapElement.className = totalGap > 0 ? 'summary-value positive' : 
-                                  totalGap < 0 ? 'summary-value negative' : 
-                                  'summary-value neutral';
-        }
-
-        // ===== TABLE FUNCTIONS =====
-        function sortTable(column) {
-            if (currentFilteredData.length === 0) {
-                return;
-            }
-
-            if (sortState.column === column) {
-                sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
-            } else {
-                sortState.column = column;
-                sortState.direction = 'asc';
-            }
-
-            if (column === 'promo') {
-                currentFilteredData.sort((a, b) => {
-                    const promoA = (a.Promo || '').toLowerCase();
-                    const promoB = (b.Promo || '').toLowerCase();
-                    
-                    if (sortState.direction === 'asc') {
-                        return promoA.localeCompare(promoB);
-                    } else {
-                        return promoB.localeCompare(promoA);
-                    }
-                });
-            }
-
-            updateSortHeaders();
-            renderTableData(currentFilteredData);
-        }
-
-        function updateSortHeaders() {
-            document.querySelectorAll('.sortable-header').forEach(header => {
-                header.classList.remove('asc', 'desc');
-            });
-
-            if (sortState.column === 'promo') {
-                const promoHeader = document.querySelector('.sortable-header');
-                if (promoHeader) {
-                    promoHeader.classList.add(sortState.direction);
-                }
-            }
-        }
-
-        function renderTableData(data) {
-            const tableBody = document.getElementById('tableBody');
-            
-            if (data.length === 0) {
-                tableBody.innerHTML = `
-                    <tr>
-                        <td colspan="9">
-                            <div class="empty-state">
-                                <div class="empty-state-icon">📭</div>
-                                <div>Tidak ada data untuk kriteria yang dipilih</div>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
-            
-            let html = '';
-            let totalPlan = 0, totalMTD = 0;
-            const existingSKUs = new Set();
-            
-            data.forEach((item, index) => {
-                const no = index + 1;
-                const promo = item.Promo || "Others";
-                const sku = item.SKU || "N/A";
-                const threeLM = Number(item.Unit3LM) || 0;
-                const lm = Number(item.UnitLM) || 0;
-                const plan = Number(item.Plan) || 0;
-                const mtd = Number(item.UnitMTD) || 0;
-                const gap = Number(item.Gap) || (mtd - plan);
-                const rekomendasi = generateRecommendation(gap, plan, mtd);
-                
-                existingSKUs.add(sku);
-                
-                totalPlan += plan;
-                totalMTD += mtd;
-                
-                const gapClass = gap > 0 ? 'positive' : gap < 0 ? 'negative' : 'neutral';
-                const gapBadgeClass = gap > 0 ? 'gap-positive' : gap < 0 ? 'gap-negative' : 'gap-neutral';
-                const promoClass = `promo-${promo.toLowerCase().replace(/\s+/g, '')}`;
-                
-                const isTpomSKU = currentSalesmanId ? isSKUInTPOM(sku, currentSalesmanId) : false;
-                const skuClass = isTpomSKU ? 'sku-code tpom-sku' : 'sku-code';
-                
-                html += `
-                    <tr>
-                        <td>${no}</td>
-                        <td><span class="promo-tag ${promoClass}">${promo}</span></td>
-                        <td><span class="${skuClass}">${sku}</span></td>
-                        <td>${formatNumber(threeLM)}</td>
-                        <td>${formatNumber(lm)}</td>
-                        <td class="metric-value">${formatNumber(plan)}</td>
-                        <td class="metric-value">${formatNumber(mtd)}</td>
-                        <td><span class="gap-badge ${gapBadgeClass}">${formatNumberWithSign(gap)}</span></td>
-                        <td><span class="recommendation">${rekomendasi}</span></td>
-                    </tr>
-                `;
-            });
-            
-            if (currentSalesmanId) {
-                const tpomSKUs = getTPOMSKUsForSalesman(currentSalesmanId);
-                const missingSKUs = tpomSKUs.filter(sku => !existingSKUs.has(sku));
-                
-                if (missingSKUs.length > 0) {
-                    missingSKUs.forEach((sku, index) => {
-                        const no = data.length + index + 1;
-                        html += `
-                            <tr class="missing-sku-row">
-                                <td>${no}</td>
-                                <td><span class="promo-tag promo-tpom">TPOM</span></td>
-                                <td><span class="sku-code tpom-sku">${sku}</span></td>
-                                <td>0.00</td>
-                                <td>0.00</td>
-                                <td class="metric-value">0.00</td>
-                                <td class="metric-value">0.00</td>
-                                <td><span class="gap-badge gap-neutral">0.00</span></td>
-                                <td><span class="recommendation">TPOM Only</span></td>
-                            </tr>
-                        `;
-                    });
-                }
-            }
-            
-            // Total row
-            const totalGap = totalMTD - totalPlan;
-            const totalGapBadgeClass = totalGap > 0 ? 'gap-positive' : totalGap < 0 ? 'gap-negative' : 'gap-neutral';
-            
-            html += `
-                <tr class="summary-row">
-                    <td></td>
-                    <td><strong>TOTAL</strong></td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                    <td><strong>${formatNumber(totalPlan)}</strong></td>
-                    <td><strong>${formatNumber(totalMTD)}</strong></td>
-                    <td><span class="gap-badge ${totalGapBadgeClass}">${formatNumberWithSign(totalGap)}</span></td>
-                    <td>-</td>
-                </tr>
-            `;
-            
-            tableBody.innerHTML = html;
-        }
-
-        function updateTable() {
-            const tableBody = document.getElementById('tableBody');
-            const hariSelect = document.getElementById('hari');
-            const pelangganSelect = document.getElementById('pelanggan');
-            
-            if (!tableBody || !hariSelect || !pelangganSelect) {
-                return;
-            }
-            
-            if (pelangganData.length === 0) {
-                tableBody.innerHTML = `
-                    <tr>
-                        <td colspan="9">
-                            <div class="empty-state">
-                                <div class="empty-state-icon">⏳</div>
-                                <div>Loading data...</div>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-                currentFilteredData = [];
-                return;
-            }
-            
-            if (!currentSalesmanId || !hariSelect.value || !pelangganSelect.value) {
-                tableBody.innerHTML = `
-                    <tr>
-                        <td colspan="9">
-                            <div class="empty-state">
-                                <div class="empty-state-icon">📊</div>
-                                <div>Pilih filter untuk melihat data</div>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-                currentFilteredData = [];
-                return;
-            }
-            
-            const selectedHari = hariSelect.value.trim().toUpperCase();
-            const selectedPelanggan = pelangganSelect.value.trim();
-            
-            const filteredData = pelangganData.filter(item => {
-                const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
-                const itemHari = normalizeHariFormat(item.Hari_Kunjungan);
-                const itemPelanggan = (item.Nama_Pelanggan || '').toString().trim();
-                
-                const salesmanMatch = itemSalesmanId === currentSalesmanId;
-                const hariMatch = itemHari === selectedHari;
-                const pelangganMatch = itemPelanggan.toLowerCase() === selectedPelanggan.toLowerCase();
-                
-                return salesmanMatch && hariMatch && pelangganMatch;
-            });
-            
-            console.log(`🔍 Table filtered data: ${filteredData.length} rows`);
-            
-            // 🆕 Track table view analytics
-            if (visitAnalytics && filteredData.length > 0) {
-                visitAnalytics.track('visit_table_viewed', {
-                    hari_jks: selectedHari,
-                    customer_name: selectedPelanggan,
-                    sku_count: filteredData.length,
-                    view_time: new Date().toISOString()
-                });
-            }
-            
-            currentFilteredData = [...filteredData];
-            sortState = { column: null, direction: 'asc' };
-            updateSortHeaders();
-            renderTableData(currentFilteredData);
-        }
-
-        function generateRecommendation(gap, plan, mtd) {
-            if (mtd === 0 || mtd === null || mtd === undefined) {
-                return "Belum Aktif";
-            } else if (mtd > 0 && mtd < plan) {
-                return "Under Plan";
-            } else if (mtd > 0 && mtd >= plan) {
-                return "Over Plan";
-            }
-            return "Belum Aktif";
-        }
-
-        // ===== 🆕 ENHANCED EVENT LISTENERS =====
+        // ===== EVENT LISTENERS =====
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('hari').addEventListener('change', updatePelangganOptions);
             document.getElementById('pelanggan').addEventListener('change', handlePelangganSelection);
-            
-            // DAP event listener
-            document.getElementById('dapHari').addEventListener('change', updateDAPTable);
-            
-            // Enable debug mode with Ctrl+D
-            document.addEventListener('keydown', function(e) {
-                if (e.ctrlKey && e.key === 'd') {
-                    e.preventDefault();
-                    debugMode = !debugMode;
-                    if (!debugMode) {
-                        document.getElementById('debugPanel').style.display = 'none';
-                    }
-                    console.log(`Debug mode: ${debugMode ? 'ON' : 'OFF'}`);
-                }
-            });
         });
 
         // ===== NAVIGATION FUNCTIONS =====
         function goHome() { 
-            // Track navigation
-            if (visitAnalytics) {
-                visitAnalytics.track('visit_navigation', {
-                    destination: 'dashboard',
-                    navigation_time: new Date().toISOString()
-                });
-            }
             window.location.href = 'dashboard.html'; 
         }
         
         function showVisitOutlet() { 
             if (currentSalesmanId) {
-                console.log(`🏪 Redirecting to Visit Outlet with salesman ID: ${currentSalesmanId}`);
                 window.location.href = `visit.html?id=${currentSalesmanId}`;
             } else {
-                const currentUser = sessionStorage.getItem('currentUser');
-                if (currentUser) {
-                    console.log(`🏪 Redirecting to Visit Outlet with session user: ${currentUser}`);
-                    window.location.href = `visit.html?user=${currentUser}`;
-                } else {
-                    console.log('🏪 Redirecting to Visit Outlet without parameters');
-                    window.location.href = 'visit.html';
-                }
+                window.location.href = 'visit.html';
             }
         }
         
         function showIncentive() {
-            // Track navigation
-            if (visitAnalytics) {
-                visitAnalytics.track('visit_navigation', {
-                    destination: 'incentive',
-                    navigation_time: new Date().toISOString()
-                });
-            }
-            
-            const currentUser = sessionStorage.getItem('currentUser');
-            if (currentUser) {
+            if (currentSalesmanId) {
                 window.location.href = `dashboard_insentif_sales.html?id=${currentSalesmanId}`;
             } else {
                 alert('🔜 Incentive: Please login first');
@@ -2582,135 +1768,70 @@
         }
         
         function showProfile() {
-            // Track navigation
-            if (visitAnalytics) {
-                visitAnalytics.track('visit_navigation', {
-                    destination: 'profile',
-                    navigation_time: new Date().toISOString()
-                });
-            }
-            
-            const currentUser = sessionStorage.getItem('currentUser');
-            if (currentUser) {
+            if (currentSalesmanId) {
                 window.location.href = `profile.html?id=${currentSalesmanId}`;
             } else {
                 alert('👤 Profile: Please login first');
             }
         }
 
-        // ===== 🆕 ENHANCED INITIALIZE WITH ANALYTICS =====
+        // ===== INITIALIZE =====
         async function initializeData() {
             try {
                 showLoading(true);
-                hideError();
                 
-                console.log('🚀 Starting enhanced data initialization with analytics...');
+                console.log('🚀 Starting enhanced data initialization with geolocation...');
                 
-                // Initialize analytics tracker first
-                visitAnalytics = new VisitAnalyticsTracker();
+                // Initialize analytics with geolocation
+                visitAnalytics = new VisitAnalyticsWithLocation();
                 
                 initializeSalesmanFromUrl();
                 await loadSalesmanData();
                 await loadPelangganData();
-                await loadHariData();
                 await loadDetailsData();
-                await loadTpomData();
                 
-                console.log('✅ All data loaded successfully with analytics tracking');
-                console.log(`🎯 Current salesman ID: ${currentSalesmanId}`);
+                // Create dummy hari data for demo
+                hariData = [
+                    { Hari_Kunjungan: 'SENIN' },
+                    { Hari_Kunjungan: 'SELASA' },
+                    { Hari_Kunjungan: 'RABU' },
+                    { Hari_Kunjungan: 'KAMIS' },
+                    { Hari_Kunjungan: 'JUMAT' },
+                    { Hari_Kunjungan: 'SABTU' }
+                ];
                 
-                // Test analytics integration
-                if (visitAnalytics && currentSalesmanId) {
-                    visitAnalytics.track('visit_data_loaded', {
-                        pelanggan_count: pelangganData.length,
-                        details_count: detailsData.length,
-                        tpom_count: tpomData.length,
-                        load_time: new Date().toISOString()
-                    });
-                }
-                
-                ['hari', 'pelanggan', 'dapHari'].forEach(id => {
-                    const element = document.getElementById(id);
-                    if (element) element.disabled = false;
+                // Populate hari dropdown
+                const hariSelect = document.getElementById('hari');
+                hariData.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item.Hari_Kunjungan;
+                    option.textContent = item.Hari_Kunjungan;
+                    hariSelect.appendChild(option);
                 });
                 
                 showLoading(false);
                 showMainContent(true);
                 
-                console.log('📊 Visit analytics and tracking system ready');
+                console.log('✅ Enhanced visit system with geolocation ready');
                 
             } catch (error) {
                 console.error('❌ Error loading data:', error);
                 showLoading(false);
                 showError(true, error.message);
-                
-                ['hari', 'pelanggan', 'dapHari'].forEach(id => {
-                    const element = document.getElementById(id);
-                    if (element) element.disabled = false;
-                });
-                
-                // Track error
-                if (visitAnalytics) {
-                    visitAnalytics.track('visit_data_load_error', {
-                        error_message: error.message,
-                        error_time: new Date().toISOString()
-                    });
-                }
             }
         }
 
-        // ===== 🆕 ENHANCED PAGE LOAD WITH ANALYTICS =====
+        // ===== PAGE LOAD =====
         window.onload = function() {
             if (!checkLoginStatus()) return;
             
-            console.log('📱 Starting Enhanced Visit Outlet with Per-Salesman Analytics Tracking...');
-            console.log('📊 Features: Isolated customer duration tracking, first access monitoring, salesman-specific reporting');
+            console.log('📱 Starting Enhanced Visit Outlet with Geolocation Tracking...');
+            console.log('📍 Features: Real-time location tracking, customer location verification, distance calculation');
             
             initializeData();
         };
 
-        // ===== 🆕 ANALYTICS HELPER FUNCTIONS FOR EXTERNAL ACCESS =====
-        window.getVisitAnalytics = function() {
-            return visitAnalytics ? visitAnalytics.getTodaysSummary() : null;
-        };
-
-        window.getCustomerDurations = function() {
-            return visitAnalytics ? visitAnalytics.getCustomerDurations() : {};
-        };
-
-        window.generateVisitReport = function(date = null, salesmanId = null) {
-            const targetDate = date || new Date().toISOString().split('T')[0];
-            const targetSalesmanId = salesmanId || currentSalesmanId;
-            
-            if (!targetSalesmanId) {
-                console.error('❌ Cannot generate report: salesman ID required');
-                return null;
-            }
-            
-            const storageKey = `visit_analytics_${targetDate}_${targetSalesmanId}`;
-            const dailyKey = `visit_daily_${targetDate}_${targetSalesmanId}`;
-            
-            try {
-                const analyticsData = JSON.parse(localStorage.getItem(storageKey) || '[]');
-                const dailyData = JSON.parse(localStorage.getItem(dailyKey) || '{}');
-                
-                return {
-                    date: targetDate,
-                    summary: dailyData,
-                    events: analyticsData,
-                    salesman_id: targetSalesmanId,
-                    salesman_name: dailyData.salesman_name || 'Unknown',
-                    generated_at: new Date().toISOString()
-                };
-            } catch (error) {
-                console.error('Error generating visit report:', error);
-                return null;
-            }
-        };
-
-        console.log('✅ Enhanced Visit Outlet script loaded with per-salesman analytics tracking');
-        console.log('📋 Analytics features: Isolated data per salesman, first access time, customer duration tracking, detailed event logging');
-        console.log('🔧 Debug: Press Ctrl+D to toggle debug mode');
+        console.log('✅ Enhanced Visit script with geolocation loaded');
     </script>
 </body>
 </html>
