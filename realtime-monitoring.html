@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-time Location Monitoring</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #2c3e50;
+        }
+
+        .dashboard-container {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            height: 100vh;
+            gap: 0;
+        }
+
+        /* ===== SIDEBAR ===== */
+        .sidebar {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-right: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            flex-direction: column;
+            box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .sidebar-header {
+            background: linear-gradient(135deg, #1e293b, #334155);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .sidebar-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .sidebar-subtitle {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        .sidebar-content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        /* ===== CONTROL PANEL ===== */
+        .control-panel {
+            margin-bottom: 24px;
+        }
+
+        .control-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .control-item {
+            margin-bottom: 12px;
+        }
+
+        .control-item label {
+            display: block;
+            font-size: 12px;
+            color: #64748b;
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+
+        .control-item select,
+        .control-item input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 12px;
+            background: white;
+            transition: all 0.3s ease;
+        }
+
+        .control-item select:focus,
+        .control-item input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .control-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            background: #e2e8f0;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .toggle-switch.active {
+            background: #667eea;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .toggle-switch.active .toggle-slider {
+            transform: translateX(20px);
+        }
+
+        .toggle-label {
+            font-size: 12px;
+            font-weight: 500;
+            color: #1e293b;
+        }
+
+        /* ===== SALESMAN LIST ===== */
+        .salesman-list {
+            margin-bottom: 24px;
+        }
+
+        .salesman-item {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .salesman-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .salesman-item.active {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #f0f4ff, #e0e7ff);
+        }
+
+        .salesman-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .salesman-name {
+            font-weight: 600;
+            font-size: 12px;
+            color: #1e293b;
+        }
+
+        .salesman-status {
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-online {
+            background: #ecfdf5;
+            color: #10b981;
+        }
+
+        .status-offline {
+            background: #fef2f2;
+            color: #ef4444;
+        }
+
+        .status-inactive {
+            background: #f8fafc;
+            color: #64748b;
+        }
+
+        .salesman-details {
+            font-size: 11px;
+            color: #64748b;
+        }
+
+        .salesman-location {
+            margin-top: 4px;
+            font-size: 10px;
+            color: #475569;
+            font-family: 'Courier New', monospace;
+        }
+
+        /* ===== STATISTICS ===== */
+        .stats-panel {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 8px;
+            background: #f8fafc;
+            border-radius: 8px;
+        }
+
+        .stat-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 2px;
+        }
+
+        .stat-label {
+            font-size: 10px;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* ===== MAIN CONTENT ===== */
+        .main-content {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .main-header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 16px 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .main-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .live-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: #ecfdf5;
+            border: 1px solid #10b981;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #065f46;
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: #10b981;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* ===== MAP CONTAINER ===== */
+        .map-container {
+            flex: 1;
+            position: relative;
+        }
+
+        #realtimeMap {
+            height: 100%;
+            width: 100%;
+        }
+
+        /* ===== MAP CONTROLS ===== */
+        .map-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 16px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            min-width: 200px;
+        }
+
+        .map-control-item {
+            margin-bottom: 12px;
+        }
+
+        .map-control-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .map-btn {
+            width: 100%;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .map-btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .map-btn-secondary {
+            background: #f1f5f9;
+            color: #4a5568;
+            border: 1px solid #e2e8f0;
+        }
+
+        .map-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        /* ===== NOTIFICATION PANEL ===== */
+        .notification-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 16px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            max-width: 300px;
+            display: none;
+        }
+
+        .notification-header {
+            font-weight: 600;
+            font-size: 14px;
+            color: #1e293b;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .notification-item {
+            font-size: 12px;
+            color: #64748b;
+            margin-bottom: 4px;
+            padding: 4px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .notification-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1024px) {
+            .dashboard-container {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 1fr;
+            }
+
+            .sidebar {
+                max-height: 300px;
+            }
+
+            .sidebar-content {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 16px;
+                padding: 16px;
+            }
+
+            .map-controls {
+                top: 10px;
+                right: 10px;
+                min-width: 150px;
+                padding: 12px;
+            }
+
+            .notification-panel {
+                bottom: 10px;
+                left: 10px;
+                max-width: 250px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .main-header {
+                padding: 12px 16px;
+            }
+
+            .main-title {
+                font-size: 16px;
+            }
+
+            .live-indicator {
+                font-size: 10px;
+                padding: 6px 8px;
+            }
+
+            .map-controls {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-title">🎛️ Control Center</div>
+                <div class="sidebar-subtitle">Real-time Monitoring</div>
+            </div>
+            
+            <div class="sidebar-content">
+                <!-- Control Panel -->
+                <div class="control-panel">
+                    <div class="control-title">🔧 Settings</div>
+                    
+                    <div class="control-toggle">
+                        <div class="toggle-switch active" id="autoRefreshToggle" onclick="toggleAutoRefresh()">
+                            <div class="toggle-slider"></div>
+                        </div>
+                        <div class="toggle-label">Auto Refresh (30s)</div>
+                    </div>
+                    
+                    <div class="control-toggle">
+                        <div class="toggle-switch" id="notificationsToggle" onclick="toggleNotifications()">
+                            <div class="toggle-slider"></div>
+                        </div>
+                        <div class="toggle-label">Live Notifications</div>
+                    </div>
+                    
+                    <div class="control-item">
+                        <label>Date Filter</label>
+                        <input type="date" id="monitoringDate">
+                    </div>
+                    
+                    <div class="control-item">
+                        <label>Refresh Interval</label>
+                        <select id="refreshInterval" onchange="updateRefreshInterval()">
+                            <option value="15000">15 seconds</option>
+                            <option value="30000" selected>30 seconds</option>
+                            <option value="60000">1 minute</option>
+                            <option value="300000">5 minutes</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Active Salesman List -->
+                <div class="salesman-list">
+                    <div class="control-title">👥 Active Salesman</div>
+                    <div id="salesmanList">
+                        <div class="salesman-item">
+                            <div class="salesman-header">
+                                <div class="salesman-name">Loading...</div>
+                                <div class="salesman-status status-inactive">Loading</div>
+                            </div>
+                            <div class="salesman-details">Scanning for active salesman...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Statistics -->
+                <div class="control-panel">
+                    <div class="control-title">📊 Live Stats</div>
+                    <div class="stats-panel">
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <div class="stat-value" id="totalOnline">-</div>
+                                <div class="stat-label">Online</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value" id="totalVisits">-</div>
+                                <div class="stat-label">Visits</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value" id="activeCustomers">-</div>
+                                <div class="stat-label">Customers</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value" id="locationAlerts">-</div>
+                                <div class="stat-label">Alerts</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="main-header">
+                <div class="main-title">
+                    🗺️ Real-time Location Tracking
+                </div>
+                <div class="live-indicator">
+                    <div class="live-dot"></div>
+                    <span>LIVE</span>
+                </div>
+            </div>
+            
+            <div class="map-container">
+                <div id="realtimeMap"></div>
+                
+                <!-- Map Controls -->
+                <div class="map-controls">
+                    <div class="map-control-item">
+                        <button class="map-btn map-btn-primary" onclick="refreshMapData()">
+                            🔄 Refresh Now
+                        </button>
+                    </div>
+                    <div class="map-control-item">
+                        <button class="map-btn map-btn-secondary" onclick="centerMapView()">
+                            🎯 Center View
+                        </button>
+                    </div>
+                    <div class="map-control-item">
+                        <button class="map-btn map-btn-secondary" onclick="toggleHeatmap()">
+                            🔥 Heatmap
+                        </button>
+                    </div>
+                    <div class="map-control-item">
+                        <button class="map-btn map-btn-secondary" onclick="exportLiveData()">
+                            📤 Export Live
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Notification Panel -->
+                <div class="notification-panel" id="notificationPanel">
+                    <div class="notification-header">
+                        🔔 Live Alerts
+                    </div>
+                    <div id="notificationList">
+                        <div class="notification-item">Monitoring system started</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+    <script>
+        // ===== GLOBAL VARIABLES =====
+        let realtimeMap = null;
+        let mapMarkers = [];
+        let salesmanMarkers = {};
+        let autoRefreshInterval = null;
+        let notificationsEnabled = false;
+        let refreshIntervalMs = 30000;
+        let activeSalesman = {};
+        let heatmapEnabled = false;
+
+        // ===== REAL-TIME MONITORING CLASS =====
+        class RealtimeLocationMonitor {
+            constructor() {
+                this.salesmanData = {};
+                this.lastUpdateTime = null;
+                this.alertThreshold = 500; // meters
+                this.notifications = [];
+                this.isInitialized = false;
+                
+                this.init();
+            }
+            
+            init() {
+                if (this.isInitialized) return;
+                console.log('🔴 Real-time Location Monitor initialized');
+                this.isInitialized = true;
+                
+                this.initializeMap();
+                this.startMonitoring();
+            }
+            
+            initializeMap() {
+                // Initialize map centered on Jakarta
+                realtimeMap = L.map('realtimeMap').setView([-6.2088, 106.8456], 11);
+                
+                // Add map tiles
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors',
+                    maxZoom: 18
+                }).addTo(realtimeMap);
+                
+                console.log('🗺️ Real-time map initialized');
+            }
+            
+            startMonitoring() {
+                // Initial load
+                this.refreshData();
+                
+                // Set up auto-refresh
+                this.setupAutoRefresh();
+                
+                console.log('👁️ Real-time monitoring started');
+            }
+            
+            setupAutoRefresh() {
+                if (autoRefreshInterval) {
+                    clearInterval(autoRefreshInterval);
+                }
+                
+                autoRefreshInterval = setInterval(() => {
+                    this.refreshData();
+                }, refreshIntervalMs);
+                
+                console.log(`⏰ Auto-refresh set to ${refreshIntervalMs/1000} seconds`);
+            }
+            
+            refreshData() {
+                const monitoringDate = document.getElementById('monitoringDate').value || 
+                    new Date().toISOString().split('T')[0];
+                
+                console.log(`🔄 Refreshing real-time data for ${monitoringDate}`);
+                
+                this.loadSalesmanData(monitoringDate);
+                this.updateSalesmanList();
+                this.updateMapMarkers();
+                this.updateStatistics();
+                this.checkLocationAlerts();
+                
+                this.lastUpdateTime = new Date();
+            }
+            
+            loadSalesmanData(dateStr) {
+                this.salesmanData = {};
+                
+                // Scan localStorage for geolocation data
+                const geoAnalyticsPattern = `visit_analytics_geo_${dateStr}_`;
+                const geoDailyPattern = `visit_daily_geo_${dateStr}_`;
+                
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    
+                    if (key && key.startsWith(geoAnalyticsPattern)) {
+                        const salesmanId = key.replace(geoAnalyticsPattern, '');
+                        
+                        try {
+                            const analyticsData = JSON.parse(localStorage.getItem(key) || '[]');
+                            const dailyKey = `visit_daily_geo_${dateStr}_${salesmanId}`;
+                            const dailyData = JSON.parse(localStorage.getItem(dailyKey) || '{}');
+                            
+                            // Find latest location and customer data
+                            const latestLocationEvent = analyticsData
+                                .filter(event => event.location)
+                                .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0];
+                            
+                            const customerEvents = analyticsData
+                                .filter(event => event.event_name === 'visit_customer_selected')
+                                .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                            
+                            this.salesmanData[salesmanId] = {
+                                salesman_id: salesmanId,
+                                salesman_name: latestLocationEvent ? latestLocationEvent.salesman_name : `Salesman ${salesmanId}`,
+                                last_location: latestLocationEvent ? latestLocationEvent.location : null,
+                                last_update: latestLocationEvent ? latestLocationEvent.timestamp : null,
+                                current_customer: customerEvents.length > 0 ? customerEvents[0].event_data.customer_name : null,
+                                daily_data: dailyData,
+                                status: this.determineSalesmanStatus(latestLocationEvent),
+                                total_visits: customerEvents.length,
+                                location_alerts: this.calculateLocationAlerts(analyticsData)
+                            };
+                            
+                        } catch (error) {
+                            console.error(`❌ Error loading data for salesman ${salesmanId}:`, error);
+                        }
+                    }
+                }
+                
+                console.log(`📊 Loaded data for ${Object.keys(this.salesmanData).length} salesman`);
+            }
+            
+            determineSalesmanStatus(latestEvent) {
+                if (!latestEvent) return 'inactive';
+                
+                const lastUpdate = new Date(latestEvent.timestamp);
+                const now = new Date();
+                const minutesAgo = (now - lastUpdate) / (1000 * 60);
+                
+                if (minutesAgo <= 5) return 'online';
+                if (minutesAgo <= 30) return 'recent';
+                return 'offline';
+            }
+            
+            calculateLocationAlerts(analyticsData) {
+                return analyticsData
+                    .filter(event => 
+                        event.event_name === 'visit_location_verification' && 
+                        event.event_data.distance_meters > this.alertThreshold
+                    ).length;
+            }
+            
+            updateSalesmanList() {
+                const salesmanList = document.getElementById('salesmanList');
+                
+                if (Object.keys(this.salesmanData).length === 0) {
+                    salesmanList.innerHTML = `
+                        <div class="salesman-item">
+                            <div class="salesman-header">
+                                <div class="salesman-name">No Active Data</div>
+                                <div class="salesman-status status-inactive">Inactive</div>
+                            </div>
+                            <div class="salesman-details">No salesman activity detected today</div>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                let html = '';
+                
+                Object.values(this.salesmanData)
+                    .sort((a, b) => {
+                        const statusOrder = { online: 0, recent: 1, offline: 2, inactive: 3 };
+                        return statusOrder[a.status] - statusOrder[b.status];
+                    })
+                    .forEach(salesman => {
+                        const statusClass = `status-${salesman.status === 'recent' ? 'offline' : salesman.status}`;
+                        const lastUpdate = salesman.last_update ? 
+                            new Date(salesman.last_update).toLocaleTimeString() : 'Never';
+                        
+                        const locationText = salesman.last_location ? 
+                            `${salesman.last_location.latitude.toFixed(4)}, ${salesman.last_location.longitude.toFixed(4)}` :
+                            'No location data';
+                        
+                        html += `
+                            <div class="salesman-item" onclick="focusOnSalesman('${salesman.salesman_id}')">
+                                <div class="salesman-header">
+                                    <div class="salesman-name">${salesman.salesman_name}</div>
+                                    <div class="salesman-status ${statusClass}">${salesman.status}</div>
+                                </div>
+                                <div class="salesman-details">
+                                    📍 ${salesman.current_customer || 'No active customer'}<br>
+                                    🕐 Last: ${lastUpdate}<br>
+                                    📊 Visits: ${salesman.total_visits} | Alerts: ${salesman.location_alerts}
+                                </div>
+                                <div class="salesman-location">${locationText}</div>
+                            </div>
+                        `;
+                    });
+                
+                salesmanList.innerHTML = html;
+            }
+            
+            updateMapMarkers() {
+                // Clear existing markers
+                this.clearMapMarkers();
+                
+                Object.values(this.salesmanData).forEach(salesman => {
+                    if (salesman.last_location) {
+                        this.addSalesmanMarker(salesman);
+                    }
+                });
+                
+                console.log(`🗺️ Updated ${Object.keys(salesmanMarkers).length} salesman markers`);
+            }
+            
+            addSalesmanMarker(salesman) {
+                const statusColors = {
+                    online: '#10b981',    // Green
+                    recent: '#f59e0b',    // Orange  
+                    offline: '#ef4444',   // Red
+                    inactive: '#64748b'   // Gray
+                };
+                
+                const color = statusColors[salesman.status] || statusColors.inactive;
+                
+                // Create pulsing marker for online salesman
+                const markerOptions = {
+                    radius: salesman.status === 'online' ? 10 : 8,
+                    fillColor: color,
+                    color: 'white',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: salesman.status === 'online' ? 0.9 : 0.7
+                };
+                
+                const marker = L.circleMarker([
+                    salesman.last_location.latitude, 
+                    salesman.last_location.longitude
+                ], markerOptions);
+                
+                // Add pulsing animation for online salesman
+                if (salesman.status === 'online') {
+                    marker.on('add', function() {
+                        const element = this._path;
+                        if (element) {
+                            element.style.animation = 'pulse 2s infinite';
+                        }
+                    });
+                }
+                
+                const popupContent = `
+                    <div style="font-family: 'Segoe UI', sans-serif; min-width: 200px;">
+                        <h4 style="margin: 0 0 8px 0; color: #1e293b; font-size: 14px;">
+                            👤 ${salesman.salesman_name}
+                        </h4>
+                        <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Status:</strong> 
+                            <span style="color: ${color}; font-weight: 600;">${salesman.status.toUpperCase()}</span>
+                        </p>
+                        <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Current Customer:</strong> 
+                            ${salesman.current_customer || 'None'}
+                        </p>
+                        <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Location:</strong> 
+                            ${salesman.last_location.latitude.toFixed(6)}, ${salesman.last_location.longitude.toFixed(6)}
+                        </p>
+                        <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Accuracy:</strong> 
+                            ±${Math.round(salesman.last_location.accuracy)}m
+                        </p>
+                        <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Today's Visits:</strong> 
+                            ${salesman.total_visits}
+                        </p>
+                        <p style="margin: 0; font-size: 11px; color: #64748b;">
+                            Last update: ${new Date(salesman.last_update).toLocaleString()}
+                        </p>
+                    </div>
+                `;
+                
+                marker.bindPopup(popupContent);
+                marker.addTo(realtimeMap);
+                
+                salesmanMarkers[salesman.salesman_id] = marker;
+                mapMarkers.push(marker);
+            }
+            
+            clearMapMarkers() {
+                mapMarkers.forEach(marker => {
+                    realtimeMap.removeLayer(marker);
+                });
+                mapMarkers = [];
+                salesmanMarkers = {};
+            }
+            
+            updateStatistics() {
+                const stats = this.calculateStatistics();
+                
+                document.getElementById('totalOnline').textContent = stats.totalOnline;
+                document.getElementById('totalVisits').textContent = stats.totalVisits;
+                document.getElementById('activeCustomers').textContent = stats.activeCustomers;
+                document.getElementById('locationAlerts').textContent = stats.locationAlerts;
+            }
+            
+            calculateStatistics() {
+                const salesmanList = Object.values(this.salesmanData);
+                
+                return {
+                    totalOnline: salesmanList.filter(s => s.status === 'online').length,
+                    totalVisits: salesmanList.reduce((sum, s) => sum + s.total_visits, 0),
+                    activeCustomers: salesmanList.filter(s => s.current_customer).length,
+                    locationAlerts: salesmanList.reduce((sum, s) => sum + s.location_alerts, 0)
+                };
+            }
+            
+            checkLocationAlerts() {
+                Object.values(this.salesmanData).forEach(salesman => {
+                    if (salesman.location_alerts > 0 && notificationsEnabled) {
+                        this.addNotification(
+                            `⚠️ ${salesman.salesman_name} has ${salesman.location_alerts} location alerts`,
+                            'warning'
+                        );
+                    }
+                });
+            }
+            
+            addNotification(message, type = 'info') {
+                const notification = {
+                    id: Date.now(),
+                    message: message,
+                    type: type,
+                    timestamp: new Date()
+                };
+                
+                this.notifications.unshift(notification);
+                
+                // Keep only last 10 notifications
+                if (this.notifications.length > 10) {
+                    this.notifications = this.notifications.slice(0, 10);
+                }
+                
+                this.updateNotificationPanel();
+                
+                if (notificationsEnabled) {
+                    this.showNotificationPanel();
+                }
+            }
+            
+            updateNotificationPanel() {
+                const notificationList = document.getElementById('notificationList');
+                
+                if (this.notifications.length === 0) {
+                    notificationList.innerHTML = '<div class="notification-item">No notifications</div>';
+                    return;
+                }
+                
+                const html = this.notifications.map(notification => `
+                    <div class="notification-item">
+                        ${notification.message}
+                        <br><small>${notification.timestamp.toLocaleTimeString()}</small>
+                    </div>
+                `).join('');
+                
+                notificationList.innerHTML = html;
+            }
+            
+            showNotificationPanel() {
+                const panel = document.getElementById('notificationPanel');
+                panel.style.display = 'block';
+                
+                // Auto-hide after 5 seconds
+                setTimeout(() => {
+                    panel.style.display = 'none';
+                }, 5000);
+            }
+            
+            focusOnSalesman(salesmanId) {
+                const salesman = this.salesmanData[salesmanId];
+                if (salesman && salesman.last_location) {
+                    realtimeMap.setView([
+                        salesman.last_location.latitude,
+                        salesman.last_location.longitude
+                    ], 15);
+                    
+                    // Open popup
+                    if (salesmanMarkers[salesmanId]) {
+                        salesmanMarkers[salesmanId].openPopup();
+                    }
+                }
+            }
+            
+            exportLiveData() {
+                const data = Object.values(this.salesmanData).map(salesman => ({
+                    salesman_id: salesman.salesman_id,
+                    salesman_name: salesman.salesman_name,
+                    status: salesman.status,
+                    current_customer: salesman.current_customer,
+                    last_location: salesman.last_location,
+                    last_update: salesman.last_update,
+                    total_visits: salesman.total_visits,
+                    location_alerts: salesman.location_alerts
+                }));
+                
+                const csvContent = this.convertToCSV(data);
+                const blob = new Blob([csvContent], { type: 'text/csv' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `realtime_tracking_${new Date().toISOString().split('T')[0]}.csv`;
+                a.click();
+                window.URL.revokeObjectURL(url);
+                
+                this.addNotification('📤 Live data exported successfully', 'success');
+            }
+            
+            convertToCSV(data) {
+                const headers = [
+                    'Salesman_ID', 'Salesman_Name', 'Status', 'Current_Customer',
+                    'Latitude', 'Longitude', 'Location_Accuracy', 'Last_Update',
+                    'Total_Visits', 'Location_Alerts'
+                ];
+                
+                const rows = data.map(item => [
+                    item.salesman_id,
+                    item.salesman_name,
+                    item.status,
+                    item.current_customer || '',
+                    item.last_location ? item.last_location.latitude : '',
+                    item.last_location ? item.last_location.longitude : '',
+                    item.last_location ? item.last_location.accuracy : '',
+                    item.last_update || '',
+                    item.total_visits,
+                    item.location_alerts
+                ]);
+                
+                return [headers, ...rows]
+                    .map(row => row.map(cell => `"${cell}"`).join(','))
+                    .join('\n');
+            }
+        }
+
+        // ===== GLOBAL MONITOR INSTANCE =====
+        let locationMonitor = null;
+
+        // ===== UI CONTROL FUNCTIONS =====
+        function toggleAutoRefresh() {
+            const toggle = document.getElementById('autoRefreshToggle');
+            toggle.classList.toggle('active');
+            
+            if (toggle.classList.contains('active')) {
+                if (locationMonitor) {
+                    locationMonitor.setupAutoRefresh();
+                }
+                console.log('✅ Auto-refresh enabled');
+            } else {
+                if (autoRefreshInterval) {
+                    clearInterval(autoRefreshInterval);
+                    autoRefreshInterval = null;
+                }
+                console.log('⏸️ Auto-refresh disabled');
+            }
+        }
+
+        function toggleNotifications() {
+            const toggle = document.getElementById('notificationsToggle');
+            toggle.classList.toggle('active');
+            notificationsEnabled = toggle.classList.contains('active');
+            
+            if (notificationsEnabled) {
+                if (locationMonitor) {
+                    locationMonitor.addNotification('🔔 Live notifications enabled', 'info');
+                }
+                console.log('🔔 Notifications enabled');
+            } else {
+                document.getElementById('notificationPanel').style.display = 'none';
+                console.log('🔕 Notifications disabled');
+            }
+        }
+
+        function updateRefreshInterval() {
+            const select = document.getElementById('refreshInterval');
+            refreshIntervalMs = parseInt(select.value);
+            
+            if (locationMonitor && autoRefreshInterval) {
+                locationMonitor.setupAutoRefresh();
+            }
+            
+            console.log(`⏰ Refresh interval updated to ${refreshIntervalMs/1000} seconds`);
+        }
+
+        function refreshMapData() {
+            if (locationMonitor) {
+                locationMonitor.refreshData();
+                locationMonitor.addNotification('🔄 Data refreshed manually', 'info');
+            }
+        }
+
+        function centerMapView() {
+            if (realtimeMap && Object.keys(salesmanMarkers).length > 0) {
+                const group = new L.featureGroup(Object.values(salesmanMarkers));
+                realtimeMap.fitBounds(group.getBounds().pad(0.1));
+                
+                if (locationMonitor) {
+                    locationMonitor.addNotification('🎯 Map view centered', 'info');
+                }
+            }
+        }
+
+        function toggleHeatmap() {
+            heatmapEnabled = !heatmapEnabled;
+            
+            if (locationMonitor) {
+                locationMonitor.addNotification(
+                    `🔥 Heatmap ${heatmapEnabled ? 'enabled' : 'disabled'}`, 
+                    'info'
+                );
+            }
+            
+            // TODO: Implement heatmap visualization
+            console.log(`🔥 Heatmap ${heatmapEnabled ? 'enabled' : 'disabled'}`);
+        }
+
+        function exportLiveData() {
+            if (locationMonitor) {
+                locationMonitor.exportLiveData();
+            }
+        }
+
+        function focusOnSalesman(salesmanId) {
+            if (locationMonitor) {
+                locationMonitor.focusOnSalesman(salesmanId);
+            }
+        }
+
+        // ===== INITIALIZATION =====
+        function initializeRealtimeMonitoring() {
+            console.log('🚀 Initializing Real-time Location Monitoring...');
+            
+            // Set today's date
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('monitoringDate').value = today;
+            
+            // Initialize monitor
+            locationMonitor = new RealtimeLocationMonitor();
+            
+            // Setup date change listener
+            document.getElementById('monitoringDate').addEventListener('change', () => {
+                if (locationMonitor) {
+                    locationMonitor.refreshData();
+                }
+            });
+            
+            console.log('✅ Real-time monitoring system ready');
+        }
+
+        // ===== PAGE LOAD =====
+        window.onload = function() {
+            console.log('🔴 Starting Real-time Location Monitoring Dashboard...');
+            console.log('📊 Features: Live tracking, auto-refresh, notifications, location alerts');
+            
+            initializeRealtimeMonitoring();
+        };
+
+        // Add CSS animation for pulsing markers
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes pulse {
+                0% {
+                    transform: scale(1);
+                    opacity: 1;
+                }
+                50% {
+                    transform: scale(1.2);
+                    opacity: 0.7;
+                }
+                100% {
+                    transform: scale(1);
+                    opacity: 1;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+
+        console.log('✅ Real-time Location Monitoring Dashboard loaded');
+        console.log('🎛️ Control Center ready with live tracking capabilities');
+    </script>
+</body>
+</html>

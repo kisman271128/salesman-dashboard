@@ -1159,6 +1159,12 @@ class SalesmanDashboardUpdater:
                 'performance.html',
                 'activity.html',
                 'analytics.html',
+                'geolocation-utilities.html',
+                'geolocations_system.html',
+                'system_config.html',
+                'realtime-monitoring.html',
+                'location-reports.html',
+                'mobile-compliance.html',
                 'morning_update.py',
                 'morning_update.log'
             ]
