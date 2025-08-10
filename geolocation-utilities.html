@@ -1,0 +1,1785 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geolocation Utilities & Master Data Manager</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f0f4ff 0%, #e0e7ff 100%);
+            min-height: 100vh;
+            color: #1e293b;
+        }
+
+        .utility-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .utility-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 24px;
+            border-radius: 16px;
+            text-align: center;
+            margin-bottom: 24px;
+            box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
+        }
+
+        .utility-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .utility-subtitle {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        /* ===== TAB NAVIGATION ===== */
+        .tab-navigation {
+            display: flex;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            margin-bottom: 24px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 16px 20px;
+            background: #f8fafc;
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            color: #64748b;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .tab-btn:hover:not(.active) {
+            background: #f1f5f9;
+            color: #475569;
+        }
+
+        /* ===== TAB CONTENT ===== */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* ===== COORDINATE MANAGER ===== */
+        .coord-manager {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 24px;
+        }
+
+        .coord-main {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .coord-header {
+            background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+            padding: 20px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .coord-header h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .coord-header p {
+            font-size: 14px;
+            color: #64748b;
+        }
+
+        .coord-content {
+            padding: 24px;
+        }
+
+        .coord-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-size: 12px;
+            color: #64748b;
+            margin-bottom: 6px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            background: #f8fafc;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .coord-actions {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .action-btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #f1f5f9;
+            color: #4a5568;
+            border: 1px solid #e2e8f0;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+        }
+
+        /* ===== COORDINATE TABLE ===== */
+        .coord-table-wrapper {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .coord-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .coord-table th {
+            background: #f8fafc;
+            padding: 16px 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 12px;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .coord-table td {
+            padding: 12px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 13px;
+            vertical-align: middle;
+        }
+
+        .coord-table tr:hover {
+            background: #f8fafc;
+        }
+
+        .coord-actions-cell {
+            display: flex;
+            gap: 8px;
+        }
+
+        .mini-btn {
+            padding: 4px 8px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .mini-btn:hover {
+            transform: translateY(-1px);
+        }
+
+        /* ===== SIDEBAR ===== */
+        .coord-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .sidebar-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .sidebar-header {
+            background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+            padding: 16px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .sidebar-header h4 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .sidebar-content {
+            padding: 16px;
+        }
+
+        /* ===== MAP SECTION ===== */
+        .coord-map {
+            height: 300px;
+            width: 100%;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        /* ===== STATISTICS ===== */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .stat-item {
+            background: #f8fafc;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 10px;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* ===== IMPORT/EXPORT SECTION ===== */
+        .import-export {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        .import-card,
+        .export-card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .file-drop-zone {
+            border: 2px dashed #cbd5e1;
+            border-radius: 12px;
+            padding: 32px;
+            text-align: center;
+            margin-bottom: 16px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .file-drop-zone:hover {
+            border-color: #667eea;
+            background: #f8fafc;
+        }
+
+        .file-drop-zone.dragover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .drop-icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+            opacity: 0.5;
+        }
+
+        .drop-text {
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 8px;
+        }
+
+        .drop-subtext {
+            font-size: 12px;
+            color: #94a3b8;
+        }
+
+        .hidden-file-input {
+            display: none;
+        }
+
+        /* ===== ANALYTICS SECTION ===== */
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+        }
+
+        .analytics-card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .chart-container {
+            height: 200px;
+            background: #f8fafc;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #64748b;
+            font-size: 14px;
+            margin-top: 16px;
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1024px) {
+            .coord-manager {
+                grid-template-columns: 1fr;
+            }
+
+            .coord-sidebar {
+                order: -1;
+            }
+
+            .import-export {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .utility-container {
+                padding: 12px;
+            }
+
+            .coord-form {
+                grid-template-columns: 1fr;
+            }
+
+            .coord-actions {
+                flex-direction: column;
+            }
+
+            .analytics-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ===== NOTIFICATIONS ===== */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 16px 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            opacity: 0;
+            transform: translateX(400px);
+            transition: all 0.3s ease;
+            border-left: 4px solid #10b981;
+            max-width: 350px;
+        }
+
+        .notification.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .notification.error {
+            border-left-color: #ef4444;
+        }
+
+        .notification.warning {
+            border-left-color: #f59e0b;
+        }
+
+        .notification-content {
+            font-size: 14px;
+            color: #1e293b;
+        }
+    </style>
+</head>
+<body>
+    <div class="utility-container">
+        <!-- Header -->
+        <div class="utility-header">
+            <div class="utility-title">
+                🛠️ Geolocation Utilities & Master Data Manager
+            </div>
+            <div class="utility-subtitle">
+                Comprehensive tools for managing customer coordinates and geolocation data
+            </div>
+        </div>
+
+        <!-- Tab Navigation -->
+        <div class="tab-navigation">
+            <button class="tab-btn active" onclick="showTab('coordinates')">
+                📍 Coordinate Manager
+            </button>
+            <button class="tab-btn" onclick="showTab('import-export')">
+                📁 Import/Export
+            </button>
+            <button class="tab-btn" onclick="showTab('analytics')">
+                📊 Analytics
+            </button>
+            <button class="tab-btn" onclick="showTab('utilities')">
+                🔧 Utilities
+            </button>
+        </div>
+
+        <!-- Coordinate Manager Tab -->
+        <div id="coordinatesTab" class="tab-content active">
+            <div class="coord-manager">
+                <div class="coord-main">
+                    <div class="coord-header">
+                        <h3>📍 Customer Coordinate Management</h3>
+                        <p>Add, edit, and manage customer location coordinates for visit verification</p>
+                    </div>
+                    <div class="coord-content">
+                        <!-- Add/Edit Form -->
+                        <div class="coord-form">
+                            <div class="form-group">
+                                <label>Customer Code</label>
+                                <input type="text" id="customerCode" placeholder="e.g., CUST001">
+                            </div>
+                            <div class="form-group">
+                                <label>Customer Name</label>
+                                <input type="text" id="customerName" placeholder="e.g., Toko Sinar Jaya">
+                            </div>
+                            <div class="form-group">
+                                <label>Latitude</label>
+                                <input type="number" id="latitude" step="0.000001" placeholder="e.g., -6.208763">
+                            </div>
+                            <div class="form-group">
+                                <label>Longitude</label>
+                                <input type="number" id="longitude" step="0.000001" placeholder="e.g., 106.845599">
+                            </div>
+                            <div class="form-group">
+                                <label>Address</label>
+                                <input type="text" id="address" placeholder="e.g., Jl. Sudirman No. 123">
+                            </div>
+                            <div class="form-group">
+                                <label>Category</label>
+                                <select id="category">
+                                    <option value="">Select Category</option>
+                                    <option value="traditional">Traditional Trade</option>
+                                    <option value="modern">Modern Trade</option>
+                                    <option value="distributor">Distributor</option>
+                                    <option value="retail">Retail</option>
+                                    <option value="wholesale">Wholesale</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="coord-actions">
+                            <button class="action-btn btn-primary" onclick="addCoordinate()">
+                                ➕ Add Coordinate
+                            </button>
+                            <button class="action-btn btn-success" onclick="updateCoordinate()" id="updateBtn" style="display: none;">
+                                ✏️ Update Coordinate
+                            </button>
+                            <button class="action-btn btn-secondary" onclick="getCurrentLocation()">
+                                📍 Use Current Location
+                            </button>
+                            <button class="action-btn btn-secondary" onclick="clearForm()">
+                                🧹 Clear Form
+                            </button>
+                        </div>
+
+                        <!-- Coordinates Table -->
+                        <div class="coord-table-wrapper">
+                            <table class="coord-table">
+                                <thead>
+                                    <tr>
+                                        <th>Code</th>
+                                        <th>Customer Name</th>
+                                        <th>Coordinates</th>
+                                        <th>Category</th>
+                                        <th>Address</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="coordinatesTableBody">
+                                    <tr>
+                                        <td colspan="6" style="text-align: center; padding: 40px; color: #64748b;">
+                                            No coordinates data. Add your first customer coordinate above.
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="coord-sidebar">
+                    <!-- Map Preview -->
+                    <div class="sidebar-card">
+                        <div class="sidebar-header">
+                            <h4>🗺️ Map Preview</h4>
+                        </div>
+                        <div class="sidebar-content">
+                            <div id="previewMap" class="coord-map"></div>
+                        </div>
+                    </div>
+
+                    <!-- Statistics -->
+                    <div class="sidebar-card">
+                        <div class="sidebar-header">
+                            <h4>📊 Statistics</h4>
+                        </div>
+                        <div class="sidebar-content">
+                            <div class="stats-grid">
+                                <div class="stat-item">
+                                    <div class="stat-value" id="totalCoordinates">0</div>
+                                    <div class="stat-label">Total Coordinates</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-value" id="totalCategories">0</div>
+                                    <div class="stat-label">Categories</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-value" id="lastAdded">-</div>
+                                    <div class="stat-label">Last Added</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-value" id="dataQuality">-</div>
+                                    <div class="stat-label">Data Quality</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="sidebar-card">
+                        <div class="sidebar-header">
+                            <h4>⚡ Quick Actions</h4>
+                        </div>
+                        <div class="sidebar-content">
+                            <button class="action-btn btn-warning" onclick="validateAllCoordinates()" style="width: 100%; margin-bottom: 8px;">
+                                ✅ Validate All
+                            </button>
+                            <button class="action-btn btn-secondary" onclick="exportCoordinates()" style="width: 100%; margin-bottom: 8px;">
+                                📤 Export Data
+                            </button>
+                            <button class="action-btn btn-danger" onclick="clearAllCoordinates()" style="width: 100%;">
+                                🗑️ Clear All
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Import/Export Tab -->
+        <div id="importExportTab" class="tab-content">
+            <div class="import-export">
+                <!-- Import Section -->
+                <div class="import-card">
+                    <div class="card-title">📥 Import Coordinates</div>
+                    
+                    <div class="file-drop-zone" onclick="document.getElementById('importFile').click()">
+                        <div class="drop-icon">📁</div>
+                        <div class="drop-text">Click to select file or drag & drop</div>
+                        <div class="drop-subtext">Supports CSV, JSON, and Excel files</div>
+                    </div>
+                    <input type="file" id="importFile" class="hidden-file-input" accept=".csv,.json,.xlsx,.xls" onchange="handleFileImport(event)">
+                    
+                    <div style="margin-bottom: 16px;">
+                        <h5 style="margin-bottom: 8px; color: #1e293b;">Import Options:</h5>
+                        <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                            <input type="checkbox" id="mergeData" checked>
+                            <span style="font-size: 13px;">Merge with existing data</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                            <input type="checkbox" id="validateImport" checked>
+                            <span style="font-size: 13px;">Validate coordinates</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="backupBeforeImport" checked>
+                            <span style="font-size: 13px;">Create backup before import</span>
+                        </label>
+                    </div>
+                    
+                    <button class="action-btn btn-primary" onclick="processImport()" style="width: 100%;">
+                        🚀 Process Import
+                    </button>
+                </div>
+
+                <!-- Export Section -->
+                <div class="export-card">
+                    <div class="card-title">📤 Export Coordinates</div>
+                    
+                    <div style="margin-bottom: 16px;">
+                        <h5 style="margin-bottom: 8px; color: #1e293b;">Export Format:</h5>
+                        <select id="exportFormat" style="width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 4px; margin-bottom: 12px;">
+                            <option value="csv">CSV (Comma Separated)</option>
+                            <option value="json">JSON (JavaScript Object)</option>
+                            <option value="excel">Excel Spreadsheet</option>
+                            <option value="kml">KML (Google Earth)</option>
+                        </select>
+                        
+                        <h5 style="margin-bottom: 8px; color: #1e293b;">Export Options:</h5>
+                        <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                            <input type="checkbox" id="includeStats" checked>
+                            <span style="font-size: 13px;">Include statistics</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                            <input type="checkbox" id="includeTimestamp" checked>
+                            <span style="font-size: 13px;">Include timestamps</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="compressExport">
+                            <span style="font-size: 13px;">Compress file (ZIP)</span>
+                        </label>
+                    </div>
+                    
+                    <button class="action-btn btn-success" onclick="exportData()" style="width: 100%; margin-bottom: 8px;">
+                        📁 Export Data
+                    </button>
+                    <button class="action-btn btn-secondary" onclick="previewExport()" style="width: 100%;">
+                        👁️ Preview Export
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analytics Tab -->
+        <div id="analyticsTab" class="tab-content">
+            <div class="analytics-grid">
+                <div class="analytics-card">
+                    <div class="card-title">📊 Coordinate Distribution</div>
+                    <div class="chart-container">
+                        Coordinate distribution chart will be displayed here
+                    </div>
+                </div>
+                
+                <div class="analytics-card">
+                    <div class="card-title">🎯 Location Accuracy Analysis</div>
+                    <div class="chart-container">
+                        Location accuracy analytics will be displayed here
+                    </div>
+                </div>
+                
+                <div class="analytics-card">
+                    <div class="card-title">📈 Visit Compliance Trends</div>
+                    <div class="chart-container">
+                        Visit compliance trends will be displayed here
+                    </div>
+                </div>
+                
+                <div class="analytics-card">
+                    <div class="card-title">🗺️ Geographic Coverage</div>
+                    <div class="chart-container">
+                        Geographic coverage map will be displayed here
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Utilities Tab -->
+        <div id="utilitiesTab" class="tab-content">
+            <div class="analytics-grid">
+                <div class="analytics-card">
+                    <div class="card-title">🔧 Coordinate Validation Tools</div>
+                    <p style="font-size: 14px; color: #64748b; margin-bottom: 16px;">
+                        Tools to validate and verify coordinate accuracy
+                    </p>
+                    <button class="action-btn btn-primary" onclick="validateCoordinateFormat()" style="width: 100%; margin-bottom: 8px;">
+                        ✅ Validate Format
+                    </button>
+                    <button class="action-btn btn-secondary" onclick="checkDuplicates()" style="width: 100%; margin-bottom: 8px;">
+                        🔍 Check Duplicates
+                    </button>
+                    <button class="action-btn btn-warning" onclick="reverseGeocode()" style="width: 100%;">
+                        🔄 Reverse Geocode
+                    </button>
+                </div>
+                
+                <div class="analytics-card">
+                    <div class="card-title">📏 Distance Calculator</div>
+                    <p style="font-size: 14px; color: #64748b; margin-bottom: 16px;">
+                        Calculate distances between coordinates
+                    </p>
+                    <div style="margin-bottom: 12px;">
+                        <input type="text" placeholder="From coordinates (lat,lng)" style="width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 4px; margin-bottom: 8px;">
+                        <input type="text" placeholder="To coordinates (lat,lng)" style="width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 4px;">
+                    </div>
+                    <button class="action-btn btn-primary" onclick="calculateDistance()" style="width: 100%;">
+                        📏 Calculate Distance
+                    </button>
+                </div>
+                
+                <div class="analytics-card">
+                    <div class="card-title">🌐 Geocoding Services</div>
+                    <p style="font-size: 14px; color: #64748b; margin-bottom: 16px;">
+                        Convert addresses to coordinates and vice versa
+                    </p>
+                    <textarea placeholder="Enter address to geocode..." style="width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 4px; margin-bottom: 12px; height: 60px; resize: vertical;"></textarea>
+                    <button class="action-btn btn-primary" onclick="geocodeAddress()" style="width: 100%; margin-bottom: 8px;">
+                        🎯 Geocode Address
+                    </button>
+                    <button class="action-btn btn-secondary" onclick="batchGeocode()" style="width: 100%;">
+                        📋 Batch Geocode
+                    </button>
+                </div>
+                
+                <div class="analytics-card">
+                    <div class="card-title">🔒 Data Management</div>
+                    <p style="font-size: 14px; color: #64748b; margin-bottom: 16px;">
+                        Backup, restore, and manage coordinate data
+                    </p>
+                    <button class="action-btn btn-success" onclick="createBackup()" style="width: 100%; margin-bottom: 8px;">
+                        💾 Create Backup
+                    </button>
+                    <button class="action-btn btn-warning" onclick="restoreBackup()" style="width: 100%; margin-bottom: 8px;">
+                        📥 Restore Backup
+                    </button>
+                    <button class="action-btn btn-danger" onclick="resetAllData()" style="width: 100%;">
+                        🔄 Reset All Data
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div class="notification" id="notification">
+        <div class="notification-content" id="notificationContent"></div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+    <script>
+        // ===== GLOBAL VARIABLES =====
+        let previewMap = null;
+        let coordinatesData = [];
+        let editingIndex = -1;
+        let currentImportData = null;
+
+        // ===== GEOLOCATION UTILITIES CLASS =====
+        class GeolocationUtilities {
+            constructor() {
+                this.storageKey = 'customer_coordinates_master';
+                this.backupKey = 'customer_coordinates_backup';
+                this.isInitialized = false;
+                
+                this.init();
+            }
+            
+            init() {
+                if (this.isInitialized) return;
+                console.log('🛠️ Geolocation Utilities initialized');
+                this.isInitialized = true;
+                
+                this.loadCoordinatesData();
+                this.initializePreviewMap();
+                this.updateStatistics();
+                this.renderCoordinatesTable();
+            }
+            
+            initializePreviewMap() {
+                // Initialize preview map centered on Jakarta
+                previewMap = L.map('previewMap').setView([-6.2088, 106.8456], 11);
+                
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors',
+                    maxZoom: 18
+                }).addTo(previewMap);
+                
+                console.log('🗺️ Preview map initialized');
+            }
+            
+            loadCoordinatesData() {
+                try {
+                    const stored = localStorage.getItem(this.storageKey);
+                    coordinatesData = stored ? JSON.parse(stored) : [];
+                    console.log(`📍 Loaded ${coordinatesData.length} coordinates from storage`);
+                } catch (error) {
+                    console.error('❌ Error loading coordinates data:', error);
+                    coordinatesData = [];
+                }
+            }
+            
+            saveCoordinatesData() {
+                try {
+                    localStorage.setItem(this.storageKey, JSON.stringify(coordinatesData));
+                    console.log(`💾 Saved ${coordinatesData.length} coordinates to storage`);
+                    
+                    this.updateStatistics();
+                    this.renderCoordinatesTable();
+                    this.updatePreviewMap();
+                } catch (error) {
+                    console.error('❌ Error saving coordinates data:', error);
+                    this.showNotification('Error saving data', 'error');
+                }
+            }
+            
+            addCoordinate(data) {
+                const coordinate = {
+                    id: Date.now(),
+                    code: data.code,
+                    name: data.name,
+                    latitude: parseFloat(data.latitude),
+                    longitude: parseFloat(data.longitude),
+                    address: data.address,
+                    category: data.category,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                };
+                
+                coordinatesData.push(coordinate);
+                this.saveCoordinatesData();
+                
+                this.showNotification(`Coordinate for ${data.name} added successfully`, 'success');
+                console.log('➕ Coordinate added:', coordinate);
+            }
+            
+            updateCoordinate(index, data) {
+                if (index >= 0 && index < coordinatesData.length) {
+                    coordinatesData[index] = {
+                        ...coordinatesData[index],
+                        code: data.code,
+                        name: data.name,
+                        latitude: parseFloat(data.latitude),
+                        longitude: parseFloat(data.longitude),
+                        address: data.address,
+                        category: data.category,
+                        updated_at: new Date().toISOString()
+                    };
+                    
+                    this.saveCoordinatesData();
+                    this.showNotification(`Coordinate for ${data.name} updated successfully`, 'success');
+                    console.log('✏️ Coordinate updated:', coordinatesData[index]);
+                }
+            }
+            
+            deleteCoordinate(index) {
+                if (index >= 0 && index < coordinatesData.length) {
+                    const deleted = coordinatesData.splice(index, 1)[0];
+                    this.saveCoordinatesData();
+                    
+                    this.showNotification(`Coordinate for ${deleted.name} deleted`, 'warning');
+                    console.log('🗑️ Coordinate deleted:', deleted);
+                }
+            }
+            
+            updateStatistics() {
+                const stats = this.calculateStatistics();
+                
+                document.getElementById('totalCoordinates').textContent = stats.total;
+                document.getElementById('totalCategories').textContent = stats.categories;
+                document.getElementById('lastAdded').textContent = stats.lastAdded;
+                document.getElementById('dataQuality').textContent = stats.quality;
+            }
+            
+            calculateStatistics() {
+                const total = coordinatesData.length;
+                const categories = new Set(coordinatesData.map(c => c.category).filter(c => c)).size;
+                
+                const lastAdded = coordinatesData.length > 0 ? 
+                    new Date(Math.max(...coordinatesData.map(c => new Date(c.created_at)))).toLocaleDateString() : '-';
+                
+                const validCoordinates = coordinatesData.filter(c => 
+                    c.latitude && c.longitude && 
+                    Math.abs(c.latitude) <= 90 && Math.abs(c.longitude) <= 180
+                ).length;
+                
+                const quality = total > 0 ? Math.round((validCoordinates / total) * 100) + '%' : '-';
+                
+                return { total, categories, lastAdded, quality };
+            }
+            
+            renderCoordinatesTable() {
+                const tbody = document.getElementById('coordinatesTableBody');
+                
+                if (coordinatesData.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 40px; color: #64748b;">
+                                No coordinates data. Add your first customer coordinate above.
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+                
+                const html = coordinatesData.map((coord, index) => `
+                    <tr>
+                        <td style="font-weight: 600;">${coord.code}</td>
+                        <td>${coord.name}</td>
+                        <td style="font-family: 'Courier New', monospace; font-size: 11px;">
+                            ${coord.latitude.toFixed(6)}, ${coord.longitude.toFixed(6)}
+                        </td>
+                        <td>
+                            <span style="padding: 2px 6px; background: #f1f5f9; border-radius: 4px; font-size: 11px;">
+                                ${coord.category || 'N/A'}
+                            </span>
+                        </td>
+                        <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                            ${coord.address || 'N/A'}
+                        </td>
+                        <td class="coord-actions-cell">
+                            <button class="mini-btn btn-primary" onclick="editCoordinate(${index})">Edit</button>
+                            <button class="mini-btn btn-secondary" onclick="viewOnMap(${index})">View</button>
+                            <button class="mini-btn btn-danger" onclick="deleteCoordinateConfirm(${index})">Delete</button>
+                        </td>
+                    </tr>
+                `).join('');
+                
+                tbody.innerHTML = html;
+            }
+            
+            updatePreviewMap() {
+                // Clear existing markers
+                previewMap.eachLayer(layer => {
+                    if (layer instanceof L.CircleMarker) {
+                        previewMap.removeLayer(layer);
+                    }
+                });
+                
+                if (coordinatesData.length === 0) return;
+                
+                // Add markers for all coordinates
+                const markers = coordinatesData.map(coord => {
+                    const marker = L.circleMarker([coord.latitude, coord.longitude], {
+                        radius: 6,
+                        fillColor: this.getCategoryColor(coord.category),
+                        color: 'white',
+                        weight: 2,
+                        opacity: 1,
+                        fillOpacity: 0.8
+                    });
+                    
+                    marker.bindPopup(`
+                        <strong>${coord.name}</strong><br>
+                        Code: ${coord.code}<br>
+                        Category: ${coord.category || 'N/A'}<br>
+                        Coordinates: ${coord.latitude.toFixed(6)}, ${coord.longitude.toFixed(6)}
+                    `);
+                    
+                    return marker.addTo(previewMap);
+                });
+                
+                // Fit map to show all markers
+                if (markers.length > 0) {
+                    const group = new L.featureGroup(markers);
+                    previewMap.fitBounds(group.getBounds().pad(0.1));
+                }
+            }
+            
+            getCategoryColor(category) {
+                const colors = {
+                    traditional: '#ef4444',
+                    modern: '#3b82f6',
+                    distributor: '#10b981',
+                    retail: '#f59e0b',
+                    wholesale: '#8b5cf6'
+                };
+                return colors[category] || '#64748b';
+            }
+            
+            validateCoordinates() {
+                const errors = [];
+                
+                coordinatesData.forEach((coord, index) => {
+                    if (!coord.latitude || !coord.longitude) {
+                        errors.push(`Row ${index + 1}: Missing coordinates`);
+                    } else if (Math.abs(coord.latitude) > 90) {
+                        errors.push(`Row ${index + 1}: Invalid latitude (${coord.latitude})`);
+                    } else if (Math.abs(coord.longitude) > 180) {
+                        errors.push(`Row ${index + 1}: Invalid longitude (${coord.longitude})`);
+                    }
+                    
+                    if (!coord.code || !coord.name) {
+                        errors.push(`Row ${index + 1}: Missing required fields`);
+                    }
+                });
+                
+                return errors;
+            }
+            
+            exportData(format = 'csv') {
+                const timestamp = new Date().toISOString().split('T')[0];
+                let content = '';
+                let filename = `coordinates_export_${timestamp}`;
+                let mimeType = 'text/plain';
+                
+                switch (format) {
+                    case 'csv':
+                        content = this.exportToCSV();
+                        filename += '.csv';
+                        mimeType = 'text/csv';
+                        break;
+                    case 'json':
+                        content = this.exportToJSON();
+                        filename += '.json';
+                        mimeType = 'application/json';
+                        break;
+                    case 'kml':
+                        content = this.exportToKML();
+                        filename += '.kml';
+                        mimeType = 'application/vnd.google-earth.kml+xml';
+                        break;
+                }
+                
+                this.downloadFile(content, filename, mimeType);
+                this.showNotification(`Data exported as ${format.toUpperCase()}`, 'success');
+            }
+            
+            exportToCSV() {
+                const headers = ['Code', 'Name', 'Latitude', 'Longitude', 'Address', 'Category', 'Created', 'Updated'];
+                const rows = coordinatesData.map(coord => [
+                    coord.code,
+                    coord.name,
+                    coord.latitude,
+                    coord.longitude,
+                    coord.address || '',
+                    coord.category || '',
+                    coord.created_at,
+                    coord.updated_at
+                ]);
+                
+                return [headers, ...rows]
+                    .map(row => row.map(cell => `"${cell}"`).join(','))
+                    .join('\n');
+            }
+            
+            exportToJSON() {
+                const exportData = {
+                    export_date: new Date().toISOString(),
+                    total_coordinates: coordinatesData.length,
+                    coordinates: coordinatesData
+                };
+                
+                return JSON.stringify(exportData, null, 2);
+            }
+            
+            exportToKML() {
+                let kml = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Customer Coordinates</name>
+    <description>Exported customer coordinates for visit verification</description>
+`;
+                
+                coordinatesData.forEach(coord => {
+                    kml += `
+    <Placemark>
+      <name>${coord.name}</name>
+      <description>Code: ${coord.code}\\nCategory: ${coord.category || 'N/A'}\\nAddress: ${coord.address || 'N/A'}</description>
+      <Point>
+        <coordinates>${coord.longitude},${coord.latitude},0</coordinates>
+      </Point>
+    </Placemark>`;
+                });
+                
+                kml += `
+  </Document>
+</kml>`;
+                
+                return kml;
+            }
+            
+            downloadFile(content, filename, mimeType) {
+                const blob = new Blob([content], { type: mimeType });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.click();
+                window.URL.revokeObjectURL(url);
+            }
+            
+            showNotification(message, type = 'success') {
+                const notification = document.getElementById('notification');
+                const content = document.getElementById('notificationContent');
+                
+                content.textContent = message;
+                notification.className = `notification ${type}`;
+                notification.classList.add('show');
+                
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                }, 3000);
+            }
+            
+            createBackup() {
+                const backup = {
+                    timestamp: new Date().toISOString(),
+                    data: coordinatesData,
+                    count: coordinatesData.length
+                };
+                
+                localStorage.setItem(this.backupKey, JSON.stringify(backup));
+                this.showNotification('Backup created successfully', 'success');
+                console.log('💾 Backup created:', backup);
+            }
+            
+            restoreBackup() {
+                try {
+                    const backup = localStorage.getItem(this.backupKey);
+                    if (!backup) {
+                        this.showNotification('No backup found', 'error');
+                        return;
+                    }
+                    
+                    const backupData = JSON.parse(backup);
+                    coordinatesData = backupData.data || [];
+                    
+                    this.saveCoordinatesData();
+                    this.showNotification(`Restored ${coordinatesData.length} coordinates from backup`, 'success');
+                    console.log('📥 Backup restored:', backupData);
+                } catch (error) {
+                    this.showNotification('Error restoring backup', 'error');
+                    console.error('❌ Error restoring backup:', error);
+                }
+            }
+        }
+
+        // ===== GLOBAL UTILITIES INSTANCE =====
+        let geoUtils = null;
+
+        // ===== TAB MANAGEMENT =====
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(tabName + 'Tab').classList.add('active');
+            
+            // Handle map resize for coordinates tab
+            if (tabName === 'coordinates' && previewMap) {
+                setTimeout(() => {
+                    previewMap.invalidateSize();
+                    if (geoUtils) {
+                        geoUtils.updatePreviewMap();
+                    }
+                }, 100);
+            }
+        }
+
+        // ===== COORDINATE MANAGEMENT FUNCTIONS =====
+        function addCoordinate() {
+            const data = getFormData();
+            if (!validateFormData(data)) return;
+            
+            if (geoUtils) {
+                geoUtils.addCoordinate(data);
+                clearForm();
+            }
+        }
+
+        function updateCoordinate() {
+            const data = getFormData();
+            if (!validateFormData(data)) return;
+            
+            if (geoUtils && editingIndex >= 0) {
+                geoUtils.updateCoordinate(editingIndex, data);
+                clearForm();
+                exitEditMode();
+            }
+        }
+
+        function editCoordinate(index) {
+            const coord = coordinatesData[index];
+            if (!coord) return;
+            
+            document.getElementById('customerCode').value = coord.code;
+            document.getElementById('customerName').value = coord.name;
+            document.getElementById('latitude').value = coord.latitude;
+            document.getElementById('longitude').value = coord.longitude;
+            document.getElementById('address').value = coord.address || '';
+            document.getElementById('category').value = coord.category || '';
+            
+            editingIndex = index;
+            document.getElementById('updateBtn').style.display = 'inline-flex';
+            
+            // Focus on map
+            if (previewMap) {
+                previewMap.setView([coord.latitude, coord.longitude], 15);
+            }
+        }
+
+        function deleteCoordinateConfirm(index) {
+            const coord = coordinatesData[index];
+            if (!coord) return;
+            
+            if (confirm(`Are you sure you want to delete coordinate for "${coord.name}"?`)) {
+                if (geoUtils) {
+                    geoUtils.deleteCoordinate(index);
+                }
+            }
+        }
+
+        function viewOnMap(index) {
+            const coord = coordinatesData[index];
+            if (!coord || !previewMap) return;
+            
+            previewMap.setView([coord.latitude, coord.longitude], 16);
+            
+            // Find and open popup for this coordinate
+            previewMap.eachLayer(layer => {
+                if (layer instanceof L.CircleMarker) {
+                    const latlng = layer.getLatLng();
+                    if (Math.abs(latlng.lat - coord.latitude) < 0.00001 && 
+                        Math.abs(latlng.lng - coord.longitude) < 0.00001) {
+                        layer.openPopup();
+                    }
+                }
+            });
+        }
+
+        function clearForm() {
+            document.getElementById('customerCode').value = '';
+            document.getElementById('customerName').value = '';
+            document.getElementById('latitude').value = '';
+            document.getElementById('longitude').value = '';
+            document.getElementById('address').value = '';
+            document.getElementById('category').value = '';
+            
+            exitEditMode();
+        }
+
+        function exitEditMode() {
+            editingIndex = -1;
+            document.getElementById('updateBtn').style.display = 'none';
+        }
+
+        function getFormData() {
+            return {
+                code: document.getElementById('customerCode').value.trim(),
+                name: document.getElementById('customerName').value.trim(),
+                latitude: document.getElementById('latitude').value.trim(),
+                longitude: document.getElementById('longitude').value.trim(),
+                address: document.getElementById('address').value.trim(),
+                category: document.getElementById('category').value
+            };
+        }
+
+        function validateFormData(data) {
+            if (!data.code || !data.name) {
+                if (geoUtils) geoUtils.showNotification('Customer code and name are required', 'error');
+                return false;
+            }
+            
+            if (!data.latitude || !data.longitude) {
+                if (geoUtils) geoUtils.showNotification('Latitude and longitude are required', 'error');
+                return false;
+            }
+            
+            const lat = parseFloat(data.latitude);
+            const lng = parseFloat(data.longitude);
+            
+            if (isNaN(lat) || isNaN(lng)) {
+                if (geoUtils) geoUtils.showNotification('Invalid coordinate format', 'error');
+                return false;
+            }
+            
+            if (Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+                if (geoUtils) geoUtils.showNotification('Coordinates out of valid range', 'error');
+                return false;
+            }
+            
+            // Check for duplicates (exclude current editing item)
+            const duplicate = coordinatesData.find((coord, index) => 
+                coord.code === data.code && index !== editingIndex
+            );
+            
+            if (duplicate) {
+                if (geoUtils) geoUtils.showNotification('Customer code already exists', 'error');
+                return false;
+            }
+            
+            return true;
+        }
+
+        function getCurrentLocation() {
+            if (!navigator.geolocation) {
+                if (geoUtils) geoUtils.showNotification('Geolocation not supported', 'error');
+                return;
+            }
+            
+            if (geoUtils) geoUtils.showNotification('Getting current location...', 'info');
+            
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    document.getElementById('latitude').value = position.coords.latitude.toFixed(6);
+                    document.getElementById('longitude').value = position.coords.longitude.toFixed(6);
+                    
+                    if (geoUtils) geoUtils.showNotification('Current location acquired', 'success');
+                    
+                    // Update preview map
+                    if (previewMap) {
+                        previewMap.setView([position.coords.latitude, position.coords.longitude], 15);
+                    }
+                },
+                (error) => {
+                    let message = 'Error getting location';
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            message = 'Location access denied';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            message = 'Location unavailable';
+                            break;
+                        case error.TIMEOUT:
+                            message = 'Location timeout';
+                            break;
+                    }
+                    if (geoUtils) geoUtils.showNotification(message, 'error');
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 60000
+                }
+            );
+        }
+
+        // ===== VALIDATION FUNCTIONS =====
+        function validateAllCoordinates() {
+            if (!geoUtils) return;
+            
+            const errors = geoUtils.validateCoordinates();
+            
+            if (errors.length === 0) {
+                geoUtils.showNotification('All coordinates are valid', 'success');
+            } else {
+                geoUtils.showNotification(`Found ${errors.length} validation errors`, 'error');
+                console.log('Validation errors:', errors);
+            }
+        }
+
+        function validateCoordinateFormat() {
+            validateAllCoordinates();
+        }
+
+        function checkDuplicates() {
+            const duplicates = [];
+            const codeMap = new Map();
+            
+            coordinatesData.forEach((coord, index) => {
+                if (codeMap.has(coord.code)) {
+                    duplicates.push(`Duplicate code "${coord.code}" at rows ${codeMap.get(coord.code) + 1} and ${index + 1}`);
+                } else {
+                    codeMap.set(coord.code, index);
+                }
+            });
+            
+            if (duplicates.length === 0) {
+                if (geoUtils) geoUtils.showNotification('No duplicates found', 'success');
+            } else {
+                if (geoUtils) geoUtils.showNotification(`Found ${duplicates.length} duplicates`, 'warning');
+                console.log('Duplicates found:', duplicates);
+            }
+        }
+
+        // ===== IMPORT/EXPORT FUNCTIONS =====
+        function handleFileImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const content = e.target.result;
+                    
+                    if (file.name.endsWith('.json')) {
+                        currentImportData = JSON.parse(content);
+                    } else if (file.name.endsWith('.csv')) {
+                        currentImportData = parseCSV(content);
+                    }
+                    
+                    if (geoUtils) {
+                        geoUtils.showNotification(`File "${file.name}" loaded successfully`, 'success');
+                    }
+                } catch (error) {
+                    if (geoUtils) {
+                        geoUtils.showNotification('Error reading file', 'error');
+                    }
+                    console.error('File import error:', error);
+                }
+            };
+            
+            reader.readAsText(file);
+        }
+
+        function parseCSV(content) {
+            const lines = content.trim().split('\n');
+            const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
+            
+            return lines.slice(1).map(line => {
+                const values = line.split(',').map(v => v.replace(/"/g, '').trim());
+                const obj = {};
+                headers.forEach((header, index) => {
+                    obj[header.toLowerCase()] = values[index] || '';
+                });
+                return obj;
+            });
+        }
+
+        function processImport() {
+            if (!currentImportData) {
+                if (geoUtils) geoUtils.showNotification('No file loaded for import', 'error');
+                return;
+            }
+            
+            // Process import based on options
+            const mergeData = document.getElementById('mergeData').checked;
+            const validateImport = document.getElementById('validateImport').checked;
+            const createBackup = document.getElementById('backupBeforeImport').checked;
+            
+            if (createBackup && geoUtils) {
+                geoUtils.createBackup();
+            }
+            
+            let imported = 0;
+            let errors = 0;
+            
+            if (!mergeData) {
+                coordinatesData = [];
+            }
+            
+            currentImportData.forEach(item => {
+                try {
+                    const coord = {
+                        id: Date.now() + Math.random(),
+                        code: item.code || item.customer_code || '',
+                        name: item.name || item.customer_name || '',
+                        latitude: parseFloat(item.latitude || item.lat || 0),
+                        longitude: parseFloat(item.longitude || item.lng || item.lon || 0),
+                        address: item.address || '',
+                        category: item.category || '',
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    };
+                    
+                    if (validateImport) {
+                        if (!coord.code || !coord.name || !coord.latitude || !coord.longitude) {
+                            errors++;
+                            return;
+                        }
+                        
+                        if (Math.abs(coord.latitude) > 90 || Math.abs(coord.longitude) > 180) {
+                            errors++;
+                            return;
+                        }
+                    }
+                    
+                    coordinatesData.push(coord);
+                    imported++;
+                    
+                } catch (error) {
+                    errors++;
+                    console.error('Import item error:', error);
+                }
+            });
+            
+            if (geoUtils) {
+                geoUtils.saveCoordinatesData();
+                geoUtils.showNotification(`Import completed: ${imported} imported, ${errors} errors`, 'success');
+            }
+            
+            currentImportData = null;
+            document.getElementById('importFile').value = '';
+        }
+
+        function exportData() {
+            const format = document.getElementById('exportFormat').value;
+            if (geoUtils) {
+                geoUtils.exportData(format);
+            }
+        }
+
+        function exportCoordinates() {
+            exportData();
+        }
+
+        function previewExport() {
+            const format = document.getElementById('exportFormat').value;
+            let preview = '';
+            
+            switch (format) {
+                case 'csv':
+                    preview = geoUtils ? geoUtils.exportToCSV() : '';
+                    break;
+                case 'json':
+                    preview = geoUtils ? geoUtils.exportToJSON() : '';
+                    break;
+                case 'kml':
+                    preview = geoUtils ? geoUtils.exportToKML() : '';
+                    break;
+            }
+            
+            // Show preview in a new window
+            const previewWindow = window.open('', '_blank');
+            previewWindow.document.write(`
+                <html>
+                    <head><title>Export Preview</title></head>
+                    <body>
+                        <h3>Export Preview (${format.toUpperCase()})</h3>
+                        <pre style="background: #f5f5f5; padding: 16px; border-radius: 4px; overflow: auto;">${preview}</pre>
+                    </body>
+                </html>
+            `);
+        }
+
+        // ===== UTILITY FUNCTIONS =====
+        function calculateDistance() {
+            const fromInput = document.querySelector('input[placeholder="From coordinates (lat,lng)"]');
+            const toInput = document.querySelector('input[placeholder="To coordinates (lat,lng)"]');
+            
+            const fromCoords = fromInput.value.split(',').map(c => parseFloat(c.trim()));
+            const toCoords = toInput.value.split(',').map(c => parseFloat(c.trim()));
+            
+            if (fromCoords.length !== 2 || toCoords.length !== 2 || 
+                fromCoords.some(isNaN) || toCoords.some(isNaN)) {
+                if (geoUtils) geoUtils.showNotification('Invalid coordinate format', 'error');
+                return;
+            }
+            
+            const distance = calculateHaversineDistance(
+                fromCoords[0], fromCoords[1], 
+                toCoords[0], toCoords[1]
+            );
+            
+            if (geoUtils) {
+                geoUtils.showNotification(`Distance: ${distance.toFixed(2)} meters`, 'success');
+            }
+        }
+
+        function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371e3; // Earth's radius in meters
+            const φ1 = lat1 * Math.PI/180;
+            const φ2 = lat2 * Math.PI/180;
+            const Δφ = (lat2-lat1) * Math.PI/180;
+            const Δλ = (lon2-lon1) * Math.PI/180;
+            
+            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                      Math.cos(φ1) * Math.cos(φ2) *
+                      Math.sin(Δλ/2) * Math.sin(Δλ/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            
+            return R * c;
+        }
+
+        function geocodeAddress() {
+            if (geoUtils) {
+                geoUtils.showNotification('Geocoding service not implemented yet', 'warning');
+            }
+        }
+
+        function batchGeocode() {
+            if (geoUtils) {
+                geoUtils.showNotification('Batch geocoding service not implemented yet', 'warning');
+            }
+        }
+
+        function reverseGeocode() {
+            if (geoUtils) {
+                geoUtils.showNotification('Reverse geocoding service not implemented yet', 'warning');
+            }
+        }
+
+        function createBackup() {
+            if (geoUtils) {
+                geoUtils.createBackup();
+            }
+        }
+
+        function restoreBackup() {
+            if (confirm('Are you sure you want to restore from backup? This will overwrite current data.')) {
+                if (geoUtils) {
+                    geoUtils.restoreBackup();
+                }
+            }
+        }
+
+        function clearAllCoordinates() {
+            if (confirm('Are you sure you want to clear all coordinates? This action cannot be undone.')) {
+                coordinatesData = [];
+                if (geoUtils) {
+                    geoUtils.saveCoordinatesData();
+                    geoUtils.showNotification('All coordinates cleared', 'warning');
+                }
+            }
+        }
+
+        function resetAllData() {
+            if (confirm('Are you sure you want to reset all data including backups? This action cannot be undone.')) {
+                localStorage.removeItem('customer_coordinates_master');
+                localStorage.removeItem('customer_coordinates_backup');
+                coordinatesData = [];
+                
+                if (geoUtils) {
+                    geoUtils.loadCoordinatesData();
+                    geoUtils.updateStatistics();
+                    geoUtils.renderCoordinatesTable();
+                    geoUtils.updatePreviewMap();
+                    geoUtils.showNotification('All data reset successfully', 'warning');
+                }
+            }
+        }
+
+        // ===== INITIALIZATION =====
+        function initializeGeolocationUtilities() {
+            console.log('🛠️ Initializing Geolocation Utilities...');
+            
+            geoUtils = new GeolocationUtilities();
+            
+            // Setup drag & drop for file import
+            const dropZone = document.querySelector('.file-drop-zone');
+            
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('dragover');
+            });
+            
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('dragover');
+            });
+            
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+                
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    document.getElementById('importFile').files = files;
+                    handleFileImport({ target: { files: files } });
+                }
+            });
+            
+            console.log('✅ Geolocation Utilities ready');
+        }
+
+        // ===== PAGE LOAD =====
+        window.onload = function() {
+            console.log('🛠️ Starting Geolocation Utilities & Master Data Manager...');
+            console.log('📍 Features: Coordinate management, validation, import/export, analytics');
+            
+            initializeGeolocationUtilities();
+        };
+
+        console.log('✅ Geolocation Utilities script loaded');
+        console.log('🛠️ Tools: Coordinate CRUD, validation, distance calculation, import/export');
+    </script>
+</body>
+</html>

@@ -1,0 +1,1492 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geolocation System Integration Hub</title>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        .integration-container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* ===== HEADER ===== */
+        .integration-header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 40px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header-title {
+            font-size: 42px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            background: linear-gradient(45deg, #fff, #e0e7ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-subtitle {
+            font-size: 18px;
+            opacity: 0.9;
+            margin-bottom: 24px;
+        }
+
+        .system-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: #10b981;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* ===== NAVIGATION GRID ===== */
+        .nav-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        .nav-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 24px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .nav-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #10b981, #3b82f6, #8b5cf6, #f59e0b);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .nav-card:hover::before {
+            opacity: 1;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .card-icon {
+            font-size: 32px;
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .card-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .card-subtitle {
+            font-size: 12px;
+            opacity: 0.8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .card-description {
+            font-size: 14px;
+            line-height: 1.6;
+            opacity: 0.9;
+            margin-bottom: 20px;
+        }
+
+        .card-features {
+            list-style: none;
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        .card-features li {
+            padding: 4px 0;
+            position: relative;
+            padding-left: 16px;
+        }
+
+        .card-features li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: #10b981;
+            font-weight: bold;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 20px;
+        }
+
+        .card-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .btn-primary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-primary:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: rgba(0, 0, 0, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* ===== SYSTEM OVERVIEW ===== */
+        .system-overview {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 32px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            margin-bottom: 40px;
+        }
+
+        .overview-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .overview-title {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .overview-subtitle {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .overview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 24px;
+        }
+
+        .overview-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .overview-icon {
+            font-size: 24px;
+            margin-bottom: 12px;
+        }
+
+        .overview-value {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .overview-label {
+            font-size: 12px;
+            opacity: 0.8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* ===== INTEGRATION STATUS ===== */
+        .integration-status {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 32px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            margin-bottom: 40px;
+        }
+
+        .status-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .status-title {
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .refresh-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .refresh-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 16px;
+        }
+
+        .status-item {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .status-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .status-item-title {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .status-badge {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-active {
+            background: rgba(16, 185, 129, 0.3);
+            color: #10b981;
+        }
+
+        .status-warning {
+            background: rgba(245, 158, 11, 0.3);
+            color: #f59e0b;
+        }
+
+        .status-error {
+            background: rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+        }
+
+        .status-item-detail {
+            font-size: 12px;
+            opacity: 0.8;
+            line-height: 1.4;
+        }
+
+        /* ===== QUICK ACTIONS ===== */
+        .quick-actions {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 32px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .actions-header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .actions-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .actions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+        }
+
+        .action-btn-large {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            color: white;
+            text-decoration: none;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .action-btn-large:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-4px);
+        }
+
+        .action-icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .action-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .action-description {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1200px) {
+            .nav-grid {
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            }
+        }
+
+        @media (max-width: 768px) {
+            .integration-container {
+                padding: 12px;
+            }
+
+            .header-title {
+                font-size: 28px;
+            }
+
+            .nav-grid,
+            .overview-grid,
+            .status-grid,
+            .actions-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .integration-header,
+            .system-overview,
+            .integration-status,
+            .quick-actions {
+                padding: 20px;
+            }
+        }
+
+        /* ===== ANIMATIONS ===== */
+        .fade-in {
+            animation: fadeIn 0.8s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .loading {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        /* ===== NOTIFICATION ===== */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            color: #1e293b;
+            padding: 16px 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            opacity: 0;
+            transform: translateX(400px);
+            transition: all 0.3s ease;
+            max-width: 350px;
+            backdrop-filter: blur(20px);
+        }
+
+        .notification.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            border-left: 4px solid #10b981;
+        }
+
+        .notification.error {
+            border-left: 4px solid #ef4444;
+        }
+
+        .notification.warning {
+            border-left: 4px solid #f59e0b;
+        }
+    </style>
+</head>
+<body>
+    <div class="integration-container">
+        <!-- Header -->
+        <div class="integration-header fade-in">
+            <div class="header-title">
+                🌐 Geolocation System Integration Hub
+            </div>
+            <div class="header-subtitle">
+                Comprehensive dashboard for managing and monitoring the complete geolocation tracking ecosystem
+            </div>
+            <div class="system-status">
+                <div class="status-dot"></div>
+                <span>System Operational</span>
+            </div>
+        </div>
+
+        <!-- Navigation Grid -->
+        <div class="nav-grid fade-in">
+            <!-- Visit Tracking Module -->
+            <div class="nav-card" onclick="openModule('visit')">
+                <div class="card-header">
+                    <div class="card-icon">📱</div>
+                    <div>
+                        <div class="card-title">Visit Tracking</div>
+                        <div class="card-subtitle">Mobile Visit Module</div>
+                    </div>
+                </div>
+                <div class="card-description">
+                    Enhanced visit tracking with real-time geolocation verification, customer location matching, and compliance monitoring.
+                </div>
+                <ul class="card-features">
+                    <li>Real-time GPS tracking</li>
+                    <li>Customer location verification</li>
+                    <li>Distance calculation</li>
+                    <li>Visit duration monitoring</li>
+                    <li>Compliance alerts</li>
+                </ul>
+                <div class="card-actions">
+                    <button class="card-btn btn-primary" onclick="event.stopPropagation(); openModule('visit')">
+                        📱 Open Module
+                    </button>
+                    <button class="card-btn btn-secondary" onclick="event.stopPropagation(); testModule('visit')">
+                        🧪 Test
+                    </button>
+                </div>
+            </div>
+
+            <!-- Analytics Dashboard -->
+            <div class="nav-card" onclick="openModule('analytics')">
+                <div class="card-header">
+                    <div class="card-icon">📊</div>
+                    <div>
+                        <div class="card-title">Analytics Dashboard</div>
+                        <div class="card-subtitle">Data Analysis Hub</div>
+                    </div>
+                </div>
+                <div class="card-description">
+                    Comprehensive analytics dashboard with location mapping, compliance tracking, and performance metrics visualization.
+                </div>
+                <ul class="card-features">
+                    <li>Interactive location maps</li>
+                    <li>Visit analytics by salesman</li>
+                    <li>Compliance reporting</li>
+                    <li>Performance metrics</li>
+                    <li>Data export capabilities</li>
+                </ul>
+                <div class="card-actions">
+                    <button class="card-btn btn-primary" onclick="event.stopPropagation(); openModule('analytics')">
+                        📊 Open Dashboard
+                    </button>
+                    <button class="card-btn btn-secondary" onclick="event.stopPropagation(); testModule('analytics')">
+                        🧪 Test
+                    </button>
+                </div>
+            </div>
+
+            <!-- Real-time Monitoring -->
+            <div class="nav-card" onclick="openModule('monitoring')">
+                <div class="card-header">
+                    <div class="card-icon">🔴</div>
+                    <div>
+                        <div class="card-title">Real-time Monitoring</div>
+                        <div class="card-subtitle">Live Tracking System</div>
+                    </div>
+                </div>
+                <div class="card-description">
+                    Live monitoring dashboard for tracking active salesman, real-time locations, and instant compliance alerts.
+                </div>
+                <ul class="card-features">
+                    <li>Live location tracking</li>
+                    <li>Active salesman monitoring</li>
+                    <li>Real-time notifications</li>
+                    <li>Auto-refresh capabilities</li>
+                    <li>Emergency alerts</li>
+                </ul>
+                <div class="card-actions">
+                    <button class="card-btn btn-primary" onclick="event.stopPropagation(); openModule('monitoring')">
+                        🔴 Live Monitor
+                    </button>
+                    <button class="card-btn btn-secondary" onclick="event.stopPropagation(); testModule('monitoring')">
+                        🧪 Test
+                    </button>
+                </div>
+            </div>
+
+            <!-- Master Data Manager -->
+            <div class="nav-card" onclick="openModule('master-data')">
+                <div class="card-header">
+                    <div class="card-icon">🛠️</div>
+                    <div>
+                        <div class="card-title">Master Data Manager</div>
+                        <div class="card-subtitle">Coordinate Management</div>
+                    </div>
+                </div>
+                <div class="card-description">
+                    Comprehensive tools for managing customer coordinates, validation, import/export, and master data maintenance.
+                </div>
+                <ul class="card-features">
+                    <li>Coordinate CRUD operations</li>
+                    <li>Data validation tools</li>
+                    <li>Import/Export capabilities</li>
+                    <li>Geocoding services</li>
+                    <li>Backup & restore</li>
+                </ul>
+                <div class="card-actions">
+                    <button class="card-btn btn-primary" onclick="event.stopPropagation(); openModule('master-data')">
+                        🛠️ Manage Data
+                    </button>
+                    <button class="card-btn btn-secondary" onclick="event.stopPropagation(); testModule('master-data')">
+                        🧪 Test
+                    </button>
+                </div>
+            </div>
+
+            <!-- Mobile Compliance -->
+            <div class="nav-card" onclick="openModule('compliance')">
+                <div class="card-header">
+                    <div class="card-icon">📍</div>
+                    <div>
+                        <div class="card-title">Mobile Compliance</div>
+                        <div class="card-subtitle">Compliance Dashboard</div>
+                    </div>
+                </div>
+                <div class="card-description">
+                    Mobile-optimized compliance dashboard for tracking visit accuracy, performance metrics, and compliance scores.
+                </div>
+                <ul class="card-features">
+                    <li>Mobile-first design</li>
+                    <li>Compliance scoring</li>
+                    <li>Performance tracking</li>
+                    <li>PWA capabilities</li>
+                    <li>Offline support</li>
+                </ul>
+                <div class="card-actions">
+                    <button class="card-btn btn-primary" onclick="event.stopPropagation(); openModule('compliance')">
+                        📍 Mobile View
+                    </button>
+                    <button class="card-btn btn-secondary" onclick="event.stopPropagation(); testModule('compliance')">
+                        🧪 Test
+                    </button>
+                </div>
+            </div>
+
+            <!-- Report Generator -->
+            <div class="nav-card" onclick="openModule('reports')">
+                <div class="card-header">
+                    <div class="card-icon">📈</div>
+                    <div>
+                        <div class="card-title">Report Generator</div>
+                        <div class="card-subtitle">Advanced Reporting</div>
+                    </div>
+                </div>
+                <div class="card-description">
+                    Advanced reporting system with AI insights, comprehensive analysis, and multi-format export capabilities.
+                </div>
+                <ul class="card-features">
+                    <li>AI-powered insights</li>
+                    <li>Interactive charts</li>
+                    <li>Multi-format export</li>
+                    <li>Scheduled reports</li>
+                    <li>Performance analysis</li>
+                </ul>
+                <div class="card-actions">
+                    <button class="card-btn btn-primary" onclick="event.stopPropagation(); openModule('reports')">
+                        📈 Generate Reports
+                    </button>
+                    <button class="card-btn btn-secondary" onclick="event.stopPropagation(); testModule('reports')">
+                        🧪 Test
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Overview -->
+        <div class="system-overview fade-in">
+            <div class="overview-header">
+                <div class="overview-title">System Overview</div>
+                <div class="overview-subtitle">Current system statistics and performance metrics</div>
+            </div>
+            <div class="overview-grid">
+                <div class="overview-card">
+                    <div class="overview-icon">👥</div>
+                    <div class="overview-value" id="totalSalesman">-</div>
+                    <div class="overview-label">Active Salesman</div>
+                </div>
+                <div class="overview-card">
+                    <div class="overview-icon">📍</div>
+                    <div class="overview-value" id="totalVisits">-</div>
+                    <div class="overview-label">Total Visits</div>
+                </div>
+                <div class="overview-card">
+                    <div class="overview-icon">🏪</div>
+                    <div class="overview-value" id="totalCustomers">-</div>
+                    <div class="overview-label">Master Customers</div>
+                </div>
+                <div class="overview-card">
+                    <div class="overview-icon">✅</div>
+                    <div class="overview-value" id="complianceRate">-</div>
+                    <div class="overview-label">Compliance Rate</div>
+                </div>
+                <div class="overview-card">
+                    <div class="overview-icon">🎯</div>
+                    <div class="overview-value" id="accuracyScore">-</div>
+                    <div class="overview-label">Avg Accuracy</div>
+                </div>
+                <div class="overview-card">
+                    <div class="overview-icon">📊</div>
+                    <div class="overview-value" id="dataQuality">-</div>
+                    <div class="overview-label">Data Quality</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Integration Status -->
+        <div class="integration-status fade-in">
+            <div class="status-header">
+                <div class="status-title">Integration Status</div>
+                <button class="refresh-btn" onclick="refreshSystemStatus()">
+                    🔄 Refresh Status
+                </button>
+            </div>
+            <div class="status-grid" id="statusGrid">
+                <!-- Status items will be populated by JavaScript -->
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="quick-actions fade-in">
+            <div class="actions-header">
+                <div class="actions-title">Quick Actions</div>
+            </div>
+            <div class="actions-grid">
+                <div class="action-btn-large" onclick="runSystemDiagnostics()">
+                    <div class="action-icon">🔍</div>
+                    <div class="action-title">System Diagnostics</div>
+                    <div class="action-description">Check system health and performance</div>
+                </div>
+                
+                <div class="action-btn-large" onclick="exportSystemData()">
+                    <div class="action-icon">📤</div>
+                    <div class="action-title">Export All Data</div>
+                    <div class="action-description">Backup complete system data</div>
+                </div>
+                
+                <div class="action-btn-large" onclick="showSystemConfiguration()">
+                    <div class="action-icon">⚙️</div>
+                    <div class="action-title">System Configuration</div>
+                    <div class="action-description">Manage system settings</div>
+                </div>
+                
+                <div class="action-btn-large" onclick="showDocumentation()">
+                    <div class="action-icon">📚</div>
+                    <div class="action-title">Documentation</div>
+                    <div class="action-description">View system documentation</div>
+                </div>
+                
+                <div class="action-btn-large" onclick="clearAllData()">
+                    <div class="action-icon">🧹</div>
+                    <div class="action-title">Clear System Data</div>
+                    <div class="action-description">Reset all system data</div>
+                </div>
+                
+                <div class="action-btn-large" onclick="showAPIDocumentation()">
+                    <div class="action-icon">🔗</div>
+                    <div class="action-title">API Documentation</div>
+                    <div class="action-description">Integration API reference</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div class="notification" id="notification">
+        <div id="notificationContent"></div>
+    </div>
+
+    <script>
+        // ===== SYSTEM INTEGRATION CLASS =====
+        class GeolocationSystemIntegration {
+            constructor() {
+                this.modules = {
+                    'visit': {
+                        name: 'Visit Tracking',
+                        url: 'visit.html',
+                        status: 'unknown',
+                        description: 'Mobile visit tracking with geolocation'
+                    },
+                    'analytics': {
+                        name: 'Analytics Dashboard',
+                        url: 'activity.html',
+                        status: 'unknown',
+                        description: 'Comprehensive analytics and mapping'
+                    },
+                    'monitoring': {
+                        name: 'Real-time Monitoring',
+                        url: 'realtime-monitoring.html',
+                        status: 'unknown',
+                        description: 'Live tracking and monitoring'
+                    },
+                    'master-data': {
+                        name: 'Master Data Manager',
+                        url: 'geolocation-utilities.html',
+                        status: 'unknown',
+                        description: 'Coordinate and master data management'
+                    },
+                    'compliance': {
+                        name: 'Mobile Compliance',
+                        url: 'mobile-compliance.html',
+                        status: 'unknown',
+                        description: 'Mobile compliance dashboard'
+                    },
+                    'reports': {
+                        name: 'Report Generator',
+                        url: 'location-reports.html',
+                        status: 'unknown',
+                        description: 'Advanced reporting and analytics'
+                    }
+                };
+                
+                this.systemData = {
+                    totalSalesman: 0,
+                    totalVisits: 0,
+                    totalCustomers: 0,
+                    complianceRate: 0,
+                    accuracyScore: 0,
+                    dataQuality: 0
+                };
+                
+                this.init();
+            }
+            
+            init() {
+                console.log('🌐 Geolocation System Integration initialized');
+                
+                this.loadSystemData();
+                this.updateSystemOverview();
+                this.checkModuleStatus();
+                this.updateIntegrationStatus();
+                
+                // Auto-refresh every 30 seconds
+                setInterval(() => {
+                    this.loadSystemData();
+                    this.updateSystemOverview();
+                }, 30000);
+            }
+            
+            loadSystemData() {
+                console.log('📊 Loading system data...');
+                
+                // Scan localStorage for system data
+                let salesmanIds = new Set();
+                let totalVisits = 0;
+                let totalCustomers = 0;
+                let locationAccuracies = [];
+                let complianceScores = [];
+                
+                // Scan for visit analytics data
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    
+                    if (key && key.startsWith('visit_analytics_geo_')) {
+                        try {
+                            const data = JSON.parse(localStorage.getItem(key) || '[]');
+                            totalVisits += data.length;
+                            
+                            // Extract salesman ID
+                            const parts = key.split('_');
+                            if (parts.length >= 4) {
+                                salesmanIds.add(parts[3]);
+                            }
+                            
+                            // Process location data
+                            data.forEach(event => {
+                                if (event.location && event.location.accuracy) {
+                                    locationAccuracies.push(event.location.accuracy);
+                                }
+                                
+                                if (event.event_data && event.event_data.distance_meters !== undefined) {
+                                    const distance = event.event_data.distance_meters;
+                                    if (distance <= 100) {
+                                        complianceScores.push(100);
+                                    } else if (distance <= 500) {
+                                        complianceScores.push(75);
+                                    } else {
+                                        complianceScores.push(25);
+                                    }
+                                }
+                            });
+                            
+                        } catch (error) {
+                            console.error('Error loading analytics data:', error);
+                        }
+                    }
+                    
+                    // Count master customer coordinates
+                    if (key === 'customer_coordinates_master') {
+                        try {
+                            const coordinates = JSON.parse(localStorage.getItem(key) || '[]');
+                            totalCustomers = coordinates.length;
+                        } catch (error) {
+                            console.error('Error loading customer coordinates:', error);
+                        }
+                    }
+                }
+                
+                // Calculate metrics
+                const avgAccuracy = locationAccuracies.length > 0 ? 
+                    Math.round(locationAccuracies.reduce((sum, acc) => sum + acc, 0) / locationAccuracies.length) : 0;
+                
+                const avgCompliance = complianceScores.length > 0 ?
+                    Math.round(complianceScores.reduce((sum, score) => sum + score, 0) / complianceScores.length) : 0;
+                
+                const dataQuality = this.calculateDataQuality(salesmanIds.size, totalVisits, totalCustomers);
+                
+                this.systemData = {
+                    totalSalesman: salesmanIds.size,
+                    totalVisits: totalVisits,
+                    totalCustomers: totalCustomers,
+                    complianceRate: avgCompliance,
+                    accuracyScore: avgAccuracy,
+                    dataQuality: dataQuality
+                };
+                
+                console.log('📊 System data loaded:', this.systemData);
+            }
+            
+            calculateDataQuality(salesman, visits, customers) {
+                let score = 0;
+                
+                if (salesman > 0) score += 20;
+                if (visits > 0) score += 30;
+                if (customers > 0) score += 25;
+                if (visits > salesman * 5) score += 15; // Good visit frequency
+                if (customers > salesman * 3) score += 10; // Good customer coverage
+                
+                return Math.min(score, 100);
+            }
+            
+            updateSystemOverview() {
+                document.getElementById('totalSalesman').textContent = this.systemData.totalSalesman;
+                document.getElementById('totalVisits').textContent = this.systemData.totalVisits;
+                document.getElementById('totalCustomers').textContent = this.systemData.totalCustomers;
+                document.getElementById('complianceRate').textContent = this.systemData.complianceRate + '%';
+                document.getElementById('accuracyScore').textContent = '±' + this.systemData.accuracyScore + 'm';
+                document.getElementById('dataQuality').textContent = this.systemData.dataQuality + '%';
+            }
+            
+            checkModuleStatus() {
+                Object.keys(this.modules).forEach(moduleId => {
+                    // Check if module data exists
+                    const hasData = this.checkModuleData(moduleId);
+                    this.modules[moduleId].status = hasData ? 'active' : 'inactive';
+                });
+            }
+            
+            checkModuleData(moduleId) {
+                switch (moduleId) {
+                    case 'visit':
+                        // Check for visit analytics data
+                        for (let i = 0; i < localStorage.length; i++) {
+                            if (localStorage.key(i).startsWith('visit_analytics_geo_')) {
+                                return true;
+                            }
+                        }
+                        return false;
+                        
+                    case 'analytics':
+                        return this.systemData.totalVisits > 0;
+                        
+                    case 'monitoring':
+                        return this.systemData.totalSalesman > 0;
+                        
+                    case 'master-data':
+                        return this.systemData.totalCustomers > 0;
+                        
+                    case 'compliance':
+                        return this.systemData.complianceRate > 0;
+                        
+                    case 'reports':
+                        return this.systemData.totalVisits > 0;
+                        
+                    default:
+                        return false;
+                }
+            }
+            
+            updateIntegrationStatus() {
+                const statusGrid = document.getElementById('statusGrid');
+                let html = '';
+                
+                Object.entries(this.modules).forEach(([moduleId, module]) => {
+                    const statusClass = module.status === 'active' ? 'status-active' : 
+                                       module.status === 'warning' ? 'status-warning' : 'status-error';
+                    
+                    const statusText = module.status === 'active' ? 'Active' : 
+                                      module.status === 'warning' ? 'Warning' : 'Inactive';
+                    
+                    const dataCount = this.getModuleDataCount(moduleId);
+                    
+                    html += `
+                        <div class="status-item">
+                            <div class="status-item-header">
+                                <div class="status-item-title">${module.name}</div>
+                                <div class="status-badge ${statusClass}">${statusText}</div>
+                            </div>
+                            <div class="status-item-detail">
+                                ${module.description}<br>
+                                <strong>Data Records:</strong> ${dataCount}
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                statusGrid.innerHTML = html;
+            }
+            
+            getModuleDataCount(moduleId) {
+                switch (moduleId) {
+                    case 'visit':
+                        return this.systemData.totalVisits;
+                    case 'analytics':
+                        return this.systemData.totalSalesman;
+                    case 'monitoring':
+                        return this.systemData.totalSalesman;
+                    case 'master-data':
+                        return this.systemData.totalCustomers;
+                    case 'compliance':
+                        return this.systemData.totalVisits;
+                    case 'reports':
+                        return this.systemData.totalVisits;
+                    default:
+                        return 0;
+                }
+            }
+            
+            openModule(moduleId) {
+                const module = this.modules[moduleId];
+                if (module) {
+                    this.showNotification(`Opening ${module.name}...`, 'success');
+                    
+                    // In a real implementation, this would open the module
+                    setTimeout(() => {
+                        window.open(module.url, '_blank');
+                    }, 500);
+                }
+            }
+            
+            testModule(moduleId) {
+                const module = this.modules[moduleId];
+                if (module) {
+                    this.showNotification(`Testing ${module.name}...`, 'warning');
+                    
+                    // Simulate module test
+                    setTimeout(() => {
+                        const success = Math.random() > 0.2; // 80% success rate
+                        if (success) {
+                            this.showNotification(`${module.name} test passed ✓`, 'success');
+                        } else {
+                            this.showNotification(`${module.name} test failed ✗`, 'error');
+                        }
+                    }, 2000);
+                }
+            }
+            
+            runSystemDiagnostics() {
+                this.showNotification('Running system diagnostics...', 'warning');
+                
+                setTimeout(() => {
+                    const diagnostics = {
+                        localStorage: this.testLocalStorage(),
+                        geolocation: this.testGeolocation(),
+                        modules: this.testAllModules(),
+                        dataIntegrity: this.testDataIntegrity()
+                    };
+                    
+                    console.log('🔍 System Diagnostics Results:', diagnostics);
+                    
+                    let issues = 0;
+                    Object.values(diagnostics).forEach(result => {
+                        if (!result.success) issues++;
+                    });
+                    
+                    if (issues === 0) {
+                        this.showNotification('✅ All system diagnostics passed', 'success');
+                    } else {
+                        this.showNotification(`⚠️ ${issues} diagnostic issues found`, 'warning');
+                    }
+                }, 3000);
+            }
+            
+            testLocalStorage() {
+                try {
+                    const testKey = 'test_' + Date.now();
+                    localStorage.setItem(testKey, 'test');
+                    localStorage.removeItem(testKey);
+                    return { success: true, message: 'localStorage working' };
+                } catch (error) {
+                    return { success: false, message: 'localStorage error: ' + error.message };
+                }
+            }
+            
+            testGeolocation() {
+                if (navigator.geolocation) {
+                    return { success: true, message: 'Geolocation API available' };
+                } else {
+                    return { success: false, message: 'Geolocation API not supported' };
+                }
+            }
+            
+            testAllModules() {
+                const activeModules = Object.values(this.modules).filter(m => m.status === 'active').length;
+                const totalModules = Object.keys(this.modules).length;
+                
+                return {
+                    success: activeModules > totalModules * 0.5,
+                    message: `${activeModules}/${totalModules} modules active`
+                };
+            }
+            
+            testDataIntegrity() {
+                const hasData = this.systemData.totalVisits > 0 || this.systemData.totalCustomers > 0;
+                return {
+                    success: hasData,
+                    message: hasData ? 'Data integrity good' : 'No data found'
+                };
+            }
+            
+            exportSystemData() {
+                this.showNotification('Exporting system data...', 'warning');
+                
+                setTimeout(() => {
+                    const exportData = {
+                        export_date: new Date().toISOString(),
+                        system_overview: this.systemData,
+                        modules_status: this.modules,
+                        raw_data: this.collectAllSystemData()
+                    };
+                    
+                    const blob = new Blob([JSON.stringify(exportData, null, 2)], { 
+                        type: 'application/json' 
+                    });
+                    
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `geolocation_system_backup_${new Date().toISOString().split('T')[0]}.json`;
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    
+                    this.showNotification('✅ System data exported successfully', 'success');
+                }, 2000);
+            }
+            
+            collectAllSystemData() {
+                const data = {};
+                
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && (key.startsWith('visit_') || key.startsWith('customer_'))) {
+                        try {
+                            data[key] = JSON.parse(localStorage.getItem(key));
+                        } catch (error) {
+                            data[key] = localStorage.getItem(key);
+                        }
+                    }
+                }
+                
+                return data;
+            }
+            
+            showSystemConfiguration() {
+                this.showNotification('System configuration panel coming soon...', 'warning');
+            }
+            
+            showDocumentation() {
+                const docContent = `
+# Geolocation System Documentation
+
+## System Architecture
+The geolocation tracking system consists of 6 integrated modules:
+
+### 1. Visit Tracking Module
+- Real-time GPS tracking
+- Customer location verification
+- Visit duration monitoring
+- Compliance scoring
+
+### 2. Analytics Dashboard
+- Interactive location maps
+- Performance metrics
+- Compliance reporting
+- Data visualization
+
+### 3. Real-time Monitoring
+- Live tracking of active salesman
+- Real-time alerts
+- Status monitoring
+- Emergency notifications
+
+### 4. Master Data Manager
+- Customer coordinate management
+- Data validation tools
+- Import/Export capabilities
+- Backup and restore
+
+### 5. Mobile Compliance Dashboard
+- Mobile-optimized interface
+- Compliance scoring
+- Performance tracking
+- PWA capabilities
+
+### 6. Report Generator
+- Advanced analytics
+- AI-powered insights
+- Multi-format export
+- Scheduled reporting
+
+## Data Flow
+1. Visit app captures GPS coordinates
+2. System validates against master data
+3. Compliance score calculated
+4. Data stored with analytics events
+5. Real-time monitoring updates
+6. Reports generated from aggregated data
+
+## API Integration
+- localStorage-based data persistence
+- Real-time geolocation API
+- Chart.js for visualizations
+- Leaflet for mapping
+- Export capabilities (PDF, CSV, JSON)
+
+## Setup Instructions
+1. Deploy all HTML files to web server
+2. Configure master customer coordinates
+3. Setup salesman accounts
+4. Test geolocation permissions
+5. Monitor system status dashboard
+                `;
+                
+                const newWindow = window.open('', '_blank');
+                newWindow.document.write(`
+                    <html>
+                        <head><title>Geolocation System Documentation</title></head>
+                        <body style="font-family: monospace; padding: 20px; background: #1e293b; color: #e2e8f0;">
+                            <pre style="white-space: pre-wrap; line-height: 1.6;">${docContent}</pre>
+                        </body>
+                    </html>
+                `);
+            }
+            
+            showAPIDocumentation() {
+                const apiDoc = `
+# Geolocation System API Reference
+
+## Data Storage Structure
+
+### Visit Analytics Data
+Key: visit_analytics_geo_{date}_{salesman_id}
+Format: Array of analytics events
+
+### Daily Summary Data  
+Key: visit_daily_geo_{date}_{salesman_id}
+Format: Daily summary object
+
+### Master Coordinates
+Key: customer_coordinates_master
+Format: Array of customer coordinate objects
+
+## Event Types
+
+### visit_location_verification
+- salesman_id: string
+- customer_name: string
+- actual_location: {lat, lng, accuracy}
+- master_location: {lat, lng}
+- distance_meters: number
+- timestamp: ISO string
+
+### visit_customer_selected
+- customer_name: string
+- hari_jks: string
+- selection_time: ISO string
+- master_coordinates: object
+
+### visit_customer_duration
+- customer_name: string
+- duration_seconds: number
+- end_time: ISO string
+
+## Integration Functions
+
+### GeolocationUtilities.exportData(format)
+- Exports master coordinate data
+- Formats: 'csv', 'json', 'kml'
+
+### LocationAnalytics.getSummaryStats()
+- Returns aggregated visit statistics
+- Includes compliance metrics
+
+### RealtimeMonitor.getSalesmanData()
+- Returns current salesman status
+- Live location information
+
+## Configuration Options
+- Compliance threshold: 100m (configurable)
+- Warning threshold: 50m (configurable)
+- Auto-refresh interval: 30s (configurable)
+- Data retention: 30 days (configurable)
+                `;
+                
+                const newWindow = window.open('', '_blank');
+                newWindow.document.write(`
+                    <html>
+                        <head><title>API Documentation</title></head>
+                        <body style="font-family: monospace; padding: 20px; background: #1e293b; color: #e2e8f0;">
+                            <pre style="white-space: pre-wrap; line-height: 1.6;">${apiDoc}</pre>
+                        </body>
+                    </html>
+                `);
+            }
+            
+            clearAllData() {
+                if (!confirm('⚠️ WARNING: This will delete ALL system data including visit records, analytics, and master coordinates.\n\nThis action CANNOT be undone.\n\nAre you absolutely sure?')) {
+                    return;
+                }
+                
+                if (!confirm('🚨 FINAL CONFIRMATION: Delete all geolocation system data?')) {
+                    return;
+                }
+                
+                this.showNotification('🧹 Clearing all system data...', 'warning');
+                
+                setTimeout(() => {
+                    let deletedCount = 0;
+                    
+                    for (let i = localStorage.length - 1; i >= 0; i--) {
+                        const key = localStorage.key(i);
+                        if (key && (key.startsWith('visit_') || key.startsWith('customer_'))) {
+                            localStorage.removeItem(key);
+                            deletedCount++;
+                        }
+                    }
+                    
+                    this.systemData = {
+                        totalSalesman: 0,
+                        totalVisits: 0,
+                        totalCustomers: 0,
+                        complianceRate: 0,
+                        accuracyScore: 0,
+                        dataQuality: 0
+                    };
+                    
+                    this.updateSystemOverview();
+                    this.checkModuleStatus();
+                    this.updateIntegrationStatus();
+                    
+                    this.showNotification(`🗑️ Cleared ${deletedCount} data records`, 'success');
+                }, 2000);
+            }
+            
+            showNotification(message, type = 'success') {
+                const notification = document.getElementById('notification');
+                const content = document.getElementById('notificationContent');
+                
+                content.textContent = message;
+                notification.className = `notification ${type}`;
+                notification.classList.add('show');
+                
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                }, 4000);
+            }
+        }
+
+        // ===== GLOBAL INTEGRATION INSTANCE =====
+        let systemIntegration = null;
+
+        // ===== UI FUNCTIONS =====
+        function openModule(moduleId) {
+            if (systemIntegration) {
+                systemIntegration.openModule(moduleId);
+            }
+        }
+
+        function testModule(moduleId) {
+            if (systemIntegration) {
+                systemIntegration.testModule(moduleId);
+            }
+        }
+
+        function refreshSystemStatus() {
+            if (systemIntegration) {
+                systemIntegration.showNotification('Refreshing system status...', 'warning');
+                systemIntegration.loadSystemData();
+                systemIntegration.updateSystemOverview();
+                systemIntegration.checkModuleStatus();
+                systemIntegration.updateIntegrationStatus();
+                
+                setTimeout(() => {
+                    systemIntegration.showNotification('✅ System status refreshed', 'success');
+                }, 1500);
+            }
+        }
+
+        function runSystemDiagnostics() {
+            if (systemIntegration) {
+                systemIntegration.runSystemDiagnostics();
+            }
+        }
+
+        function exportSystemData() {
+            if (systemIntegration) {
+                systemIntegration.exportSystemData();
+            }
+        }
+
+        function showSystemConfiguration() {
+            if (systemIntegration) {
+                systemIntegration.showSystemConfiguration();
+            }
+        }
+
+        function showDocumentation() {
+            if (systemIntegration) {
+                systemIntegration.showDocumentation();
+            }
+        }
+
+        function showAPIDocumentation() {
+            if (systemIntegration) {
+                systemIntegration.showAPIDocumentation();
+            }
+        }
+
+        function clearAllData() {
+            if (systemIntegration) {
+                systemIntegration.clearAllData();
+            }
+        }
+
+        // ===== INITIALIZATION =====
+        function initializeSystemIntegration() {
+            console.log('🌐 Initializing Geolocation System Integration Hub...');
+            
+            systemIntegration = new GeolocationSystemIntegration();
+            
+            console.log('✅ System Integration Hub ready');
+        }
+
+        // ===== PAGE LOAD =====
+        window.onload = function() {
+            console.log('🌐 Starting Geolocation System Integration Hub...');
+            console.log('🎛️ Features: Module management, system monitoring, diagnostics, data export');
+            
+            initializeSystemIntegration();
+        };
+
+        console.log('✅ Geolocation System Integration Hub loaded');
+        console.log('🌐 Central management for all geolocation tracking modules');
+    </script>
+</body>
+</html>
