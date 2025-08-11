@@ -623,6 +623,49 @@
             background-color: #f8fafc;
         }
 
+        /* ===== DAP TABLE STYLING ===== */
+        #dapTable {
+            min-width: auto;
+        }
+
+        #dapTable th {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 12px 8px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        #dapTable td {
+            padding: 10px 8px;
+            text-align: center;
+            border-bottom: 1px solid #f1f5f9;
+            vertical-align: middle;
+            font-size: 11px;
+        }
+
+        /* Enhanced summary grid for DAP */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }
+
+        /* 4-item summary grid for DAP */
+        .summary-grid.dap-summary {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+
         .empty-state {
             text-align: center;
             padding: 40px 20px;
@@ -837,11 +880,11 @@
                                         <th>No</th>
                                         <th class="sortable-header" onclick="sortTable('promo')">Promo</th>
                                         <th>SKU</th>
-                                        <th>Gap</th>
-                                        <th>Plan</th>
-                                        <th>MTD</th>
                                         <th>3LM</th>
                                         <th>LM</th>
+                                        <th>Plan</th>
+                                        <th>MTD</th>
+                                        <th>Gap</th>
                                         <th>Rec</th>
                                     </tr>
                                 </thead>
@@ -861,12 +904,79 @@
                 </div>
             </div>
 
-            <!-- DAP Tab Content (simplified) -->
+            <!-- DAP Tab Content -->
             <div id="dapTab" class="tab-content" style="display: none;">
+                <!-- DAP Filter Frame -->
                 <div class="content-section">
-                    <div class="empty-state">
-                        <div class="empty-state-icon">📋</div>
-                        <div>DAP functionality available in full version</div>
+                    <div class="frames-container">
+                        <!-- Left Frame - DAP Filters -->
+                        <div class="frame">
+                            <div class="frame-title">📅 DAP Filters</div>
+                            <div class="filter-item">
+                                <select id="dapHari">
+                                    <option value="">📅 Pilih Hari JKS</option>
+                                </select>
+                            </div>
+                            
+                            <!-- DAP Info Display -->
+                            <div id="dapInfo" class="customer-info">
+                                <div class="customer-info-label">Selected Day:</div>
+                                <div id="dapStatusInfo" class="customer-info-value">-</div>
+                            </div>
+                        </div>
+
+                        <!-- Right Frame - DAP Summary -->
+                        <div class="frame">
+                            <div class="frame-title">📊 DAP Summary</div>
+                            <div class="summary-grid dap-summary">
+                                <div class="summary-item">
+                                    <div class="summary-label">Total Customers</div>
+                                    <div class="summary-value" id="dapTotalCustomers">-</div>
+                                </div>
+                                <div class="summary-item">
+                                    <div class="summary-label">Total BE MTD</div>
+                                    <div class="summary-value" id="dapTotalBE">-</div>
+                                </div>
+                                <div class="summary-item">
+                                    <div class="summary-label">Total A.MTD</div>
+                                    <div class="summary-value" id="dapTotalActual">-</div>
+                                </div>
+                                <div class="summary-item">
+                                    <div class="summary-label">Total Gap</div>
+                                    <div class="summary-value" id="dapTotalGap">-</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DAP Table Section -->
+                <div class="table-section">
+                    <div class="section-title">Daily Activity Plan (DAP) :</div>
+                    <div class="table-wrapper">
+                        <div class="table-container">
+                            <table id="dapTable">
+                                <thead>
+                                    <tr>
+                                        <th>No</th>
+                                        <th>Nama Pelanggan</th>
+                                        <th>BE MTD</th>
+                                        <th>A.MTD</th>
+                                        <th>Gap</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dapTableBody">
+                                    <tr>
+                                        <td colspan="5">
+                                            <div class="empty-state">
+                                                <div class="empty-state-icon">📋</div>
+                                                <div>Pilih Hari JKS untuk melihat DAP</div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1541,7 +1651,236 @@ Open in Google Maps?
             }
         }
 
-        // ===== TABLE FUNCTIONS (from visit-backup.html) =====
+        // ===== DAP (Daily Activity Plan) FUNCTIONS - REAL DATA FROM d.details.json =====
+        let currentDAPData = [];
+
+        // Format currency to Indonesian format with Jt/Rb
+        function formatCurrency(value) {
+            if (!value || value === 0) return '0';
+            
+            const absValue = Math.abs(value);
+            let formatted = '';
+            
+            if (absValue >= 1000000) {
+                // Jutaan - format with Jt
+                formatted = (value / 1000000).toFixed(2).replace(/\.?0+$/, '') + ' Jt';
+            } else if (absValue >= 1000) {
+                // Ribuan - format with Rb  
+                formatted = (value / 1000).toFixed(0).replace(/\.?0+$/, '') + ' Rb';
+            } else {
+                // Less than 1000
+                formatted = value.toFixed(0);
+            }
+            
+            return formatted;
+        }
+
+        function getDAPDataFromDetails(hariJKS) {
+            if (!hariJKS || detailsData.length === 0) {
+                return [];
+            }
+            
+            console.log(`🔍 Looking for DAP data for Hari JKS: ${hariJKS}`);
+            console.log(`📊 Total detailsData records: ${detailsData.length}`);
+            
+            // Filter data from d.details.json based on "Hari JKS" column (case sensitive)
+            const filteredData = detailsData.filter(item => {
+                const itemHariJKS = (item['Hari JKS'] || '').toString().trim();
+                return itemHariJKS === hariJKS; // Exact match, case sensitive
+            });
+            
+            console.log(`📦 Found ${filteredData.length} records for Hari JKS: ${hariJKS}`);
+            
+            if (filteredData.length > 0) {
+                console.log('📋 Sample DAP record structure:', filteredData[0]);
+            }
+            
+            // Group by customer name and sum the values
+            const customerGroups = {};
+            
+            filteredData.forEach(item => {
+                const customerName = item['Nama Pelanggan'] || 'Unknown Customer';
+                const beMTD = parseFloat(item['BE MTD']) || 0;
+                const actualMTD = parseFloat(item['A.MTD']) || 0;
+                
+                if (!customerGroups[customerName]) {
+                    customerGroups[customerName] = {
+                        nama_pelanggan: customerName,
+                        be_mtd: 0,
+                        a_mtd: 0,
+                        gap: 0
+                    };
+                }
+                
+                customerGroups[customerName].be_mtd += beMTD;
+                customerGroups[customerName].a_mtd += actualMTD;
+            });
+            
+            // Calculate gaps and convert to array
+            const dapData = Object.values(customerGroups).map(customer => {
+                customer.gap = customer.a_mtd - customer.be_mtd; // A.MTD - BE MTD
+                return customer;
+            });
+            
+            // Sort by customer name
+            dapData.sort((a, b) => a.nama_pelanggan.localeCompare(b.nama_pelanggan));
+            
+            console.log(`✅ Processed ${dapData.length} unique customers for DAP`);
+            return dapData;
+        }
+
+        function updateDAPTable() {
+            const dapHariSelect = document.getElementById('dapHari');
+            const dapTableBody = document.getElementById('dapTableBody');
+            
+            if (!dapHariSelect || !dapTableBody) return;
+            
+            if (!dapHariSelect.value) {
+                dapTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5">
+                            <div class="empty-state">
+                                <div class="empty-state-icon">📋</div>
+                                <div>Pilih Hari JKS untuk melihat DAP</div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                currentDAPData = [];
+                updateDAPSummary([]);
+                return;
+            }
+            
+            // Get real DAP data from d.details.json
+            const selectedHari = dapHariSelect.value.trim();
+            const dapData = getDAPDataFromDetails(selectedHari);
+            
+            currentDAPData = dapData;
+            renderDAPTable(dapData);
+            updateDAPSummary(dapData);
+        }
+
+        function renderDAPTable(data) {
+            const dapTableBody = document.getElementById('dapTableBody');
+            
+            if (data.length === 0) {
+                dapTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5">
+                            <div class="empty-state">
+                                <div class="empty-state-icon">📭</div>
+                                <div>Tidak ada data untuk Hari JKS yang dipilih</div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            let html = '';
+            let totalBE = 0, totalActual = 0, totalGap = 0;
+            
+            data.forEach((item, index) => {
+                const beMTD = item.be_mtd || 0;
+                const actualMTD = item.a_mtd || 0;
+                const gap = item.gap || 0;
+                
+                totalBE += beMTD;
+                totalActual += actualMTD;
+                totalGap += gap;
+                
+                // Color coding: Hijau jika Gap > 0, Merah jika Gap < 0
+                const gapClass = gap > 0 ? 'positive' : gap < 0 ? 'negative' : 'neutral';
+                const gapBadgeClass = gap > 0 ? 'gap-positive' : gap < 0 ? 'gap-negative' : 'gap-neutral';
+                
+                html += `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td style="text-align: left; padding-left: 12px;"><strong>${item.nama_pelanggan}</strong></td>
+                        <td class="metric-value">${formatCurrency(beMTD)}</td>
+                        <td class="metric-value">${formatCurrency(actualMTD)}</td>
+                        <td><span class="gap-badge ${gapBadgeClass}">${gap > 0 ? '+' : ''}${formatCurrency(gap)}</span></td>
+                    </tr>
+                `;
+            });
+            
+            // Add summary row
+            const totalGapBadgeClass = totalGap > 0 ? 'gap-positive' : totalGap < 0 ? 'gap-negative' : 'gap-neutral';
+            
+            html += `
+                <tr class="summary-row">
+                    <td></td>
+                    <td><strong>TOTAL</strong></td>
+                    <td><strong>${formatCurrency(totalBE)}</strong></td>
+                    <td><strong>${formatCurrency(totalActual)}</strong></td>
+                    <td><span class="gap-badge ${totalGapBadgeClass}"><strong>${totalGap > 0 ? '+' : ''}${formatCurrency(totalGap)}</strong></span></td>
+                </tr>
+            `;
+            
+            dapTableBody.innerHTML = html;
+        }
+
+        function updateDAPSummary(data) {
+            const dapTotalCustomersElement = document.getElementById('dapTotalCustomers');
+            const dapTotalBEElement = document.getElementById('dapTotalBE');
+            const dapTotalActualElement = document.getElementById('dapTotalActual');
+            const dapTotalGapElement = document.getElementById('dapTotalGap');
+            
+            if (!data || data.length === 0) {
+                dapTotalCustomersElement.textContent = '-';
+                dapTotalBEElement.textContent = '-';
+                dapTotalActualElement.textContent = '-';
+                dapTotalGapElement.textContent = '-';
+                return;
+            }
+            
+            const totalCustomers = data.length;
+            const totalBE = data.reduce((sum, item) => sum + (item.be_mtd || 0), 0);
+            const totalActual = data.reduce((sum, item) => sum + (item.a_mtd || 0), 0);
+            const totalGap = totalActual - totalBE;
+            
+            dapTotalCustomersElement.textContent = totalCustomers;
+            dapTotalBEElement.textContent = formatCurrency(totalBE);
+            dapTotalActualElement.textContent = formatCurrency(totalActual);
+            dapTotalGapElement.textContent = (totalGap > 0 ? '+' : '') + formatCurrency(totalGap);
+            
+            // Update styling: Hijau jika Gap > 0, Merah jika Gap < 0
+            if (totalGap > 0) {
+                dapTotalGapElement.className = 'summary-value positive';
+                dapTotalActualElement.className = 'summary-value positive';
+            } else if (totalGap < 0) {
+                dapTotalGapElement.className = 'summary-value negative';
+                dapTotalActualElement.className = 'summary-value neutral';
+            } else {
+                dapTotalGapElement.className = 'summary-value neutral';
+                dapTotalActualElement.className = 'summary-value neutral';
+            }
+        }
+
+        function populateDAPHari() {
+            const dapHariSelect = document.getElementById('dapHari');
+            if (!dapHariSelect || detailsData.length === 0) return;
+            
+            console.log('🔄 Populating DAP Hari dropdown from d.details.json');
+            
+            dapHariSelect.innerHTML = '<option value="">📅 Pilih Hari JKS</option>';
+            
+            // Get unique "Hari JKS" values from d.details.json (case sensitive)
+            const uniqueHariJKS = [...new Set(detailsData
+                .map(item => item['Hari JKS'])
+                .filter(hari => hari && hari.toString().trim() !== '')
+                .map(hari => hari.toString().trim()) // Keep original case
+            )].sort();
+            
+            console.log(`📅 Found ${uniqueHariJKS.length} unique Hari JKS:`, uniqueHariJKS);
+            
+            uniqueHariJKS.forEach(hari => {
+                const option = document.createElement('option');
+                option.value = hari;
+                option.textContent = hari;
+                dapHariSelect.appendChild(option);
+            });
+        }
         let currentFilteredData = [];
         let sortState = { column: null, direction: 'asc' };
 
@@ -1630,11 +1969,11 @@ Open in Google Maps?
                         <td>${no}</td>
                         <td><span class="promo-tag ${promoClass}">${promo}</span></td>
                         <td><span class="sku-code">${sku}</span></td>
-                        <td><span class="gap-badge ${gapBadgeClass}">${gap > 0 ? '+' : ''}${gap.toFixed(2)}</span></td>
-                        <td class="metric-value">${plan.toFixed(2)}</td>
-                        <td class="metric-value">${mtd.toFixed(2)}</td>
                         <td>${threeLM.toFixed(2)}</td>
                         <td>${lm.toFixed(2)}</td>
+                        <td class="metric-value">${plan.toFixed(2)}</td>
+                        <td class="metric-value">${mtd.toFixed(2)}</td>
+                        <td><span class="gap-badge ${gapBadgeClass}">${gap > 0 ? '+' : ''}${gap.toFixed(2)}</span></td>
                         <td><span class="recommendation">${rekomendasi}</span></td>
                     </tr>
                 `;
@@ -1894,11 +2233,7 @@ Open in Google Maps?
                 const selectedPelanggan = pelangganSelect.value.trim();
                 const selectedHari = hariSelect.value.trim().toUpperCase();
                 
-                // Show customer info
-                customerInfo.style.display = 'block';
-                document.getElementById('customerType').textContent = `${selectedHari} Customer`;
-                
-                // Find customer coordinates
+                // Find customer record to get Channel Group and Project
                 const pelangganRecord = pelangganData.find(item => {
                     const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
                     const itemHari = (item.Hari_Kunjungan || '').toString().trim().toUpperCase();
@@ -1908,6 +2243,18 @@ Open in Google Maps?
                            itemHari === selectedHari &&
                            itemPelanggan.toLowerCase() === selectedPelanggan.toLowerCase();
                 });
+                
+                // Show customer info with proper customer type
+                customerInfo.style.display = 'block';
+                
+                if (pelangganRecord) {
+                    const channelGroup = pelangganRecord['Channel Group'] || 'Unknown';
+                    const project = pelangganRecord.Project || 'Unknown';
+                    document.getElementById('customerType').textContent = `${channelGroup} - ${project}`;
+                } else {
+                    // Fallback if record not found
+                    document.getElementById('customerType').textContent = `${selectedHari} Customer`;
+                }
                 
                 let masterCoordinates = null;
                 if (pelangganRecord && pelangganRecord.Kode_Pelanggan) {
@@ -1925,7 +2272,11 @@ Open in Google Maps?
                 // MOST IMPORTANT: Populate the table regardless of location
                 populateVisitTable(selectedPelanggan);
                 
-                console.log(`👥 Customer selected: ${selectedPelanggan}`, masterCoordinates);
+                console.log(`👥 Customer selected: ${selectedPelanggan}`, {
+                    coordinates: masterCoordinates,
+                    channelGroup: pelangganRecord?.['Channel Group'],
+                    project: pelangganRecord?.Project
+                });
                 
             } else {
                 // Hide customer info and clear table
@@ -1969,6 +2320,10 @@ Open in Google Maps?
             } else if (tabName === 'dap') {
                 document.getElementById('visitTab').style.display = 'none';
                 document.getElementById('dapTab').style.display = 'block';
+                
+                // Initialize DAP data when tab is opened
+                populateDAPHari();
+                updateDAPTable();
             }
         }
 
@@ -1976,6 +2331,24 @@ Open in Google Maps?
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('hari').addEventListener('change', updatePelangganOptions);
             document.getElementById('pelanggan').addEventListener('change', handlePelangganSelection);
+            
+            // DAP event listeners
+            const dapHariSelect = document.getElementById('dapHari');
+            
+            if (dapHariSelect) {
+                dapHariSelect.addEventListener('change', function() {
+                    updateDAPTable();
+                    const dapInfo = document.getElementById('dapInfo');
+                    const dapStatusInfo = document.getElementById('dapStatusInfo');
+                    
+                    if (this.value) {
+                        dapInfo.style.display = 'block';
+                        dapStatusInfo.textContent = `${this.value}`;
+                    } else {
+                        dapInfo.style.display = 'none';
+                    }
+                });
+            }
         });
 
         // ===== NAVIGATION FUNCTIONS =====
@@ -2065,6 +2438,7 @@ Open in Google Maps?
                 console.log('✅ Enhanced visit system with geolocation ready');
                 console.log('📊 Using improved table rendering from visit-backup.html');
                 console.log('🎨 Enhanced styling with promo tags, gap badges, and sortable headers');
+                console.log('📋 DAP now uses REAL data from d.details.json with Hari JKS filtering');
                 
             } catch (error) {
                 console.error('❌ Error loading data:', error);
@@ -2080,11 +2454,12 @@ Open in Google Maps?
             console.log('📱 Starting Enhanced Visit Outlet with Geolocation Tracking...');
             console.log('📍 Features: Real-time location tracking, customer location verification, distance calculation');
             console.log('📊 Table: Enhanced rendering with proper styling and sorting from visit-backup.html');
+            console.log('📋 DAP: Real data from d.details.json filtered by Hari JKS with BE MTD, A.MTD, Gap analysis');
             
             initializeData();
         };
 
-        console.log('✅ Enhanced Visit script with geolocation + improved table from visit-backup.html loaded');
+        console.log('✅ Enhanced Visit script: Geolocation + Real table data + Real DAP from d.details.json loaded');
     </script>
 </body>
 </html>
