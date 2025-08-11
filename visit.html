@@ -946,60 +946,6 @@
         let selectedCustomerName = null;
         let locationUpdateInterval = null;
 
-        // ===== SAMPLE SKU DATA FOR DEMO =====
-        const sampleSKUData = [
-            {
-                promo: "Regular", 
-                sku: "AQUA 600ml", 
-                threeLM: 150, 
-                lastMonth: 180, 
-                plan: 200, 
-                mtd: 165, 
-                gap: 35, 
-                recommendation: "Increase stock"
-            },
-            {
-                promo: "Promo A", 
-                sku: "AQUA 1.5L", 
-                threeLM: 89, 
-                lastMonth: 95, 
-                plan: 120, 
-                mtd: 110, 
-                gap: 10, 
-                recommendation: "On track"
-            },
-            {
-                promo: "Regular", 
-                sku: "AQUA Gallon", 
-                threeLM: 45, 
-                lastMonth: 52, 
-                plan: 60, 
-                mtd: 48, 
-                gap: 12, 
-                recommendation: "Push sales"
-            },
-            {
-                promo: "Promo B", 
-                sku: "AQUA 330ml", 
-                threeLM: 200, 
-                lastMonth: 220, 
-                plan: 250, 
-                mtd: 235, 
-                gap: 15, 
-                recommendation: "Good progress"
-            },
-            {
-                promo: "Regular", 
-                sku: "AQUA 750ml", 
-                threeLM: 75, 
-                lastMonth: 85, 
-                plan: 100, 
-                mtd: 92, 
-                gap: 8, 
-                recommendation: "Almost target"
-            }
-        ];
-
         // ===== ENHANCED ANALYTICS WITH GEOLOCATION =====
         class VisitAnalyticsWithLocation {
             constructor() {
@@ -1649,98 +1595,6 @@ Open in Google Maps?
             }
         }
 
-        // ===== NEW: TABLE POPULATION FUNCTIONS =====
-        function populateVisitTable(customerName) {
-            const tableBody = document.getElementById('tableBody');
-            
-            // Clear existing rows
-            tableBody.innerHTML = '';
-            
-            if (!customerName) {
-                tableBody.innerHTML = `
-                    <tr>
-                        <td colspan="9">
-                            <div class="empty-state">
-                                <div class="empty-state-icon">📊</div>
-                                <div>Pilih pelanggan untuk melihat data SKU</div>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
-            
-            // Populate with sample data (or filter actual data by customer)
-            let dataToShow = sampleSKUData;
-            
-            // Try to get customer-specific data from detailsData if available
-            if (detailsData.length > 0) {
-                const customerSpecificData = detailsData.filter(item => 
-                    item.Nama_Pelanggan && 
-                    item.Nama_Pelanggan.toLowerCase().includes(customerName.toLowerCase())
-                );
-                
-                if (customerSpecificData.length > 0) {
-                    // Use real data if available
-                    dataToShow = customerSpecificData.slice(0, 10).map((item, index) => ({
-                        promo: item.Promo || "Regular",
-                        sku: item.SKU || item.Nama_Barang || `Product ${index + 1}`,
-                        threeLM: item.ThreeLM || Math.floor(Math.random() * 200) + 50,
-                        lastMonth: item.LM || Math.floor(Math.random() * 200) + 50,
-                        plan: item.Plan || Math.floor(Math.random() * 250) + 100,
-                        mtd: item.MTD || Math.floor(Math.random() * 200) + 50,
-                        gap: item.Gap || Math.floor(Math.random() * 50),
-                        recommendation: item.Recommendation || "Monitor"
-                    }));
-                }
-            }
-            
-            // Populate table rows
-            dataToShow.forEach((item, index) => {
-                const gap = parseInt(item.gap);
-                const gapClass = gap > 20 ? 'negative' : gap > 10 ? 'neutral' : 'positive';
-                
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${index + 1}</td>
-                    <td>${item.promo}</td>
-                    <td style="text-align: left; padding-left: 12px;">${item.sku}</td>
-                    <td>${item.threeLM}</td>
-                    <td>${item.lastMonth}</td>
-                    <td>${item.plan}</td>
-                    <td>${item.mtd}</td>
-                    <td class="${gapClass}">${gap}</td>
-                    <td style="text-align: left; padding-left: 8px; font-size: 10px;">${item.recommendation}</td>
-                `;
-                tableBody.appendChild(row);
-            });
-            
-            // Update summary
-            updateSummary(dataToShow);
-            
-            console.log(`📊 Table populated for customer: ${customerName} with ${dataToShow.length} items`);
-        }
-        
-        function updateSummary(data) {
-            if (!data || data.length === 0) {
-                document.getElementById('summaryTarget').textContent = '-';
-                document.getElementById('summaryActual').textContent = '-';
-                document.getElementById('summaryGap').textContent = '-';
-                return;
-            }
-            
-            const totalTarget = data.reduce((sum, item) => sum + parseInt(item.plan || 0), 0);
-            const totalActual = data.reduce((sum, item) => sum + parseInt(item.mtd || 0), 0);
-            const totalGap = totalTarget - totalActual;
-            
-            document.getElementById('summaryTarget').textContent = totalTarget.toLocaleString();
-            document.getElementById('summaryActual').textContent = totalActual.toLocaleString();
-            
-            const gapElement = document.getElementById('summaryGap');
-            gapElement.textContent = totalGap.toLocaleString();
-            gapElement.className = `summary-value ${totalGap > 0 ? 'negative' : totalGap < 0 ? 'positive' : 'neutral'}`;
-        }
-
         // ===== CUSTOMER COORDINATE HELPER =====
         function getCustomerCoordinates(customerName, kodePelanggan) {
             // Find customer in details data by Kode_Pelanggan
@@ -1756,12 +1610,7 @@ Open in Google Maps?
                 };
             }
             
-            // Fallback: Generate demo coordinates near Jakarta
-            return {
-                latitude: -6.2000 + (Math.random() - 0.5) * 0.1,
-                longitude: 106.8000 + (Math.random() - 0.5) * 0.1,
-                source: 'demo_data'
-            };
+            return null;
         }
 
         // ===== UPDATE FUNCTIONS =====
@@ -1799,9 +1648,6 @@ Open in Google Maps?
                 visitAnalytics.endCustomerTracking();
             }
             
-            // Clear table when day changes
-            populateVisitTable(null);
-            
             if (pelangganData.length > 0 && currentSalesmanId && hariSelect.value) {
                 const selectedHari = hariSelect.value.trim().toUpperCase();
                 
@@ -1828,17 +1674,13 @@ Open in Google Maps?
         function handlePelangganSelection() {
             const hariSelect = document.getElementById('hari');
             const pelangganSelect = document.getElementById('pelanggan');
-            const customerInfo = document.getElementById('customerInfo');
             
-            if (pelangganSelect.value && hariSelect.value) {
+            if (visitAnalytics && pelangganSelect.value && hariSelect.value) {
+                // Find customer coordinates
                 const selectedPelanggan = pelangganSelect.value.trim();
                 const selectedHari = hariSelect.value.trim().toUpperCase();
                 
-                // Show customer info
-                customerInfo.style.display = 'block';
-                document.getElementById('customerType').textContent = `${selectedHari} Customer`;
-                
-                // Find customer coordinates
+                // Find Kode_Pelanggan for this customer
                 const pelangganRecord = pelangganData.find(item => {
                     const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
                     const itemHari = (item.Hari_Kunjungan || '').toString().trim().toUpperCase();
@@ -1852,29 +1694,15 @@ Open in Google Maps?
                 let masterCoordinates = null;
                 if (pelangganRecord && pelangganRecord.Kode_Pelanggan) {
                     masterCoordinates = getCustomerCoordinates(selectedPelanggan, pelangganRecord.Kode_Pelanggan);
-                } else {
-                    // Generate demo coordinates
-                    masterCoordinates = getCustomerCoordinates(selectedPelanggan, null);
                 }
                 
                 // Track customer selection with coordinates
-                if (visitAnalytics) {
-                    visitAnalytics.trackCustomerSelection(selectedPelanggan, selectedHari, masterCoordinates);
-                }
-                
-                // MOST IMPORTANT: Populate the table regardless of location
-                populateVisitTable(selectedPelanggan);
+                visitAnalytics.trackCustomerSelection(selectedPelanggan, selectedHari, masterCoordinates);
                 
                 console.log(`👥 Customer selected: ${selectedPelanggan}`, masterCoordinates);
                 
-            } else {
-                // Hide customer info and clear table
-                customerInfo.style.display = 'none';
-                populateVisitTable(null);
-                
-                if (visitAnalytics && !pelangganSelect.value) {
-                    visitAnalytics.endCustomerTracking();
-                }
+            } else if (visitAnalytics && !pelangganSelect.value) {
+                visitAnalytics.endCustomerTracking();
             }
         }
 
@@ -1985,7 +1813,6 @@ Open in Google Maps?
                 showMainContent(true);
                 
                 console.log('✅ Enhanced visit system with geolocation ready');
-                console.log('📊 Table will populate when customer is selected, regardless of location verification');
                 
             } catch (error) {
                 console.error('❌ Error loading data:', error);
@@ -2000,12 +1827,11 @@ Open in Google Maps?
             
             console.log('📱 Starting Enhanced Visit Outlet with Geolocation Tracking...');
             console.log('📍 Features: Real-time location tracking, customer location verification, distance calculation');
-            console.log('📊 FIXED: SKU table will show regardless of location verification status');
             
             initializeData();
         };
 
-        console.log('✅ Enhanced Visit script with geolocation loaded - Table display fixed');
+        console.log('✅ Enhanced Visit script with geolocation loaded');
     </script>
 </body>
 </html>
