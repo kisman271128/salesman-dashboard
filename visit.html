@@ -574,7 +574,83 @@
         .promo-solmed { 
             background: linear-gradient(135deg, #d97706, #f59e0b);
         }
+		
+		/* Highlight untuk SKU yang ada di TPOM */
+		.sku-highlight {
+			background: linear-gradient(135deg, #fef3c7, #fbbf24) !important;
+			color: #92400e !important;
+			font-weight: 700 !important;
+			box-shadow: 0 0 0 2px #f59e0b !important;
+			border-radius: 6px !important;
+			animation: pulse-glow 2s infinite;
+		}
 
+		/* Promo tag untuk POM */
+		.promo-pom { 
+			background: linear-gradient(135deg, #f59e0b, #d97706);
+			color: white;
+			font-weight: 600;
+			text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+			border: 1px solid #d97706;
+		}
+
+		/* Animation untuk highlight effect */
+		@keyframes pulse-glow {
+			0%, 100% { 
+				box-shadow: 0 0 0 2px #f59e0b;
+				transform: scale(1);
+			}
+			50% { 
+				box-shadow: 0 0 0 3px #fbbf24, 0 0 8px rgba(251, 191, 36, 0.3);
+				transform: scale(1.02);
+			}
+		}
+
+		/* Row highlight untuk item POM baru */
+		.pom-new-row {
+			background: linear-gradient(135deg, #fef3c7, #fef9e7) !important;
+			border-left: 4px solid #f59e0b;
+		}
+
+		.pom-new-row:hover {
+			background: linear-gradient(135deg, #fef3c7, #fed7aa) !important;
+		}
+
+		/* Badge untuk menandai item TPOM */
+		.tpom-badge {
+			position: relative;
+		}
+
+		.tpom-badge::after {
+			content: "TPOM";
+			position: absolute;
+			top: -8px;
+			right: -8px;
+			background: #f59e0b;
+			color: white;
+			font-size: 8px;
+			padding: 2px 4px;
+			border-radius: 3px;
+			font-weight: 600;
+			z-index: 10;
+		}
+		
+		// Tambahkan di bagian <style> untuk highlight SKU kuning
+		/*
+		.sku-highlight {
+			background: linear-gradient(135deg, #fef3c7, #fbbf24) !important;
+			color: #92400e !important;
+			font-weight: 700 !important;
+			box-shadow: 0 0 0 2px #f59e0b;
+		}
+
+		.promo-pom { 
+			background: linear-gradient(135deg, #f59e0b, #d97706);
+			color: white;
+			font-weight: 600;
+			text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+		}
+		*/
         .recommendation {
             font-size: 9px;
             color: #64748b;
@@ -767,6 +843,7 @@
                 gap: 8px;
             }
         }
+		
     </style>
 </head>
 <body>
@@ -1014,6 +1091,7 @@
         let salesmanData = [];
         let currentSalesman = '';
         let currentSalesmanId = null;
+		let tpomData = [];
 
         // ===== GEOLOCATION VARIABLES =====
         let currentPosition = null;
@@ -1651,6 +1729,38 @@ Open in Google Maps?
             }
         }
 
+		async function loadTPOMData() {
+			try {
+				console.log('🎯 Loading TPOM data...');
+				const response = await fetch('data/d.tpom.json');
+				if (!response.ok) throw new Error('Failed to load TPOM data');
+				
+				const content = await response.text();
+				tpomData = parseJSONL(content);
+				
+				console.log(`📊 Loaded ${tpomData.length} TPOM records`);
+				
+			} catch (error) {
+				console.error('Error loading TPOM data:', error);
+				tpomData = []; // Set empty array if failed
+			}
+		}
+		
+		function getTPOMDataForSalesman(salesmanName) {
+			if (!salesmanName || tpomData.length === 0) {
+				return [];
+			}
+			
+			// Filter TPOM data berdasarkan nama salesman
+			const filteredTPOM = tpomData.filter(item => {
+				const itemSalesman = (item['Nama Salesman'] || item.salesman || item.nama_salesman || '').toString().trim();
+				return itemSalesman === salesmanName;
+			});
+			
+			console.log(`🎯 Found ${filteredTPOM.length} TPOM records for ${salesmanName}`);
+			return filteredTPOM;
+		}
+		
         // ===== DAP (Daily Activity Plan) FUNCTIONS - REAL DATA FROM d.details.json =====
         let currentDAPData = [];
 
@@ -1929,79 +2039,263 @@ Open in Google Maps?
             }
         }
 
-        function renderTableData(data) {
-            const tableBody = document.getElementById('tableBody');
-            
-            if (data.length === 0) {
-                tableBody.innerHTML = `
-                    <tr>
-                        <td colspan="9">
-                            <div class="empty-state">
-                                <div class="empty-state-icon">📭</div>
-                                <div>Tidak ada data untuk kriteria yang dipilih</div>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
-            
-            let html = '';
-            let totalPlan = 0, totalMTD = 0;
-            
-            data.forEach((item, index) => {
-                const no = index + 1;
-                const promo = item.Promo || "Others";
-                const sku = item.SKU || "N/A";
-                const threeLM = Number(item.Unit3LM) || 0;
-                const lm = Number(item.UnitLM) || 0;
-                const plan = Number(item.Plan) || 0;
-                const mtd = Number(item.UnitMTD) || 0;
-                const gap = Number(item.Gap) || (mtd - plan);
-                const rekomendasi = generateRecommendation(gap, plan, mtd);
-                
-                totalPlan += plan;
-                totalMTD += mtd;
-                
-                const gapClass = gap > 0 ? 'positive' : gap < 0 ? 'negative' : 'neutral';
-                const gapBadgeClass = gap > 0 ? 'gap-positive' : gap < 0 ? 'gap-negative' : 'gap-neutral';
-                const promoClass = `promo-${promo.toLowerCase().replace(/\s+/g, '')}`;
-                
-                html += `
-                    <tr>
-                        <td>${no}</td>
-                        <td><span class="promo-tag ${promoClass}">${promo}</span></td>
-                        <td><span class="sku-code">${sku}</span></td>
-                        <td>${threeLM.toFixed(2)}</td>
-                        <td>${lm.toFixed(2)}</td>
-                        <td class="metric-value">${plan.toFixed(2)}</td>
-                        <td class="metric-value">${mtd.toFixed(2)}</td>
-                        <td><span class="gap-badge ${gapBadgeClass}">${gap > 0 ? '+' : ''}${gap.toFixed(2)}</span></td>
-                        <td><span class="recommendation">${rekomendasi}</span></td>
-                    </tr>
-                `;
-            });
-            
-            const totalGap = totalMTD - totalPlan;
-            const totalGapBadgeClass = totalGap > 0 ? 'gap-positive' : totalGap < 0 ? 'gap-negative' : 'gap-neutral';
-            
-            html += `
-                <tr class="summary-row">
-                    <td></td>
-                    <td><strong>TOTAL</strong></td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                    <td><strong>${totalPlan.toFixed(2)}</strong></td>
-                    <td><strong>${totalMTD.toFixed(2)}</strong></td>
-                    <td><span class="gap-badge ${totalGapBadgeClass}">${totalGap > 0 ? '+' : ''}${totalGap.toFixed(2)}</span></td>
-                    <td>-</td>
-                </tr>
-            `;
-            
-            tableBody.innerHTML = html;
-        }
+		function renderTableData(data) {
+			const tableBody = document.getElementById('tableBody');
+			
+			if (data.length === 0) {
+				tableBody.innerHTML = `
+					<tr>
+						<td colspan="9">
+							<div class="empty-state">
+								<div class="empty-state-icon">📭</div>
+								<div>Tidak ada data untuk kriteria yang dipilih</div>
+							</div>
+						</td>
+					</tr>
+				`;
+				return;
+			}
+			
+			// Dapatkan data TPOM untuk salesman saat ini
+			const tpomDataForSalesman = getTPOMDataForSalesman(currentSalesman);
+			const tpomSKUs = tpomDataForSalesman.map(item => (item.SKU || '').toString().trim());
+			
+			let html = '';
+			let totalPlan = 0, totalMTD = 0;
+			
+			// Render data existing dari d.skupelanggan.json
+			data.forEach((item, index) => {
+				const no = index + 1;
+				const promo = item.Promo || "Others";
+				const sku = item.SKU || "N/A";
+				const threeLM = Number(item.Unit3LM) || 0;
+				const lm = Number(item.UnitLM) || 0;
+				const plan = Number(item.Plan) || 0;
+				const mtd = Number(item.UnitMTD) || 0;
+				const gap = Number(item.Gap) || (mtd - plan);
+				const rekomendasi = generateRecommendation(gap, plan, mtd);
+				
+				totalPlan += plan;
+				totalMTD += mtd;
+				
+				const gapClass = gap > 0 ? 'positive' : gap < 0 ? 'negative' : 'neutral';
+				const gapBadgeClass = gap > 0 ? 'gap-positive' : gap < 0 ? 'gap-negative' : 'gap-neutral';
+				const promoClass = `promo-${promo.toLowerCase().replace(/\s+/g, '')}`;
+				
+				// HIGHLIGHT: Cek apakah SKU ada di TPOM
+				const isTPOMSKU = tpomSKUs.includes(sku);
+				const skuClass = isTPOMSKU ? 'sku-code sku-highlight' : 'sku-code';
+				
+				html += `
+					<tr>
+						<td>${no}</td>
+						<td><span class="promo-tag ${promoClass}">${promo}</span></td>
+						<td><span class="${skuClass}">${sku}</span></td>
+						<td>${threeLM.toFixed(2)}</td>
+						<td>${lm.toFixed(2)}</td>
+						<td class="metric-value">${plan.toFixed(2)}</td>
+						<td class="metric-value">${mtd.toFixed(2)}</td>
+						<td><span class="gap-badge ${gapBadgeClass}">${gap > 0 ? '+' : ''}${gap.toFixed(2)}</span></td>
+						<td><span class="recommendation">${rekomendasi}</span></td>
+					</tr>
+				`;
+			});
+			
+			// TAMBAHAN: Render data TPOM yang belum ada di tabel existing
+			const existingSKUs = data.map(item => (item.SKU || '').toString().trim());
+			const newTPOMItems = tpomDataForSalesman.filter(tpomItem => {
+				const tpomSKU = (tpomItem.SKU || '').toString().trim();
+				return !existingSKUs.includes(tpomSKU);
+			});
+			
+			newTPOMItems.forEach((tpomItem, tpomIndex) => {
+				const no = data.length + tpomIndex + 1;
+				const sku = tpomItem.SKU || "N/A";
+				const plan = Number(tpomItem.Target || tpomItem.target || 0);
+				const mtd = 0; // Default MTD untuk POM baru
+				const gap = mtd - plan;
+				const rekomendasi = generateRecommendation(gap, plan, mtd);
+				
+				totalPlan += plan;
+				totalMTD += mtd;
+				
+				const gapBadgeClass = gap > 0 ? 'gap-positive' : gap < 0 ? 'gap-negative' : 'gap-neutral';
+				
+				html += `
+					<tr style="background-color: #fef3c7;">
+						<td>${no}</td>
+						<td><span class="promo-tag promo-pom">POM</span></td>
+						<td><span class="sku-code sku-highlight">${sku}</span></td>
+						<td>0.00</td>
+						<td>0.00</td>
+						<td class="metric-value">${plan.toFixed(2)}</td>
+						<td class="metric-value">${mtd.toFixed(2)}</td>
+						<td><span class="gap-badge ${gapBadgeClass}">${gap > 0 ? '+' : ''}${gap.toFixed(2)}</span></td>
+						<td><span class="recommendation">${rekomendasi}</span></td>
+					</tr>
+				`;
+			});
+			
+			const totalGap = totalMTD - totalPlan;
+			const totalGapBadgeClass = totalGap > 0 ? 'gap-positive' : totalGap < 0 ? 'gap-negative' : 'gap-neutral';
+			
+			html += `
+				<tr class="summary-row">
+					<td></td>
+					<td><strong>TOTAL</strong></td>
+					<td></td>
+					<td></td>
+					<td></td>
+					<td><strong>${totalPlan.toFixed(2)}</strong></td>
+					<td><strong>${totalMTD.toFixed(2)}</strong></td>
+					<td><span class="gap-badge ${totalGapBadgeClass}">${totalGap > 0 ? '+' : ''}${totalGap.toFixed(2)}</span></td>
+					<td>-</td>
+				</tr>
+			`;
+			
+			tableBody.innerHTML = html;
+			
+			// Log informasi integrasi
+			console.log(`📊 Table rendered: ${data.length} existing + ${newTPOMItems.length} new POM items`);
+			console.log(`🎯 TPOM SKUs highlighted: ${tpomSKUs.length}`);
+		}
 
+		async function initializeData() {
+			try {
+				showLoading(true);
+				
+				console.log('🚀 Starting enhanced data initialization with geolocation...');
+				
+				// Initialize analytics with geolocation
+				visitAnalytics = new VisitAnalyticsWithLocation();
+				
+				console.log('📍 Initializing salesman from URL...');
+				initializeSalesmanFromUrl();
+				
+				console.log('👤 Loading salesman data...');
+				await loadSalesmanData();
+				
+				console.log('🏪 Loading pelanggan data...');
+				await loadPelangganData();
+				
+				console.log('📊 Loading details data...');
+				await loadDetailsData();
+				
+				console.log('🎯 Loading TPOM data...');
+				await loadTPOMData();
+				
+				console.log('✅ All data loaded successfully. Processing hari data...');
+				
+				// ===== PERBAIKAN: Tambahkan error handling untuk bagian ini =====
+				try {
+					// Create hari data from pelanggan data or use hardcoded fallback
+					console.log('🔄 Processing hari data from pelangganData...');
+					console.log(`📊 pelangganData length: ${pelangganData.length}`);
+					console.log(`📍 currentSalesmanId: ${currentSalesmanId}`);
+					
+					if (pelangganData.length > 0 && currentSalesmanId) {
+						console.log('🔍 Filtering hari data for salesman...');
+						
+						const filteredData = pelangganData.filter(item => {
+							const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
+							const match = itemSalesmanId === currentSalesmanId;
+							if (match) {
+								console.log(`✅ Found data for salesman: ${item.Hari_Kunjungan}`);
+							}
+							return match;
+						});
+						
+						console.log(`📦 Filtered data count: ${filteredData.length}`);
+						
+						const uniqueHari = [...new Set(filteredData
+							.map(item => {
+								const hari = normalizeHariFormat(item.Hari_Kunjungan);
+								console.log(`🔄 Processing hari: ${item.Hari_Kunjungan} -> ${hari}`);
+								return hari;
+							})
+							.filter(hari => {
+								const isValid = hari && hari.trim() !== '';
+								console.log(`✅ Hari validation: ${hari} -> ${isValid}`);
+								return isValid;
+							})
+						)];
+						
+						console.log(`📅 Unique hari found: ${uniqueHari.length}`, uniqueHari);
+						
+						if (uniqueHari.length > 0) {
+							hariData = uniqueHari.map(hari => ({ Hari_Kunjungan: hari }));
+							console.log('✅ Hari data created from pelangganData:', hariData);
+						}
+					}
+					
+					// Fallback to hardcoded hari data if no data found
+					if (hariData.length === 0) {
+						console.log('⚠️ No hari data found, using fallback...');
+						hariData = [
+							{ Hari_Kunjungan: 'SENIN' },
+							{ Hari_Kunjungan: 'SELASA' },
+							{ Hari_Kunjungan: 'RABU' },
+							{ Hari_Kunjungan: 'KAMIS' },
+							{ Hari_Kunjungan: 'JUMAT' },
+							{ Hari_Kunjungan: 'SABTU' }
+						];
+						console.log('✅ Fallback hari data created:', hariData);
+					}
+					
+					console.log('🔄 Populating hari dropdown...');
+					// Populate hari dropdown
+					const hariSelect = document.getElementById('hari');
+					if (!hariSelect) {
+						throw new Error('Hari select element not found!');
+					}
+					
+					// Clear existing options first
+					hariSelect.innerHTML = '<option value="">📅 Pilih Hari JKS</option>';
+					
+					hariData.forEach((item, index) => {
+						console.log(`➕ Adding option ${index + 1}: ${item.Hari_Kunjungan}`);
+						const option = document.createElement('option');
+						option.value = item.Hari_Kunjungan;
+						option.textContent = item.Hari_Kunjungan;
+						hariSelect.appendChild(option);
+					});
+					
+					console.log('✅ Hari dropdown populated successfully');
+					
+				} catch (hariError) {
+					console.error('❌ Error processing hari data:', hariError);
+					// Use minimal fallback
+					const hariSelect = document.getElementById('hari');
+					if (hariSelect) {
+						hariSelect.innerHTML = `
+							<option value="">📅 Pilih Hari JKS</option>
+							<option value="SENIN">SENIN</option>
+							<option value="SELASA">SELASA</option>
+							<option value="RABU">RABU</option>
+							<option value="KAMIS">KAMIS</option>
+							<option value="JUMAT">JUMAT</option>
+							<option value="SABTU">SABTU</option>
+						`;
+					}
+				}
+				
+				console.log('🔄 Finishing initialization...');
+				showLoading(false);
+				showMainContent(true);
+				
+				console.log('✅ Enhanced visit system with geolocation ready');
+				console.log('📊 Integrated with TPOM data for SKU highlighting and POM items');
+				console.log('🎯 TPOM features: Yellow highlight for existing SKUs, POM label for new items');
+				console.log('🔗 Data connection: d.skupelanggan.json ↔ d.details.json via Kode_Pelanggan');
+				
+			} catch (error) {
+				console.error('❌ Critical error in initializeData:', error);
+				console.error('❌ Error stack:', error.stack);
+				showLoading(false);
+				showError(true, `Initialization failed: ${error.message}`);
+			}
+		}
+		
         function populateVisitTable(customerName) {
             const hariSelect = document.getElementById('hari');
             
@@ -2433,72 +2727,30 @@ Open in Google Maps?
             }
         }
 
-        // ===== INITIALIZE =====
-        async function initializeData() {
-            try {
-                showLoading(true);
-                
-                console.log('🚀 Starting enhanced data initialization with geolocation...');
-                
-                // Initialize analytics with geolocation
-                visitAnalytics = new VisitAnalyticsWithLocation();
-                
-                initializeSalesmanFromUrl();
-                await loadSalesmanData();
-                await loadPelangganData();
-                await loadDetailsData();
-                
-                // Create hari data from pelanggan data or use hardcoded fallback
-                if (pelangganData.length > 0 && currentSalesmanId) {
-                    const uniqueHari = [...new Set(pelangganData
-                        .filter(item => {
-                            const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
-                            return itemSalesmanId === currentSalesmanId;
-                        })
-                        .map(item => normalizeHariFormat(item.Hari_Kunjungan))
-                        .filter(hari => hari)
-                    )];
-                    
-                    if (uniqueHari.length > 0) {
-                        hariData = uniqueHari.map(hari => ({ Hari_Kunjungan: hari }));
-                    }
-                }
-                
-                // Fallback to hardcoded hari data if no data found
-                if (hariData.length === 0) {
-                    hariData = [
-                        { Hari_Kunjungan: 'SENIN' },
-                        { Hari_Kunjungan: 'SELASA' },
-                        { Hari_Kunjungan: 'RABU' },
-                        { Hari_Kunjungan: 'KAMIS' },
-                        { Hari_Kunjungan: 'JUMAT' },
-                        { Hari_Kunjungan: 'SABTU' }
-                    ];
-                }
-                
-                // Populate hari dropdown
-                const hariSelect = document.getElementById('hari');
-                hariData.forEach(item => {
-                    const option = document.createElement('option');
-                    option.value = item.Hari_Kunjungan;
-                    option.textContent = item.Hari_Kunjungan;
-                    hariSelect.appendChild(option);
-                });
-                
-                showLoading(false);
-                showMainContent(true);
-                
-                console.log('✅ Enhanced visit system with geolocation ready');
-                console.log('📊 Using improved table rendering from visit-backup.html');
-                console.log('🎨 Enhanced styling with promo tags, gap badges, and sortable headers');
-                console.log('📋 DAP now uses REAL data from d.details.json with Hari JKS filtering');
-                
-            } catch (error) {
-                console.error('❌ Error loading data:', error);
-                showLoading(false);
-                showError(true, error.message);
-            }
-        }
+		function debugDataStatus() {
+			console.log('🔍 DEBUG DATA STATUS:');
+			console.log(`👤 currentSalesmanId: ${currentSalesmanId}`);
+			console.log(`👤 currentSalesman: ${currentSalesman}`);
+			console.log(`📊 salesmanData.length: ${salesmanData.length}`);
+			console.log(`🏪 pelangganData.length: ${pelangganData.length}`);
+			console.log(`📋 detailsData.length: ${detailsData.length}`);
+			console.log(`🎯 tpomData.length: ${tpomData.length}`);
+			console.log(`📅 hariData.length: ${hariData.length}`);
+			
+			if (pelangganData.length > 0) {
+				console.log('📋 Sample pelangganData:', pelangganData[0]);
+			}
+			
+			if (currentSalesmanId && pelangganData.length > 0) {
+				const salesmanRecords = pelangganData.filter(item => 
+					(item.szEmployeeId || '').toString().trim() === currentSalesmanId
+				);
+				console.log(`🔍 Records for salesman ${currentSalesmanId}:`, salesmanRecords.length);
+				if (salesmanRecords.length > 0) {
+					console.log('📋 Sample salesman record:', salesmanRecords[0]);
+				}
+			}
+		}
 
         // ===== PAGE LOAD =====
         window.onload = function() {
