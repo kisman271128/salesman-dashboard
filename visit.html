@@ -2243,18 +2243,24 @@ Open in Google Maps?
                            itemHari === selectedHari &&
                            itemPelanggan.toLowerCase() === selectedPelanggan.toLowerCase();
                 });
-                
-                // Show customer info with proper customer type
-                customerInfo.style.display = 'block';
-                
-                if (pelangganRecord) {
-                    const channelGroup = pelangganRecord['Channel Group'] || 'Unknown';
-                    const project = pelangganRecord.Project || 'Unknown';
-                    document.getElementById('customerType').textContent = `${channelGroup} - ${project}`;
-                } else {
-                    // Fallback if record not found
-                    document.getElementById('customerType').textContent = `${selectedHari} Customer`;
+
+                // Get customer type from d.details.json using Kode_Pelanggan
+                let customerTypeText = `${selectedHari} Customer`;
+                if (pelangganRecord && pelangganRecord.Kode_Pelanggan) {
+                    const detailRecord = detailsData.find(item => 
+                        item.Kode_Pelanggan === pelangganRecord.Kode_Pelanggan
+                    );
+                    
+                    if (detailRecord) {
+                        const channelGroup = detailRecord['Channel Group'] || 'Unknown';
+                        const project = detailRecord.Project || 'Unknown';
+                        customerTypeText = `${channelGroup} - ${project}`;
+                    }
                 }
+                
+                // Show customer info
+                customerInfo.style.display = 'block';
+                document.getElementById('customerType').textContent = customerTypeText;
                 
                 let masterCoordinates = null;
                 if (pelangganRecord && pelangganRecord.Kode_Pelanggan) {
