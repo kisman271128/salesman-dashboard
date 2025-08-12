@@ -1655,25 +1655,28 @@ Open in Google Maps?
         let currentDAPData = [];
 
         // Format currency to Indonesian format with Jt/Rb
-        function formatCurrency(value) {
-            if (!value || value === 0) return '0';
-            
-            const absValue = Math.abs(value);
-            let formatted = '';
-            
-            if (absValue >= 1000000) {
-                // Jutaan - format with Jt
-                formatted = (value / 1000000).toFixed(2).replace(/\.?0+$/, '') + ' Jt';
-            } else if (absValue >= 1000) {
-                // Ribuan - format with Rb  
-                formatted = (value / 1000).toFixed(0).replace(/\.?0+$/, '') + ' Rb';
-            } else {
-                // Less than 1000
-                formatted = value.toFixed(0);
-            }
-            
-            return formatted;
-        }
+		function formatCurrency(value) {
+			if (!value || value === 0) return '0';
+			
+			const absValue = Math.abs(value);
+			let formatted = '';
+			
+			if (absValue >= 1000000000) {
+				// Miliar - format with M
+				formatted = (value / 1000000000).toFixed(2).replace(/\.?0+$/, '') + ' M';
+			} else if (absValue >= 1000000) {
+				// Jutaan - format with Jt
+				formatted = (value / 1000000).toFixed(2).replace(/\.?0+$/, '') + ' Jt';
+			} else if (absValue >= 1000) {
+				// Ribuan - format with Rb  
+				formatted = (value / 1000).toFixed(0).replace(/\.?0+$/, '') + ' Rb';
+			} else {
+				// Less than 1000
+				formatted = value.toFixed(0);
+			}
+			
+			return formatted;
+		}
 
         function getDAPDataFromDetails(hariJKS) {
             if (!hariJKS || detailsData.length === 0) {
@@ -2077,38 +2080,82 @@ Open in Google Maps?
             updateSummaryFromTable(currentFilteredData);
         }
 
-        function updateSummaryFromTable(data) {
-            const targetElement = document.getElementById('summaryTarget');
-            const actualElement = document.getElementById('summaryActual');
-            const gapElement = document.getElementById('summaryGap');
-            
-            if (!data || data.length === 0) {
-                targetElement.textContent = '-';
-                actualElement.textContent = '-';
-                gapElement.textContent = '-';
-                gapElement.className = 'summary-value';
-                return;
-            }
-            
-            let totalTarget = 0;
-            let totalActual = 0;
-            
-            data.forEach(item => {
-                totalTarget += Number(item.Plan) || 0;
-                totalActual += Number(item.UnitMTD) || 0;
-            });
-            
-            const totalGap = totalActual - totalTarget;
-            
-            targetElement.textContent = totalTarget.toLocaleString();
-            actualElement.textContent = totalActual.toLocaleString();
-            gapElement.textContent = (totalGap > 0 ? '+' : '') + totalGap.toLocaleString();
-            
-            // Update gap styling
-            gapElement.className = totalGap > 0 ? 'summary-value positive' : 
-                                  totalGap < 0 ? 'summary-value negative' : 
-                                  'summary-value neutral';
-        }
+		// ===== PERBAIKAN HANYA PADA FUNCTION updateSummaryFromTable() =====
+		// Ganti function ini pada visit.html sekitar baris 1150-1180
+
+		function updateSummaryFromTable(data) {
+			const targetElement = document.getElementById('summaryTarget');
+			const actualElement = document.getElementById('summaryActual');
+			const gapElement = document.getElementById('summaryGap');
+			
+			if (!data || data.length === 0) {
+				targetElement.textContent = '-';
+				actualElement.textContent = '-';
+				gapElement.textContent = '-';
+				gapElement.className = 'summary-value';
+				return;
+			}
+			
+			// PERUBAHAN UTAMA: Ambil data Summary dari d.details.json
+			// berdasarkan nama salesman dan pelanggan yang dipilih
+			const hariSelect = document.getElementById('hari');
+			const pelangganSelect = document.getElementById('pelanggan');
+			
+			if (!currentSalesman || !pelangganSelect.value) {
+				targetElement.textContent = '-';
+				actualElement.textContent = '-';
+				gapElement.textContent = '-';
+				gapElement.className = 'summary-value';
+				return;
+			}
+			
+			const selectedPelanggan = pelangganSelect.value.trim();
+			
+			// Filter data dari d.details.json berdasarkan Nama Salesman dan Nama Pelanggan
+			const detailsSummaryData = detailsData.filter(item => {
+				const itemSalesman = (item['szname'] || '').toString().trim();
+				const itemPelanggan = (item['Nama Pelanggan'] || '').toString().trim();
+				
+				return itemSalesman === currentSalesman && 
+					   itemPelanggan.toLowerCase() === selectedPelanggan.toLowerCase();
+			});
+			
+			console.log(`📊 Summary data from d.details.json: ${detailsSummaryData.length} records`);
+			console.log('📋 Sample summary record:', detailsSummaryData[0]);
+			
+			if (detailsSummaryData.length === 0) {
+				targetElement.textContent = '0';
+				actualElement.textContent = '0';
+				gapElement.textContent = '0';
+				gapElement.className = 'summary-value neutral';
+				return;
+			}
+			
+			let totalTarget = 0;
+			let totalActual = 0;
+			let totalGap = 0;
+			
+			// Hitung total dari kolom T.MTD, A.MTD, Gap MTD di d.details.json
+			detailsSummaryData.forEach(item => {
+				totalTarget += Number(item['T.MTD']) || 0;     // Kolom T.MTD
+				totalActual += Number(item['A.MTD']) || 0;     // Kolom A.MTD  
+				totalGap += Number(item['Gap MTD']) || 0;      // Kolom Gap MTD
+			});
+			
+			// Format angka dengan pemisah ribuan
+			targetElement.textContent = formatCurrency(totalTarget);
+			actualElement.textContent = formatCurrency(totalActual); 
+			gapElement.textContent = (totalGap > 0 ? '+' : '') + formatCurrency(totalGap);
+			
+			// Update styling berdasarkan nilai gap
+			if (totalGap > 0) {
+				gapElement.className = 'summary-value positive';
+			} else if (totalGap < 0) {
+				gapElement.className = 'summary-value negative';
+			} else {
+				gapElement.className = 'summary-value neutral';
+			}
+		}
 
         function generateRecommendation(gap, plan, mtd) {
             if (mtd === 0 || mtd === null || mtd === undefined) {
