@@ -182,6 +182,7 @@
             border-radius: 16px;
             overflow: hidden;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            position: relative;
         }
 
         .map-header {
@@ -445,19 +446,70 @@
             bottom: 20px;
             left: 20px;
             background: rgba(255, 255, 255, 0.95);
-            padding: 16px;
             border-radius: 12px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
             z-index: 1000;
             font-size: 12px;
             min-width: 200px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        /* Legend Toggle States */
+        .map-legend.collapsed {
+            transform: translateX(-85%);
+        }
+
+        .map-legend.collapsed .legend-content {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .map-legend.collapsed .legend-toggle {
+            border-radius: 0 8px 8px 0;
+        }
+
+        /* Legend Header with Toggle */
+        .legend-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-radius: 12px 12px 0 0;
+            margin: 0;
         }
 
         .legend-title {
             font-weight: 600;
-            margin-bottom: 12px;
-            color: #1e293b;
             font-size: 14px;
+            margin: 0;
+        }
+
+        .legend-toggle {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .legend-toggle:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
+        }
+
+        .legend-content {
+            padding: 16px;
+            transition: all 0.3s ease;
         }
 
         .legend-section {
@@ -693,6 +745,28 @@
             opacity: 0.5;
         }
 
+        /* Legend Tooltip */
+        .legend-tooltip {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            margin-bottom: 8px;
+        }
+
+        .legend-toggle:hover .legend-tooltip {
+            opacity: 1;
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .control-grid {
@@ -713,6 +787,17 @@
 
             #visitMap {
                 height: 400px;
+            }
+
+            .map-legend {
+                bottom: 10px;
+                left: 10px;
+                min-width: 180px;
+                font-size: 11px;
+            }
+
+            .map-legend.collapsed {
+                transform: translateX(-80%);
             }
         }
     </style>
@@ -868,75 +953,85 @@
                     <div class="map-stats" id="mapStats">Ready to load data</div>
                 </div>
                 <div id="visitMap"></div>
-                <div class="map-legend">
-                    <div class="legend-title">🗺️ Map Legend</div>
-                    
-                    <div class="legend-section">
-                        <div class="legend-section-title">📍 Visit Markers</div>
-                        <div class="legend-item">
-                            <div class="legend-marker marker-perfect"></div>
-                            <span>Perfect Location (≤50m)</span>
-                        </div>
-                        <div class="legend-item">
-                            <div class="legend-marker marker-good"></div>
-                            <span>Good Location (≤100m)</span>
-                        </div>
-                        <div class="legend-item">
-                            <div class="legend-marker marker-warning"></div>
-                            <span>Warning (100-500m)</span>
-                        </div>
-                        <div class="legend-item">
-                            <div class="legend-marker marker-error"></div>
-                            <span>Error (>500m)</span>
-                        </div>
+                
+                <!-- Enhanced Collapsible Map Legend -->
+                <div class="map-legend" id="mapLegend">
+                    <div class="legend-header">
+                        <div class="legend-title">🗺️ Map Legend</div>
+                        <button class="legend-toggle" onclick="toggleMapLegend()" id="legendToggleBtn">
+                            <span id="legendToggleIcon">◀</span>
+                            <div class="legend-tooltip">Hide Legend</div>
+                        </button>
                     </div>
                     
-                    <div class="legend-section">
-                        <div class="legend-section-title">🛣️ Route Elements</div>
-                        <div class="legend-item">
-                            <div class="legend-line route-line"></div>
-                            <span>Visit Route Path</span>
+                    <div class="legend-content" id="legendContent">
+                        <div class="legend-section">
+                            <div class="legend-section-title">📍 Visit Markers</div>
+                            <div class="legend-item">
+                                <div class="legend-marker marker-perfect"></div>
+                                <span>Perfect Location (≤50m)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-marker marker-good"></div>
+                                <span>Good Location (≤100m)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-marker marker-warning"></div>
+                                <span>Warning (100-500m)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-marker marker-error"></div>
+                                <span>Error (>500m)</span>
+                            </div>
                         </div>
-                        <div class="legend-item">
-                            <div class="legend-line connection-line"></div>
-                            <span>Distance Lines</span>
+                        
+                        <div class="legend-section">
+                            <div class="legend-section-title">🛣️ Route Elements</div>
+                            <div class="legend-item">
+                                <div class="legend-line route-line"></div>
+                                <span>Visit Route Path</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-line connection-line"></div>
+                                <span>Distance Lines</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-marker marker-master"></div>
+                                <span>Master Customer Location</span>
+                            </div>
                         </div>
-                        <div class="legend-item">
-                            <div class="legend-marker marker-master"></div>
-                            <span>Master Customer Location</span>
+                        
+                        <div class="legend-section">
+                            <div class="legend-section-title">🏁 Route Markers</div>
+                            <div class="legend-item">
+                                <div class="legend-icon">🏁</div>
+                                <span>Route Start Point</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-icon">🏆</div>
+                                <span>Route End Point</span>
+                            </div>
+                            <div class="legend-item">
+                                <div style="
+                                    width: 20px; 
+                                    height: 20px; 
+                                    border-radius: 50%; 
+                                    background: #667eea; 
+                                    color: white; 
+                                    display: flex; 
+                                    align-items: center; 
+                                    justify-content: center; 
+                                    font-size: 10px; 
+                                    font-weight: bold;
+                                ">1</div>
+                                <span>Visit Sequence Number</span>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="legend-section">
-                        <div class="legend-section-title">🏁 Route Markers</div>
-                        <div class="legend-item">
-                            <div class="legend-icon">🏁</div>
-                            <span>Route Start Point</span>
+                        
+                        <div style="margin-top: 8px; padding: 8px; background: #f0f9ff; border-radius: 6px; border: 1px solid #0ea5e9;">
+                            <div style="font-size: 10px; color: #0369a1; font-weight: 600;">📊 Data Filter:</div>
+                            <div style="font-size: 9px; color: #0369a1;">Locations >150km from Depo excluded</div>
                         </div>
-                        <div class="legend-item">
-                            <div class="legend-icon">🏆</div>
-                            <span>Route End Point</span>
-                        </div>
-                        <div class="legend-item">
-                            <div style="
-                                width: 20px; 
-                                height: 20px; 
-                                border-radius: 50%; 
-                                background: #667eea; 
-                                color: white; 
-                                display: flex; 
-                                align-items: center; 
-                                justify-content: center; 
-                                font-size: 10px; 
-                                font-weight: bold;
-                            ">1</div>
-                            <span>Visit Sequence Number</span>
-                        </div>
-                    </div>
-                    
-                    <div style="margin-top: 8px; padding: 8px; background: #f0f9ff; border-radius: 6px; border: 1px solid #0ea5e9;">
-                        <div style="font-size: 10px; color: #0369a1; font-weight: 600;">📊 Data Filter:</div>
-                        <div style="font-size: 9px; color: #0369a1;">Locations >150km from Depo excluded</div>
                     </div>
                 </div>
             </div>
@@ -1030,6 +1125,42 @@
         let mapMarkers = [];
         let currentLocationData = [];
         let salesmanProfiles = {};
+        let isLegendCollapsed = false;
+
+        // ===== MAP LEGEND FUNCTIONS =====
+        function toggleMapLegend() {
+            const legend = document.getElementById('mapLegend');
+            const toggleIcon = document.getElementById('legendToggleIcon');
+            const tooltip = document.querySelector('.legend-tooltip');
+            
+            isLegendCollapsed = !isLegendCollapsed;
+            
+            if (isLegendCollapsed) {
+                legend.classList.add('collapsed');
+                toggleIcon.innerHTML = '▶';
+                tooltip.textContent = 'Show Legend';
+                console.log('🗺️ Map legend collapsed');
+            } else {
+                legend.classList.remove('collapsed');
+                toggleIcon.innerHTML = '◀';
+                tooltip.textContent = 'Hide Legend';
+                console.log('🗺️ Map legend expanded');
+            }
+        }
+
+        function initializeLegendState() {
+            // Start with legend expanded
+            const legend = document.getElementById('mapLegend');
+            const toggleIcon = document.getElementById('legendToggleIcon');
+            const tooltip = document.querySelector('.legend-tooltip');
+            
+            legend.classList.remove('collapsed');
+            toggleIcon.innerHTML = '◀';
+            tooltip.textContent = 'Hide Legend';
+            isLegendCollapsed = false;
+            
+            console.log('🗺️ Map legend initialized in expanded state');
+        }
 
         // ===== ENHANCED LOCATION ANALYTICS CLASS =====
         class EnhancedLocationAnalytics {
@@ -1049,6 +1180,7 @@
                 
                 this.initializeMap();
                 this.initializeDateInputs();
+                initializeLegendState();
             }
             
             initializeMap() {
@@ -1371,7 +1503,7 @@
                 
                 console.log(`🗺️ Rendered routes for ${Object.keys(salesmanRoutes).length} salesman with ${validLocations.length} valid locations (outliers >150km filtered out)`);
             }
-            -, 
+            
             filterOutlierLocations(locations) {
                 // Reference point: Depo Center
                 const DepoCenter = { lat: -2.1869912738751607, lng: 115.397471857672 };
@@ -2421,13 +2553,10 @@
 
         // ===== PAGE LOAD =====
         window.onload = function() {
-            console.log('🗺️ Starting Enhanced Location Analytics with Salesman Profiles...');
-            console.log('📊 Features: Salesman profiles, compliance filtering, detailed reporting, enhanced visualization');
+            console.log('🗺️ Starting Enhanced Location Analytics with Hideable Map Legend...');
+            console.log('📊 Features: Collapsible legend, salesman profiles, compliance filtering, detailed reporting');
             
             initializeEnhancedAnalytics();
         };
 
-        console.log('✅ Enhanced Location Analytics with Salesman Details loaded');
-    </script>
-</body>
-</html>
+        console.log('✅ Enhanced Location Analytics with Hideable Legend loaded');
