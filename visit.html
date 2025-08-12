@@ -94,6 +94,37 @@
             background: rgba(255, 255, 255, 0.3);
         }
 
+        /* ===== FIREBASE CONNECTION STATUS ===== */
+        .firebase-status {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(16, 185, 129, 0.9);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            z-index: 1001;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .firebase-status.connected {
+            background: rgba(16, 185, 129, 0.9);
+        }
+
+        .firebase-status.disconnected {
+            background: rgba(239, 68, 68, 0.9);
+        }
+
+        .firebase-status.syncing {
+            background: rgba(245, 158, 11, 0.9);
+            animation: pulse 2s infinite;
+        }
+
         /* ===== GEOLOCATION STATUS INDICATORS ===== */
         .location-status {
             position: fixed;
@@ -128,6 +159,27 @@
         @keyframes pulse {
             0%, 100% { opacity: 0.9; }
             50% { opacity: 1; }
+        }
+
+        /* ===== SYNC STATUS INDICATOR ===== */
+        .sync-status {
+            position: fixed;
+            top: 50px;
+            right: 10px;
+            background: rgba(255, 255, 255, 0.95);
+            color: #374151;
+            padding: 8px 12px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            z-index: 999;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e5e7eb;
+            display: none;
+        }
+
+        .sync-status.visible {
+            display: block;
         }
 
         /* ===== LOCATION INFO DISPLAY ===== */
@@ -204,10 +256,7 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* ===== LOCATION VERIFICATION REMOVED ===== */
-        /* Customer location card removed per user request - only alert shown now */
-
-        /* Keep all existing styles from original visit.html */
+        /* ===== REST OF EXISTING STYLES ===== */
         .loading-spinner {
             display: flex;
             justify-content: center;
@@ -536,7 +585,6 @@
             color: #64748b;
         }
 
-        /* ===== ENHANCED TABLE STYLING (from visit-backup.html) ===== */
         .sku-code {
             font-family: 'Courier New', monospace;
             background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
@@ -635,22 +683,6 @@
 			z-index: 10;
 		}
 		
-		// Tambahkan di bagian <style> untuk highlight SKU kuning
-		/*
-		.sku-highlight {
-			background: linear-gradient(135deg, #fef3c7, #fbbf24) !important;
-			color: #92400e !important;
-			font-weight: 700 !important;
-			box-shadow: 0 0 0 2px #f59e0b;
-		}
-
-		.promo-pom { 
-			background: linear-gradient(135deg, #f59e0b, #d97706);
-			color: white;
-			font-weight: 600;
-			text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-		}
-		*/
         .recommendation {
             font-size: 9px;
             color: #64748b;
@@ -848,9 +880,19 @@
 </head>
 <body>
     <div class="container">
+        <!-- Firebase Connection Status -->
+        <div class="firebase-status" id="firebaseStatus">
+            🔄 Connecting Firebase...
+        </div>
+
         <!-- Location Status Indicator -->
         <div class="location-status" id="locationStatus">
             📍 Location Ready
+        </div>
+
+        <!-- Sync Status Indicator -->
+        <div class="sync-status" id="syncStatus">
+            📡 Sync: 0/0 events
         </div>
 
         <div class="detail-header">
@@ -873,9 +915,6 @@
         <div class="location-alert" id="locationAlert">
             <div id="alertMessage"></div>
         </div>
-
-        <!-- Customer Location Verification Card - REMOVED per user request -->
-        <!-- Location verification info now shown only in alert above -->
 
         <!-- Loading State -->
         <div class="loading-spinner" id="loadingSpinner">
@@ -1083,6 +1122,50 @@
     <!-- Leaflet JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 
+    <!-- Firebase SDK -->
+    <script type="module">
+        // ===== FIREBASE CONFIGURATION ===== 
+        // GANTI DENGAN CONFIG FIREBASE ANDA
+        const firebaseConfig = {
+            apiKey: "AIzaSyBxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            authDomain: "your-project.firebaseapp.com", 
+            databaseURL: "https://your-project-default-rtdb.asia-southeast1.firebasedatabase.app/",
+            projectId: "your-project-id",
+            storageBucket: "your-project.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:xxxxxxxxxxxxxxxxxx"
+        };
+
+        // Import Firebase modules
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { 
+            getDatabase, 
+            ref, 
+            push, 
+            set,
+            onValue,
+            serverTimestamp,
+            onDisconnect
+        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+        import {
+            getAuth,
+            signInAnonymously,
+            onAuthStateChanged
+        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+        const auth = getAuth(app);
+
+        // Export to global scope for use in other parts of the app
+        window.firebaseApp = app;
+        window.firebaseDatabase = database;
+        window.firebaseAuth = auth;
+
+        console.log('🔥 Firebase SDK loaded and configured');
+    </script>
+
     <script>
         // ===== GLOBAL VARIABLES =====
         let hariData = [];
@@ -1100,8 +1183,14 @@
         let selectedCustomerName = null;
         let locationUpdateInterval = null;
 
-        // ===== ENHANCED ANALYTICS WITH GEOLOCATION =====
-        class VisitAnalyticsWithLocation {
+        // ===== FIREBASE VARIABLES =====
+        let firebaseUser = null;
+        let isFirebaseConnected = false;
+        let pendingSyncCount = 0;
+        let syncedCount = 0;
+
+        // ===== ENHANCED ANALYTICS WITH FIREBASE INTEGRATION =====
+        class VisitAnalyticsWithFirebase {
             constructor() {
                 this.sessionId = this.generateSessionId();
                 this.sessionStart = Date.now();
@@ -1120,8 +1209,11 @@
             init() {
                 if (this.isInitialized) return;
                 
-                console.log('🚀 Enhanced Visit Analytics with Geolocation initialized');
+                console.log('🚀 Enhanced Visit Analytics with Firebase initialized');
                 this.isInitialized = true;
+                
+                // Setup Firebase authentication
+                this.initializeFirebase();
                 
                 // Setup geolocation
                 this.initializeGeolocation();
@@ -1129,9 +1221,75 @@
                 // Setup unload tracking
                 this.setupUnloadTracking();
             }
+
+            // ===== FIREBASE INITIALIZATION =====
+            async initializeFirebase() {
+                try {
+                    // Sign in anonymously
+                    await signInAnonymously(window.firebaseAuth);
+                    console.log('🔥 Firebase authentication successful');
+
+                    // Listen to auth state changes
+                    onAuthStateChanged(window.firebaseAuth, (user) => {
+                        if (user) {
+                            firebaseUser = user;
+                            this.updateFirebaseStatus('connected');
+                            console.log('👤 Firebase user authenticated:', user.uid);
+                        } else {
+                            firebaseUser = null;
+                            this.updateFirebaseStatus('disconnected');
+                            console.log('❌ Firebase user not authenticated');
+                        }
+                    });
+
+                    // Monitor Firebase connection
+                    const connectedRef = ref(window.firebaseDatabase, '.info/connected');
+                    onValue(connectedRef, (snapshot) => {
+                        isFirebaseConnected = snapshot.val() === true;
+                        if (isFirebaseConnected) {
+                            this.updateFirebaseStatus('connected');
+                            // Sync pending data when connection is restored
+                            this.syncPendingData();
+                        } else {
+                            this.updateFirebaseStatus('disconnected');
+                        }
+                        console.log('🌐 Firebase connection status:', isFirebaseConnected ? 'Connected' : 'Disconnected');
+                    });
+
+                } catch (error) {
+                    console.error('❌ Firebase initialization failed:', error);
+                    this.updateFirebaseStatus('disconnected');
+                }
+            }
+
+            updateFirebaseStatus(status) {
+                const statusElement = document.getElementById('firebaseStatus');
+                
+                if (status === 'connected') {
+                    statusElement.innerHTML = '🔥 Firebase Online';
+                    statusElement.className = 'firebase-status connected';
+                } else if (status === 'disconnected') {
+                    statusElement.innerHTML = '📱 Offline Mode';
+                    statusElement.className = 'firebase-status disconnected';
+                } else if (status === 'syncing') {
+                    statusElement.innerHTML = '📡 Syncing...';
+                    statusElement.className = 'firebase-status syncing';
+                }
+            }
+
+            updateSyncStatus(pending, synced) {
+                const syncElement = document.getElementById('syncStatus');
+                syncElement.textContent = `📡 Sync: ${synced}/${pending + synced} events`;
+                
+                if (pending > 0) {
+                    syncElement.classList.add('visible');
+                } else {
+                    syncElement.classList.remove('visible');
+                }
+            }
             
             generateSessionId() {
-                return 'visit_geo_session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                return 'visit_firebase_session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
             }
             
             setSalesman(salesmanId, salesmanName) {
@@ -1149,7 +1307,7 @@
                 }
                 
                 const today = new Date().toISOString().split('T')[0];
-                const storageKey = `visit_daily_geo_${today}_${this.salesmanId}`;
+                const storageKey = `visit_daily_local_${today}_${this.salesmanId}`;
                 
                 try {
                     const stored = localStorage.getItem(storageKey);
@@ -1180,22 +1338,198 @@
                 };
             }
             
-            saveDailyData() {
+            // ===== FIREBASE DATA SAVING =====
+            async saveDailyData() {
                 if (!this.salesmanId || !this.dailyData) {
                     return;
                 }
                 
                 const today = new Date().toISOString().split('T')[0];
-                const storageKey = `visit_daily_geo_${today}_${this.salesmanId}`;
                 
                 try {
                     this.dailyData.salesman_id = this.salesmanId;
                     this.dailyData.salesman_name = this.salesmanName;
                     this.dailyData.last_updated = new Date().toISOString();
                     
-                    localStorage.setItem(storageKey, JSON.stringify(this.dailyData));
+                    // Try to save to Firebase first
+                    if (isFirebaseConnected && firebaseUser) {
+                        const dailyRef = ref(window.firebaseDatabase, `daily_visits/${this.salesmanId}/${today}`);
+                        await set(dailyRef, {
+                            ...this.dailyData,
+                            firebase_timestamp: serverTimestamp()
+                        });
+                        console.log('🔥 Daily data saved to Firebase');
+                    }
+                    
+                    // Always save to localStorage as backup
+                    const localStorageKey = `visit_daily_local_${today}_${this.salesmanId}`;
+                    localStorage.setItem(localStorageKey, JSON.stringify(this.dailyData));
+                    
                 } catch (error) {
                     console.error('❌ Error saving daily data:', error);
+                    
+                    // Fallback to localStorage only
+                    const localStorageKey = `visit_daily_local_${today}_${this.salesmanId}`;
+                    localStorage.setItem(localStorageKey, JSON.stringify(this.dailyData));
+                }
+            }
+
+            // ===== FIREBASE ANALYTICS EVENT TRACKING =====
+            async track(eventName, eventData = {}) {
+                if (!this.salesmanId) return;
+                
+                const event = {
+                    session_id: this.sessionId,
+                    salesman_id: this.salesmanId,
+                    salesman_name: this.salesmanName,
+                    event_name: eventName,
+                    event_data: eventData,
+                    timestamp: new Date().toISOString(),
+                    location: this.lastKnownPosition ? {
+                        latitude: this.lastKnownPosition.coords.latitude,
+                        longitude: this.lastKnownPosition.coords.longitude,
+                        accuracy: this.lastKnownPosition.coords.accuracy
+                    } : null
+                };
+                
+                try {
+                    // Try to save to Firebase first
+                    if (isFirebaseConnected && firebaseUser) {
+                        this.updateFirebaseStatus('syncing');
+                        
+                        const eventsRef = ref(window.firebaseDatabase, 'visit_events');
+                        const newEventRef = push(eventsRef);
+                        await set(newEventRef, {
+                            ...event,
+                            firebase_timestamp: serverTimestamp()
+                        });
+                        
+                        syncedCount++;
+                        this.updateFirebaseStatus('connected');
+                        console.log(`🔥 Event "${eventName}" saved to Firebase`);
+                        
+                        // Remove from localStorage pending queue if it was there
+                        this.removeFromPendingQueue(event);
+                        
+                    } else {
+                        // Save to localStorage pending queue
+                        this.addToPendingQueue(event);
+                        pendingSyncCount++;
+                    }
+                    
+                    this.updateSyncStatus(pendingSyncCount, syncedCount);
+                    
+                } catch (error) {
+                    console.error('❌ Error saving event to Firebase:', error);
+                    
+                    // Fallback to localStorage pending queue
+                    this.addToPendingQueue(event);
+                    pendingSyncCount++;
+                    this.updateSyncStatus(pendingSyncCount, syncedCount);
+                }
+            }
+
+            addToPendingQueue(event) {
+                try {
+                    const today = new Date().toISOString().split('T')[0];
+                    const queueKey = `visit_pending_${today}_${this.salesmanId}`;
+                    
+                    let pendingEvents = JSON.parse(localStorage.getItem(queueKey) || '[]');
+                    pendingEvents.push(event);
+                    
+                    // Limit queue size
+                    if (pendingEvents.length > 500) {
+                        pendingEvents = pendingEvents.slice(-500);
+                    }
+                    
+                    localStorage.setItem(queueKey, JSON.stringify(pendingEvents));
+                    console.log(`📱 Event "${event.event_name}" queued for sync (${pendingEvents.length} pending)`);
+                    
+                } catch (error) {
+                    console.error('❌ Error adding event to pending queue:', error);
+                }
+            }
+
+            removeFromPendingQueue(syncedEvent) {
+                try {
+                    const today = new Date().toISOString().split('T')[0];
+                    const queueKey = `visit_pending_${today}_${this.salesmanId}`;
+                    
+                    let pendingEvents = JSON.parse(localStorage.getItem(queueKey) || '[]');
+                    
+                    // Remove synced event from queue
+                    pendingEvents = pendingEvents.filter(event => 
+                        !(event.timestamp === syncedEvent.timestamp && 
+                          event.event_name === syncedEvent.event_name)
+                    );
+                    
+                    localStorage.setItem(queueKey, JSON.stringify(pendingEvents));
+                    pendingSyncCount = pendingEvents.length;
+                    
+                } catch (error) {
+                    console.error('❌ Error removing event from pending queue:', error);
+                }
+            }
+
+            // ===== SYNC PENDING DATA WHEN CONNECTION IS RESTORED =====
+            async syncPendingData() {
+                if (!this.salesmanId || !isFirebaseConnected || !firebaseUser) {
+                    return;
+                }
+                
+                try {
+                    const today = new Date().toISOString().split('T')[0];
+                    const queueKey = `visit_pending_${today}_${this.salesmanId}`;
+                    
+                    const pendingEvents = JSON.parse(localStorage.getItem(queueKey) || '[]');
+                    
+                    if (pendingEvents.length === 0) {
+                        console.log('✅ No pending events to sync');
+                        return;
+                    }
+                    
+                    console.log(`🔄 Syncing ${pendingEvents.length} pending events...`);
+                    this.updateFirebaseStatus('syncing');
+                    
+                    let syncedEvents = 0;
+                    for (const event of pendingEvents) {
+                        try {
+                            const eventsRef = ref(window.firebaseDatabase, 'visit_events');
+                            const newEventRef = push(eventsRef);
+                            await set(newEventRef, {
+                                ...event,
+                                firebase_timestamp: serverTimestamp(),
+                                synced_at: new Date().toISOString()
+                            });
+                            
+                            syncedEvents++;
+                            console.log(`✅ Synced event: ${event.event_name}`);
+                            
+                            // Small delay to avoid overwhelming Firebase
+                            await new Promise(resolve => setTimeout(resolve, 100));
+                            
+                        } catch (error) {
+                            console.error(`❌ Failed to sync event: ${event.event_name}`, error);
+                            break; // Stop syncing on error
+                        }
+                    }
+                    
+                    // Update counters
+                    syncedCount += syncedEvents;
+                    pendingSyncCount = pendingEvents.length - syncedEvents;
+                    
+                    // Remove synced events from queue
+                    const remainingEvents = pendingEvents.slice(syncedEvents);
+                    localStorage.setItem(queueKey, JSON.stringify(remainingEvents));
+                    
+                    this.updateFirebaseStatus('connected');
+                    this.updateSyncStatus(pendingSyncCount, syncedCount);
+                    
+                    console.log(`🔄 Sync completed: ${syncedEvents}/${pendingEvents.length} events synced`);
+                    
+                } catch (error) {
+                    console.error('❌ Error syncing pending data:', error);
+                    this.updateFirebaseStatus('disconnected');
                 }
             }
             
@@ -1255,7 +1589,14 @@
                     latitude: position.coords.latitude,
                     longitude: position.coords.longitude,
                     accuracy: position.coords.accuracy,
-                    customer: this.currentCustomer
+                    customer: this.currentCustomer,
+                    distance_to_customer: this.currentCustomer && customerMasterCoordinates ? 
+                        this.calculateDistance(
+                            position.coords.latitude,
+                            position.coords.longitude,
+                            customerMasterCoordinates.latitude,
+                            customerMasterCoordinates.longitude
+                        ) : null
                 });
                 
                 // Verify customer location if customer is selected
@@ -1339,21 +1680,23 @@
                 
                 this.updateLocationVerificationUI(currentPosition, distance);
                 
-                // Track location verification
+                // Track location verification with enhanced data
                 this.track('visit_location_verification', {
                     customer_name: this.currentCustomer,
                     actual_latitude: currentPosition.coords.latitude,
                     actual_longitude: currentPosition.coords.longitude,
                     master_latitude: customerMasterCoordinates.latitude,
                     master_longitude: customerMasterCoordinates.longitude,
-                    distance_meters: distance,
+                    distance_meters: Math.round(distance),
                     accuracy: currentPosition.coords.accuracy,
-                    is_within_range: distance <= 100
+                    is_within_range: distance <= 100,
+                    compliance_status: distance <= 50 ? 'perfect' : 
+                                     distance <= 100 ? 'compliant' : 
+                                     distance <= 500 ? 'warning' : 'non_compliant'
                 });
             }
             
             updateLocationVerificationUI(currentPosition, distance) {
-                // Card UI removed per user request - only show alert now
                 this.showLocationAlert(distance);
             }
             
@@ -1410,7 +1753,8 @@
                     access_time: nowISO,
                     session_start: new Date(this.sessionStart).toISOString(),
                     access_count: this.dailyData.accessCount,
-                    has_location: !!this.lastKnownPosition
+                    has_location: !!this.lastKnownPosition,
+                    firebase_connected: isFirebaseConnected
                 });
             }
             
@@ -1461,7 +1805,7 @@
                 
                 console.log(`👥 Customer selected: ${customerName}`);
                 
-                // Track analytics event with location
+                // Track analytics event with enhanced Firebase data
                 this.track('visit_customer_selected', {
                     customer_name: customerName,
                     hari_jks: hariJKS,
@@ -1472,7 +1816,15 @@
                         longitude: this.lastKnownPosition.coords.longitude,
                         accuracy: this.lastKnownPosition.coords.accuracy
                     } : null,
-                    session_id: this.sessionId
+                    distance_meters: this.lastKnownPosition && masterCoordinates ? 
+                        this.calculateDistance(
+                            this.lastKnownPosition.coords.latitude,
+                            this.lastKnownPosition.coords.longitude,
+                            masterCoordinates.latitude,
+                            masterCoordinates.longitude
+                        ) : null,
+                    session_id: this.sessionId,
+                    firebase_connected: isFirebaseConnected
                 });
                 
                 // Verify location if we have current position
@@ -1513,17 +1865,19 @@
                 
                 this.saveDailyData();
                 
-                // Track analytics event
+                // Track analytics event with enhanced data
                 this.track('visit_customer_duration', {
                     customer_name: this.currentCustomer,
                     duration_seconds: durationSeconds,
+                    duration_minutes: Math.round(durationSeconds / 60),
                     end_time: nowISO,
                     end_location: this.lastKnownPosition ? {
                         latitude: this.lastKnownPosition.coords.latitude,
                         longitude: this.lastKnownPosition.coords.longitude,
                         accuracy: this.lastKnownPosition.coords.accuracy
                     } : null,
-                    session_id: this.sessionId
+                    session_id: this.sessionId,
+                    firebase_connected: isFirebaseConnected
                 });
                 
                 // Clear current tracking
@@ -1546,58 +1900,26 @@
                     
                     this.track('visit_session_end', {
                         session_duration: Date.now() - this.sessionStart,
+                        session_duration_minutes: Math.round((Date.now() - this.sessionStart) / 60000),
                         customers_visited: this.dailyData ? Object.keys(this.dailyData.customers).length : 0,
                         total_duration: this.dailyData ? this.dailyData.totalDuration : 0,
                         final_location: this.lastKnownPosition ? {
                             latitude: this.lastKnownPosition.coords.latitude,
                             longitude: this.lastKnownPosition.coords.longitude,
                             accuracy: this.lastKnownPosition.coords.accuracy
-                        } : null
+                        } : null,
+                        firebase_connected: isFirebaseConnected,
+                        pending_events: pendingSyncCount
                     });
                 });
-            }
-            
-            track(eventName, eventData = {}) {
-                if (!this.salesmanId) return;
-                
-                const event = {
-                    session_id: this.sessionId,
-                    salesman_id: this.salesmanId,
-                    salesman_name: this.salesmanName,
-                    event_name: eventName,
-                    event_data: eventData,
-                    timestamp: new Date().toISOString(),
-                    location: this.lastKnownPosition ? {
-                        latitude: this.lastKnownPosition.coords.latitude,
-                        longitude: this.lastKnownPosition.coords.longitude,
-                        accuracy: this.lastKnownPosition.coords.accuracy
-                    } : null
-                };
-                
-                this.storeAnalyticsEvent(event);
-            }
-            
-            storeAnalyticsEvent(event) {
-                try {
-                    const today = new Date().toISOString().split('T')[0];
-                    const storageKey = `visit_analytics_geo_${today}_${this.salesmanId}`;
-                    let analyticsData = JSON.parse(localStorage.getItem(storageKey) || '[]');
-                    
-                    analyticsData.push(event);
-                    
-                    if (analyticsData.length > 1000) {
-                        analyticsData = analyticsData.slice(-1000);
-                    }
-                    
-                    localStorage.setItem(storageKey, JSON.stringify(analyticsData));
-                } catch (error) {
-                    console.error('❌ Error storing analytics event:', error);
-                }
             }
         }
 
         // ===== INITIALIZE ANALYTICS =====
         let visitAnalytics = null;
+
+        // ===== REST OF THE ORIGINAL FUNCTIONS ===== 
+        // (All the existing utility functions, data loading functions, etc. remain the same)
 
         // ===== UTILITY FUNCTIONS =====
         function checkLoginStatus() {
@@ -2164,10 +2486,10 @@ Open in Google Maps?
 			try {
 				showLoading(true);
 				
-				console.log('🚀 Starting enhanced data initialization with geolocation...');
+				console.log('🚀 Starting enhanced data initialization with Firebase + geolocation...');
 				
-				// Initialize analytics with geolocation
-				visitAnalytics = new VisitAnalyticsWithLocation();
+				// Initialize analytics with Firebase integration
+				visitAnalytics = new VisitAnalyticsWithFirebase();
 				
 				console.log('📍 Initializing salesman from URL...');
 				initializeSalesmanFromUrl();
@@ -2283,10 +2605,10 @@ Open in Google Maps?
 				showLoading(false);
 				showMainContent(true);
 				
-				console.log('✅ Enhanced visit system with geolocation ready');
+				console.log('✅ Enhanced visit system with Firebase + geolocation ready');
+				console.log('🔥 Firebase features: Real-time sync, offline support, analytics tracking');
+				console.log('📍 Location features: GPS tracking, customer verification, distance calculation');
 				console.log('📊 Integrated with TPOM data for SKU highlighting and POM items');
-				console.log('🎯 TPOM features: Yellow highlight for existing SKUs, POM label for new items');
-				console.log('🔗 Data connection: d.skupelanggan.json ↔ d.details.json via Kode_Pelanggan');
 				
 			} catch (error) {
 				console.error('❌ Critical error in initializeData:', error);
@@ -2373,9 +2695,6 @@ Open in Google Maps?
             renderTableData(currentFilteredData);
             updateSummaryFromTable(currentFilteredData);
         }
-
-		// ===== PERBAIKAN HANYA PADA FUNCTION updateSummaryFromTable() =====
-		// Ganti function ini pada visit.html sekitar baris 1150-1180
 
 		function updateSummaryFromTable(data) {
 			const targetElement = document.getElementById('summaryTarget');
@@ -2611,7 +2930,7 @@ Open in Google Maps?
                     masterCoordinates = getCustomerCoordinates(selectedPelanggan, null);
                 }
                 
-                // Track customer selection with coordinates
+                // Track customer selection with coordinates via Firebase
                 if (visitAnalytics) {
                     visitAnalytics.trackCustomerSelection(selectedPelanggan, selectedHari, masterCoordinates);
                 }
@@ -2671,13 +2990,37 @@ Open in Google Maps?
                 // Initialize DAP data when tab is opened
                 populateDAPHari();
                 updateDAPTable();
+                
+                // Track DAP tab access via Firebase
+                if (visitAnalytics) {
+                    visitAnalytics.track('visit_dap_tab_accessed', {
+                        access_time: new Date().toISOString(),
+                        salesman_id: currentSalesmanId,
+                        salesman_name: currentSalesman
+                    });
+                }
             }
         }
 
         // ===== EVENT LISTENERS =====
         document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('hari').addEventListener('change', updatePelangganOptions);
-            document.getElementById('pelanggan').addEventListener('change', handlePelangganSelection);
+            document.getElementById('hari').addEventListener('change', function() {
+                updatePelangganOptions();
+                
+                // Track hari selection via Firebase
+                if (visitAnalytics && this.value) {
+                    visitAnalytics.track('visit_hari_selected', {
+                        hari_jks: this.value,
+                        selection_time: new Date().toISOString()
+                    });
+                }
+            });
+            
+            document.getElementById('pelanggan').addEventListener('change', function() {
+                handlePelangganSelection();
+                
+                // Customer selection is tracked inside handlePelangganSelection via Firebase
+            });
             
             // DAP event listeners
             const dapHariSelect = document.getElementById('dapHari');
@@ -2691,6 +3034,15 @@ Open in Google Maps?
                     if (this.value) {
                         dapInfo.style.display = 'block';
                         dapStatusInfo.textContent = `${this.value}`;
+                        
+                        // Track DAP hari selection via Firebase
+                        if (visitAnalytics) {
+                            visitAnalytics.track('visit_dap_hari_selected', {
+                                hari_jks: this.value,
+                                selection_time: new Date().toISOString(),
+                                customers_count: currentDAPData.length
+                            });
+                        }
                     } else {
                         dapInfo.style.display = 'none';
                     }
@@ -2700,6 +3052,14 @@ Open in Google Maps?
 
         // ===== NAVIGATION FUNCTIONS =====
         function goHome() { 
+            // Track navigation via Firebase
+            if (visitAnalytics) {
+                visitAnalytics.track('visit_navigation', {
+                    destination: 'dashboard',
+                    navigation_time: new Date().toISOString()
+                });
+            }
+            
             window.location.href = 'dashboard.html'; 
         }
         
@@ -2712,6 +3072,14 @@ Open in Google Maps?
         }
         
         function showIncentive() {
+            // Track navigation via Firebase
+            if (visitAnalytics) {
+                visitAnalytics.track('visit_navigation', {
+                    destination: 'incentive',
+                    navigation_time: new Date().toISOString()
+                });
+            }
+            
             if (currentSalesmanId) {
                 window.location.href = `dashboard_insentif_sales.html?id=${currentSalesmanId}`;
             } else {
@@ -2720,6 +3088,14 @@ Open in Google Maps?
         }
         
         function showProfile() {
+            // Track navigation via Firebase
+            if (visitAnalytics) {
+                visitAnalytics.track('visit_navigation', {
+                    destination: 'profile',
+                    navigation_time: new Date().toISOString()
+                });
+            }
+            
             if (currentSalesmanId) {
                 window.location.href = `profile.html?id=${currentSalesmanId}`;
             } else {
@@ -2736,6 +3112,10 @@ Open in Google Maps?
 			console.log(`📋 detailsData.length: ${detailsData.length}`);
 			console.log(`🎯 tpomData.length: ${tpomData.length}`);
 			console.log(`📅 hariData.length: ${hariData.length}`);
+			console.log(`🔥 Firebase connected: ${isFirebaseConnected}`);
+			console.log(`🔥 Firebase user: ${firebaseUser ? firebaseUser.uid : 'null'}`);
+			console.log(`📡 Pending sync count: ${pendingSyncCount}`);
+			console.log(`📡 Synced count: ${syncedCount}`);
 			
 			if (pelangganData.length > 0) {
 				console.log('📋 Sample pelangganData:', pelangganData[0]);
@@ -2756,15 +3136,17 @@ Open in Google Maps?
         window.onload = function() {
             if (!checkLoginStatus()) return;
             
-            console.log('📱 Starting Enhanced Visit Outlet with Geolocation Tracking...');
-            console.log('📍 Features: Real-time location tracking, customer location verification, distance calculation');
-            console.log('📊 Table: Enhanced rendering with proper styling and sorting from visit-backup.html');
-            console.log('📋 DAP: Real data from d.details.json filtered by Hari JKS with BE MTD, A.MTD, Gap analysis');
+            console.log('📱 Starting Enhanced Visit Outlet with Firebase Integration...');
+            console.log('🔥 Features: Firebase real-time sync, offline support with auto-sync');
+            console.log('📍 Features: Real-time location tracking, customer location verification');
+            console.log('📊 Features: Enhanced table rendering with TPOM integration');
+            console.log('📋 Features: Real DAP data from d.details.json with BE MTD analysis');
+            console.log('🎯 Firebase benefits: Manager can monitor real-time, data persisted in cloud');
             
             initializeData();
         };
 
-        console.log('✅ Enhanced Visit script: Geolocation + Real table data + Real DAP from d.details.json loaded');
+        console.log('✅ Enhanced Visit script: Firebase + Geolocation + Real table data + Real DAP loaded');
     </script>
 </body>
 </html>
