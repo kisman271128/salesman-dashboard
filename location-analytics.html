@@ -1,0 +1,2433 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Salesman Route Tracking - Enhanced Analytics</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(180deg, #f8f9ff 0%, #e8ecff 100%);
+            min-height: 100vh;
+            color: #2c3e50;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .header-subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        /* Enhanced Controls */
+        .enhanced-controls {
+            background: white;
+            margin: 16px;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .control-section {
+            margin-bottom: 20px;
+        }
+
+        .control-section h3 {
+            font-size: 14px;
+            color: #4a5568;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .control-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .control-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .control-item label {
+            font-size: 12px;
+            color: #64748b;
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+
+        .control-item select,
+        .control-item input {
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            background: #f8fafc;
+            transition: all 0.3s ease;
+        }
+
+        .control-item select:focus,
+        .control-item input:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        /* Salesman Profile Card */
+        .salesman-profile {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        .salesman-profile.active {
+            display: block;
+        }
+
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .profile-avatar {
+            width: 48px;
+            height: 48px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .profile-info h4 {
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+
+        .profile-info p {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .profile-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+
+        .profile-stat {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px;
+            border-radius: 8px;
+        }
+
+        .profile-stat-value {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+
+        .profile-stat-label {
+            font-size: 10px;
+            opacity: 0.8;
+        }
+
+        /* Map Section */
+        .map-section {
+            margin: 16px;
+        }
+
+        .map-wrapper {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .map-header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .map-title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .map-stats {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        #visitMap {
+            height: 500px;
+            width: 100%;
+        }
+
+        /* Enhanced Statistics */
+        .enhanced-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+            margin: 16px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .stat-header {
+            display: flex;
+            align-items: center;
+            justify-content: between;
+            margin-bottom: 16px;
+        }
+
+        .stat-icon {
+            font-size: 32px;
+            margin-right: 12px;
+        }
+
+        .stat-title {
+            font-size: 14px;
+            color: #64748b;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+
+        .stat-description {
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        .stat-trend {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 8px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .trend-up { color: #10b981; }
+        .trend-down { color: #ef4444; }
+        .trend-neutral { color: #64748b; }
+
+        /* Location List */
+        .location-list-section {
+            margin: 16px;
+        }
+
+        .location-list {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .location-list-header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 16px;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .location-list-content {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .location-item {
+            padding: 16px;
+            border-bottom: 1px solid #f1f5f9;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .location-item:hover {
+            background: #f8fafc;
+        }
+
+        .location-item:last-child {
+            border-bottom: none;
+        }
+
+        .location-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .customer-name {
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+
+        .visit-time {
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        .compliance-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .compliance-perfect {
+            background: #ecfdf5;
+            color: #10b981;
+        }
+
+        .compliance-good {
+            background: #dbeafe;
+            color: #3b82f6;
+        }
+
+        .compliance-warning {
+            background: #fef3c7;
+            color: #f59e0b;
+        }
+
+        .compliance-error {
+            background: #fef2f2;
+            color: #ef4444;
+        }
+
+        .location-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .detail-item {
+            background: #f8fafc;
+            padding: 8px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .detail-label {
+            font-size: 10px;
+            color: #64748b;
+            margin-bottom: 2px;
+        }
+
+        .detail-value {
+            font-size: 12px;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f1f5f9;
+            color: #4a5568;
+            border: 1px solid #e2e8f0;
+        }
+
+        .btn-secondary:hover {
+            background: #e2e8f0;
+        }
+
+        /* Custom Marker Styles */
+        .custom-number-marker {
+            background: transparent !important;
+            border: none !important;
+        }
+        
+        .custom-flag-marker {
+            background: transparent !important;
+            border: none !important;
+        }
+
+        /* Enhanced Map Legend */
+        .map-legend {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 16px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            font-size: 12px;
+            min-width: 200px;
+        }
+
+        .legend-title {
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #1e293b;
+            font-size: 14px;
+        }
+
+        .legend-section {
+            margin-bottom: 12px;
+        }
+
+        .legend-section-title {
+            font-weight: 600;
+            font-size: 11px;
+            color: #4a5568;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+            letter-spacing: 0.5px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .legend-marker {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        .legend-line {
+            width: 20px;
+            height: 3px;
+            border-radius: 2px;
+        }
+
+        .legend-icon {
+            font-size: 16px;
+        }
+
+        .marker-perfect { background: #10b981; }
+        .marker-good { background: #3b82f6; }
+        .marker-warning { background: #f59e0b; }
+        .marker-error { background: #ef4444; }
+        .marker-master { background: #10b981; }
+
+        /* Data Manager Modal */
+        .data-manager-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .data-manager-modal.active {
+            display: flex;
+        }
+
+        .data-manager-content {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .data-manager-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .data-manager-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #64748b;
+            padding: 4px;
+            border-radius: 4px;
+        }
+
+        .close-btn:hover {
+            background: #f1f5f9;
+        }
+
+        .data-info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .data-info-card {
+            background: #f8fafc;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+        }
+
+        .data-info-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+
+        .data-info-label {
+            font-size: 11px;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .data-list {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-bottom: 16px;
+        }
+
+        .data-list-item {
+            padding: 8px 12px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 12px;
+            color: #475569;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .data-list-item:last-child {
+            border-bottom: none;
+        }
+
+        .data-size {
+            font-weight: 600;
+            color: #64748b;
+        }
+
+        .danger-zone {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 16px;
+        }
+
+        .danger-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #dc2626;
+            margin-bottom: 12px;
+        }
+
+        .danger-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .btn-danger {
+            background: #dc2626;
+            color: white;
+            border: 1px solid #dc2626;
+        }
+
+        .btn-danger:hover {
+            background: #b91c1c;
+            border-color: #b91c1c;
+        }
+
+        .btn-warning {
+            background: #f59e0b;
+            color: white;
+            border: 1px solid #f59e0b;
+        }
+
+        .btn-warning:hover {
+            background: #d97706;
+            border-color: #d97706;
+        }
+
+        .route-line { background: linear-gradient(90deg, #667eea, #764ba2); }
+        .connection-line { background: #64748b; }
+
+        /* Loading States */
+        .loading-spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #64748b;
+        }
+
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .control-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .profile-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .enhanced-stats {
+                grid-template-columns: 1fr;
+            }
+
+            .location-details {
+                grid-template-columns: 1fr;
+            }
+
+            #visitMap {
+                height: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🛣️ Salesman Route Tracking Analytics</h1>
+            <div class="header-subtitle">Advanced Route Visualization • Chronological Visit Tracking • Outlier Filtering</div>
+        </div>
+
+        <!-- Enhanced Controls -->
+        <div class="enhanced-controls">
+            <div class="control-section">
+                <h3>🎛️ Analytics Filters</h3>
+                <div class="control-grid">
+                    <div class="control-item">
+                        <label>Date From</label>
+                        <input type="date" id="mapDateFrom">
+                    </div>
+                    <div class="control-item">
+                        <label>Date To</label>
+                        <input type="date" id="mapDateTo">
+                    </div>
+                    <div class="control-item">
+                        <label>Salesman</label>
+                        <select id="mapSalesmanFilter">
+                            <option value="">All Salesman</option>
+                        </select>
+                    </div>
+                    <div class="control-item">
+                        <label>Compliance Filter</label>
+                        <select id="complianceFilter">
+                            <option value="">All Visits</option>
+                            <option value="compliant">Compliant Only</option>
+                            <option value="warning">Warning Only</option>
+                            <option value="non-compliant">Non-Compliant Only</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="btn btn-primary" onclick="loadEnhancedAnalytics()">
+                        🗺️ Load Analytics
+                    </button>
+                    <button class="btn btn-secondary" onclick="exportDetailedReport()">
+                        📊 Export Report
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearAnalytics()">
+                        🧹 Clear Data
+                    </button>
+                    <button class="btn btn-secondary" onclick="showDataManager()" style="background: #fef3c7; color: #92400e; border-color: #f59e0b;">
+                        🗂️ Data Manager
+                    </button>
+                </div>
+            </div>
+
+            <!-- Salesman Profile Card -->
+            <div class="salesman-profile" id="salesmanProfile">
+                <div class="profile-header">
+                    <div class="profile-avatar">👤</div>
+                    <div class="profile-info">
+                        <h4 id="profileName">Salesman Name</h4>
+                        <p id="profileDetails">ID: - | Active since: -</p>
+                    </div>
+                </div>
+                <div class="profile-stats">
+                    <div class="profile-stat">
+                        <div class="profile-stat-value" id="profileVisits">-</div>
+                        <div class="profile-stat-label">Visits</div>
+                    </div>
+                    <div class="profile-stat">
+                        <div class="profile-stat-value" id="profileCompliance">-</div>
+                        <div class="profile-stat-label">Compliance</div>
+                    </div>
+                    <div class="profile-stat">
+                        <div class="profile-stat-value" id="profileCustomers">-</div>
+                        <div class="profile-stat-label">Customers</div>
+                    </div>
+                    <div class="profile-stat">
+                        <div class="profile-stat-value" id="profileAccuracy">-</div>
+                        <div class="profile-stat-label">Avg Distance</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Enhanced Statistics -->
+        <div class="enhanced-stats">
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div>
+                        <div class="stat-icon">📍</div>
+                        <div class="stat-title">Total Visits</div>
+                    </div>
+                </div>
+                <div class="stat-value" id="totalVisits">-</div>
+                <div class="stat-description">Location tracked visits</div>
+                <div class="stat-trend trend-neutral" id="visitsChange">
+                    📊 Today's data
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div>
+                        <div class="stat-icon">✅</div>
+                        <div class="stat-title">Compliance Rate</div>
+                    </div>
+                </div>
+                <div class="stat-value" id="complianceRate">-</div>
+                <div class="stat-description">Visits within 100m radius</div>
+                <div class="stat-trend trend-up" id="complianceChange">
+                    ↗️ Good compliance
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div>
+                        <div class="stat-icon">📏</div>
+                        <div class="stat-title">Avg Distance</div>
+                    </div>
+                </div>
+                <div class="stat-value" id="avgDistance">-</div>
+                <div class="stat-description">Average distance from target</div>
+                <div class="stat-trend trend-neutral" id="distanceChange">
+                    📍 Location accuracy
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div>
+                        <div class="stat-icon">⚠️</div>
+                        <div class="stat-title">Alerts</div>
+                    </div>
+                </div>
+                <div class="stat-value" id="alertCount">-</div>
+                <div class="stat-description">Distance warnings issued</div>
+                <div class="stat-trend trend-down" id="alertChange">
+                    ⚠️ Monitor required
+                </div>
+            </div>
+        </div>
+
+                <!-- Map Container -->
+        <div class="map-section">
+            <div class="map-wrapper">
+                <div class="map-header">
+                    <div class="map-title">📍 Salesman Route Tracking Map</div>
+                    <div class="map-stats" id="mapStats">Ready to load data</div>
+                </div>
+                <div id="visitMap"></div>
+                <div class="map-legend">
+                    <div class="legend-title">🗺️ Map Legend</div>
+                    
+                    <div class="legend-section">
+                        <div class="legend-section-title">📍 Visit Markers</div>
+                        <div class="legend-item">
+                            <div class="legend-marker marker-perfect"></div>
+                            <span>Perfect Location (≤50m)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-marker marker-good"></div>
+                            <span>Good Location (≤100m)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-marker marker-warning"></div>
+                            <span>Warning (100-500m)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-marker marker-error"></div>
+                            <span>Error (>500m)</span>
+                        </div>
+                    </div>
+                    
+                    <div class="legend-section">
+                        <div class="legend-section-title">🛣️ Route Elements</div>
+                        <div class="legend-item">
+                            <div class="legend-line route-line"></div>
+                            <span>Visit Route Path</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-line connection-line"></div>
+                            <span>Distance Lines</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-marker marker-master"></div>
+                            <span>Master Customer Location</span>
+                        </div>
+                    </div>
+                    
+                    <div class="legend-section">
+                        <div class="legend-section-title">🏁 Route Markers</div>
+                        <div class="legend-item">
+                            <div class="legend-icon">🏁</div>
+                            <span>Route Start Point</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-icon">🏆</div>
+                            <span>Route End Point</span>
+                        </div>
+                        <div class="legend-item">
+                            <div style="
+                                width: 20px; 
+                                height: 20px; 
+                                border-radius: 50%; 
+                                background: #667eea; 
+                                color: white; 
+                                display: flex; 
+                                align-items: center; 
+                                justify-content: center; 
+                                font-size: 10px; 
+                                font-weight: bold;
+                            ">1</div>
+                            <span>Visit Sequence Number</span>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 8px; padding: 8px; background: #f0f9ff; border-radius: 6px; border: 1px solid #0ea5e9;">
+                        <div style="font-size: 10px; color: #0369a1; font-weight: 600;">📊 Data Filter:</div>
+                        <div style="font-size: 9px; color: #0369a1;">Locations >150km from Jakarta excluded</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Location List -->
+        <div class="location-list-section">
+            <div class="location-list">
+                <div class="location-list-header">
+                    📋 Detailed Visit Analysis
+                </div>
+                <div class="location-list-content" id="locationListContent">
+                    <div class="empty-state">
+                        <div class="empty-icon">📍</div>
+                        <div>Load analytics data to see detailed visit information</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Manager Modal -->
+    <div class="data-manager-modal" id="dataManagerModal">
+        <div class="data-manager-content">
+            <div class="data-manager-header">
+                <div class="data-manager-title">🗂️ Visit Data Manager</div>
+                <button class="close-btn" onclick="closeDataManager()">×</button>
+            </div>
+
+            <div class="data-info-grid">
+                <div class="data-info-card">
+                    <div class="data-info-value" id="totalDataKeys">-</div>
+                    <div class="data-info-label">Total Records</div>
+                </div>
+                <div class="data-info-card">
+                    <div class="data-info-value" id="totalDataSize">-</div>
+                    <div class="data-info-label">Storage Used</div>
+                </div>
+                <div class="data-info-card">
+                    <div class="data-info-value" id="uniqueSalesman">-</div>
+                    <div class="data-info-label">Salesman</div>
+                </div>
+                <div class="data-info-card">
+                    <div class="data-info-value" id="dateRange">-</div>
+                    <div class="data-info-label">Date Range</div>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 16px;">
+                <h4 style="font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 8px;">📋 Stored Data Keys</h4>
+                <div class="data-list" id="dataKeysList">
+                    <div style="padding: 20px; text-align: center; color: #64748b;">Loading data...</div>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                <button class="btn btn-secondary" onclick="exportAllData()" style="flex: 1;">
+                    📤 Export All Data
+                </button>
+                <button class="btn btn-secondary" onclick="refreshDataManager()" style="flex: 1;">
+                    🔄 Refresh View
+                </button>
+            </div>
+
+            <div class="danger-zone">
+                <div class="danger-title">⚠️ Danger Zone - Data Deletion</div>
+                <div style="font-size: 12px; color: #7f1d1d; margin-bottom: 12px;">
+                    Warning: These actions cannot be undone. Consider exporting data before deletion.
+                </div>
+                <div class="danger-buttons">
+                    <button class="btn btn-warning" onclick="clearOldData()">
+                        🗑️ Clear Old Data (>7 days)
+                    </button>
+                    <button class="btn btn-warning" onclick="clearSelectedSalesman()">
+                        👤 Clear Selected Salesman
+                    </button>
+                    <button class="btn btn-danger" onclick="clearAllVisitData()">
+                        💥 Clear All Visit Data
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+    <script>
+        // ===== GLOBAL VARIABLES =====
+        let visitMap = null;
+        let mapMarkers = [];
+        let currentLocationData = [];
+        let salesmanProfiles = {};
+
+        // ===== ENHANCED LOCATION ANALYTICS CLASS =====
+        class EnhancedLocationAnalytics {
+            constructor() {
+                this.visitLocations = [];
+                this.salesmanData = {};
+                this.complianceStats = {};
+                this.isInitialized = false;
+                
+                this.init();
+            }
+            
+            init() {
+                if (this.isInitialized) return;
+                console.log('🚀 Enhanced Location Analytics initialized');
+                this.isInitialized = true;
+                
+                this.initializeMap();
+                this.initializeDateInputs();
+            }
+            
+            initializeMap() {
+                visitMap = L.map('visitMap').setView([-6.2088, 106.8456], 11);
+                
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors',
+                    maxZoom: 18
+                }).addTo(visitMap);
+                
+                console.log('🗺️ Enhanced map initialized');
+            }
+            
+            initializeDateInputs() {
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById('mapDateFrom').value = today;
+                document.getElementById('mapDateTo').value = today;
+            }
+            
+            loadAnalyticsData(dateFrom, dateTo, salesmanFilter = '', complianceFilter = '') {
+                this.visitLocations = [];
+                this.salesmanData = {};
+                
+                console.log(`🔍 Loading DEDUPLICATED analytics: ${dateFrom} to ${dateTo}, salesman: ${salesmanFilter || 'all'}`);
+                console.log(`📋 Deduplication Logic: 1 customer = 1 record per visit session (no repeats)`);
+                
+                let currentDate = new Date(dateFrom);
+                const endDate = new Date(dateTo);
+                
+                while (currentDate <= endDate) {
+                    const dateStr = currentDate.toISOString().split('T')[0];
+                    this.loadDataForDate(dateStr, salesmanFilter, complianceFilter);
+                    currentDate.setDate(currentDate.getDate() + 1);
+                }
+                
+                this.calculateAdvancedStats();
+                currentLocationData = this.visitLocations;
+                
+                // Calculate deduplication summary
+                const totalCustomerVisits = this.visitLocations.length;
+                const uniqueCustomers = new Set(this.visitLocations.map(v => `${v.salesman_id}_${v.customer_name}`)).size;
+                const salesmanCount = Object.keys(this.salesmanData).length;
+                
+                console.log(`✅ DEDUPLICATION SUMMARY:`);
+                console.log(`   📊 Total unique visits: ${totalCustomerVisits}`);
+                console.log(`   👥 Unique customer-salesman pairs: ${uniqueCustomers}`);
+                console.log(`   📈 Active salesman: ${salesmanCount}`);
+                console.log(`   🚫 Duplicate location verifications: REMOVED`);
+                console.log(`   ✅ Result: Clean 1-record-per-customer-visit data`);
+                
+                return this.visitLocations;
+            }
+            
+            loadDataForDate(dateStr, salesmanFilter, complianceFilter) {
+                const analyticsPattern = `visit_analytics_geo_${dateStr}_`;
+                const dailyPattern = `visit_daily_geo_${dateStr}_`;
+                
+                // First, try to load from daily aggregated data (more accurate)
+                this.loadFromDailyData(dateStr, salesmanFilter, complianceFilter);
+                
+                // If no daily data found, fallback to analytics events (deduplicated)
+                if (this.visitLocations.length === 0) {
+                    this.loadFromAnalyticsEvents(dateStr, salesmanFilter, complianceFilter);
+                }
+            }
+            
+            loadFromDailyData(dateStr, salesmanFilter, complianceFilter) {
+                const dailyPattern = `visit_daily_geo_${dateStr}_`;
+                
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    
+                    if (key && key.startsWith(dailyPattern)) {
+                        const salesmanId = key.replace(dailyPattern, '');
+                        
+                        if (salesmanFilter && salesmanId !== salesmanFilter) {
+                            continue;
+                        }
+                        
+                        try {
+                            const dailyData = JSON.parse(localStorage.getItem(key) || '{}');
+                            
+                            if (dailyData.customers && Object.keys(dailyData.customers).length > 0) {
+                                // Process customer data from daily aggregation
+                                Object.values(dailyData.customers).forEach(customerData => {
+                                    if (customerData.sessions && customerData.sessions.length > 0) {
+                                        // Get the latest complete session for this customer
+                                        const latestSession = customerData.sessions
+                                            .filter(session => session.start_location && session.end) // Complete sessions only
+                                            .sort((a, b) => new Date(b.start) - new Date(a.start))[0];
+                                        
+                                        if (latestSession && latestSession.start_location) {
+                                            const distance = this.calculateDistance(
+                                                latestSession.start_location.latitude,
+                                                latestSession.start_location.longitude,
+                                                customerData.master_coordinates ? customerData.master_coordinates.latitude : 0,
+                                                customerData.master_coordinates ? customerData.master_coordinates.longitude : 0
+                                            );
+                                            
+                                            // Apply compliance filter
+                                            if (complianceFilter) {
+                                                if (complianceFilter === 'compliant' && distance > 100) return;
+                                                if (complianceFilter === 'warning' && (distance <= 100 || distance > 500)) return;
+                                                if (complianceFilter === 'non-compliant' && distance <= 500) return;
+                                            }
+                                            
+                                            const locationPoint = {
+                                                salesman_id: salesmanId,
+                                                salesman_name: dailyData.salesman_name || `Salesman ${salesmanId}`,
+                                                customer_name: customerData.name,
+                                                actual_location: latestSession.start_location,
+                                                master_location: customerData.master_coordinates,
+                                                distance: distance,
+                                                timestamp: latestSession.start,
+                                                date: dateStr,
+                                                accuracy: latestSession.start_location.accuracy || 0,
+                                                compliance_status: this.getComplianceStatus(distance),
+                                                session_duration: latestSession.duration || 0,
+                                                visit_count: customerData.visitCount || 1
+                                            };
+                                            
+                                            this.visitLocations.push(locationPoint);
+                                            this.updateSalesmanData(salesmanId, dailyData.salesman_name, locationPoint);
+                                        }
+                                    }
+                                });
+                            }
+                            
+                        } catch (error) {
+                            console.error(`❌ Error loading daily data for ${key}:`, error);
+                        }
+                    }
+                }
+                
+                console.log(`📊 Loaded ${this.visitLocations.length} visits from daily aggregated data`);
+            }
+            
+            loadFromAnalyticsEvents(dateStr, salesmanFilter, complianceFilter) {
+                const analyticsPattern = `visit_analytics_geo_${dateStr}_`;
+                const visitMap = new Map(); // To deduplicate: salesman_id + customer_name = unique visit
+                
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    
+                    if (key && key.startsWith(analyticsPattern)) {
+                        const salesmanId = key.replace(analyticsPattern, '');
+                        
+                        if (salesmanFilter && salesmanId !== salesmanFilter) {
+                            continue;
+                        }
+                        
+                        try {
+                            const analyticsData = JSON.parse(localStorage.getItem(key) || '[]');
+                            
+                            // Only process 'visit_customer_selected' events (start of visit)
+                            const customerSelectedEvents = analyticsData.filter(event => 
+                                event.event_name === 'visit_customer_selected' && 
+                                event.location && 
+                                event.event_data.customer_name
+                            );
+                            
+                            customerSelectedEvents.forEach(event => {
+                                const visitKey = `${salesmanId}_${event.event_data.customer_name}`;
+                                
+                                // Only keep the FIRST visit to each customer per day (deduplicate)
+                                if (!visitMap.has(visitKey)) {
+                                    const distance = event.event_data.distance_meters;
+                                    
+                                    // Apply compliance filter
+                                    if (complianceFilter) {
+                                        if (complianceFilter === 'compliant' && distance > 100) return;
+                                        if (complianceFilter === 'warning' && (distance <= 100 || distance > 500)) return;
+                                        if (complianceFilter === 'non-compliant' && distance <= 500) return;
+                                    }
+                                    
+                                    const locationPoint = {
+                                        salesman_id: salesmanId,
+                                        salesman_name: event.salesman_name || `Salesman ${salesmanId}`,
+                                        customer_name: event.event_data.customer_name,
+                                        actual_location: event.location,
+                                        master_location: event.event_data.master_coordinates,
+                                        distance: distance,
+                                        timestamp: event.timestamp,
+                                        date: dateStr,
+                                        accuracy: event.location.accuracy,
+                                        compliance_status: this.getComplianceStatus(distance),
+                                        session_duration: 0, // Will be calculated if duration event exists
+                                        visit_count: 1
+                                    };
+                                    
+                                    visitMap.set(visitKey, locationPoint);
+                                    this.visitLocations.push(locationPoint);
+                                    this.updateSalesmanData(salesmanId, event.salesman_name, locationPoint);
+                                }
+                            });
+                            
+                        } catch (error) {
+                            console.error(`❌ Error loading analytics for ${key}:`, error);
+                        }
+                    }
+                }
+                
+                console.log(`📊 Loaded ${this.visitLocations.length} deduplicated visits from analytics events`);
+            }
+            
+            updateSalesmanData(salesmanId, salesmanName, locationPoint) {
+                if (!this.salesmanData[salesmanId]) {
+                    this.salesmanData[salesmanId] = {
+                        salesman_name: salesmanName || `Salesman ${salesmanId}`,
+                        visits: [],
+                        customers: new Set(),
+                        compliance_stats: { compliant: 0, warning: 0, error: 0 }
+                    };
+                } else {
+                    // Update salesman name if we get a better one
+                    if (salesmanName && salesmanName !== `Salesman ${salesmanId}`) {
+                        this.salesmanData[salesmanId].salesman_name = salesmanName;
+                    }
+                }
+                
+                this.salesmanData[salesmanId].visits.push(locationPoint);
+                this.salesmanData[salesmanId].customers.add(locationPoint.customer_name);
+                
+                // Update compliance stats
+                if (locationPoint.distance <= 100) {
+                    this.salesmanData[salesmanId].compliance_stats.compliant++;
+                } else if (locationPoint.distance <= 500) {
+                    this.salesmanData[salesmanId].compliance_stats.warning++;
+                } else {
+                    this.salesmanData[salesmanId].compliance_stats.error++;
+                }
+            }
+            
+            calculateDistance(lat1, lon1, lat2, lon2) {
+                if (!lat1 || !lon1 || !lat2 || !lon2) return 0;
+                
+                const R = 6371e3; // Earth's radius in meters
+                const φ1 = lat1 * Math.PI/180;
+                const φ2 = lat2 * Math.PI/180;
+                const Δφ = (lat2-lat1) * Math.PI/180;
+                const Δλ = (lon2-lon1) * Math.PI/180;
+                
+                const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                          Math.cos(φ1) * Math.cos(φ2) *
+                          Math.sin(Δλ/2) * Math.sin(Δλ/2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                
+                return R * c;
+            }
+            
+            getComplianceStatus(distance) {
+                if (distance === undefined) return 'unknown';
+                if (distance <= 50) return 'perfect';
+                if (distance <= 100) return 'good';
+                if (distance <= 500) return 'warning';
+                return 'error';
+            }
+            
+            calculateAdvancedStats() {
+                let totalDistance = 0;
+                let validDistances = 0;
+                let compliantVisits = 0;
+                let totalVisits = this.visitLocations.length;
+                
+                this.visitLocations.forEach(visit => {
+                    if (visit.distance !== undefined) {
+                        totalDistance += visit.distance;
+                        validDistances++;
+                        
+                        if (visit.distance <= 100) {
+                            compliantVisits++;
+                        }
+                    }
+                });
+                
+                this.complianceStats = {
+                    totalVisits: totalVisits,
+                    compliantVisits: compliantVisits,
+                    complianceRate: totalVisits > 0 ? (compliantVisits / totalVisits * 100).toFixed(1) : 0,
+                    averageDistance: validDistances > 0 ? (totalDistance / validDistances).toFixed(0) : 0,
+                    alerts: totalVisits - compliantVisits
+                };
+                
+                console.log('📊 Advanced stats calculated:', this.complianceStats);
+            }
+            
+            renderEnhancedMap() {
+                this.clearMapMarkers();
+                
+                if (this.visitLocations.length === 0) {
+                    console.log('⚠️ No location data to render');
+                    return;
+                }
+                
+                // Filter out outlier locations (>150km from reasonable area)
+                const validLocations = this.filterOutlierLocations(this.visitLocations);
+                
+                if (validLocations.length === 0) {
+                    console.log('⚠️ No valid location data after outlier filtering');
+                    return;
+                }
+                
+                // Group by salesman and sort by timestamp for route visualization
+                const salesmanRoutes = this.groupLocationsBySalesman(validLocations);
+                
+                // Generate colors for different salesman
+                const salesmanColors = this.generateSalesmanColors();
+                
+                // Render routes for each salesman
+                Object.entries(salesmanRoutes).forEach(([salesmanId, salesmanData]) => {
+                    const color = salesmanColors[salesmanId];
+                    this.renderSalesmanRoute(salesmanData, color, salesmanId);
+                });
+                
+                // Fit map bounds to show all valid locations
+                if (mapMarkers.length > 0) {
+                    const group = new L.featureGroup(mapMarkers);
+                    visitMap.fitBounds(group.getBounds().pad(0.1));
+                }
+                
+                console.log(`🗺️ Rendered routes for ${Object.keys(salesmanRoutes).length} salesman with ${validLocations.length} valid locations (outliers >150km filtered out)`);
+            }
+            
+            filterOutlierLocations(locations) {
+                // Reference point: Jakarta center
+                const jakartaCenter = { lat: -6.2088, lng: 106.8456 };
+                const maxDistanceKm = 150; // 150km radius from Jakarta
+                
+                const validLocations = locations.filter(location => {
+                    const distance = this.calculateDistance(
+                        location.actual_location.latitude,
+                        location.actual_location.longitude,
+                        jakartaCenter.lat,
+                        jakartaCenter.lng
+                    );
+                    
+                    const distanceKm = distance / 1000;
+                    const isValid = distanceKm <= maxDistanceKm;
+                    
+                    if (!isValid) {
+                        console.log(`🚫 Filtered outlier: ${location.salesman_name} - ${location.customer_name} (${distanceKm.toFixed(1)}km from Jakarta)`);
+                    }
+                    
+                    return isValid;
+                });
+                
+                console.log(`📊 Location filtering: ${validLocations.length}/${locations.length} locations within 150km radius`);
+                return validLocations;
+            }
+            
+            groupLocationsBySalesman(locations) {
+                const salesmanRoutes = {};
+                
+                locations.forEach(location => {
+                    if (!salesmanRoutes[location.salesman_id]) {
+                        salesmanRoutes[location.salesman_id] = {
+                            salesman_name: location.salesman_name,
+                            visits: []
+                        };
+                    }
+                    salesmanRoutes[location.salesman_id].visits.push(location);
+                });
+                
+                // Sort visits by timestamp for each salesman (chronological route)
+                Object.values(salesmanRoutes).forEach(salesmanData => {
+                    salesmanData.visits.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+                });
+                
+                return salesmanRoutes;
+            }
+            
+            renderSalesmanRoute(salesmanData, color, salesmanId) {
+                const visits = salesmanData.visits;
+                
+                if (visits.length === 0) return;
+                
+                // Create route coordinates for polyline
+                const routeCoordinates = visits.map(visit => [
+                    visit.actual_location.latitude,
+                    visit.actual_location.longitude
+                ]);
+                
+                // Draw route line connecting visits in chronological order
+                if (visits.length > 1) {
+                    const routeLine = L.polyline(routeCoordinates, {
+                        color: color,
+                        weight: 3,
+                        opacity: 0.7,
+                        dashArray: '10, 5'
+                    });
+                    
+                    // Add route popup
+                    routeLine.bindPopup(`
+                        <div style="font-family: 'Segoe UI', sans-serif;">
+                            <h4 style="margin: 0 0 8px 0; color: #1e293b; font-size: 14px;">🛣️ Route Path</h4>
+                            <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>👤 Salesman:</strong> ${salesmanData.salesman_name}</p>
+                            <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>📍 Visits:</strong> ${visits.length} locations</p>
+                            <p style="margin: 0; font-size: 11px; color: #64748b;">Chronological visit order</p>
+                        </div>
+                    `);
+                    
+                    routeLine.addTo(visitMap);
+                    mapMarkers.push(routeLine);
+                }
+                
+                // Add numbered markers for each visit in chronological order
+                visits.forEach((visit, index) => {
+                    this.addChronologicalMarker(visit, index + 1, color, visits.length);
+                    
+                    // Add master location marker if available
+                    if (visit.master_location) {
+                        this.addMasterMarker(visit);
+                        this.addConnectionLine(visit, color);
+                    }
+                });
+                
+                // Add start/end markers for better visualization
+                if (visits.length > 1) {
+                    this.addStartEndMarkers(visits[0], visits[visits.length - 1], color);
+                }
+            }
+            
+            addChronologicalMarker(location, visitNumber, color, totalVisits) {
+                const compliance = this.getComplianceStatus(location.distance);
+                let markerColor = color;
+                
+                // Override color for compliance status
+                if (compliance === 'perfect') markerColor = '#10b981';
+                else if (compliance === 'good') markerColor = '#3b82f6';
+                else if (compliance === 'warning') markerColor = '#f59e0b';
+                else if (compliance === 'error') markerColor = '#ef4444';
+                
+                // Create custom numbered marker
+                const marker = L.circleMarker([location.actual_location.latitude, location.actual_location.longitude], {
+                    radius: 12,
+                    fillColor: markerColor,
+                    color: 'white',
+                    weight: 3,
+                    opacity: 1,
+                    fillOpacity: 0.9
+                });
+                
+                // Add number label
+                const numberIcon = L.divIcon({
+                    className: 'custom-number-marker',
+                    html: `<div style="
+                        background: ${markerColor}; 
+                        color: white; 
+                        border: 3px solid white; 
+                        border-radius: 50%; 
+                        width: 24px; 
+                        height: 24px; 
+                        display: flex; 
+                        align-items: center; 
+                        justify-content: center; 
+                        font-weight: bold; 
+                        font-size: 12px;
+                        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+                    ">${visitNumber}</div>`,
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 12]
+                });
+                
+                const numberedMarker = L.marker([location.actual_location.latitude, location.actual_location.longitude], {
+                    icon: numberIcon
+                });
+                
+                const popupContent = this.createChronologicalPopup(location, visitNumber, totalVisits);
+                numberedMarker.bindPopup(popupContent);
+                
+                numberedMarker.addTo(visitMap);
+                mapMarkers.push(numberedMarker);
+            }
+            
+            createChronologicalPopup(location, visitNumber, totalVisits) {
+                const formattedDistance = location.distance !== undefined ? 
+                    (location.distance < 1000 ? `${Math.round(location.distance)}m` : `${(location.distance/1000).toFixed(2)}km`) : 
+                    'N/A';
+                
+                const visitTime = new Date(location.timestamp).toLocaleTimeString();
+                const sessionDuration = location.session_duration ? 
+                    `${Math.floor(location.session_duration / 60)}:${(location.session_duration % 60).toString().padStart(2, '0')}` : 
+                    'N/A';
+                
+                return `
+                    <div style="font-family: 'Segoe UI', sans-serif; min-width: 280px;">
+                        <h4 style="margin: 0 0 8px 0; color: #1e293b; font-size: 14px;">
+                            📍 Visit #${visitNumber} of ${totalVisits}
+                        </h4>
+                        <div style="background: #f8fafc; padding: 8px; border-radius: 6px; margin-bottom: 8px;">
+                            <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>👤 Salesman:</strong> ${location.salesman_name}</p>
+                            <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>🏪 Customer:</strong> ${location.customer_name}</p>
+                            <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>⏰ Time:</strong> ${visitTime}</p>
+                            <p style="margin: 0; font-size: 12px;"><strong>⏱️ Duration:</strong> ${sessionDuration}</p>
+                        </div>
+                        <div style="background: #f1f5f9; padding: 8px; border-radius: 6px; margin-bottom: 8px;">
+                            <p style="margin: 0 0 4px 0; font-size: 11px;"><strong>📍 Coordinates:</strong> ${location.actual_location.latitude.toFixed(6)}, ${location.actual_location.longitude.toFixed(6)}</p>
+                            <p style="margin: 0 0 4px 0; font-size: 11px;"><strong>🎯 Accuracy:</strong> ±${Math.round(location.actual_location.accuracy)}m</p>
+                            <p style="margin: 0; font-size: 11px;"><strong>📏 Distance:</strong> ${formattedDistance}</p>
+                        </div>
+                        <div style="text-align: center; padding: 4px; background: ${this.getComplianceColor(location.compliance_status)}; border-radius: 4px;">
+                            <span style="font-size: 10px; font-weight: 600; color: white; text-transform: uppercase;">
+                                ${this.getComplianceLabel(location.compliance_status)}
+                            </span>
+                        </div>
+                        <p style="margin: 8px 0 0 0; font-size: 10px; color: #64748b; text-align: center;">
+                            ${new Date(location.timestamp).toLocaleDateString()} • Visit sequence: ${visitNumber}
+                        </p>
+                    </div>
+                `;
+            }
+            
+            addStartEndMarkers(startVisit, endVisit, color) {
+                // Start marker (green flag)
+                const startIcon = L.divIcon({
+                    className: 'custom-flag-marker',
+                    html: `<div style="
+                        color: #10b981; 
+                        font-size: 20px;
+                        text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+                    ">🏁</div>`,
+                    iconSize: [20, 20],
+                    iconAnchor: [10, 20]
+                });
+                
+                const startMarker = L.marker([startVisit.actual_location.latitude, startVisit.actual_location.longitude], {
+                    icon: startIcon
+                });
+                
+                startMarker.bindPopup(`
+                    <div style="font-family: 'Segoe UI', sans-serif; text-align: center;">
+                        <h4 style="margin: 0 0 8px 0; color: #10b981;">🏁 Route Start</h4>
+                        <p style="margin: 0; font-size: 12px;">${startVisit.customer_name}</p>
+                        <p style="margin: 0; font-size: 11px; color: #64748b;">${new Date(startVisit.timestamp).toLocaleString()}</p>
+                    </div>
+                `);
+                
+                startMarker.addTo(visitMap);
+                mapMarkers.push(startMarker);
+                
+                // End marker (checkered flag) 
+                const endIcon = L.divIcon({
+                    className: 'custom-flag-marker',
+                    html: `<div style="
+                        color: #ef4444; 
+                        font-size: 20px;
+                        text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+                    ">🏆</div>`,
+                    iconSize: [20, 20],
+                    iconAnchor: [10, 20]
+                });
+                
+                const endMarker = L.marker([endVisit.actual_location.latitude, endVisit.actual_location.longitude], {
+                    icon: endIcon
+                });
+                
+                endMarker.bindPopup(`
+                    <div style="font-family: 'Segoe UI', sans-serif; text-align: center;">
+                        <h4 style="margin: 0 0 8px 0; color: #ef4444;">🏆 Route End</h4>
+                        <p style="margin: 0; font-size: 12px;">${endVisit.customer_name}</p>
+                        <p style="margin: 0; font-size: 11px; color: #64748b;">${new Date(endVisit.timestamp).toLocaleString()}</p>
+                    </div>
+                `);
+                
+                endMarker.addTo(visitMap);
+                mapMarkers.push(endMarker);
+            }
+            
+            generateSalesmanColors() {
+                const colors = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
+                const salesmanIds = Object.keys(this.salesmanData);
+                const colorMap = {};
+                
+                salesmanIds.forEach((id, index) => {
+                    colorMap[id] = colors[index % colors.length];
+                });
+                
+                return colorMap;
+            }
+            
+            addEnhancedMarker(location, salesmanColor) {
+                const compliance = this.getComplianceStatus(location.distance);
+                let markerColor = salesmanColor;
+                
+                // Override color for compliance status
+                if (compliance === 'perfect') markerColor = '#10b981';
+                else if (compliance === 'good') markerColor = '#3b82f6';
+                else if (compliance === 'warning') markerColor = '#f59e0b';
+                else if (compliance === 'error') markerColor = '#ef4444';
+                
+                const marker = L.circleMarker([location.actual_location.latitude, location.actual_location.longitude], {
+                    radius: 8,
+                    fillColor: markerColor,
+                    color: 'white',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                });
+                
+                const popupContent = this.createEnhancedPopup(location);
+                marker.bindPopup(popupContent);
+                
+                marker.addTo(visitMap);
+                mapMarkers.push(marker);
+                
+                // Add master location and connection line
+                if (location.master_location) {
+                    this.addMasterMarker(location);
+                    this.addConnectionLine(location, markerColor);
+                }
+            }
+            
+            createEnhancedPopup(location) {
+                const formattedDistance = location.distance !== undefined ? 
+                    (location.distance < 1000 ? `${Math.round(location.distance)}m` : `${(location.distance/1000).toFixed(2)}km`) : 
+                    'N/A';
+                
+                return `
+                    <div style="font-family: 'Segoe UI', sans-serif; min-width: 250px;">
+                        <h4 style="margin: 0 0 8px 0; color: #1e293b; font-size: 14px;">📍 Visit Details</h4>
+                        <div style="background: #f8fafc; padding: 8px; border-radius: 6px; margin-bottom: 8px;">
+                            <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>👤 Salesman:</strong> ${location.salesman_name}</p>
+                            <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>🏪 Customer:</strong> ${location.customer_name}</p>
+                            <p style="margin: 0; font-size: 12px;"><strong>📅 Date:</strong> ${location.date}</p>
+                        </div>
+                        <div style="background: #f1f5f9; padding: 8px; border-radius: 6px; margin-bottom: 8px;">
+                            <p style="margin: 0 0 4px 0; font-size: 11px;"><strong>📍 Coordinates:</strong> ${location.actual_location.latitude.toFixed(6)}, ${location.actual_location.longitude.toFixed(6)}</p>
+                            <p style="margin: 0 0 4px 0; font-size: 11px;"><strong>🎯 Accuracy:</strong> ±${Math.round(location.actual_location.accuracy)}m</p>
+                            <p style="margin: 0; font-size: 11px;"><strong>📏 Distance:</strong> ${formattedDistance}</p>
+                        </div>
+                        <div style="text-align: center; padding: 4px; background: ${this.getComplianceColor(location.compliance_status)}; border-radius: 4px;">
+                            <span style="font-size: 10px; font-weight: 600; color: white; text-transform: uppercase;">
+                                ${this.getComplianceLabel(location.compliance_status)}
+                            </span>
+                        </div>
+                        <p style="margin: 8px 0 0 0; font-size: 10px; color: #64748b; text-align: center;">
+                            ${new Date(location.timestamp).toLocaleString()}
+                        </p>
+                    </div>
+                `;
+            }
+            
+            getComplianceColor(status) {
+                const colors = {
+                    perfect: '#10b981',
+                    good: '#3b82f6', 
+                    warning: '#f59e0b',
+                    error: '#ef4444',
+                    unknown: '#64748b'
+                };
+                return colors[status] || colors.unknown;
+            }
+            
+            getComplianceLabel(status) {
+                const labels = {
+                    perfect: 'Perfect Match',
+                    good: 'Good Match',
+                    warning: 'Distance Warning', 
+                    error: 'Location Error',
+                    unknown: 'No Master Data'
+                };
+                return labels[status] || 'Unknown';
+            }
+            
+            addMasterMarker(location) {
+                const marker = L.circleMarker([location.master_location.latitude, location.master_location.longitude], {
+                    radius: 6,
+                    fillColor: '#10b981',
+                    color: 'white',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                });
+                
+                marker.bindPopup(`
+                    <div style="font-family: 'Segoe UI', sans-serif;">
+                        <h4 style="margin: 0 0 8px 0; color: #1e293b; font-size: 14px;">🏪 Master Location</h4>
+                        <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Customer:</strong> ${location.customer_name}</p>
+                        <p style="margin: 0; font-size: 11px; color: #64748b;">From Master Database</p>
+                    </div>
+                `);
+                
+                marker.addTo(visitMap);
+                mapMarkers.push(marker);
+            }
+            
+            addConnectionLine(location, color) {
+                const line = L.polyline([
+                    [location.actual_location.latitude, location.actual_location.longitude],
+                    [location.master_location.latitude, location.master_location.longitude]
+                ], {
+                    color: color,
+                    weight: 2,
+                    opacity: 0.6,
+                    dashArray: location.distance <= 100 ? null : '5, 5'
+                });
+                
+                line.addTo(visitMap);
+                mapMarkers.push(line);
+            }
+            
+            clearMapMarkers() {
+                mapMarkers.forEach(marker => {
+                    visitMap.removeLayer(marker);
+                });
+                mapMarkers = [];
+            }
+            
+            updateSalesmanProfile(salesmanId) {
+                const profileCard = document.getElementById('salesmanProfile');
+                
+                if (!salesmanId || !this.salesmanData[salesmanId]) {
+                    profileCard.classList.remove('active');
+                    return;
+                }
+                
+                const data = this.salesmanData[salesmanId];
+                const totalVisits = data.visits.length;
+                const compliantVisits = data.compliance_stats.compliant;
+                const complianceRate = totalVisits > 0 ? Math.round((compliantVisits / totalVisits) * 100) : 0;
+                
+                let totalDistance = 0;
+                let validDistances = 0;
+                data.visits.forEach(visit => {
+                    if (visit.distance !== undefined) {
+                        totalDistance += visit.distance;
+                        validDistances++;
+                    }
+                });
+                const avgDistance = validDistances > 0 ? Math.round(totalDistance / validDistances) : 0;
+                
+                // Get unique customers visited
+                const uniqueCustomers = [...data.customers].length;
+                
+                // Get first visit date for "active since"
+                const firstVisit = data.visits.length > 0 ? 
+                    new Date(Math.min(...data.visits.map(v => new Date(v.timestamp)))).toLocaleDateString() : 
+                    'N/A';
+                
+                document.getElementById('profileName').textContent = data.salesman_name || `Salesman ${salesmanId}`;
+                document.getElementById('profileDetails').textContent = `ID: ${salesmanId} | Active since: ${firstVisit}`;
+                document.getElementById('profileVisits').textContent = totalVisits;
+                document.getElementById('profileCompliance').textContent = `${complianceRate}%`;
+                document.getElementById('profileCustomers').textContent = uniqueCustomers;
+                document.getElementById('profileAccuracy').textContent = `${avgDistance}m`;
+                
+                profileCard.classList.add('active');
+                
+                console.log(`👤 Profile updated for ${data.salesman_name} (${salesmanId})`);
+            }
+            
+            renderLocationList() {
+                const content = document.getElementById('locationListContent');
+                
+                if (this.visitLocations.length === 0) {
+                    content.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">📍</div>
+                            <div>No location data available</div>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                let html = '';
+                
+                // Sort by salesman name, then by timestamp descending
+                const sortedLocations = [...this.visitLocations].sort((a, b) => {
+                    if (a.salesman_name !== b.salesman_name) {
+                        return a.salesman_name.localeCompare(b.salesman_name);
+                    }
+                    return new Date(b.timestamp) - new Date(a.timestamp);
+                });
+                
+                let currentSalesman = '';
+                
+                sortedLocations.forEach((location, index) => {
+                    // Add salesman header if changed
+                    if (location.salesman_name !== currentSalesman) {
+                        currentSalesman = location.salesman_name;
+                        html += `
+                            <div style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 12px 16px; font-weight: 600; font-size: 14px;">
+                                👤 ${currentSalesman} (${location.salesman_id})
+                            </div>
+                        `;
+                    }
+                    
+                    const complianceClass = `compliance-${location.compliance_status}`;
+                    const formattedDistance = location.distance !== undefined ? 
+                        (location.distance < 1000 ? `${Math.round(location.distance)}m` : `${(location.distance/1000).toFixed(2)}km`) : 
+                        'N/A';
+                    
+                    const sessionDuration = location.session_duration ? 
+                        `${Math.floor(location.session_duration / 60)}:${(location.session_duration % 60).toString().padStart(2, '0')}` : 
+                        'N/A';
+                    
+                    html += `
+                        <div class="location-item" onclick="focusMapOnLocation(${index})">
+                            <div class="location-header">
+                                <div>
+                                    <div class="customer-name">🏪 ${location.customer_name}</div>
+                                    <div class="visit-time">📅 ${new Date(location.timestamp).toLocaleString()} • ⏱️ Duration: ${sessionDuration}</div>
+                                </div>
+                                <div class="compliance-badge ${complianceClass}">
+                                    ${this.getComplianceLabel(location.compliance_status)}
+                                </div>
+                            </div>
+                            <div class="location-details">
+                                <div class="detail-item">
+                                    <div class="detail-label">Distance</div>
+                                    <div class="detail-value">${formattedDistance}</div>
+                                </div>
+                                <div class="detail-item">
+                                    <div class="detail-label">Accuracy</div>
+                                    <div class="detail-value">±${Math.round(location.accuracy)}m</div>
+                                </div>
+                                <div class="detail-item">
+                                    <div class="detail-label">Visit Count</div>
+                                    <div class="detail-value">${location.visit_count || 1}x</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                content.innerHTML = html;
+                
+                console.log(`📋 Location list rendered: ${this.visitLocations.length} unique visits (deduplicated)`);
+            }
+            
+            updateStatistics() {
+                // Filter outliers before calculating stats
+                const jakartaCenter = { lat: -6.2088, lng: 106.8456 };
+                const validLocations = this.visitLocations.filter(location => {
+                    const distance = this.calculateDistance(
+                        location.actual_location.latitude,
+                        location.actual_location.longitude,
+                        jakartaCenter.lat,
+                        jakartaCenter.lng
+                    );
+                    return (distance / 1000) <= 150; // Within 150km
+                });
+                
+                const filteredCount = this.visitLocations.length - validLocations.length;
+                
+                document.getElementById('totalVisits').textContent = validLocations.length;
+                document.getElementById('complianceRate').textContent = `${this.complianceStats.complianceRate}%`;
+                document.getElementById('avgDistance').textContent = `${this.complianceStats.averageDistance}m`;
+                document.getElementById('alertCount').textContent = this.complianceStats.alerts;
+                
+                // Update map stats with filtering info
+                const mapStatsText = validLocations.length > 0 ? 
+                    `${validLocations.length} valid visits • ${Object.keys(this.salesmanData).length} salesman • ${this.complianceStats.complianceRate}% compliant` +
+                    (filteredCount > 0 ? ` • ${filteredCount} outliers filtered` : ' • No outliers') :
+                    'No valid location data within 150km radius';
+                    
+                document.getElementById('mapStats').textContent = mapStatsText;
+                
+                console.log(`📊 Statistics updated: ${validLocations.length} valid locations, ${filteredCount} outliers filtered`);
+            }
+        }
+
+        // ===== GLOBAL ANALYTICS INSTANCE =====
+        let enhancedAnalytics = null;
+
+        // ===== MAIN FUNCTIONS =====
+        function loadEnhancedAnalytics() {
+            const dateFrom = document.getElementById('mapDateFrom').value;
+            const dateTo = document.getElementById('mapDateTo').value;
+            const salesmanFilter = document.getElementById('mapSalesmanFilter').value;
+            const complianceFilter = document.getElementById('complianceFilter').value;
+            
+            if (!dateFrom || !dateTo) {
+                alert('Please select date range');
+                return;
+            }
+            
+            console.log('🔄 Loading ROUTE TRACKING analytics...');
+            console.log('🛣️ Features: Chronological route visualization, outlier filtering (>150km), numbered visit sequence');
+            
+            const locationData = enhancedAnalytics.loadAnalyticsData(dateFrom, dateTo, salesmanFilter, complianceFilter);
+            enhancedAnalytics.renderEnhancedMap();
+            enhancedAnalytics.updateStatistics();
+            enhancedAnalytics.renderLocationList();
+            
+            // Update salesman profile if specific salesman selected
+            if (salesmanFilter) {
+                enhancedAnalytics.updateSalesmanProfile(salesmanFilter);
+            }
+            
+            // Calculate route statistics
+            const jakartaCenter = { lat: -6.2088, lng: 106.8456 };
+            const validLocations = locationData.filter(location => {
+                const distance = enhancedAnalytics.calculateDistance(
+                    location.actual_location.latitude,
+                    location.actual_location.longitude,
+                    jakartaCenter.lat,
+                    jakartaCenter.lng
+                );
+                return (distance / 1000) <= 150;
+            });
+            
+            const filteredOutliers = locationData.length - validLocations.length;
+            const uniqueSalesman = new Set(validLocations.map(v => v.salesman_id)).size;
+            
+            // Show route tracking success message
+            const summaryMessage = `🗺️ Route Tracking loaded successfully!\n\n` +
+                `📍 ${validLocations.length} valid visit locations\n` +
+                `🛣️ Chronological route paths displayed\n` +
+                `🔢 Numbered visit sequence markers\n` +
+                `👥 ${uniqueSalesman} salesman routes tracked\n` +
+                `🚫 ${filteredOutliers} outlier locations filtered (>150km)\n` +
+                `📊 ${enhancedAnalytics.complianceStats.complianceRate}% location compliance`;
+            
+            console.log(summaryMessage);
+            
+            // Update map stats
+            const routeInfo = salesmanFilter ? 
+                `Route for ${enhancedAnalytics.salesmanData[salesmanFilter]?.salesman_name || 'Selected Salesman'}` :
+                `${uniqueSalesman} salesman routes`;
+                
+            document.getElementById('mapStats').textContent = 
+                `${validLocations.length} visits • ${routeInfo} • Chronological order`;
+                
+            if (validLocations.length === 0) {
+                alert('⚠️ No valid location data found within 150km radius of Jakarta. Please check date range or salesman filter.');
+            }
+        }
+
+        function clearAnalytics() {
+            const confirmMessage = 'Clear current analytics display?\n\nThis will only clear the current view, not delete stored data.\nUse Data Manager to delete stored data permanently.';
+            
+            if (!confirm(confirmMessage)) {
+                return;
+            }
+            
+            if (enhancedAnalytics) {
+                enhancedAnalytics.clearMapMarkers();
+                enhancedAnalytics.visitLocations = [];
+                enhancedAnalytics.salesmanData = {};
+                enhancedAnalytics.updateStatistics();
+                enhancedAnalytics.renderLocationList();
+                
+                document.getElementById('salesmanProfile').classList.remove('active');
+                console.log('🧹 Analytics display cleared (data still stored)');
+            }
+        }
+
+        function exportDetailedReport() {
+            if (!enhancedAnalytics || enhancedAnalytics.visitLocations.length === 0) {
+                alert('No analytics data to export');
+                return;
+            }
+            
+            const csvHeaders = [
+                'Date', 'Visit_Start_Time', 'Salesman_ID', 'Salesman_Name', 'Customer_Name',
+                'Actual_Latitude', 'Actual_Longitude', 'Accuracy_Meters',
+                'Master_Latitude', 'Master_Longitude', 'Distance_Meters',
+                'Compliance_Status', 'Compliance_Label', 'Session_Duration_Seconds', 'Visit_Count'
+            ];
+            
+            // Sort visits by salesman and timestamp for better readability
+            const sortedVisits = enhancedAnalytics.visitLocations.sort((a, b) => {
+                if (a.salesman_name !== b.salesman_name) {
+                    return a.salesman_name.localeCompare(b.salesman_name);
+                }
+                return new Date(a.timestamp) - new Date(b.timestamp);
+            });
+            
+            const csvRows = sortedVisits.map(location => [
+                location.date,
+                new Date(location.timestamp).toLocaleString(),
+                location.salesman_id,
+                location.salesman_name,
+                location.customer_name,
+                location.actual_location.latitude.toFixed(6),
+                location.actual_location.longitude.toFixed(6),
+                Math.round(location.accuracy || 0),
+                location.master_location ? location.master_location.latitude.toFixed(6) : '',
+                location.master_location ? location.master_location.longitude.toFixed(6) : '',
+                Math.round(location.distance || 0),
+                location.compliance_status,
+                enhancedAnalytics.getComplianceLabel(location.compliance_status),
+                location.session_duration || 0,
+                location.visit_count || 1
+            ]);
+            
+            const csvContent = [csvHeaders, ...csvRows]
+                .map(row => row.map(cell => `"${cell}"`).join(','))
+                .join('\n');
+            
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `deduplicated_location_report_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+            
+            console.log(`📊 Deduplicated report exported: ${sortedVisits.length} unique visits (no duplicates)`);
+            
+            // Show summary to user
+            const summary = enhancedAnalytics.visitLocations.reduce((acc, visit) => {
+                if (!acc[visit.salesman_name]) {
+                    acc[visit.salesman_name] = new Set();
+                }
+                acc[visit.salesman_name].add(visit.customer_name);
+                return acc;
+            }, {});
+            
+            let summaryText = 'Export Summary:\n';
+            Object.entries(summary).forEach(([salesman, customers]) => {
+                summaryText += `${salesman}: ${customers.size} unique customers\n`;
+            });
+            summaryText += `\nTotal: ${enhancedAnalytics.visitLocations.length} unique visits (deduplicated)`;
+            
+            alert(summaryText);
+        }
+
+        function focusMapOnLocation(index) {
+            if (enhancedAnalytics && enhancedAnalytics.visitLocations[index]) {
+                const location = enhancedAnalytics.visitLocations[index];
+                visitMap.setView([location.actual_location.latitude, location.actual_location.longitude], 16);
+            }
+        }
+
+        function loadSalesmanOptions() {
+            const salesmanSelect = document.getElementById('mapSalesmanFilter');
+            salesmanSelect.innerHTML = '<option value="">All Salesman</option>';
+            
+            const salesmanMap = new Map(); // Use Map to store ID -> Name mapping
+            
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith('visit_analytics_geo_')) {
+                    try {
+                        const analyticsData = JSON.parse(localStorage.getItem(key) || '[]');
+                        
+                        // Extract salesman info from analytics data
+                        analyticsData.forEach(event => {
+                            if (event.salesman_id && event.salesman_name) {
+                                salesmanMap.set(event.salesman_id, event.salesman_name);
+                            }
+                        });
+                        
+                    } catch (error) {
+                        console.error(`Error reading analytics data from ${key}:`, error);
+                    }
+                }
+            }
+            
+            // Sort salesman by name for better UX
+            const sortedSalesman = Array.from(salesmanMap.entries()).sort((a, b) => 
+                a[1].localeCompare(b[1]) // Sort by name (index 1)
+            );
+            
+            sortedSalesman.forEach(([salesmanId, salesmanName]) => {
+                const option = document.createElement('option');
+                option.value = salesmanId;
+                option.textContent = `${salesmanName} (ID: ${salesmanId})`;
+                salesmanSelect.appendChild(option);
+            });
+            
+            console.log(`👥 Loaded ${salesmanMap.size} salesman options with real names`);
+        }
+
+        // ===== DATA MANAGEMENT FUNCTIONS =====
+        function showDataManager() {
+            const modal = document.getElementById('dataManagerModal');
+            modal.classList.add('active');
+            
+            refreshDataManager();
+            console.log('🗂️ Data Manager opened');
+        }
+
+        function closeDataManager() {
+            const modal = document.getElementById('dataManagerModal');
+            modal.classList.remove('active');
+            console.log('🗂️ Data Manager closed');
+        }
+
+        function refreshDataManager() {
+            console.log('🔄 Refreshing Data Manager...');
+            
+            // Get all visit-related keys
+            const visitKeys = Object.keys(localStorage).filter(key => 
+                key.startsWith('visit_analytics_geo_') || 
+                key.startsWith('visit_daily_geo_')
+            );
+            
+            // Calculate total storage size
+            let totalSize = 0;
+            const keyDetails = [];
+            
+            visitKeys.forEach(key => {
+                const data = localStorage.getItem(key);
+                const size = new Blob([data]).size;
+                totalSize += size;
+                
+                // Parse key to extract info
+                const parts = key.split('_');
+                const type = parts[1]; // analytics or daily
+                const date = parts[2];
+                const salesmanId = parts[3];
+                
+                keyDetails.push({
+                    key: key,
+                    type: type,
+                    date: date,
+                    salesmanId: salesmanId,
+                    size: size,
+                    sizeFormatted: formatBytes(size)
+                });
+            });
+            
+            // Calculate statistics
+            const uniqueSalesmanIds = [...new Set(keyDetails.map(item => item.salesmanId))];
+            const dates = keyDetails.map(item => item.date).filter(date => date);
+            const dateRange = dates.length > 0 ? 
+                `${Math.min(...dates.map(d => new Date(d).getTime()))} - ${Math.max(...dates.map(d => new Date(d).getTime()))}` :
+                'No dates';
+            
+            // Update UI
+            document.getElementById('totalDataKeys').textContent = visitKeys.length;
+            document.getElementById('totalDataSize').textContent = formatBytes(totalSize);
+            document.getElementById('uniqueSalesman').textContent = uniqueSalesmanIds.length;
+            
+            // Format date range
+            if (dates.length > 0) {
+                const sortedDates = dates.sort();
+                const firstDate = new Date(sortedDates[0]).toLocaleDateString();
+                const lastDate = new Date(sortedDates[sortedDates.length - 1]).toLocaleDateString();
+                document.getElementById('dateRange').textContent = dates.length === 1 ? firstDate : `${firstDate} - ${lastDate}`;
+            } else {
+                document.getElementById('dateRange').textContent = 'No data';
+            }
+            
+            // Update data keys list
+            const dataList = document.getElementById('dataKeysList');
+            
+            if (keyDetails.length === 0) {
+                dataList.innerHTML = '<div style="padding: 20px; text-align: center; color: #64748b;">No visit data found</div>';
+            } else {
+                // Sort by date descending, then by salesman
+                keyDetails.sort((a, b) => {
+                    if (a.date !== b.date) {
+                        return new Date(b.date) - new Date(a.date);
+                    }
+                    return a.salesmanId.localeCompare(b.salesmanId);
+                });
+                
+                let html = '';
+                keyDetails.forEach(item => {
+                    const typeIcon = item.type === 'analytics' ? '📊' : '📋';
+                    const dateFormatted = item.date ? new Date(item.date).toLocaleDateString() : 'Unknown';
+                    
+                    html += `
+                        <div class="data-list-item">
+                            <div>
+                                <span>${typeIcon}</span>
+                                <span style="margin-left: 8px; font-weight: 600;">${dateFormatted}</span>
+                                <span style="margin-left: 8px; color: #64748b;">Salesman ${item.salesmanId}</span>
+                            </div>
+                            <div class="data-size">${item.sizeFormatted}</div>
+                        </div>
+                    `;
+                });
+                
+                dataList.innerHTML = html;
+            }
+            
+            console.log(`📊 Data Manager refreshed: ${visitKeys.length} keys, ${formatBytes(totalSize)} total`);
+        }
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function exportAllData() {
+            console.log('📤 Exporting all visit data...');
+            
+            const visitKeys = Object.keys(localStorage).filter(key => 
+                key.startsWith('visit_analytics_geo_') || 
+                key.startsWith('visit_daily_geo_')
+            );
+            
+            if (visitKeys.length === 0) {
+                alert('No visit data to export');
+                return;
+            }
+            
+            const exportData = {};
+            visitKeys.forEach(key => {
+                try {
+                    exportData[key] = JSON.parse(localStorage.getItem(key));
+                } catch (error) {
+                    console.error(`Error parsing data for key ${key}:`, error);
+                    exportData[key] = localStorage.getItem(key); // Raw string fallback
+                }
+            });
+            
+            const exportJson = JSON.stringify(exportData, null, 2);
+            const blob = new Blob([exportJson], { type: 'application/json' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `visit_data_backup_${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+            
+            console.log(`📤 Exported ${visitKeys.length} data keys to JSON file`);
+            alert(`Successfully exported ${visitKeys.length} data records to JSON file`);
+        }
+
+        function clearOldData() {
+            const confirmMessage = `⚠️ This will delete all visit data older than 7 days.\n\nThis action cannot be undone. Continue?`;
+            
+            if (!confirm(confirmMessage)) {
+                return;
+            }
+            
+            console.log('🗑️ Clearing old visit data (>7 days)...');
+            
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+            
+            const visitKeys = Object.keys(localStorage).filter(key => 
+                key.startsWith('visit_analytics_geo_') || 
+                key.startsWith('visit_daily_geo_')
+            );
+            
+            let deletedCount = 0;
+            
+            visitKeys.forEach(key => {
+                const parts = key.split('_');
+                const dateStr = parts[2];
+                
+                if (dateStr) {
+                    const keyDate = new Date(dateStr);
+                    if (keyDate < sevenDaysAgo) {
+                        localStorage.removeItem(key);
+                        deletedCount++;
+                        console.log(`🗑️ Deleted old data: ${key}`);
+                    }
+                }
+            });
+            
+            refreshDataManager();
+            
+            const message = deletedCount > 0 ? 
+                `Successfully deleted ${deletedCount} old data records` :
+                'No old data found to delete';
+                
+            alert(message);
+            console.log(`🗑️ Old data cleanup completed: ${deletedCount} records deleted`);
+        }
+
+        function clearSelectedSalesman() {
+            const salesmanSelect = document.getElementById('mapSalesmanFilter');
+            const salesmanId = salesmanSelect.value;
+            
+            if (!salesmanId) {
+                alert('Please select a salesman first');
+                return;
+            }
+            
+            const salesmanName = salesmanSelect.selectedOptions[0].textContent;
+            const confirmMessage = `⚠️ This will delete ALL visit data for:\n${salesmanName}\n\nThis action cannot be undone. Continue?`;
+            
+            if (!confirm(confirmMessage)) {
+                return;
+            }
+            
+            console.log(`🗑️ Clearing data for salesman: ${salesmanId}`);
+            
+            const visitKeys = Object.keys(localStorage).filter(key => 
+                (key.startsWith('visit_analytics_geo_') || key.startsWith('visit_daily_geo_')) &&
+                key.endsWith('_' + salesmanId)
+            );
+            
+            visitKeys.forEach(key => {
+                localStorage.removeItem(key);
+                console.log(`🗑️ Deleted salesman data: ${key}`);
+            });
+            
+            refreshDataManager();
+            
+            alert(`Successfully deleted ${visitKeys.length} data records for ${salesmanName}`);
+            console.log(`🗑️ Salesman data deletion completed: ${visitKeys.length} records deleted`);
+        }
+
+        function clearAllVisitData() {
+            const confirmMessage = `🚨 DANGER: This will delete ALL visit tracking data!\n\nThis includes:\n- All salesman visit records\n- All location analytics\n- All daily aggregated data\n\nThis action cannot be undone.\n\nType "DELETE ALL" to confirm:`;
+            
+            const userInput = prompt(confirmMessage);
+            
+            if (userInput !== 'DELETE ALL') {
+                alert('Deletion cancelled - confirmation text did not match');
+                return;
+            }
+            
+            console.log('💥 CLEARING ALL VISIT DATA...');
+            
+            const visitKeys = Object.keys(localStorage).filter(key => 
+                key.startsWith('visit_analytics_geo_') || 
+                key.startsWith('visit_daily_geo_')
+            );
+            
+            visitKeys.forEach(key => {
+                localStorage.removeItem(key);
+                console.log(`💥 Deleted: ${key}`);
+            });
+            
+            refreshDataManager();
+            
+            // Clear current analytics data too
+            if (enhancedAnalytics) {
+                enhancedAnalytics.visitLocations = [];
+                enhancedAnalytics.salesmanData = {};
+                enhancedAnalytics.clearMapMarkers();
+                enhancedAnalytics.updateStatistics();
+                enhancedAnalytics.renderLocationList();
+            }
+            
+            alert(`🚨 ALL VISIT DATA DELETED!\n\n${visitKeys.length} records permanently removed.`);
+            console.log(`💥 Complete data wipe finished: ${visitKeys.length} records deleted`);
+            
+            // Close data manager
+            closeDataManager();
+        }
+
+        // ===== EVENT LISTENERS =====
+        document.getElementById('mapSalesmanFilter').addEventListener('change', function() {
+            const salesmanId = this.value;
+            if (enhancedAnalytics) {
+                enhancedAnalytics.updateSalesmanProfile(salesmanId);
+            }
+        });
+
+        // Close modal when clicking outside
+        document.getElementById('dataManagerModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeDataManager();
+            }
+        });
+
+        // ===== INITIALIZATION =====
+        async function initializeEnhancedAnalytics() {
+            try {
+                console.log('🚀 Initializing Enhanced Location Analytics...');
+                
+                enhancedAnalytics = new EnhancedLocationAnalytics();
+                loadSalesmanOptions();
+                
+                // Auto-load today's data
+                setTimeout(() => {
+                    loadEnhancedAnalytics();
+                }, 1000);
+                
+                console.log('✅ Enhanced Location Analytics ready');
+                
+            } catch (error) {
+                console.error('❌ Error initializing enhanced analytics:', error);
+            }
+        }
+
+        // ===== PAGE LOAD =====
+        window.onload = function() {
+            console.log('🗺️ Starting Enhanced Location Analytics with Salesman Profiles...');
+            console.log('📊 Features: Salesman profiles, compliance filtering, detailed reporting, enhanced visualization');
+            
+            initializeEnhancedAnalytics();
+        };
+
+        console.log('✅ Enhanced Location Analytics with Salesman Details loaded');
+    </script>
+</body>
+</html>
