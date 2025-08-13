@@ -622,6 +622,9 @@
         .promo-solmed { 
             background: linear-gradient(135deg, #d97706, #f59e0b);
         }
+        .promo-rans, .promo-gbev, .promo-mbr { 
+            background: linear-gradient(135deg, #23A0AD, #CBE030);
+        }
 		
 		/* Highlight untuk SKU yang ada di TPOM */
 		.sku-highlight {
@@ -1125,16 +1128,17 @@
     <!-- Firebase SDK -->
     <script type="module">
         // ===== FIREBASE CONFIGURATION ===== 
-        // GANTI DENGAN CONFIG FIREBASE ANDA
-        const firebaseConfig = {
-            apiKey: "AIzaSyBxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-            authDomain: "your-project.firebaseapp.com", 
-            databaseURL: "https://your-project-default-rtdb.asia-southeast1.firebasedatabase.app/",
-            projectId: "your-project-id",
-            storageBucket: "your-project.appspot.com",
-            messagingSenderId: "123456789",
-            appId: "1:123456789:web:xxxxxxxxxxxxxxxxxx"
-        };
+		// Firebase Configuration - Replace dengan config Anda
+		const firebaseConfig = {
+		  apiKey: "AIzaSyAoRV3qVAXQ14AEVA8Mo49HXfAyhMMm8Bs",
+		  authDomain: "salesman-route-tracker.firebaseapp.com",
+		  databaseURL: "https://salesman-route-tracker-default-rtdb.asia-southeast1.firebasedatabase.app",
+		  projectId: "salesman-route-tracker",
+		  storageBucket: "salesman-route-tracker.firebasestorage.app",
+		  messagingSenderId: "590789273516",
+		  appId: "1:590789273516:web:79abe0c7e4cbccfa44fc09",
+		  measurementId: "G-5RYSWKQ963"
+		};
 
         // Import Firebase modules
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
@@ -2110,21 +2114,26 @@ Open in Google Maps?
 			return formatted;
 		}
 
-        function getDAPDataFromDetails(hariJKS) {
-            if (!hariJKS || detailsData.length === 0) {
+		function getDAPDataFromDetails(hariJKS) {
+            if (!hariJKS || detailsData.length === 0 || !currentSalesman) {
                 return [];
             }
             
-            console.log(`🔍 Looking for DAP data for Hari JKS: ${hariJKS}`);
+            console.log(`🔍 Looking for DAP data for Salesman: ${currentSalesman}, Hari JKS: ${hariJKS}`);
             console.log(`📊 Total detailsData records: ${detailsData.length}`);
             
-            // Filter data from d.details.json based on "Hari JKS" column (case sensitive)
+            // Filter data from d.details.json based on "szname" (salesman) and "Hari JKS" 
             const filteredData = detailsData.filter(item => {
+                const itemSalesman = (item['szname'] || '').toString().trim();
                 const itemHariJKS = (item['Hari JKS'] || '').toString().trim();
-                return itemHariJKS === hariJKS; // Exact match, case sensitive
+                
+                const salesmanMatch = itemSalesman === currentSalesman;
+                const hariMatch = itemHariJKS.toLowerCase() === hariJKS.toLowerCase(); // Case insensitive
+                
+                return salesmanMatch && hariMatch;
             });
             
-            console.log(`📦 Found ${filteredData.length} records for Hari JKS: ${hariJKS}`);
+            console.log(`📦 Found ${filteredData.length} records for Salesman: ${currentSalesman}, Hari JKS: ${hariJKS}`);
             
             if (filteredData.length > 0) {
                 console.log('📋 Sample DAP record structure:', filteredData[0]);
@@ -2143,7 +2152,10 @@ Open in Google Maps?
                         nama_pelanggan: customerName,
                         be_mtd: 0,
                         a_mtd: 0,
-                        gap: 0
+                        gap: 0,
+                        kode_pelanggan: item['Kode_Pelanggan'] || '',
+                        channel_group: item['Channel Group'] || '',
+                        project: item['Project'] || ''
                     };
                 }
                 
@@ -2161,6 +2173,7 @@ Open in Google Maps?
             dapData.sort((a, b) => a.nama_pelanggan.localeCompare(b.nama_pelanggan));
             
             console.log(`✅ Processed ${dapData.length} unique customers for DAP`);
+            console.log(`🎯 DAP data for ${currentSalesman} on ${hariJKS}:`, dapData.slice(0, 3)); // Show first 3 records
             return dapData;
         }
 
