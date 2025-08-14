@@ -1165,6 +1165,7 @@ class SalesmanDashboardUpdater:
                 'location-reports.html',
                 'location-analytics.html',
                 'mobile-compliance.html',
+                'visit-enhanced-debug.html',
                 'morning_update.py',
                 'morning_update.log'
             ]

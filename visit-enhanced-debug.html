@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visit Outlet - Enhanced Debug</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(180deg, #f8f9ff 0%, #e8ecff 100%);
+            min-height: 100vh;
+            color: #2c3e50;
+            padding-bottom: 100px;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        .detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 0 0 30px 30px;
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        .back-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            padding: 10px;
+            border-radius: 12px;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateX(-2px);
+        }
+
+        .detail-title-container {
+            text-align: center;
+            flex: 1;
+        }
+
+        .detail-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .salesman-name {
+            font-size: 14px;
+            opacity: 0.9;
+            font-weight: 400;
+        }
+
+        /* Enhanced Debug Panel */
+        .debug-panel {
+            background: #f8fafc;
+            margin: 16px;
+            padding: 16px;
+            border-radius: 12px;
+            border: 2px solid #e2e8f0;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+        }
+
+        .debug-title {
+            font-family: 'Segoe UI', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #d1d5db;
+        }
+
+        .debug-status {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .debug-label {
+            font-weight: 600;
+            min-width: 120px;
+            color: #4b5563;
+        }
+
+        .debug-value {
+            color: #1f2937;
+        }
+
+        .status-ok {
+            color: #10b981 !important;
+        }
+
+        .status-error {
+            color: #ef4444 !important;
+        }
+
+        .status-warning {
+            color: #f59e0b !important;
+        }
+
+        /* Firebase Connection Status */
+        .firebase-status {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(16, 185, 129, 0.9);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            z-index: 1001;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .firebase-status.connected {
+            background: rgba(16, 185, 129, 0.9);
+        }
+
+        .firebase-status.disconnected {
+            background: rgba(239, 68, 68, 0.9);
+        }
+
+        .firebase-status.syncing {
+            background: rgba(245, 158, 11, 0.9);
+            animation: pulse 2s infinite;
+        }
+
+        /* Location Status Indicator */
+        .location-status {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(16, 185, 129, 0.9);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .location-status.tracking {
+            background: rgba(239, 68, 68, 0.9);
+            animation: pulse 2s infinite;
+        }
+
+        .location-status.error {
+            background: rgba(245, 158, 11, 0.9);
+        }
+
+        .location-status.success {
+            background: rgba(16, 185, 129, 0.9);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.9; }
+            50% { opacity: 1; }
+        }
+
+        /* Debug Actions */
+        .debug-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .debug-btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .debug-btn.primary {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .debug-btn.secondary {
+            background: #6b7280;
+            color: white;
+        }
+
+        .debug-btn.success {
+            background: #10b981;
+            color: white;
+        }
+
+        .debug-btn.warning {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .debug-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        /* Test Results */
+        .test-results {
+            background: #f9fafb;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .test-log {
+            font-size: 10px;
+            margin-bottom: 4px;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .test-log.info {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .test-log.success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .test-log.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .test-log.warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        /* Simple Content Area */
+        .content-area {
+            margin: 16px;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .test-customer-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 16px 24px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .test-customer-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Firebase Connection Status -->
+        <div class="firebase-status" id="firebaseStatus">
+            🔄 Connecting Firebase...
+        </div>
+
+        <!-- Location Status Indicator -->
+        <div class="location-status" id="locationStatus">
+            📍 Location Ready
+        </div>
+
+        <div class="detail-header">
+            <a href="dashboard.html" class="back-btn">←</a>
+            <div class="detail-title-container">
+                <div class="detail-title">Visit Debug Mode</div>
+                <div class="salesman-name" id="salesmanName">Loading...</div>
+            </div>
+            <button class="back-btn" onclick="toggleDebug()">🔧</button>
+        </div>
+
+        <!-- Enhanced Debug Panel -->
+        <div class="debug-panel" id="debugPanel">
+            <div class="debug-title">🔧 Firebase Connection Debug</div>
+            
+            <div class="debug-status">
+                <div class="debug-label">SDK Status:</div>
+                <div class="debug-value" id="sdkStatus">Loading...</div>
+            </div>
+            
+            <div class="debug-status">
+                <div class="debug-label">Auth Status:</div>
+                <div class="debug-value" id="authStatus">Not authenticated</div>
+            </div>
+            
+            <div class="debug-status">
+                <div class="debug-label">User ID:</div>
+                <div class="debug-value" id="userIdStatus">None</div>
+            </div>
+            
+            <div class="debug-status">
+                <div class="debug-label">DB Connection:</div>
+                <div class="debug-value" id="dbConnectionStatus">Disconnected</div>
+            </div>
+            
+            <div class="debug-status">
+                <div class="debug-label">Last Write Test:</div>
+                <div class="debug-value" id="lastWriteStatus">Not tested</div>
+            </div>
+            
+            <div class="debug-status">
+                <div class="debug-label">Events Sent:</div>
+                <div class="debug-value" id="eventsSentStatus">0</div>
+            </div>
+
+            <div class="debug-actions">
+                <button class="debug-btn primary" onclick="testFirebaseConnection()">Test Connection</button>
+                <button class="debug-btn secondary" onclick="testWriteOperation()">Test Write</button>
+                <button class="debug-btn success" onclick="testReadOperation()">Test Read</button>
+                <button class="debug-btn warning" onclick="clearTestData()">Clear Test</button>
+            </div>
+
+            <div class="test-results" id="testResults">
+                <div class="test-log info">Ready to run tests...</div>
+            </div>
+        </div>
+
+        <!-- Simple Content Area for Testing -->
+        <div class="content-area">
+            <h3>🧪 Firebase Write Test</h3>
+            <p style="margin: 12px 0; color: #6b7280; font-size: 14px;">
+                Test customer selection to verify Firebase write operations
+            </p>
+            <button class="test-customer-btn" onclick="testCustomerSelection()">
+                📍 Test Customer Visit
+            </button>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+    <!-- Firebase SDK with Improved Error Handling -->
+    <script type="module">
+        // ===== FIREBASE CONFIGURATION ===== 
+        const firebaseConfig = {
+            apiKey: "AIzaSyAoRV3qVAXQ14AEVA8Mo49HXfAyhMMm8Bs",
+            authDomain: "salesman-route-tracker.firebaseapp.com",
+            databaseURL: "https://salesman-route-tracker-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "salesman-route-tracker",
+            storageBucket: "salesman-route-tracker.firebasestorage.app",
+            messagingSenderId: "590789273516",
+            appId: "1:590789273516:web:79abe0c7e4cbccfa44fc09",
+            measurementId: "G-5RYSWKQ963"
+        };
+
+        // Import Firebase modules
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { 
+            getDatabase, 
+            ref, 
+            push, 
+            set,
+            get,
+            onValue,
+            serverTimestamp,
+            onDisconnect,
+            connectDatabaseEmulator
+        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+        import {
+            getAuth,
+            signInAnonymously,
+            onAuthStateChanged
+        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+        // Global variables for debugging
+        let app, database, auth, firebaseUser = null;
+        let isFirebaseConnected = false;
+        let debugPanel = null;
+        let eventCount = 0;
+
+        // ===== ENHANCED DEBUG LOGGER =====
+        class DebugLogger {
+            constructor() {
+                this.logs = [];
+                this.maxLogs = 50;
+            }
+            
+            log(message, type = 'info') {
+                const timestamp = new Date().toLocaleTimeString();
+                const logEntry = {
+                    timestamp,
+                    message,
+                    type
+                };
+                
+                this.logs.unshift(logEntry);
+                if (this.logs.length > this.maxLogs) {
+                    this.logs.pop();
+                }
+                
+                this.updateUI();
+                console.log(`[${type.toUpperCase()}] ${timestamp}: ${message}`);
+            }
+            
+            updateUI() {
+                const resultsElement = document.getElementById('testResults');
+                if (resultsElement) {
+                    resultsElement.innerHTML = this.logs.map(log => 
+                        `<div class="test-log ${log.type}">[${log.timestamp}] ${log.message}</div>`
+                    ).join('');
+                }
+            }
+            
+            clear() {
+                this.logs = [];
+                this.updateUI();
+            }
+        }
+
+        const logger = new DebugLogger();
+
+        // ===== FIREBASE INITIALIZATION WITH ENHANCED DEBUG =====
+        async function initializeFirebaseWithDebug() {
+            try {
+                logger.log('🔄 Initializing Firebase SDK...', 'info');
+                updateStatus('sdkStatus', 'Initializing...', 'warning');
+                
+                // Initialize Firebase
+                app = initializeApp(firebaseConfig);
+                database = getDatabase(app);
+                auth = getAuth(app);
+                
+                logger.log('✅ Firebase SDK initialized successfully', 'success');
+                updateStatus('sdkStatus', 'Initialized', 'success');
+                
+                // Setup authentication
+                await setupAuth();
+                
+                // Setup database connection monitoring
+                setupDatabaseMonitoring();
+                
+                // Export to global scope
+                window.firebaseApp = app;
+                window.firebaseDatabase = database;
+                window.firebaseAuth = auth;
+                
+                logger.log('🔥 Firebase setup complete', 'success');
+                
+            } catch (error) {
+                logger.log(`❌ Firebase initialization failed: ${error.message}`, 'error');
+                updateStatus('sdkStatus', 'Failed', 'error');
+                throw error;
+            }
+        }
+
+        async function setupAuth() {
+            try {
+                logger.log('🔐 Setting up authentication...', 'info');
+                updateStatus('authStatus', 'Connecting...', 'warning');
+                
+                // Listen to auth state changes
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        firebaseUser = user;
+                        logger.log(`✅ User authenticated: ${user.uid}`, 'success');
+                        updateStatus('authStatus', 'Authenticated', 'success');
+                        updateStatus('userIdStatus', user.uid.substring(0, 8) + '...', 'success');
+                        
+                        // Update Firebase status indicator
+                        updateFirebaseStatus('connected');
+                    } else {
+                        firebaseUser = null;
+                        logger.log('❌ User not authenticated', 'error');
+                        updateStatus('authStatus', 'Not authenticated', 'error');
+                        updateStatus('userIdStatus', 'None', 'error');
+                        
+                        // Update Firebase status indicator
+                        updateFirebaseStatus('disconnected');
+                    }
+                });
+
+                // Sign in anonymously with better error handling
+                const userCredential = await signInAnonymously(auth);
+                logger.log('🔑 Anonymous sign-in successful', 'success');
+                
+            } catch (error) {
+                logger.log(`❌ Authentication failed: ${error.message}`, 'error');
+                updateStatus('authStatus', 'Failed', 'error');
+                
+                // Try to understand the specific error
+                if (error.code === 'auth/operation-not-allowed') {
+                    logger.log('💡 Hint: Enable Anonymous Authentication in Firebase Console', 'warning');
+                } else if (error.code === 'auth/network-request-failed') {
+                    logger.log('💡 Hint: Check network connection', 'warning');
+                }
+                
+                throw error;
+            }
+        }
+
+        function setupDatabaseMonitoring() {
+            try {
+                logger.log('📡 Setting up database connection monitoring...', 'info');
+                
+                // Monitor Firebase connection
+                const connectedRef = ref(database, '.info/connected');
+                onValue(connectedRef, (snapshot) => {
+                    isFirebaseConnected = snapshot.val() === true;
+                    
+                    if (isFirebaseConnected) {
+                        logger.log('🌐 Database connected', 'success');
+                        updateStatus('dbConnectionStatus', 'Connected', 'success');
+                        updateFirebaseStatus('connected');
+                    } else {
+                        logger.log('📡 Database disconnected', 'warning');
+                        updateStatus('dbConnectionStatus', 'Disconnected', 'error');
+                        updateFirebaseStatus('disconnected');
+                    }
+                });
+                
+            } catch (error) {
+                logger.log(`❌ Database monitoring setup failed: ${error.message}`, 'error');
+                updateStatus('dbConnectionStatus', 'Setup failed', 'error');
+            }
+        }
+
+        // ===== TEST FUNCTIONS =====
+        window.testFirebaseConnection = async function() {
+            try {
+                logger.log('🧪 Testing Firebase connection...', 'info');
+                
+                if (!firebaseUser) {
+                    logger.log('❌ No authenticated user for testing', 'error');
+                    return;
+                }
+                
+                if (!isFirebaseConnected) {
+                    logger.log('❌ Database not connected', 'error');
+                    return;
+                }
+                
+                // Test basic database access
+                const testRef = ref(database, 'connection_test');
+                const testData = {
+                    timestamp: new Date().toISOString(),
+                    user_id: firebaseUser.uid,
+                    test_type: 'connection_test'
+                };
+                
+                await set(testRef, testData);
+                logger.log('✅ Connection test successful', 'success');
+                
+                // Try to read back the data
+                const snapshot = await get(testRef);
+                if (snapshot.exists()) {
+                    logger.log('✅ Read test successful', 'success');
+                } else {
+                    logger.log('⚠️ Write succeeded but read failed', 'warning');
+                }
+                
+            } catch (error) {
+                logger.log(`❌ Connection test failed: ${error.message}`, 'error');
+                
+                // Analyze the error
+                if (error.code === 'PERMISSION_DENIED') {
+                    logger.log('💡 Hint: Check Firebase Security Rules', 'warning');
+                } else if (error.code === 'NETWORK_ERROR') {
+                    logger.log('💡 Hint: Check internet connection', 'warning');
+                }
+            }
+        };
+
+        window.testWriteOperation = async function() {
+            try {
+                logger.log('✍️ Testing write operation...', 'info');
+                
+                if (!firebaseUser || !isFirebaseConnected) {
+                    logger.log('❌ Not ready for write test', 'error');
+                    return;
+                }
+                
+                const writeTestRef = push(ref(database, 'write_tests'));
+                const testData = {
+                    timestamp: new Date().toISOString(),
+                    user_id: firebaseUser.uid,
+                    test_message: 'This is a write test from debug mode',
+                    firebase_timestamp: serverTimestamp()
+                };
+                
+                await set(writeTestRef, testData);
+                eventCount++;
+                
+                logger.log('✅ Write test successful', 'success');
+                updateStatus('lastWriteStatus', new Date().toLocaleTimeString(), 'success');
+                updateStatus('eventsSentStatus', eventCount.toString(), 'success');
+                
+            } catch (error) {
+                logger.log(`❌ Write test failed: ${error.message}`, 'error');
+                updateStatus('lastWriteStatus', 'Failed', 'error');
+            }
+        };
+
+        window.testReadOperation = async function() {
+            try {
+                logger.log('📖 Testing read operation...', 'info');
+                
+                if (!firebaseUser || !isFirebaseConnected) {
+                    logger.log('❌ Not ready for read test', 'error');
+                    return;
+                }
+                
+                const readTestRef = ref(database, 'write_tests');
+                const snapshot = await get(readTestRef);
+                
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    const count = Object.keys(data).length;
+                    logger.log(`✅ Read test successful: Found ${count} test records`, 'success');
+                } else {
+                    logger.log('📋 Read successful but no test data found', 'info');
+                }
+                
+            } catch (error) {
+                logger.log(`❌ Read test failed: ${error.message}`, 'error');
+            }
+        };
+
+        window.clearTestData = async function() {
+            try {
+                logger.log('🧹 Clearing test data...', 'info');
+                
+                if (!firebaseUser || !isFirebaseConnected) {
+                    logger.log('❌ Not ready for clear operation', 'error');
+                    return;
+                }
+                
+                // Clear test data
+                await set(ref(database, 'connection_test'), null);
+                await set(ref(database, 'write_tests'), null);
+                
+                logger.log('✅ Test data cleared', 'success');
+                updateStatus('lastWriteStatus', 'Cleared', 'info');
+                
+            } catch (error) {
+                logger.log(`❌ Clear operation failed: ${error.message}`, 'error');
+            }
+        };
+
+        // ===== CUSTOMER VISIT TEST =====
+        window.testCustomerSelection = async function() {
+            try {
+                logger.log('👥 Testing customer visit tracking...', 'info');
+                
+                if (!firebaseUser || !isFirebaseConnected) {
+                    logger.log('❌ Firebase not ready', 'error');
+                    return;
+                }
+                
+                // Generate mock location data
+                const mockLocation = {
+                    latitude: -6.2000 + (Math.random() - 0.5) * 0.01,
+                    longitude: 106.8000 + (Math.random() - 0.5) * 0.01,
+                    accuracy: 20 + Math.random() * 30
+                };
+                
+                const mockCustomer = {
+                    name: 'Test Customer Swalayan Bahagia',
+                    hari_jks: 'SENIN',
+                    kode_pelanggan: 'TEST001',
+                    master_coordinates: {
+                        latitude: mockLocation.latitude + (Math.random() - 0.5) * 0.001,
+                        longitude: mockLocation.longitude + (Math.random() - 0.5) * 0.001
+                    }
+                };
+                
+                // Calculate distance
+                const distance = calculateDistance(
+                    mockLocation.latitude,
+                    mockLocation.longitude,
+                    mockCustomer.master_coordinates.latitude,
+                    mockCustomer.master_coordinates.longitude
+                );
+                
+                // Create visit event
+                const visitEvent = {
+                    session_id: 'debug_session_' + Date.now(),
+                    salesman_id: 'SALES001',
+                    salesman_name: 'Test Salesman',
+                    event_name: 'visit_customer_selected_debug',
+                    event_data: {
+                        customer_name: mockCustomer.name,
+                        hari_jks: mockCustomer.hari_jks,
+                        kode_pelanggan: mockCustomer.kode_pelanggan,
+                        master_coordinates: mockCustomer.master_coordinates,
+                        distance_meters: Math.round(distance),
+                        compliance_status: distance <= 100 ? 'compliant' : 'warning'
+                    },
+                    timestamp: new Date().toISOString(),
+                    location: mockLocation,
+                    firebase_timestamp: serverTimestamp()
+                };
+                
+                // Save to Firebase
+                const eventRef = push(ref(database, 'visit_events'));
+                await set(eventRef, visitEvent);
+                
+                eventCount++;
+                
+                logger.log(`✅ Customer visit tracked: ${mockCustomer.name}`, 'success');
+                logger.log(`📍 Distance: ${Math.round(distance)}m`, 'info');
+                updateStatus('eventsSentStatus', eventCount.toString(), 'success');
+                
+                // Also save to daily visits structure
+                const today = new Date().toISOString().split('T')[0];
+                const dailyRef = ref(database, `daily_visits/SALES001/${today}`);
+                const dailyData = {
+                    date: today,
+                    salesman_id: 'SALES001',
+                    salesman_name: 'Test Salesman',
+                    customers: {
+                        [mockCustomer.name]: {
+                            name: mockCustomer.name,
+                            hari_jks: mockCustomer.hari_jks,
+                            master_coordinates: mockCustomer.master_coordinates,
+                            sessions: [{
+                                start: new Date().toISOString(),
+                                start_location: mockLocation,
+                                distance_meters: Math.round(distance)
+                            }],
+                            visitCount: 1
+                        }
+                    },
+                    firebase_timestamp: serverTimestamp()
+                };
+                
+                await set(dailyRef, dailyData);
+                logger.log('✅ Daily visit data saved', 'success');
+                
+            } catch (error) {
+                logger.log(`❌ Customer visit test failed: ${error.message}`, 'error');
+            }
+        };
+
+        // ===== UTILITY FUNCTIONS =====
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371e3; // Earth's radius in meters
+            const φ1 = lat1 * Math.PI/180;
+            const φ2 = lat2 * Math.PI/180;
+            const Δφ = (lat2-lat1) * Math.PI/180;
+            const Δλ = (lon2-lon1) * Math.PI/180;
+
+            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                      Math.cos(φ1) * Math.cos(φ2) *
+                      Math.sin(Δλ/2) * Math.sin(Δλ/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+            return R * c;
+        }
+
+        function updateStatus(elementId, value, type = 'info') {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.textContent = value;
+                element.className = `debug-value status-${type === 'success' ? 'ok' : type === 'error' ? 'error' : 'warning'}`;
+            }
+        }
+
+        function updateFirebaseStatus(status) {
+            const statusElement = document.getElementById('firebaseStatus');
+            
+            if (status === 'connected') {
+                statusElement.innerHTML = '🔥 Firebase Online';
+                statusElement.className = 'firebase-status connected';
+            } else if (status === 'disconnected') {
+                statusElement.innerHTML = '📱 Offline Mode';
+                statusElement.className = 'firebase-status disconnected';
+            } else if (status === 'syncing') {
+                statusElement.innerHTML = '📡 Syncing...';
+                statusElement.className = 'firebase-status syncing';
+            }
+        }
+
+        // ===== DEBUG PANEL CONTROLS =====
+        window.toggleDebug = function() {
+            const panel = document.getElementById('debugPanel');
+            if (panel.style.display === 'none') {
+                panel.style.display = 'block';
+            } else {
+                panel.style.display = 'none';
+            }
+        };
+
+        // ===== INITIALIZATION =====
+        document.addEventListener('DOMContentLoaded', async function() {
+            logger.log('🚀 Starting enhanced Firebase debug mode...', 'info');
+            
+            try {
+                // Set salesman info
+                document.getElementById('salesmanName').textContent = 'Debug Mode (SALES001)';
+                
+                // Initialize Firebase with debug
+                await initializeFirebaseWithDebug();
+                
+                logger.log('✅ Debug mode ready', 'success');
+                
+            } catch (error) {
+                logger.log(`💥 Critical initialization error: ${error.message}`, 'error');
+                console.error('Initialization error:', error);
+            }
+        });
+
+        console.log('🔧 Enhanced Firebase debug mode loaded');
+    </script>
+</body>
+</html>
