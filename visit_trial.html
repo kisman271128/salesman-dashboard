@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visit Outlet - Sales Dashboard (Fixed)</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(180deg, #f8f9ff 0%, #e8ecff 100%);
+            min-height: 100vh;
+            color: #2c3e50;
+            padding-bottom: 100px;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        .detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 0 0 30px 30px;
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        .back-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            padding: 10px;
+            border-radius: 12px;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateX(-2px);
+        }
+
+        .detail-title-container {
+            text-align: center;
+            flex: 1;
+        }
+
+        .detail-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .salesman-name {
+            font-size: 14px;
+            opacity: 0.9;
+            font-weight: 400;
+        }
+
+        .user-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            padding: 10px;
+            border-radius: 12px;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .user-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* ===== ENHANCED STATUS INDICATORS ===== */
+        .firebase-status {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(16, 185, 129, 0.9);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            z-index: 1001;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            cursor: pointer;
+        }
+
+        .firebase-status.connected {
+            background: rgba(16, 185, 129, 0.9);
+        }
+
+        .firebase-status.disconnected {
+            background: rgba(239, 68, 68, 0.9);
+        }
+
+        .firebase-status.syncing {
+            background: rgba(245, 158, 11, 0.9);
+            animation: pulse 2s infinite;
+        }
+
+        .firebase-status.loading {
+            background: rgba(59, 130, 246, 0.9);
+            animation: pulse 2s infinite;
+        }
+
+        .location-status {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(16, 185, 129, 0.9);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .location-status.tracking {
+            background: rgba(239, 68, 68, 0.9);
+            animation: pulse 2s infinite;
+        }
+
+        .location-status.error {
+            background: rgba(245, 158, 11, 0.9);
+        }
+
+        .location-status.success {
+            background: rgba(16, 185, 129, 0.9);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.9; }
+            50% { opacity: 1; }
+        }
+
+        .sync-status {
+            position: fixed;
+            top: 50px;
+            right: 10px;
+            background: rgba(255, 255, 255, 0.95);
+            color: #374151;
+            padding: 8px 12px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            z-index: 999;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e5e7eb;
+            display: none;
+        }
+
+        .sync-status.visible {
+            display: block;
+        }
+
+        /* ===== FIREBASE DEBUG INFO ===== */
+        .debug-info {
+            position: fixed;
+            top: 80px;
+            left: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.9);
+            color: #0f0;
+            padding: 10px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 10px;
+            z-index: 998;
+            max-height: 150px;
+            overflow-y: auto;
+            display: none;
+        }
+
+        .debug-info.visible {
+            display: block;
+        }
+
+        /* Rest of styles remain the same... */
+        .loading-spinner {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            flex-direction: column;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: rgba(231, 76, 60, 0.1);
+            border: 1px solid rgba(231, 76, 60, 0.3);
+            color: #e74c3c;
+            padding: 16px;
+            border-radius: 12px;
+            margin: 20px;
+            text-align: center;
+        }
+
+        /* Simplified main content styles */
+        .content-section {
+            padding: 0 16px;
+            margin-bottom: 20px;
+        }
+
+        .frames-container {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .frame {
+            flex: 1;
+            background: white;
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .frame-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        .filter-item {
+            position: relative;
+            margin-bottom: 12px;
+        }
+
+        .filter-item select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 12px;
+            background: white;
+            color: #2d3748;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }
+
+        .summary-item {
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 8px;
+            text-align: center;
+        }
+
+        .summary-label {
+            font-size: 10px;
+            color: #64748b;
+            font-weight: 500;
+            margin-bottom: 2px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .summary-value {
+            font-size: 14px;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 400px;
+            background: white;
+            border-top: 1px solid #f1f2f6;
+            padding: 15px 0;
+            display: flex;
+            justify-content: space-around;
+            box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-decoration: none;
+            color: #bdc3c7;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            padding: 8px 6px;
+            border-radius: 12px;
+            min-width: 50px;
+        }
+
+        .nav-item.active {
+            color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .nav-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 4px;
+            font-size: 12px;
+        }
+
+        .nav-label {
+            font-size: 10px;
+            font-weight: 500;
+        }
+
+        .test-controls {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 15px;
+            margin: 20px 16px;
+        }
+
+        .test-controls h3 {
+            margin-bottom: 10px;
+            color: #374151;
+            font-size: 14px;
+        }
+
+        .test-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 5px 5px 5px 0;
+            font-size: 12px;
+            font-weight: 600;
+            transition: background 0.3s ease;
+        }
+
+        .test-btn:hover {
+            background: #5a67d8;
+        }
+
+        .test-btn.danger {
+            background: #ef4444;
+        }
+
+        .test-btn.danger:hover {
+            background: #dc2626;
+        }
+
+        @media (max-width: 480px) {
+            .frames-container {
+                flex-direction: column;
+                gap: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Enhanced Status Indicators -->
+        <div class="firebase-status" id="firebaseStatus" onclick="toggleDebugInfo()">
+            🔄 Loading Firebase...
+        </div>
+
+        <div class="location-status" id="locationStatus">
+            📍 Location Ready
+        </div>
+
+        <div class="sync-status" id="syncStatus">
+            📡 Sync: 0/0 events
+        </div>
+
+        <!-- Debug Info Panel -->
+        <div class="debug-info" id="debugInfo">
+            <div id="debugLog">🚀 Firebase Debug Console...</div>
+        </div>
+
+        <div class="detail-header">
+            <a href="dashboard.html" class="back-btn">←</a>
+            <div class="detail-title-container">
+                <div class="detail-title">Visit Outlet (Fixed)</div>
+                <div class="salesman-name" id="salesmanName">Loading...</div>
+            </div>
+            <button class="user-btn" onclick="showProfile()">👤</button>
+        </div>
+
+        <!-- Loading State -->
+        <div class="loading-spinner" id="loadingSpinner">
+            <div class="spinner"></div>
+            <div>Initializing Firebase & Loading data...</div>
+        </div>
+
+        <!-- Error State -->
+        <div class="error-message" id="errorMessage" style="display: none;">
+            <h3>📡 System Error</h3>
+            <p id="errorText">Unable to load system. Please check your connection.</p>
+            <button onclick="retryInitialization()" style="margin-top: 10px; padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer;">Retry</button>
+        </div>
+
+        <!-- Main Content -->
+        <div id="mainContent" style="display: none;">
+            <!-- Firebase Test Controls -->
+            <div class="test-controls">
+                <h3>🧪 Firebase Test Controls</h3>
+                <button class="test-btn" onclick="testFirebaseConnection()">Test Connection</button>
+                <button class="test-btn" onclick="testAuthentication()">Test Auth</button>
+                <button class="test-btn" onclick="simulateVisitEvent()">Simulate Visit</button>
+                <button class="test-btn danger" onclick="clearTestData()">Clear Data</button>
+            </div>
+
+            <!-- Two Frame Layout -->
+            <div class="content-section">
+                <div class="frames-container">
+                    <!-- Left Frame - Filters -->
+                    <div class="frame">
+                        <div class="frame-title">📅 Select Filters</div>
+                        <div class="filter-item">
+                            <select id="hari">
+                                <option value="">📅 Pilih Hari JKS</option>
+                            </select>
+                        </div>
+                        
+                        <div class="filter-item">
+                            <select id="pelanggan">
+                                <option value="">🏪 Pilih Pelanggan</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Right Frame - Summary -->
+                    <div class="frame">
+                        <div class="frame-title">📊 Summary</div>
+                        <div class="summary-grid">
+                            <div class="summary-item">
+                                <div class="summary-label">Firebase</div>
+                                <div class="summary-value" id="firebaseStatusValue">-</div>
+                            </div>
+                            <div class="summary-item">
+                                <div class="summary-label">Events</div>
+                                <div class="summary-value" id="eventsCount">-</div>
+                            </div>
+                            <div class="summary-item">
+                                <div class="summary-label">Status</div>
+                                <div class="summary-value" id="systemStatus">-</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Test Results Section -->
+            <div class="content-section">
+                <div class="frame">
+                    <div class="frame-title">📝 System Status & Results</div>
+                    <div id="testResults" style="font-family: 'Courier New', monospace; font-size: 11px; background: #f8fafc; padding: 10px; border-radius: 6px; max-height: 200px; overflow-y: auto;">
+                        System initializing...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Navigation -->
+        <div class="bottom-nav">
+            <div class="nav-item" onclick="goHome()">
+                <div class="nav-icon" style="background: #3b82f6; color: white;">🏠</div>
+                <div class="nav-label">Home</div>
+            </div>
+            <div class="nav-item active">
+                <div class="nav-icon" style="background: #ef4444; color: white;">📊</div>
+                <div class="nav-label">Visit</div>
+            </div>
+            <div class="nav-item" onclick="showIncentive()">
+                <div class="nav-icon" style="background: #f59e0b; color: white;">💰</div>
+                <div class="nav-label">Incentive</div>
+            </div>
+            <div class="nav-item" onclick="showProfile()">
+                <div class="nav-icon" style="background: #10b981; color: white;">👤</div>
+                <div class="nav-label">Profile</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FIXED FIREBASE SDK LOADING -->
+    <script type="module">
+        // ===== ENHANCED FIREBASE CONFIGURATION WITH ROBUST ERROR HANDLING =====
+        const firebaseConfig = {
+            apiKey: "AIzaSyAoRV3qVAXQ14AEVA8Mo49HXfAyhMMm8Bs",
+            authDomain: "salesman-route-tracker.firebaseapp.com",
+            databaseURL: "https://salesman-route-tracker-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "salesman-route-tracker",
+            storageBucket: "salesman-route-tracker.firebasestorage.app",
+            messagingSenderId: "590789273516",
+            appId: "1:590789273516:web:79abe0c7e4cbccfa44fc09",
+            measurementId: "G-5RYSWKQ963"
+        };
+
+        try {
+            window.debugLog('🚀 Starting Firebase module loading...', 'info');
+
+            // SOLUTION: Async module loading with proper error handling
+            const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
+            const { 
+                getDatabase, 
+                ref, 
+                push, 
+                set,
+                get,
+                onValue,
+                serverTimestamp
+            } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js');
+            const {
+                getAuth,
+                signInAnonymously,
+                onAuthStateChanged
+            } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
+
+            window.debugLog('✅ Firebase modules loaded successfully', 'success');
+
+            // Initialize Firebase
+            const app = initializeApp(firebaseConfig);
+            const database = getDatabase(app);
+            const auth = getAuth(app);
+
+            // Export to global scope with ready flag
+            window.firebaseApp = app;
+            window.firebaseDatabase = database;
+            window.firebaseAuth = auth;
+            window.firebaseModules = { ref, push, set, get, onValue, serverTimestamp };
+            window.firebaseReady = true; // ✅ CRITICAL: Ready flag
+
+            window.debugLog('✅ Firebase app initialized successfully', 'success');
+            
+            // Trigger initialization after Firebase is ready
+            if (window.initializeAfterFirebase) {
+                window.initializeAfterFirebase();
+            }
+            
+        } catch (error) {
+            window.debugLog(`❌ Firebase module loading failed: ${error.message}`, 'error');
+            window.firebaseReady = false;
+            window.firebaseError = error.message;
+            
+            // Trigger error handling
+            if (window.handleFirebaseError) {
+                window.handleFirebaseError(error);
+            }
+        }
+    </script>
+
+    <script>
+        // ===== GLOBAL VARIABLES =====
+        let currentSalesman = 'TEST_SALESMAN';
+        let currentSalesmanId = 'TEST001';
+        let isFirebaseConnected = false;
+        let isAuthenticated = false;
+        let firebaseUser = null;
+        let pendingSyncCount = 0;
+        let syncedCount = 0;
+        let eventCount = 0;
+        let visitAnalytics = null;
+
+        // ===== ENHANCED DEBUG LOGGING =====
+        window.debugLog = function(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const colors = {
+                'info': '#0ea5e9',
+                'warning': '#f59e0b',
+                'error': '#ef4444',
+                'success': '#10b981'
+            };
+            
+            const debugElement = document.getElementById('debugLog');
+            if (debugElement) {
+                const logEntry = document.createElement('div');
+                logEntry.style.color = colors[type] || '#0ea5e9';
+                logEntry.innerHTML = `[${timestamp}] ${message}`;
+                debugElement.appendChild(logEntry);
+                debugElement.scrollTop = debugElement.scrollHeight;
+                
+                // Limit log entries
+                if (debugElement.children.length > 50) {
+                    debugElement.removeChild(debugElement.firstChild);
+                }
+            }
+            
+            console.log(`🔥 Firebase: ${message}`);
+            
+            // Update test results
+            updateTestResults(message);
+        };
+
+        function updateTestResults(message) {
+            const resultsElement = document.getElementById('testResults');
+            if (resultsElement) {
+                resultsElement.innerHTML += `<div>${message}</div>`;
+                resultsElement.scrollTop = resultsElement.scrollHeight;
+            }
+        }
+
+        // ===== FIREBASE AVAILABILITY CHECK =====
+        function checkFirebaseReady() {
+            if (!window.firebaseReady) {
+                debugLog('❌ Firebase not ready yet', 'warning');
+                return false;
+            }
+            
+            if (!window.firebaseDatabase || !window.firebaseAuth || !window.firebaseModules) {
+                debugLog('❌ Firebase modules not available', 'error');
+                return false;
+            }
+            
+            return true;
+        }
+
+        // ===== ENHANCED STATUS MANAGEMENT =====
+        function updateFirebaseStatus(status, message = '') {
+            const statusElement = document.getElementById('firebaseStatus');
+            const statusValue = document.getElementById('firebaseStatusValue');
+            
+            let statusText = '';
+            let className = 'firebase-status';
+            
+            switch(status) {
+                case 'loading':
+                    statusText = '🔄 Loading...';
+                    className += ' loading';
+                    if (statusValue) statusValue.textContent = 'Loading';
+                    break;
+                case 'connected':
+                    statusText = '🔥 Firebase Online';
+                    className += ' connected';
+                    isFirebaseConnected = true;
+                    if (statusValue) statusValue.textContent = 'Online';
+                    break;
+                case 'disconnected':
+                    statusText = '📱 Offline Mode';
+                    className += ' disconnected';
+                    isFirebaseConnected = false;
+                    if (statusValue) statusValue.textContent = 'Offline';
+                    break;
+                case 'syncing':
+                    statusText = '📡 Syncing...';
+                    className += ' syncing';
+                    if (statusValue) statusValue.textContent = 'Syncing';
+                    break;
+                case 'error':
+                    statusText = `❌ Error`;
+                    className += ' disconnected';
+                    isFirebaseConnected = false;
+                    if (statusValue) statusValue.textContent = 'Error';
+                    break;
+            }
+            
+            if (statusElement) {
+                statusElement.innerHTML = statusText;
+                statusElement.className = className;
+            }
+            
+            debugLog(`Status: ${status} - ${message || statusText}`, status === 'error' ? 'error' : 'info');
+        }
+
+        function updateEventCount(count) {
+            eventCount = count;
+            const eventsElement = document.getElementById('eventsCount');
+            if (eventsElement) {
+                eventsElement.textContent = count;
+            }
+        }
+
+        function updateSystemStatus(status) {
+            const systemElement = document.getElementById('systemStatus');
+            if (systemElement) {
+                systemElement.textContent = status;
+            }
+        }
+
+        // ===== FIREBASE OPERATIONS =====
+        async function initializeFirebase() {
+            try {
+                if (!checkFirebaseReady()) {
+                    throw new Error('Firebase modules not available');
+                }
+                
+                debugLog('🚀 Initializing Firebase services...', 'info');
+                updateFirebaseStatus('loading', 'Connecting...');
+                
+                // Monitor connection status
+                const connectedRef = window.firebaseModules.ref(window.firebaseDatabase, '.info/connected');
+                window.firebaseModules.onValue(connectedRef, (snapshot) => {
+                    const connected = snapshot.val() === true;
+                    updateFirebaseStatus(connected ? 'connected' : 'disconnected');
+                    if (connected) {
+                        debugLog('🌐 Firebase connection established', 'success');
+                        syncPendingData();
+                    } else {
+                        debugLog('🌐 Firebase connection lost', 'warning');
+                    }
+                });
+
+                // Authenticate
+                debugLog('🔐 Starting authentication...', 'info');
+                const result = await window.firebaseAuth.signInAnonymously();
+                isAuthenticated = true;
+                firebaseUser = result.user;
+                debugLog(`✅ Authentication successful: ${result.user.uid}`, 'success');
+                
+                // Monitor authentication
+                window.firebaseAuth.onAuthStateChanged((user) => {
+                    isAuthenticated = !!user;
+                    firebaseUser = user;
+                    debugLog(`👤 Auth state: ${isAuthenticated ? 'Authenticated' : 'Not authenticated'}`, isAuthenticated ? 'success' : 'warning');
+                });
+
+                // Test basic write
+                await testBasicWrite();
+                
+                // Setup realtime monitoring
+                setupRealtimeMonitoring();
+                
+                debugLog('🎯 Firebase initialization complete', 'success');
+                updateFirebaseStatus('connected', 'Ready');
+                updateSystemStatus('Ready');
+                
+            } catch (error) {
+                debugLog(`❌ Firebase initialization failed: ${error.message}`, 'error');
+                updateFirebaseStatus('error', error.message);
+                updateSystemStatus('Error');
+                throw error;
+            }
+        }
+
+        async function testBasicWrite() {
+            try {
+                debugLog('🧪 Testing basic write capability...', 'info');
+                
+                const testRef = window.firebaseModules.ref(window.firebaseDatabase, 'connection_test');
+                await window.firebaseModules.set(testRef, {
+                    timestamp: window.firebaseModules.serverTimestamp(),
+                    test_message: "Basic write test successful",
+                    user_uid: firebaseUser?.uid || 'anonymous',
+                    test_id: Date.now()
+                });
+                
+                debugLog('✅ Basic write test successful', 'success');
+                
+            } catch (error) {
+                debugLog(`❌ Basic write test failed: ${error.message}`, 'error');
+                throw error;
+            }
+        }
+
+        function setupRealtimeMonitoring() {
+            try {
+                debugLog('👁️ Setting up realtime monitoring...', 'info');
+                
+                // Monitor visit events
+                const visitEventsRef = window.firebaseModules.ref(window.firebaseDatabase, 'visit_events');
+                window.firebaseModules.onValue(visitEventsRef, (snapshot) => {
+                    const data = snapshot.val();
+                    const count = data ? Object.keys(data).length : 0;
+                    updateEventCount(count);
+                    debugLog(`📊 Visit events count: ${count}`, 'info');
+                });
+
+                debugLog('✅ Realtime monitoring active', 'success');
+                
+            } catch (error) {
+                debugLog(`❌ Realtime monitoring setup failed: ${error.message}`, 'error');
+            }
+        }
+
+        // ===== FIREBASE EVENT TRACKING =====
+        async function trackEvent(eventName, eventData = {}) {
+            try {
+                if (!checkFirebaseReady()) {
+                    throw new Error('Firebase not ready');
+                }
+                
+                if (!isAuthenticated) {
+                    throw new Error('Not authenticated');
+                }
+                
+                debugLog(`📤 Tracking event: ${eventName}`, 'info');
+                updateFirebaseStatus('syncing', 'Saving event...');
+                
+                const event = {
+                    session_id: 'session_' + Date.now(),
+                    salesman_id: currentSalesmanId,
+                    salesman_name: currentSalesman,
+                    event_name: eventName,
+                    event_data: eventData,
+                    timestamp: new Date().toISOString(),
+                    firebase_timestamp: window.firebaseModules.serverTimestamp(),
+                    location: {
+                        latitude: -6.2000 + (Math.random() - 0.5) * 0.1,
+                        longitude: 106.8000 + (Math.random() - 0.5) * 0.1,
+                        accuracy: Math.random() * 50 + 10
+                    }
+                };
+                
+                const eventsRef = window.firebaseModules.ref(window.firebaseDatabase, 'visit_events');
+                const newEventRef = window.firebaseModules.push(eventsRef);
+                await window.firebaseModules.set(newEventRef, event);
+                
+                syncedCount++;
+                updateFirebaseStatus('connected', 'Event saved');
+                
+                debugLog(`✅ Event saved: ${eventName} (ID: ${newEventRef.key})`, 'success');
+                return newEventRef.key;
+                
+            } catch (error) {
+                debugLog(`❌ Failed to track event: ${error.message}`, 'error');
+                addToPendingQueue(eventName, eventData);
+                throw error;
+            }
+        }
+
+        function addToPendingQueue(eventName, eventData) {
+            try {
+                pendingSyncCount++;
+                
+                const pendingEvents = JSON.parse(localStorage.getItem('pending_firebase_events') || '[]');
+                pendingEvents.push({
+                    eventName,
+                    eventData,
+                    timestamp: new Date().toISOString(),
+                    salesmanId: currentSalesmanId,
+                    salesmanName: currentSalesman
+                });
+                localStorage.setItem('pending_firebase_events', JSON.stringify(pendingEvents));
+                
+                debugLog(`📱 Event queued for offline sync: ${eventName}`, 'warning');
+                
+            } catch (error) {
+                debugLog(`❌ Failed to queue event: ${error.message}`, 'error');
+            }
+        }
+
+        async function syncPendingData() {
+            try {
+                const pendingEvents = JSON.parse(localStorage.getItem('pending_firebase_events') || '[]');
+                
+                if (pendingEvents.length === 0) {
+                    return;
+                }
+                
+                debugLog(`🔄 Syncing ${pendingEvents.length} pending events...`, 'info');
+                updateFirebaseStatus('syncing', `Syncing ${pendingEvents.length} events...`);
+                
+                let syncedEvents = 0;
+                
+                for (const pendingEvent of pendingEvents) {
+                    try {
+                        await trackEvent(pendingEvent.eventName, pendingEvent.eventData);
+                        syncedEvents++;
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    } catch (error) {
+                        debugLog(`❌ Failed to sync event: ${pendingEvent.eventName}`, 'error');
+                        break;
+                    }
+                }
+                
+                const remainingEvents = pendingEvents.slice(syncedEvents);
+                localStorage.setItem('pending_firebase_events', JSON.stringify(remainingEvents));
+                
+                pendingSyncCount = remainingEvents.length;
+                
+                debugLog(`✅ Sync completed: ${syncedEvents}/${pendingEvents.length} events synced`, 'success');
+                updateFirebaseStatus('connected', 'Sync completed');
+                
+            } catch (error) {
+                debugLog(`❌ Sync failed: ${error.message}`, 'error');
+            }
+        }
+
+        // ===== TEST FUNCTIONS =====
+        window.testFirebaseConnection = async function() {
+            try {
+                updateTestResults('🔍 Testing Firebase connection...');
+                
+                if (!checkFirebaseReady()) {
+                    return;
+                }
+                
+                const connectedRef = window.firebaseModules.ref(window.firebaseDatabase, '.info/connected');
+                const snapshot = await window.firebaseModules.get(connectedRef);
+                const connected = snapshot.val();
+                
+                const result = connected ? 
+                    '✅ Firebase connection: SUCCESS' : 
+                    '❌ Firebase connection: FAILED';
+                    
+                debugLog(result, connected ? 'success' : 'error');
+                
+            } catch (error) {
+                debugLog(`❌ Connection test error: ${error.message}`, 'error');
+            }
+        };
+
+        window.testAuthentication = async function() {
+            try {
+                updateTestResults('🔍 Testing authentication...');
+                
+                if (!checkFirebaseReady()) {
+                    return;
+                }
+                
+                const result = await window.firebaseAuth.signInAnonymously();
+                debugLog(`✅ Authentication successful: ${result.user.uid}`, 'success');
+                
+            } catch (error) {
+                debugLog(`❌ Authentication error: ${error.message}`, 'error');
+            }
+        };
+
+        window.simulateVisitEvent = async function() {
+            try {
+                updateTestResults('🎯 Simulating visit event...');
+                
+                const eventData = {
+                    customer_name: 'Test Customer PT ABC',
+                    hari_jks: 'SENIN',
+                    selection_time: new Date().toISOString(),
+                    test_mode: true
+                };
+                
+                const eventId = await trackEvent('test_customer_selected', eventData);
+                debugLog(`✅ Visit event simulation successful: ${eventId}`, 'success');
+                
+            } catch (error) {
+                debugLog(`❌ Simulation error: ${error.message}`, 'error');
+            }
+        };
+
+        window.clearTestData = async function() {
+            try {
+                if (!confirm('Clear all test data?')) return;
+                
+                updateTestResults('🧹 Clearing test data...');
+                
+                if (checkFirebaseReady()) {
+                    await window.firebaseModules.set(window.firebaseModules.ref(window.firebaseDatabase, 'visit_events'), null);
+                    await window.firebaseModules.set(window.firebaseModules.ref(window.firebaseDatabase, 'connection_test'), null);
+                }
+                
+                localStorage.removeItem('pending_firebase_events');
+                
+                pendingSyncCount = 0;
+                syncedCount = 0;
+                eventCount = 0;
+                updateEventCount(0);
+                
+                debugLog('✅ Test data cleared successfully', 'success');
+                
+            } catch (error) {
+                debugLog(`❌ Clear data error: ${error.message}`, 'error');
+            }
+        };
+
+        // ===== UI FUNCTIONS =====
+        window.toggleDebugInfo = function() {
+            const debugPanel = document.getElementById('debugInfo');
+            debugPanel.classList.toggle('visible');
+        };
+
+        function showLoading(show) {
+            document.getElementById('loadingSpinner').style.display = show ? 'flex' : 'none';
+        }
+
+        function showError(show, message = '') {
+            const errorElement = document.getElementById('errorMessage');
+            if (show) {
+                errorElement.style.display = 'block';
+                if (message) {
+                    document.getElementById('errorText').innerHTML = message;
+                }
+            } else {
+                errorElement.style.display = 'none';
+            }
+        }
+
+        function showMainContent(show) {
+            document.getElementById('mainContent').style.display = show ? 'block' : 'none';
+        }
+
+        // ===== NAVIGATION FUNCTIONS =====
+        function goHome() { 
+            window.location.href = 'dashboard.html'; 
+        }
+        
+        function showIncentive() {
+            alert('🚧 Incentive feature coming soon!');
+        }
+        
+        function showProfile() {
+            alert('🚧 Profile feature coming soon!');
+        }
+
+        window.retryInitialization = function() {
+            window.location.reload();
+        };
+
+        // ===== INITIALIZATION CALLBACKS =====
+        window.initializeAfterFirebase = async function() {
+            try {
+                debugLog('🔥 Firebase ready, starting app initialization...', 'info');
+                
+                // Wait additional time for Firebase to stabilize
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Initialize Firebase services
+                await initializeFirebase();
+                
+                // Set default salesman for testing
+                document.getElementById('salesmanName').textContent = currentSalesman;
+                
+                // Populate test data
+                populateTestData();
+                
+                showLoading(false);
+                showMainContent(true);
+                
+                debugLog('✅ Visit app fully initialized', 'success');
+                updateSystemStatus('Online');
+                
+            } catch (error) {
+                debugLog(`❌ App initialization failed: ${error.message}`, 'error');
+                showLoading(false);
+                showError(true, `Initialization failed: ${error.message}<br><br>Please check your internet connection and try again.`);
+                updateSystemStatus('Failed');
+            }
+        };
+
+        window.handleFirebaseError = function(error) {
+            debugLog(`❌ Firebase error: ${error.message}`, 'error');
+            showLoading(false);
+            showError(true, `Firebase loading failed: ${error.message}<br><br>Please check your internet connection and refresh the page.`);
+            updateFirebaseStatus('error', error.message);
+            updateSystemStatus('Firebase Error');
+        };
+
+        function populateTestData() {
+            // Populate test hari data
+            const hariSelect = document.getElementById('hari');
+            const hariOptions = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
+            
+            hariOptions.forEach(hari => {
+                const option = document.createElement('option');
+                option.value = hari;
+                option.textContent = hari;
+                hariSelect.appendChild(option);
+            });
+            
+            // Populate test pelanggan data
+            const pelangganSelect = document.getElementById('pelanggan');
+            const pelangganOptions = ['PT ABC Retail', 'PT XYZ Store', 'Toko Makmur', 'Supermarket DEF'];
+            
+            pelangganOptions.forEach(pelanggan => {
+                const option = document.createElement('option');
+                option.value = pelanggan;
+                option.textContent = pelanggan;
+                pelangganSelect.appendChild(option);
+            });
+
+            // Add event listeners
+            hariSelect.addEventListener('change', function() {
+                if (this.value && visitAnalytics) {
+                    trackEvent('hari_selected', { hari_jks: this.value });
+                }
+            });
+
+            pelangganSelect.addEventListener('change', function() {
+                if (this.value && visitAnalytics) {
+                    trackEvent('customer_selected', { 
+                        customer_name: this.value,
+                        hari_jks: hariSelect.value 
+                    });
+                }
+            });
+
+            debugLog('✅ Test data populated', 'success');
+        }
+
+        // ===== PAGE LOAD =====
+        window.onload = function() {
+            debugLog('📱 Enhanced Visit Outlet - Firebase Integration v3.0', 'info');
+            debugLog('🔥 Features: Robust module loading, enhanced error handling, real-time sync', 'info');
+            
+            showLoading(true);
+            updateFirebaseStatus('loading', 'Initializing...');
+            updateSystemStatus('Initializing');
+            
+            // Check if Firebase is already ready (race condition protection)
+            if (window.firebaseReady) {
+                window.initializeAfterFirebase();
+            }
+            // Otherwise, wait for the module loading to complete and call initializeAfterFirebase
+        };
+
+        console.log('✅ Enhanced Visit Script v3.0 with Complete Firebase Integration loaded');
+    </script>
+</body>
+</html>
