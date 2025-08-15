@@ -3,10 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Visit Outlet - Sales Dashboard (Fixed)</title>
-    
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    <title>Visit Outlet - Sales Dashboard (Final Fix)</title>
     
     <style>
         * {
@@ -57,11 +54,6 @@
             transition: all 0.3s ease;
         }
 
-        .back-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: translateX(-2px);
-        }
-
         .detail-title-container {
             text-align: center;
             flex: 1;
@@ -90,11 +82,7 @@
             transition: background 0.3s ease;
         }
 
-        .user-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-        }
-
-        /* ===== ENHANCED FIREBASE CONNECTION STATUS ===== */
+        /* Status Indicators */
         .firebase-status {
             position: fixed;
             top: 10px;
@@ -113,62 +101,17 @@
             cursor: pointer;
         }
 
-        .firebase-status.connected {
-            background: rgba(16, 185, 129, 0.9);
-        }
-
-        .firebase-status.disconnected {
-            background: rgba(239, 68, 68, 0.9);
-        }
-
-        .firebase-status.syncing {
-            background: rgba(245, 158, 11, 0.9);
-            animation: pulse 2s infinite;
-        }
-
-        .firebase-status.authenticating {
-            background: rgba(59, 130, 246, 0.9);
-            animation: pulse 2s infinite;
-        }
-
-        /* ===== GEOLOCATION STATUS INDICATORS ===== */
-        .location-status {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            background: rgba(16, 185, 129, 0.9);
-            color: white;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: 600;
-            z-index: 1000;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-        }
-
-        .location-status.tracking {
-            background: rgba(239, 68, 68, 0.9);
-            animation: pulse 2s infinite;
-        }
-
-        .location-status.error {
-            background: rgba(245, 158, 11, 0.9);
-        }
-
-        .location-status.success {
-            background: rgba(16, 185, 129, 0.9);
-        }
+        .firebase-status.connected { background: rgba(16, 185, 129, 0.9); }
+        .firebase-status.disconnected { background: rgba(239, 68, 68, 0.9); }
+        .firebase-status.syncing { background: rgba(245, 158, 11, 0.9); animation: pulse 2s infinite; }
+        .firebase-status.loading { background: rgba(59, 130, 246, 0.9); animation: pulse 2s infinite; }
 
         @keyframes pulse {
             0%, 100% { opacity: 0.9; }
             50% { opacity: 1; }
         }
 
-        /* ===== DEBUG INFO PANEL ===== */
-        .debug-panel {
+        .debug-info {
             position: fixed;
             top: 50px;
             left: 10px;
@@ -179,38 +122,14 @@
             border-radius: 8px;
             font-family: 'Courier New', monospace;
             font-size: 10px;
-            z-index: 999;
+            z-index: 998;
             max-height: 200px;
             overflow-y: auto;
             display: none;
         }
 
-        .debug-panel.visible {
-            display: block;
-        }
+        .debug-info.visible { display: block; }
 
-        /* ===== SYNC STATUS INDICATOR ===== */
-        .sync-status {
-            position: fixed;
-            top: 50px;
-            right: 10px;
-            background: rgba(255, 255, 255, 0.95);
-            color: #374151;
-            padding: 8px 12px;
-            border-radius: 12px;
-            font-size: 10px;
-            font-weight: 600;
-            z-index: 999;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            border: 1px solid #e5e7eb;
-            display: none;
-        }
-
-        .sync-status.visible {
-            display: block;
-        }
-
-        /* Rest of the existing styles remain the same... */
         .loading-spinner {
             display: flex;
             justify-content: center;
@@ -244,45 +163,11 @@
             text-align: center;
         }
 
-        /* Tab Navigation */
-        .tab-navigation {
-            display: flex;
-            background: white;
-            margin: 0 16px 20px 16px;
-            border-radius: 16px;
-            overflow: hidden;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        .content-section {
+            padding: 0 16px;
+            margin-bottom: 20px;
         }
 
-        .tab-btn {
-            flex: 1;
-            padding: 16px 12px;
-            background: #f8fafc;
-            border: none;
-            font-size: 14px;
-            font-weight: 600;
-            color: #64748b;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            border-bottom: 3px solid transparent;
-        }
-
-        .tab-btn.active {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border-bottom-color: #667eea;
-        }
-
-        .tab-btn:hover:not(.active) {
-            background: #f1f5f9;
-            color: #475569;
-        }
-
-        .tab-content {
-            display: block;
-        }
-
-        /* Add minimal styles for the components */
         .frames-container {
             display: flex;
             gap: 12px;
@@ -305,68 +190,42 @@
             text-align: center;
         }
 
-        .filter-item {
-            position: relative;
-            margin-bottom: 12px;
-        }
-
-        .filter-item select {
-            width: 100%;
-            padding: 10px 12px;
-            border: 2px solid #e2e8f0;
-            border-radius: 12px;
-            font-size: 12px;
-            background: white;
-            color: #2d3748;
-        }
-
-        .content-section {
-            padding: 0 16px;
-            margin-bottom: 20px;
-        }
-
-        .summary-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 8px;
-        }
-
-        .summary-item {
-            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+        .test-controls {
+            background: #f8fafc;
             border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 15px;
+            margin: 20px 16px;
+        }
+
+        .test-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 8px 16px;
             border-radius: 8px;
-            padding: 8px;
-            text-align: center;
+            cursor: pointer;
+            margin: 5px 5px 5px 0;
+            font-size: 12px;
+            font-weight: 600;
+            transition: background 0.3s ease;
         }
 
-        .summary-label {
-            font-size: 10px;
-            color: #64748b;
-            font-weight: 500;
-            margin-bottom: 2px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+        .test-btn:hover { background: #5a67d8; }
+        .test-btn.danger { background: #ef4444; }
+        .test-btn.danger:hover { background: #dc2626; }
+
+        .results-area {
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            background: #f8fafc;
+            padding: 10px;
+            border-radius: 6px;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #e2e8f0;
         }
 
-        .summary-value {
-            font-size: 14px;
-            font-weight: 700;
-            color: #1e293b;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 40px 20px;
-            color: #64748b;
-        }
-
-        .empty-state-icon {
-            font-size: 48px;
-            margin-bottom: 16px;
-            opacity: 0.5;
-        }
-
-        /* Bottom Navigation */
         .bottom-nav {
             position: fixed;
             bottom: 0;
@@ -417,34 +276,27 @@
             font-weight: 500;
         }
 
+        @media (max-width: 480px) {
+            .frames-container { flex-direction: column; gap: 8px; }
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Enhanced Firebase Connection Status -->
-        <div class="firebase-status" id="firebaseStatus" onclick="toggleDebugPanel()">
-            🔄 Connecting Firebase...
+        <!-- Status Indicators -->
+        <div class="firebase-status" id="firebaseStatus" onclick="toggleDebugInfo()">
+            🔄 Loading Firebase...
         </div>
 
-        <!-- Location Status Indicator -->
-        <div class="location-status" id="locationStatus">
-            📍 Location Ready
-        </div>
-
-        <!-- Debug Panel -->
-        <div class="debug-panel" id="debugPanel">
+        <!-- Debug Info Panel -->
+        <div class="debug-info" id="debugInfo">
             <div id="debugLog">🚀 Firebase Debug Console...</div>
-        </div>
-
-        <!-- Sync Status Indicator -->
-        <div class="sync-status" id="syncStatus">
-            📡 Sync: 0/0 events
         </div>
 
         <div class="detail-header">
             <a href="dashboard.html" class="back-btn">←</a>
             <div class="detail-title-container">
-                <div class="detail-title">Visit Outlet (Fixed)</div>
+                <div class="detail-title">Visit Outlet (Final Fix)</div>
                 <div class="salesman-name" id="salesmanName">Loading...</div>
             </div>
             <button class="user-btn" onclick="showProfile()">👤</button>
@@ -453,90 +305,44 @@
         <!-- Loading State -->
         <div class="loading-spinner" id="loadingSpinner">
             <div class="spinner"></div>
-            <div>Loading data...</div>
+            <div>Initializing Firebase & System...</div>
         </div>
 
         <!-- Error State -->
         <div class="error-message" id="errorMessage" style="display: none;">
-            <h3>📡 Data Loading Error</h3>
-            <p>Unable to load visit data. Please check your connection.</p>
-            <button onclick="initializeData()" style="margin-top: 10px; padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer;">Retry</button>
+            <h3>📡 System Error</h3>
+            <p id="errorText">Unable to load system. Please check your connection.</p>
+            <button onclick="retryInitialization()" style="margin-top: 10px; padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer;">Retry</button>
         </div>
 
         <!-- Main Content -->
         <div id="mainContent" style="display: none;">
-            <!-- Tab Navigation -->
-            <div class="tab-navigation">
-                <button class="tab-btn active" onclick="showTab('visit')">📊 Visit Test</button>
-                <button class="tab-btn" onclick="showTab('debug')">🔧 Debug</button>
+            <!-- Firebase Test Controls -->
+            <div class="test-controls">
+                <h3>🧪 Firebase Test Controls</h3>
+                <button class="test-btn" onclick="testFirebaseConnection()">Test Connection</button>
+                <button class="test-btn" onclick="testAuthentication()">Test Auth</button>
+                <button class="test-btn" onclick="simulateVisitEvent()">Simulate Event</button>
+                <button class="test-btn danger" onclick="clearAllData()">Clear Data</button>
             </div>
 
-            <!-- Visit Tab Content -->
-            <div id="visitTab" class="tab-content">
-                <!-- Two Frame Layout -->
-                <div class="content-section">
-                    <div class="frames-container">
-                        <!-- Left Frame - Test Actions -->
-                        <div class="frame">
-                            <div class="frame-title">🧪 Firebase Tests</div>
-                            <button onclick="testFirebaseConnection()" style="width: 100%; margin: 5px 0; padding: 8px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer;">Test Connection</button>
-                            <button onclick="testAuthentication()" style="width: 100%; margin: 5px 0; padding: 8px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer;">Test Auth</button>
-                            <button onclick="simulateVisitEvent()" style="width: 100%; margin: 5px 0; padding: 8px; background: #8b5cf6; color: white; border: none; border-radius: 6px; cursor: pointer;">Simulate Visit</button>
-                            <button onclick="clearData()" style="width: 100%; margin: 5px 0; padding: 8px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer;">Clear Data</button>
+            <!-- System Status -->
+            <div class="content-section">
+                <div class="frame">
+                    <div class="frame-title">📊 System Status</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                        <div style="text-align: center; padding: 8px; background: #f8fafc; border-radius: 6px;">
+                            <div style="font-size: 10px; color: #64748b; margin-bottom: 2px;">Firebase</div>
+                            <div id="firebaseStatusValue" style="font-size: 12px; font-weight: 600;">-</div>
                         </div>
-
-                        <!-- Right Frame - Status -->
-                        <div class="frame">
-                            <div class="frame-title">📊 Status</div>
-                            <div class="summary-grid">
-                                <div class="summary-item">
-                                    <div class="summary-label">Firebase</div>
-                                    <div class="summary-value" id="firebaseStatusValue">-</div>
-                                </div>
-                                <div class="summary-item">
-                                    <div class="summary-label">Auth</div>
-                                    <div class="summary-value" id="authStatusValue">-</div>
-                                </div>
-                                <div class="summary-item">
-                                    <div class="summary-label">Events</div>
-                                    <div class="summary-value" id="eventsCount">-</div>
-                                </div>
-                            </div>
+                        <div style="text-align: center; padding: 8px; background: #f8fafc; border-radius: 6px;">
+                            <div style="font-size: 10px; color: #64748b; margin-bottom: 2px;">Events</div>
+                            <div id="eventsCount" style="font-size: 12px; font-weight: 600;">-</div>
                         </div>
                     </div>
-                </div>
-
-                <!-- Results Section -->
-                <div class="content-section">
-                    <div class="frame">
-                        <div class="frame-title">📝 Test Results</div>
-                        <div id="testResults">
-                            <div class="empty-state">
-                                <div class="empty-state-icon">🧪</div>
-                                <div>Run tests to see results</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Debug Tab Content -->
-            <div id="debugTab" class="tab-content" style="display: none;">
-                <div class="content-section">
-                    <div class="frame">
-                        <div class="frame-title">🔍 Debug Information</div>
-                        <div id="debugInfo" style="font-family: 'Courier New', monospace; font-size: 11px; background: #f8fafc; padding: 10px; border-radius: 6px; white-space: pre-wrap;">
-                            Loading debug info...
-                        </div>
-                    </div>
-                </div>
-
-                <div class="content-section">
-                    <div class="frame">
-                        <div class="frame-title">📊 Real-time Data</div>
-                        <div id="realtimeData" style="font-family: 'Courier New', monospace; font-size: 10px; background: #f8fafc; padding: 10px; border-radius: 6px; max-height: 300px; overflow-y: auto;">
-                            Monitoring Firebase...
-                        </div>
+                    
+                    <div class="results-area" id="testResults">
+                        System initializing...
                     </div>
                 </div>
             </div>
@@ -563,9 +369,10 @@
         </div>
     </div>
 
-    <!-- Firebase SDK -->
+    <!-- FIREBASE SDK LOADING WITH COMPLETE ERROR HANDLING -->
     <script type="module">
-        // ===== ENHANCED FIREBASE CONFIGURATION WITH ROBUST ERROR HANDLING =====
+        console.log('🔥 Starting Firebase module loading...');
+        
         const firebaseConfig = {
             apiKey: "AIzaSyAoRV3qVAXQ14AEVA8Mo49HXfAyhMMm8Bs",
             authDomain: "salesman-route-tracker.firebaseapp.com",
@@ -577,92 +384,143 @@
             measurementId: "G-5RYSWKQ963"
         };
 
-        // Import Firebase modules
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { 
-            getDatabase, 
-            ref, 
-            push, 
-            set,
-            get,
-            onValue,
-            off,
-            serverTimestamp,
-            connectionsRef
-        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
-        import {
-            getAuth,
-            signInAnonymously,
-            onAuthStateChanged
-        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        try {
+            // Import Firebase modules with detailed logging
+            console.log('📦 Importing Firebase App...');
+            const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
+            
+            console.log('📦 Importing Firebase Database...');
+            const { 
+                getDatabase, 
+                ref, 
+                push, 
+                set,
+                get,
+                onValue,
+                serverTimestamp
+            } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js');
+            
+            console.log('📦 Importing Firebase Auth...');
+            const {
+                getAuth,
+                signInAnonymously,
+                onAuthStateChanged
+            } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
 
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const database = getDatabase(app);
-        const auth = getAuth(app);
+            console.log('✅ All Firebase modules imported successfully');
 
-        // Export to global scope
-        window.firebaseApp = app;
-        window.firebaseDatabase = database;
-        window.firebaseAuth = auth;
-        window.firebaseModules = { ref, push, set, get, onValue, off, serverTimestamp };
+            // Initialize Firebase
+            console.log('🚀 Initializing Firebase app...');
+            const app = initializeApp(firebaseConfig);
+            const database = getDatabase(app);
+            const auth = getAuth(app);
 
-        console.log('🔥 Enhanced Firebase SDK loaded and configured');
+            console.log('✅ Firebase services initialized');
+
+            // Export everything to global scope with clear structure
+            window.Firebase = {
+                app,
+                database,
+                auth,
+                // Database functions
+                ref: (path) => ref(database, path),
+                push: (ref) => push(ref),
+                set: (ref, value) => set(ref, value),
+                get: (ref) => get(ref),
+                onValue: (ref, callback) => onValue(ref, callback),
+                serverTimestamp: () => serverTimestamp(),
+                // Auth functions
+                signInAnonymously: () => signInAnonymously(auth),
+                onAuthStateChanged: (callback) => onAuthStateChanged(auth, callback)
+            };
+
+            // Set ready flag
+            window.firebaseReady = true;
+            
+            console.log('✅ Firebase exported to global scope');
+            console.log('✅ Firebase ready flag set');
+            
+            // Trigger app initialization
+            if (window.startApp) {
+                console.log('🚀 Triggering app initialization...');
+                window.startApp();
+            } else {
+                console.log('⏳ Waiting for app initialization function...');
+                window.firebaseLoadComplete = true;
+            }
+            
+        } catch (error) {
+            console.error('❌ Firebase loading failed:', error);
+            window.firebaseReady = false;
+            window.firebaseError = error.message;
+            
+            if (window.handleFirebaseError) {
+                window.handleFirebaseError(error);
+            } else {
+                window.firebaseLoadError = error;
+            }
+        }
     </script>
 
     <script>
-        // ===== ENHANCED GLOBAL VARIABLES =====
-        let currentSalesman = 'TEST_SALESMAN';
-        let currentSalesmanId = 'TEST001';
+        // ===== GLOBAL VARIABLES =====
+        let currentSalesman = 'John Doe (Test)';
+        let currentSalesmanId = 'SALES001';
         let isFirebaseConnected = false;
         let isAuthenticated = false;
         let firebaseUser = null;
-        let pendingSyncCount = 0;
-        let syncedCount = 0;
         let eventCount = 0;
 
         // ===== ENHANCED DEBUG LOGGING =====
         function debugLog(message, type = 'info') {
             const timestamp = new Date().toLocaleTimeString();
             const colors = {
-                'info': '#0f0',
-                'warning': '#ff0',
-                'error': '#f00',
-                'success': '#0f0'
+                'info': '#0ea5e9',
+                'warning': '#f59e0b',
+                'error': '#ef4444',
+                'success': '#10b981'
             };
             
             const debugElement = document.getElementById('debugLog');
             if (debugElement) {
                 const logEntry = document.createElement('div');
-                logEntry.style.color = colors[type] || '#0f0';
+                logEntry.style.color = colors[type] || '#0ea5e9';
                 logEntry.innerHTML = `[${timestamp}] ${message}`;
                 debugElement.appendChild(logEntry);
                 debugElement.scrollTop = debugElement.scrollHeight;
+                
+                // Limit log entries
+                if (debugElement.children.length > 30) {
+                    debugElement.removeChild(debugElement.firstChild);
+                }
             }
             
-            console.log(`🔥 Firebase: ${message}`);
+            console.log(`🔥 Visit: ${message}`);
             
-            // Update debug info
-            updateDebugInfo();
-        }
-
-        function updateDebugInfo() {
-            const debugInfo = document.getElementById('debugInfo');
-            if (debugInfo) {
-                debugInfo.textContent = `
-Firebase Status: ${isFirebaseConnected ? 'CONNECTED' : 'DISCONNECTED'}
-Authentication: ${isAuthenticated ? 'AUTHENTICATED' : 'NOT AUTHENTICATED'}
-User UID: ${firebaseUser ? firebaseUser.uid : 'null'}
-Pending Sync: ${pendingSyncCount}
-Synced Events: ${syncedCount}
-Total Events: ${eventCount}
-Current Salesman: ${currentSalesman} (${currentSalesmanId})
-Timestamp: ${new Date().toISOString()}
-                `;
+            // Update test results
+            const resultsElement = document.getElementById('testResults');
+            if (resultsElement) {
+                resultsElement.innerHTML += `<div style="color: ${colors[type]}">[${timestamp}] ${message}</div>`;
+                resultsElement.scrollTop = resultsElement.scrollHeight;
             }
         }
 
-        // ===== ENHANCED STATUS MANAGEMENT =====
+        // ===== FIREBASE AVAILABILITY CHECK =====
+        function checkFirebaseReady() {
+            if (!window.firebaseReady) {
+                debugLog('❌ Firebase not ready yet', 'warning');
+                return false;
+            }
+            
+            if (!window.Firebase) {
+                debugLog('❌ Firebase object not available', 'error');
+                return false;
+            }
+            
+            return true;
+        }
+
+        // ===== STATUS MANAGEMENT =====
         function updateFirebaseStatus(status, message = '') {
             const statusElement = document.getElementById('firebaseStatus');
             const statusValue = document.getElementById('firebaseStatusValue');
@@ -671,6 +529,11 @@ Timestamp: ${new Date().toISOString()}
             let className = 'firebase-status';
             
             switch(status) {
+                case 'loading':
+                    statusText = '🔄 Loading...';
+                    className += ' loading';
+                    if (statusValue) statusValue.textContent = 'Loading';
+                    break;
                 case 'connected':
                     statusText = '🔥 Firebase Online';
                     className += ' connected';
@@ -678,7 +541,7 @@ Timestamp: ${new Date().toISOString()}
                     if (statusValue) statusValue.textContent = 'Online';
                     break;
                 case 'disconnected':
-                    statusText = '📱 Offline Mode';
+                    statusText = '📱 Offline';
                     className += ' disconnected';
                     isFirebaseConnected = false;
                     if (statusValue) statusValue.textContent = 'Offline';
@@ -688,13 +551,8 @@ Timestamp: ${new Date().toISOString()}
                     className += ' syncing';
                     if (statusValue) statusValue.textContent = 'Syncing';
                     break;
-                case 'authenticating':
-                    statusText = '🔐 Authenticating...';
-                    className += ' authenticating';
-                    if (statusValue) statusValue.textContent = 'Auth...';
-                    break;
                 case 'error':
-                    statusText = `❌ Error: ${message}`;
+                    statusText = `❌ Error`;
                     className += ' disconnected';
                     isFirebaseConnected = false;
                     if (statusValue) statusValue.textContent = 'Error';
@@ -706,20 +564,7 @@ Timestamp: ${new Date().toISOString()}
                 statusElement.className = className;
             }
             
-            debugLog(`Status update: ${status} - ${message || statusText}`, status === 'error' ? 'error' : 'info');
-        }
-
-        function updateAuthStatus(authenticated, user = null) {
-            isAuthenticated = authenticated;
-            firebaseUser = user;
-            
-            const authValue = document.getElementById('authStatusValue');
-            if (authValue) {
-                authValue.textContent = authenticated ? 'Authenticated' : 'Not Auth';
-                authValue.className = authenticated ? 'summary-value' : 'summary-value';
-            }
-            
-            debugLog(`Authentication: ${authenticated ? 'SUCCESS' : 'FAILED'}${user ? ' UID: ' + user.uid : ''}`, authenticated ? 'success' : 'warning');
+            debugLog(`Firebase Status: ${status}${message ? ' - ' + message : ''}`, status === 'error' ? 'error' : 'info');
         }
 
         function updateEventCount(count) {
@@ -730,58 +575,43 @@ Timestamp: ${new Date().toISOString()}
             }
         }
 
-        function updateSyncStatus(pending, synced) {
-            pendingSyncCount = pending;
-            syncedCount = synced;
-            
-            const syncElement = document.getElementById('syncStatus');
-            if (syncElement) {
-                syncElement.textContent = `📡 Sync: ${synced}/${pending + synced} events`;
-                
-                if (pending > 0) {
-                    syncElement.classList.add('visible');
-                } else {
-                    syncElement.classList.remove('visible');
-                }
-            }
-        }
-
-        // ===== ENHANCED FIREBASE OPERATIONS =====
+        // ===== FIREBASE OPERATIONS =====
         async function initializeFirebase() {
             try {
-                debugLog('🚀 Initializing Enhanced Firebase...', 'info');
-                updateFirebaseStatus('authenticating', 'Connecting to Firebase...');
+                if (!checkFirebaseReady()) {
+                    throw new Error('Firebase not ready');
+                }
                 
-                // Monitor connection status FIRST
-                const connectedRef = window.firebaseModules.ref(window.firebaseDatabase, '.info/connected');
-                window.firebaseModules.onValue(connectedRef, (snapshot) => {
+                debugLog('🚀 Initializing Firebase connection...', 'info');
+                updateFirebaseStatus('loading', 'Connecting...');
+                
+                // Monitor connection status
+                const connectedRef = window.Firebase.ref('.info/connected');
+                window.Firebase.onValue(connectedRef, (snapshot) => {
                     const connected = snapshot.val() === true;
-                    if (connected !== isFirebaseConnected) {
-                        updateFirebaseStatus(connected ? 'connected' : 'disconnected');
-                        if (connected) {
-                            debugLog('🌐 Firebase connection established', 'success');
-                            // Sync pending data when connection is restored
-                            syncPendingData();
-                        } else {
-                            debugLog('🌐 Firebase connection lost', 'warning');
-                        }
+                    updateFirebaseStatus(connected ? 'connected' : 'disconnected');
+                    if (connected) {
+                        debugLog('🌐 Firebase connection established', 'success');
+                    } else {
+                        debugLog('🌐 Firebase connection lost', 'warning');
                     }
                 });
 
-                // Monitor authentication
-                window.firebaseAuth.onAuthStateChanged((user) => {
-                    updateAuthStatus(!!user, user);
+                // Authenticate
+                debugLog('🔐 Starting authentication...', 'info');
+                const result = await window.Firebase.signInAnonymously();
+                isAuthenticated = true;
+                firebaseUser = result.user;
+                debugLog(`✅ Authentication successful: ${result.user.uid}`, 'success');
+                
+                // Monitor authentication state
+                window.Firebase.onAuthStateChanged((user) => {
+                    isAuthenticated = !!user;
+                    firebaseUser = user;
+                    debugLog(`👤 Auth state: ${isAuthenticated ? 'Authenticated' : 'Not authenticated'}`, isAuthenticated ? 'success' : 'warning');
                 });
 
-                // Authenticate BEFORE doing anything else
-                debugLog('🔐 Starting authentication...', 'info');
-                const result = await window.firebaseAuth.signInAnonymously();
-                debugLog('✅ Authentication successful', 'success');
-                
-                // Wait a bit for connection to stabilize
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                
-                // Test basic write capability
+                // Test basic write
                 await testBasicWrite();
                 
                 // Setup realtime monitoring
@@ -793,7 +623,7 @@ Timestamp: ${new Date().toISOString()}
             } catch (error) {
                 debugLog(`❌ Firebase initialization failed: ${error.message}`, 'error');
                 updateFirebaseStatus('error', error.message);
-                console.error('Firebase init error:', error);
+                throw error;
             }
         }
 
@@ -801,16 +631,15 @@ Timestamp: ${new Date().toISOString()}
             try {
                 debugLog('🧪 Testing basic write capability...', 'info');
                 
-                const testRef = window.firebaseModules.ref(window.firebaseDatabase, 'connection_test');
-                await window.firebaseModules.set(testRef, {
-                    timestamp: window.firebaseModules.serverTimestamp(),
+                const testRef = window.Firebase.ref('connection_test');
+                await window.Firebase.set(testRef, {
+                    timestamp: window.Firebase.serverTimestamp(),
                     test_message: "Basic write test successful",
-                    user_uid: window.firebaseAuth.currentUser?.uid || 'anonymous',
+                    user_uid: firebaseUser?.uid || 'anonymous',
                     test_id: Date.now()
                 });
                 
                 debugLog('✅ Basic write test successful', 'success');
-                return true;
                 
             } catch (error) {
                 debugLog(`❌ Basic write test failed: ${error.message}`, 'error');
@@ -822,23 +651,11 @@ Timestamp: ${new Date().toISOString()}
             try {
                 debugLog('👁️ Setting up realtime monitoring...', 'info');
                 
-                // Monitor visit events
-                const visitEventsRef = window.firebaseModules.ref(window.firebaseDatabase, 'visit_events');
-                window.firebaseModules.onValue(visitEventsRef, (snapshot) => {
+                const visitEventsRef = window.Firebase.ref('visit_events');
+                window.Firebase.onValue(visitEventsRef, (snapshot) => {
                     const data = snapshot.val();
                     const count = data ? Object.keys(data).length : 0;
                     updateEventCount(count);
-                    
-                    // Update realtime data display
-                    const realtimeDiv = document.getElementById('realtimeData');
-                    if (realtimeDiv) {
-                        if (data) {
-                            realtimeDiv.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
-                        } else {
-                            realtimeDiv.textContent = 'No visit events yet...';
-                        }
-                    }
-                    
                     debugLog(`📊 Visit events count: ${count}`, 'info');
                 });
 
@@ -849,9 +666,13 @@ Timestamp: ${new Date().toISOString()}
             }
         }
 
-        // ===== FIREBASE OPERATIONS FOR TESTING =====
+        // ===== EVENT TRACKING =====
         async function trackEvent(eventName, eventData = {}) {
             try {
+                if (!checkFirebaseReady()) {
+                    throw new Error('Firebase not ready');
+                }
+                
                 if (!isAuthenticated) {
                     throw new Error('Not authenticated');
                 }
@@ -866,7 +687,7 @@ Timestamp: ${new Date().toISOString()}
                     event_name: eventName,
                     event_data: eventData,
                     timestamp: new Date().toISOString(),
-                    firebase_timestamp: window.firebaseModules.serverTimestamp(),
+                    firebase_timestamp: window.Firebase.serverTimestamp(),
                     location: {
                         latitude: -6.2000 + (Math.random() - 0.5) * 0.1,
                         longitude: 106.8000 + (Math.random() - 0.5) * 0.1,
@@ -874,194 +695,107 @@ Timestamp: ${new Date().toISOString()}
                     }
                 };
                 
-                const eventsRef = window.firebaseModules.ref(window.firebaseDatabase, 'visit_events');
-                const newEventRef = window.firebaseModules.push(eventsRef);
-                await window.firebaseModules.set(newEventRef, event);
+                const eventsRef = window.Firebase.ref('visit_events');
+                const newEventRef = window.Firebase.push(eventsRef);
+                await window.Firebase.set(newEventRef, event);
                 
-                syncedCount++;
-                updateSyncStatus(pendingSyncCount, syncedCount);
                 updateFirebaseStatus('connected', 'Event saved');
+                debugLog(`✅ Event saved successfully: ${eventName}`, 'success');
                 
-                debugLog(`✅ Event saved: ${eventName} (ID: ${newEventRef.key})`, 'success');
                 return newEventRef.key;
                 
             } catch (error) {
                 debugLog(`❌ Failed to track event: ${error.message}`, 'error');
-                
-                // Add to pending queue for offline sync
-                addToPendingQueue(eventName, eventData);
+                updateFirebaseStatus('connected');
                 throw error;
             }
         }
 
-        function addToPendingQueue(eventName, eventData) {
+        // ===== TEST FUNCTIONS =====
+        window.testFirebaseConnection = async function() {
             try {
-                pendingSyncCount++;
-                updateSyncStatus(pendingSyncCount, syncedCount);
+                debugLog('🔍 Testing Firebase connection...', 'info');
                 
-                // Store in localStorage for retry
-                const pendingEvents = JSON.parse(localStorage.getItem('pending_firebase_events') || '[]');
-                pendingEvents.push({
-                    eventName,
-                    eventData,
-                    timestamp: new Date().toISOString(),
-                    salesmanId: currentSalesmanId,
-                    salesmanName: currentSalesman
-                });
-                localStorage.setItem('pending_firebase_events', JSON.stringify(pendingEvents));
-                
-                debugLog(`📱 Event queued for offline sync: ${eventName}`, 'warning');
-                
-            } catch (error) {
-                debugLog(`❌ Failed to queue event: ${error.message}`, 'error');
-            }
-        }
-
-        async function syncPendingData() {
-            try {
-                const pendingEvents = JSON.parse(localStorage.getItem('pending_firebase_events') || '[]');
-                
-                if (pendingEvents.length === 0) {
-                    debugLog('✅ No pending events to sync', 'info');
+                if (!checkFirebaseReady()) {
                     return;
                 }
                 
-                debugLog(`🔄 Syncing ${pendingEvents.length} pending events...`, 'info');
-                updateFirebaseStatus('syncing', `Syncing ${pendingEvents.length} events...`);
+                // Test connection by checking server timestamp
+                const testRef = window.Firebase.ref('connection_test_' + Date.now());
+                await window.Firebase.set(testRef, {
+                    test: true,
+                    timestamp: window.Firebase.serverTimestamp()
+                });
                 
-                let syncedEvents = 0;
+                debugLog('✅ Firebase connection test: SUCCESS', 'success');
                 
-                for (const pendingEvent of pendingEvents) {
-                    try {
-                        await trackEvent(pendingEvent.eventName, pendingEvent.eventData);
-                        syncedEvents++;
-                        
-                        // Small delay to avoid overwhelming Firebase
-                        await new Promise(resolve => setTimeout(resolve, 100));
-                        
-                    } catch (error) {
-                        debugLog(`❌ Failed to sync event: ${pendingEvent.eventName}`, 'error');
-                        break; // Stop syncing on error
-                    }
-                }
-                
-                // Remove synced events from pending queue
-                const remainingEvents = pendingEvents.slice(syncedEvents);
-                localStorage.setItem('pending_firebase_events', JSON.stringify(remainingEvents));
-                
-                pendingSyncCount = remainingEvents.length;
-                updateSyncStatus(pendingSyncCount, syncedCount);
-                
-                debugLog(`✅ Sync completed: ${syncedEvents}/${pendingEvents.length} events synced`, 'success');
-                updateFirebaseStatus('connected', 'Sync completed');
+                // Clean up test data
+                await window.Firebase.set(testRef, null);
                 
             } catch (error) {
-                debugLog(`❌ Sync failed: ${error.message}`, 'error');
-            }
-        }
-
-        // ===== TEST FUNCTIONS FOR UI =====
-        window.testFirebaseConnection = async function() {
-            try {
-                updateTestResults('🔍 Testing Firebase connection...');
-                
-                const connectedRef = window.firebaseModules.ref(window.firebaseDatabase, '.info/connected');
-                const snapshot = await window.firebaseModules.get(connectedRef);
-                const isConnected = snapshot.val();
-                
-                const result = isConnected ? 
-                    '✅ Firebase connection: SUCCESS' : 
-                    '❌ Firebase connection: FAILED';
-                    
-                updateTestResults(result);
-                debugLog(result, isConnected ? 'success' : 'error');
-                
-            } catch (error) {
-                const errorMsg = `❌ Connection test error: ${error.message}`;
-                updateTestResults(errorMsg);
-                debugLog(errorMsg, 'error');
+                debugLog(`❌ Connection test error: ${error.message}`, 'error');
             }
         };
 
         window.testAuthentication = async function() {
             try {
-                updateTestResults('🔍 Testing authentication...');
+                debugLog('🔍 Testing authentication...', 'info');
                 
-                const result = await window.firebaseAuth.signInAnonymously();
-                const successMsg = `✅ Authentication successful. UID: ${result.user.uid}`;
+                if (!checkFirebaseReady()) {
+                    return;
+                }
                 
-                updateTestResults(successMsg);
-                debugLog(successMsg, 'success');
+                const result = await window.Firebase.signInAnonymously();
+                debugLog(`✅ Authentication successful: ${result.user.uid}`, 'success');
                 
             } catch (error) {
-                const errorMsg = `❌ Authentication error: ${error.message}`;
-                updateTestResults(errorMsg);
-                debugLog(errorMsg, 'error');
+                debugLog(`❌ Authentication error: ${error.message}`, 'error');
             }
         };
 
         window.simulateVisitEvent = async function() {
             try {
-                updateTestResults('🎯 Simulating visit event...');
+                debugLog('🎯 Simulating visit event...', 'info');
                 
                 const eventData = {
-                    customer_name: 'Test Customer',
+                    customer_name: 'Test Customer PT ABC',
                     hari_jks: 'SENIN',
                     selection_time: new Date().toISOString(),
                     test_mode: true
                 };
                 
-                const eventId = await trackEvent('test_customer_selected', eventData);
-                const successMsg = `✅ Visit event simulation successful. Event ID: ${eventId}`;
-                
-                updateTestResults(successMsg);
+                const eventId = await trackEvent('customer_selected', eventData);
+                debugLog(`✅ Visit event simulation successful`, 'success');
                 
             } catch (error) {
-                const errorMsg = `❌ Simulation error: ${error.message}`;
-                updateTestResults(errorMsg);
-                debugLog(errorMsg, 'error');
+                debugLog(`❌ Simulation error: ${error.message}`, 'error');
             }
         };
 
-        window.clearData = async function() {
+        window.clearAllData = async function() {
             try {
-                updateTestResults('🧹 Clearing test data...');
+                if (!confirm('Clear all test data from Firebase?')) return;
                 
-                // Clear Firebase test data
-                await window.firebaseModules.set(window.firebaseModules.ref(window.firebaseDatabase, 'visit_events'), null);
-                await window.firebaseModules.set(window.firebaseModules.ref(window.firebaseDatabase, 'connection_test'), null);
+                debugLog('🧹 Clearing all test data...', 'warning');
                 
-                // Clear localStorage
-                localStorage.removeItem('pending_firebase_events');
+                if (checkFirebaseReady()) {
+                    await window.Firebase.set(window.Firebase.ref('visit_events'), null);
+                    await window.Firebase.set(window.Firebase.ref('connection_test'), null);
+                }
                 
-                // Reset counters
-                pendingSyncCount = 0;
-                syncedCount = 0;
                 eventCount = 0;
-                updateSyncStatus(0, 0);
                 updateEventCount(0);
                 
-                const successMsg = '✅ Test data cleared successfully';
-                updateTestResults(successMsg);
-                debugLog(successMsg, 'success');
+                debugLog('✅ All test data cleared successfully', 'success');
                 
             } catch (error) {
-                const errorMsg = `❌ Clear data error: ${error.message}`;
-                updateTestResults(errorMsg);
-                debugLog(errorMsg, 'error');
+                debugLog(`❌ Clear data error: ${error.message}`, 'error');
             }
         };
 
-        function updateTestResults(message) {
-            const resultsDiv = document.getElementById('testResults');
-            if (resultsDiv) {
-                resultsDiv.innerHTML = `<div style="padding: 10px; background: #f8fafc; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 12px;">${message}</div>`;
-            }
-        }
-
         // ===== UI FUNCTIONS =====
-        window.toggleDebugPanel = function() {
-            const debugPanel = document.getElementById('debugPanel');
+        window.toggleDebugInfo = function() {
+            const debugPanel = document.getElementById('debugInfo');
             debugPanel.classList.toggle('visible');
         };
 
@@ -1069,24 +803,20 @@ Timestamp: ${new Date().toISOString()}
             document.getElementById('loadingSpinner').style.display = show ? 'flex' : 'none';
         }
 
-        function showMainContent(show) {
-            document.getElementById('mainContent').style.display = show ? 'block' : 'none';
+        function showError(show, message = '') {
+            const errorElement = document.getElementById('errorMessage');
+            if (show) {
+                errorElement.style.display = 'block';
+                if (message) {
+                    document.getElementById('errorText').innerHTML = message;
+                }
+            } else {
+                errorElement.style.display = 'none';
+            }
         }
 
-        function showTab(tabName) {
-            // Update tab buttons
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-
-            // Show/hide tab content
-            if (tabName === 'visit') {
-                document.getElementById('visitTab').style.display = 'block';
-                document.getElementById('debugTab').style.display = 'none';
-            } else if (tabName === 'debug') {
-                document.getElementById('visitTab').style.display = 'none';
-                document.getElementById('debugTab').style.display = 'block';
-                updateDebugInfo();
-            }
+        function showMainContent(show) {
+            document.getElementById('mainContent').style.display = show ? 'block' : 'none';
         }
 
         // ===== NAVIGATION FUNCTIONS =====
@@ -1102,44 +832,62 @@ Timestamp: ${new Date().toISOString()}
             alert('🚧 Profile feature coming soon!');
         }
 
-        // ===== MAIN INITIALIZATION =====
-        async function initializeData() {
+        window.retryInitialization = function() {
+            window.location.reload();
+        };
+
+        // ===== APP INITIALIZATION =====
+        window.startApp = async function() {
             try {
-                showLoading(true);
+                debugLog('🔥 Firebase ready, starting app initialization...', 'info');
                 
-                debugLog('🚀 Starting Enhanced Firebase Visit System...', 'info');
+                // Wait for Firebase to stabilize
+                await new Promise(resolve => setTimeout(resolve, 1000));
                 
-                // Initialize Firebase first
+                // Initialize Firebase services
                 await initializeFirebase();
                 
-                // Set default salesman for testing
+                // Set salesman info
                 document.getElementById('salesmanName').textContent = currentSalesman;
                 
                 showLoading(false);
                 showMainContent(true);
                 
-                debugLog('✅ Enhanced Visit System ready!', 'success');
-                
-                // Initial status update
-                updateDebugInfo();
+                debugLog('✅ Visit app fully initialized and ready', 'success');
                 
             } catch (error) {
-                debugLog(`❌ Initialization failed: ${error.message}`, 'error');
+                debugLog(`❌ App initialization failed: ${error.message}`, 'error');
                 showLoading(false);
-                document.getElementById('errorMessage').style.display = 'block';
+                showError(true, `Initialization failed: ${error.message}<br><br>Please check your internet connection and try again.`);
             }
-        }
-
-        // ===== PAGE LOAD =====
-        window.onload = function() {
-            debugLog('📱 Enhanced Visit Outlet - Firebase Integration v2.0', 'info');
-            debugLog('🔥 Features: Real-time sync, offline support, enhanced debugging', 'info');
-            debugLog('🎯 This version focuses on robust Firebase integration', 'info');
-            
-            initializeData();
         };
 
-        console.log('✅ Enhanced Visit Script with Firebase Integration loaded');
+        window.handleFirebaseError = function(error) {
+            debugLog(`❌ Firebase loading error: ${error.message}`, 'error');
+            showLoading(false);
+            showError(true, `Firebase failed to load: ${error.message}<br><br>Please check your internet connection and refresh the page.`);
+            updateFirebaseStatus('error', error.message);
+        };
+
+        // ===== PAGE INITIALIZATION =====
+        window.onload = function() {
+            debugLog('📱 Enhanced Visit Outlet - Final Fixed Version', 'info');
+            debugLog('🔥 Features: Clean Firebase integration, robust error handling', 'info');
+            
+            showLoading(true);
+            updateFirebaseStatus('loading', 'Initializing...');
+            
+            // Check if Firebase is already loaded (race condition protection)
+            if (window.firebaseReady || window.firebaseLoadComplete) {
+                debugLog('🚀 Firebase already ready, starting app...', 'info');
+                window.startApp();
+            } else if (window.firebaseLoadError) {
+                window.handleFirebaseError(window.firebaseLoadError);
+            }
+            // Otherwise, wait for Firebase module loading to complete
+        };
+
+        console.log('✅ Enhanced Visit Script - Final Fixed Version loaded');
     </script>
 </body>
 </html>
