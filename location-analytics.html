@@ -448,7 +448,7 @@
         <!-- Header -->
         <div class="header">
             <h1>🛣️ Salesman Route Tracking Analytics</h1>
-            <div class="header-subtitle">Firebase Integration • Real-time Data • Route Visualization</div>
+            <div class="header-subtitle">localStorage Analytics • Firebase Fallback • Route Visualization</div>
         </div>
 
         <!-- Enhanced Controls -->
@@ -478,8 +478,8 @@
                     <div class="control-item">
                         <label>Data Source</label>
                         <select id="dataSourceFilter">
+                            <option value="localStorage">Local Storage (Recommended)</option>
                             <option value="firebase">Firebase Database</option>
-                            <option value="localStorage">Local Storage</option>
                             <option value="both">Both Sources</option>
                         </select>
                     </div>
@@ -511,7 +511,7 @@
                 <div class="stat-value" id="totalVisits">-</div>
                 <div class="stat-description">Location tracked visits</div>
                 <div class="stat-trend trend-neutral" id="visitsChange">
-                    📊 Firebase data
+                    📊 localStorage data
                 </div>
             </div>
 
@@ -562,8 +562,8 @@
         <div class="map-section">
             <div class="map-wrapper">
                 <div class="map-header">
-                    <div class="map-title">🗺️ Firebase Route Tracking Map</div>
-                    <div class="map-stats" id="mapStats">Ready to load Firebase data</div>
+                    <div class="map-title">🗺️ Route Tracking Map</div>
+                    <div class="map-stats" id="mapStats">Ready to load data</div>
                 </div>
                 <div id="visitMap"></div>
             </div>
@@ -573,12 +573,12 @@
         <div class="location-list-section">
             <div class="location-list">
                 <div class="location-list-header">
-                    📋 Firebase Visit Analysis
+                    📋 Visit Analytics
                 </div>
                 <div class="location-list-content" id="locationListContent">
                     <div class="empty-state">
-                        <div class="empty-icon">🔗</div>
-                        <div>Connect to Firebase and load analytics data</div>
+                        <div class="empty-icon">📊</div>
+                        <div>Load analytics data to see visit information</div>
                     </div>
                 </div>
             </div>
@@ -644,20 +644,36 @@
                     
                     firebaseDatabase = firebase.database();
                     
-                    // Test connection
-                    await firebaseDatabase.ref('.info/connected').once('value');
-                    
-                    isFirebaseConnected = true;
-                    this.updateFirebaseStatus('✅ Connected to Firebase Realtime Database', 'connected');
-                    console.log('✅ Firebase connection established');
-                    
-                    // Load available salesman
-                    await this.loadAvailableSalesman();
+                    // Test connection with minimal access
+                    try {
+                        await firebaseDatabase.ref('.info/connected').once('value');
+                        console.log('✅ Firebase connection established');
+                        
+                        // Try to test read access with a simple path
+                        try {
+                            await firebaseDatabase.ref('test').limitToFirst(1).once('value');
+                            isFirebaseConnected = true;
+                            this.updateFirebaseStatus('✅ Connected to Firebase with full access', 'connected');
+                        } catch (accessError) {
+                            // Limited access - Firebase connected but can't read all data
+                            isFirebaseConnected = false; // Set to false to use localStorage
+                            this.updateFirebaseStatus('⚠️ Firebase connected with limited access - using localStorage', 'error');
+                            console.warn('⚠️ Firebase access limited:', accessError.message);
+                        }
+                        
+                        // Load available salesman regardless of access level
+                        await this.loadAvailableSalesman();
+                        
+                    } catch (connectionError) {
+                        isFirebaseConnected = false;
+                        this.updateFirebaseStatus('❌ Firebase connection failed: ' + connectionError.message, 'error');
+                        console.error('❌ Firebase connection error:', connectionError);
+                    }
                     
                 } catch (error) {
-                    console.error('❌ Firebase connection error:', error);
+                    console.error('❌ Firebase initialization error:', error);
                     isFirebaseConnected = false;
-                    this.updateFirebaseStatus('❌ Firebase connection failed: ' + error.message, 'error');
+                    this.updateFirebaseStatus('❌ Firebase initialization failed - using localStorage only', 'error');
                 }
             }
             
@@ -668,66 +684,125 @@
             }
             
             async loadAvailableSalesman() {
-                if (!isFirebaseConnected) return;
-                
                 try {
-                    console.log('👥 Loading available salesman from Firebase...');
-                    const snapshot = await firebaseDatabase.ref('/').once('value');
-                    const data = snapshot.val();
-                    
-                    if (!data) {
-                        console.log('⚠️ No data found in Firebase');
-                        return;
-                    }
-                    
+                    console.log('👥 Loading available salesman...');
                     const salesmanSet = new Set();
                     
-                    // Extract salesman from all data nodes
-                    Object.keys(data).forEach(key => {
-                        const nodeData = data[key];
-                        if (nodeData && typeof nodeData === 'object') {
-                            // Check if this looks like visit data
-                            if (nodeData.salesman_id || nodeData.salesmanId) {
-                                salesmanSet.add(nodeData.salesman_id || nodeData.salesmanId);
-                            }
+                    // First try Firebase with limited access
+                    if (isFirebaseConnected) {
+                        try {
+                            console.log('🔥 Trying Firebase salesman data...');
+                            // Try specific known paths instead of root
+                            const commonPaths = ['visits', 'analytics', 'salesman', 'data'];
                             
-                            // Check nested structure
-                            Object.values(nodeData).forEach(subData => {
-                                if (subData && typeof subData === 'object') {
-                                    if (subData.salesman_id || subData.salesmanId) {
-                                        salesmanSet.add(subData.salesman_id || subData.salesmanId);
+                            for (const path of commonPaths) {
+                                try {
+                                    const snapshot = await firebaseDatabase.ref(path).limitToFirst(10).once('value');
+                                    const data = snapshot.val();
+                                    
+                                    if (data && typeof data === 'object') {
+                                        this.extractSalesmanFromData(data, salesmanSet);
+                                        console.log(`✅ Found salesman data in Firebase path: ${path}`);
                                     }
+                                } catch (pathError) {
+                                    console.log(`⚠️ Path ${path} not accessible:`, pathError.message);
+                                    continue;
                                 }
-                            });
+                            }
+                        } catch (firebaseError) {
+                            console.warn('⚠️ Firebase salesman loading failed:', firebaseError.message);
+                            isFirebaseConnected = false;
+                            this.updateFirebaseStatus('⚠️ Firebase access limited - using localStorage', 'error');
                         }
-                    });
-                    
-                    // Update salesman dropdown
-                    const salesmanSelect = document.getElementById('mapSalesmanFilter');
-                    const currentValue = salesmanSelect.value;
-                    
-                    // Clear existing options except "All Salesman"
-                    salesmanSelect.innerHTML = '<option value="">All Salesman</option>';
-                    
-                    // Add found salesman
-                    Array.from(salesmanSet).sort().forEach(salesmanId => {
-                        if (salesmanId) {
-                            const option = document.createElement('option');
-                            option.value = salesmanId;
-                            option.textContent = `Salesman ${salesmanId}`;
-                            salesmanSelect.appendChild(option);
-                        }
-                    });
-                    
-                    // Restore previous selection
-                    if (currentValue) {
-                        salesmanSelect.value = currentValue;
                     }
                     
-                    console.log(`👥 Found ${salesmanSet.size} salesman in Firebase:`, Array.from(salesmanSet));
+                    // Always check localStorage as fallback
+                    console.log('💾 Loading salesman from localStorage...');
+                    this.loadSalesmanFromLocalStorage(salesmanSet);
+                    
+                    // Update salesman dropdown
+                    this.updateSalesmanDropdown(salesmanSet);
+                    
+                    console.log(`👥 Total found ${salesmanSet.size} salesman:`, Array.from(salesmanSet));
                     
                 } catch (error) {
                     console.error('❌ Error loading salesman:', error);
+                    // Continue with empty set - will use localStorage data when loading analytics
+                    this.updateSalesmanDropdown(new Set());
+                }
+            }
+            
+            extractSalesmanFromData(data, salesmanSet) {
+                Object.values(data).forEach(item => {
+                    if (item && typeof item === 'object') {
+                        // Direct salesman ID fields
+                        if (item.salesman_id) salesmanSet.add(item.salesman_id);
+                        if (item.salesmanId) salesmanSet.add(item.salesmanId);
+                        
+                        // Nested data
+                        Object.values(item).forEach(subItem => {
+                            if (subItem && typeof subItem === 'object') {
+                                if (subItem.salesman_id) salesmanSet.add(subItem.salesman_id);
+                                if (subItem.salesmanId) salesmanSet.add(subItem.salesmanId);
+                            }
+                        });
+                    }
+                });
+            }
+            
+            loadSalesmanFromLocalStorage(salesmanSet) {
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && key.startsWith('visit_')) {
+                        // Extract salesman ID from key patterns
+                        const parts = key.split('_');
+                        if (parts.length >= 3) {
+                            const potentialId = parts[parts.length - 1];
+                            if (potentialId && potentialId.length <= 10) { // Reasonable ID length
+                                salesmanSet.add(potentialId);
+                            }
+                        }
+                        
+                        // Also check stored data
+                        try {
+                            const data = JSON.parse(localStorage.getItem(key) || '{}');
+                            if (data.salesman_id) salesmanSet.add(data.salesman_id);
+                            if (data.salesmanId) salesmanSet.add(data.salesmanId);
+                            if (data.salesman_name && data.salesman_name !== 'unknown') {
+                                const idFromName = data.salesman_name.replace('Salesman ', '');
+                                if (idFromName && idFromName !== data.salesman_name) {
+                                    salesmanSet.add(idFromName);
+                                }
+                            }
+                        } catch (parseError) {
+                            // Skip invalid JSON
+                        }
+                    }
+                }
+            }
+            
+            updateSalesmanDropdown(salesmanSet) {
+                const salesmanSelect = document.getElementById('mapSalesmanFilter');
+                const currentValue = salesmanSelect.value;
+                
+                // Clear existing options except "All Salesman"
+                salesmanSelect.innerHTML = '<option value="">All Salesman</option>';
+                
+                // Add found salesman
+                const sortedSalesman = Array.from(salesmanSet)
+                    .filter(id => id && id !== 'unknown' && id !== '')
+                    .sort();
+                    
+                sortedSalesman.forEach(salesmanId => {
+                    const option = document.createElement('option');
+                    option.value = salesmanId;
+                    option.textContent = `Salesman ${salesmanId}`;
+                    salesmanSelect.appendChild(option);
+                });
+                
+                // Restore previous selection
+                if (currentValue && sortedSalesman.includes(currentValue)) {
+                    salesmanSelect.value = currentValue;
                 }
             }
             
@@ -750,7 +825,7 @@
                 document.getElementById('mapDateTo').value = today;
             }
             
-            async loadAnalyticsData(dateFrom, dateTo, salesmanFilter = '', dataSource = 'firebase') {
+            async loadAnalyticsData(dateFrom, dateTo, salesmanFilter = '', dataSource = 'localStorage') {
                 this.visitLocations = [];
                 this.salesmanData = {};
                 
@@ -780,36 +855,66 @@
             
             async loadFromFirebase(dateFrom, dateTo, salesmanFilter) {
                 if (!isFirebaseConnected) {
-                    throw new Error('Firebase not connected');
+                    console.log('⚠️ Firebase not connected, skipping Firebase data loading');
+                    return;
                 }
                 
-                console.log('🔥 Loading from Firebase...');
+                console.log('🔥 Attempting to load from Firebase...');
                 
                 try {
-                    const snapshot = await firebaseDatabase.ref('/').once('value');
-                    const data = snapshot.val();
+                    // Try different Firebase path strategies
+                    const pathStrategies = [
+                        { path: 'visits', description: 'visits path' },
+                        { path: 'analytics', description: 'analytics path' },
+                        { path: 'data', description: 'data path' },
+                        { path: 'salesman', description: 'salesman path' }
+                    ];
                     
-                    if (!data) {
-                        console.log('⚠️ No data found in Firebase');
-                        return;
+                    let totalFirebaseVisits = 0;
+                    
+                    for (const strategy of pathStrategies) {
+                        try {
+                            console.log(`🔥 Trying Firebase path: ${strategy.path}`);
+                            const snapshot = await firebaseDatabase.ref(strategy.path).limitToFirst(100).once('value');
+                            const data = snapshot.val();
+                            
+                            if (data && typeof data === 'object') {
+                                console.log(`✅ Found data in ${strategy.description}:`, Object.keys(data).length, 'items');
+                                
+                                const beforeCount = this.visitLocations.length;
+                                Object.entries(data).forEach(([key, nodeData]) => {
+                                    if (nodeData && typeof nodeData === 'object') {
+                                        this.parseFirebaseNode(`${strategy.path}_${key}`, nodeData, dateFrom, dateTo, salesmanFilter);
+                                    }
+                                });
+                                const afterCount = this.visitLocations.length;
+                                const found = afterCount - beforeCount;
+                                totalFirebaseVisits += found;
+                                
+                                if (found > 0) {
+                                    console.log(`✅ Extracted ${found} visits from ${strategy.description}`);
+                                }
+                            } else {
+                                console.log(`ℹ️ No data found in ${strategy.description}`);
+                            }
+                            
+                        } catch (pathError) {
+                            console.log(`⚠️ Cannot access ${strategy.description}:`, pathError.message);
+                            continue;
+                        }
                     }
                     
-                    console.log('🔥 Firebase data keys:', Object.keys(data));
-                    
-                    // Parse all Firebase nodes
-                    let processedCount = 0;
-                    Object.entries(data).forEach(([key, nodeData]) => {
-                        if (nodeData && typeof nodeData === 'object') {
-                            processedCount++;
-                            this.parseFirebaseNode(key, nodeData, dateFrom, dateTo, salesmanFilter);
-                        }
-                    });
-                    
-                    console.log(`🔥 Firebase data processed: ${processedCount} nodes, found ${this.visitLocations.length} visits`);
+                    if (totalFirebaseVisits > 0) {
+                        console.log(`🔥 Firebase data loaded successfully: ${totalFirebaseVisits} visits`);
+                    } else {
+                        console.log('ℹ️ No visit data found in accessible Firebase paths');
+                    }
                     
                 } catch (error) {
                     console.error('❌ Firebase loading error:', error);
-                    throw error;
+                    console.log('💾 Falling back to localStorage only');
+                    isFirebaseConnected = false;
+                    this.updateFirebaseStatus('⚠️ Firebase access denied - using localStorage only', 'error');
                 }
             }
             
@@ -1621,11 +1726,11 @@
                 return;
             }
             
-            console.log('📊 Loading FIREBASE ROUTE TRACKING analytics...');
-            console.log('🔥 Features: Firebase integration, real-time data, chronological routes');
+            console.log('📊 Loading ROUTE TRACKING analytics...');
+            console.log('💾 Features: localStorage data, Firebase fallback, route visualization');
             
             if (!enhancedAnalytics) {
-                console.log('📊 Initializing Firebase analytics...');
+                console.log('📊 Initializing analytics system...');
                 enhancedAnalytics = new FirebaseLocationAnalytics();
                 await enhancedAnalytics.init();
             }
@@ -1653,10 +1758,10 @@
                 const firebaseVisits = validLocations.filter(v => v.source === 'firebase').length;
                 const localStorageVisits = validLocations.filter(v => v.source === 'localStorage').length;
                 
-                const summaryMessage = `🗺️ Firebase Route Tracking loaded successfully!\n\n` +
-                    `🔥 Data source: ${dataSource}\n` +
-                    `📊 Firebase visits: ${firebaseVisits}\n` +
+                const summaryMessage = `🗺️ Route Tracking loaded successfully!\n\n` +
+                    `📊 Data source: ${dataSource}\n` +
                     `💾 LocalStorage visits: ${localStorageVisits}\n` +
+                    `🔥 Firebase visits: ${firebaseVisits}\n` +
                     `📍 Total valid locations: ${validLocations.length}\n` +
                     `🛣️ Chronological route paths displayed\n` +
                     `🔢 Numbered visit sequence markers\n` +
@@ -1667,14 +1772,14 @@
                 console.log(summaryMessage);
                 
                 if (locationData.length === 0) {
-                    alert('No visit data found for the selected date range.\n\nTip: Check Firebase database or ensure salesman have visited customers.');
+                    alert('No visit data found for the selected date range.\n\nTip: Check data source or ensure salesman have visited customers.');
                 } else {
-                    alert(`✅ Analytics loaded successfully!\n\n📊 Found ${locationData.length} visits\n🔥 Firebase: ${firebaseVisits} visits\n💾 LocalStorage: ${localStorageVisits} visits`);
+                    alert(`✅ Analytics loaded successfully!\n\n📊 Found ${locationData.length} visits\n💾 LocalStorage: ${localStorageVisits} visits\n🔥 Firebase: ${firebaseVisits} visits`);
                 }
                 
             } catch (error) {
                 console.error('❌ Error loading analytics:', error);
-                alert('Error loading analytics: ' + error.message + '\n\nPlease check Firebase connection and try again.');
+                alert('Error loading analytics: ' + error.message + '\n\nTrying localStorage fallback...');
             }
         }
 
@@ -1686,12 +1791,12 @@
                 await enhancedAnalytics.initializeFirebase();
                 await enhancedAnalytics.loadAvailableSalesman();
                 console.log('✅ Firebase connection refreshed');
-                alert('Firebase connection refreshed successfully!');
+                alert('Firebase connection check completed!\n\nNote: If permission denied, use localStorage data source.');
             } else {
                 enhancedAnalytics = new FirebaseLocationAnalytics();
                 await enhancedAnalytics.init();
                 console.log('✅ Firebase analytics reinitialized');
-                alert('Firebase analytics reinitialized successfully!');
+                alert('Analytics system reinitialized!\n\nLocalStorage is recommended if Firebase access is limited.');
             }
         }
 
@@ -1708,13 +1813,13 @@
             document.getElementById('complianceRate').textContent = '-';
             document.getElementById('avgDistance').textContent = '-';
             document.getElementById('salesmanCount').textContent = '-';
-            document.getElementById('mapStats').textContent = 'Ready to load Firebase data';
+            document.getElementById('mapStats').textContent = 'Ready to load data';
             
             // Clear location list
             document.getElementById('locationListContent').innerHTML = `
                 <div class="empty-state">
-                    <div class="empty-icon">🔗</div>
-                    <div>Connect to Firebase and load analytics data</div>
+                    <div class="empty-icon">📊</div>
+                    <div>Load analytics data to see visit information</div>
                 </div>
             `;
             
@@ -1737,8 +1842,8 @@
 
         // ===== INITIALIZATION =====
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🛣️ Starting Firebase Route Tracking Analytics...');
-            console.log('🔥 Features: Firebase Realtime Database integration, localStorage fallback, route visualization');
+            console.log('🛣️ Starting Route Tracking Analytics...');
+            console.log('💾 Features: localStorage primary, Firebase fallback, route visualization');
             
             // Set today's date
             const today = new Date().toISOString().split('T')[0];
@@ -1749,11 +1854,11 @@
             setTimeout(async () => {
                 enhancedAnalytics = new FirebaseLocationAnalytics();
                 await enhancedAnalytics.init();
-                console.log('✅ Firebase Route Tracking Analytics ready');
+                console.log('✅ Route Tracking Analytics ready');
             }, 1000);
         });
 
-        console.log('✅ Enhanced Firebase location-analytics.html loaded');
+        console.log('✅ Enhanced route tracking location-analytics.html loaded');
     </script>
 </body>
 </html>
