@@ -492,6 +492,9 @@
                     <button class="btn btn-secondary" onclick="refreshFirebaseConnection()">
                         🔄 Refresh Firebase
                     </button>
+                    <button class="btn btn-secondary" onclick="debugLocalStorage()">
+                        🔍 Debug Storage
+                    </button>
                     <button class="btn btn-secondary" onclick="clearAnalytics()">
                         🧹 Clear Data
                     </button>
@@ -751,33 +754,137 @@
             }
             
             loadSalesmanFromLocalStorage(salesmanSet) {
+                console.log('💾 Scanning localStorage for salesman data...');
+                let foundKeys = 0;
+                let processedKeys = 0;
+                
                 for (let i = 0; i < localStorage.length; i++) {
                     const key = localStorage.key(i);
-                    if (key && key.startsWith('visit_')) {
-                        // Extract salesman ID from key patterns
-                        const parts = key.split('_');
-                        if (parts.length >= 3) {
-                            const potentialId = parts[parts.length - 1];
-                            if (potentialId && potentialId.length <= 10) { // Reasonable ID length
-                                salesmanSet.add(potentialId);
-                            }
-                        }
+                    if (key && key.includes('visit')) {
+                        foundKeys++;
                         
-                        // Also check stored data
                         try {
-                            const data = JSON.parse(localStorage.getItem(key) || '{}');
-                            if (data.salesman_id) salesmanSet.add(data.salesman_id);
-                            if (data.salesmanId) salesmanSet.add(data.salesmanId);
-                            if (data.salesman_name && data.salesman_name !== 'unknown') {
-                                const idFromName = data.salesman_name.replace('Salesman ', '');
-                                if (idFromName && idFromName !== data.salesman_name) {
-                                    salesmanSet.add(idFromName);
+                            // Pattern 1: visit_daily_local_YYYY-MM-DD_SALESMANID
+                            if (key.startsWith('visit_daily_local_')) {
+                                const parts = key.split('_');
+                                if (parts.length >= 4) {
+                                    const salesmanId = parts[parts.length - 1];
+                                    if (salesmanId && salesmanId.length <= 10) {
+                                        salesmanSet.add(salesmanId);
+                                        console.log(`💾 Found salesman from daily pattern: ${salesmanId}`);
+                                    }
                                 }
                             }
-                        } catch (parseError) {
-                            // Skip invalid JSON
+                            
+                            // Pattern 2: visit_pending_YYYY-MM-DD_SALESMANID
+                            else if (key.startsWith('visit_pending_')) {
+                                const parts = key.split('_');
+                                if (parts.length >= 4) {
+                                    const salesmanId = parts[parts.length - 1];
+                                    if (salesmanId && salesmanId.length <= 10) {
+                                        salesmanSet.add(salesmanId);
+                                        console.log(`💾 Found salesman from pending pattern: ${salesmanId}`);
+                                    }
+                                }
+                            }
+                            
+                            // Pattern 3: Any other visit_ pattern
+                            else if (key.startsWith('visit_')) {
+                                const parts = key.split('_');
+                                // Try last part as salesman ID
+                                if (parts.length >= 2) {
+                                    const lastPart = parts[parts.length - 1];
+                                    if (lastPart && lastPart.length <= 10 && /^[A-Za-z0-9]+$/.test(lastPart)) {
+                                        salesmanSet.add(lastPart);
+                                        console.log(`💾 Found salesman from generic pattern: ${lastPart}`);
+                                    }
+                                }
+                            }
+                            
+                            // Also parse data content for salesman info
+                            const data = localStorage.getItem(key);
+                            if (data && data.length > 10) {
+                                try {
+                                    const parsed = JSON.parse(data);
+                                    processedKeys++;
+                                    
+                                    // Direct salesman fields
+                                    if (parsed.salesman_id) {
+                                        salesmanSet.add(parsed.salesman_id);
+                                        console.log(`💾 Found salesman from data.salesman_id: ${parsed.salesman_id}`);
+                                    }
+                                    if (parsed.salesmanId) {
+                                        salesmanSet.add(parsed.salesmanId);
+                                        console.log(`💾 Found salesman from data.salesmanId: ${parsed.salesmanId}`);
+                                    }
+                                    
+                                    // Extract from salesman_name
+                                    if (parsed.salesman_name && parsed.salesman_name.includes('Salesman ')) {
+                                        const idFromName = parsed.salesman_name.replace('Salesman ', '').trim();
+                                        if (idFromName && idFromName !== parsed.salesman_name && idFromName.length <= 10) {
+                                            salesmanSet.add(idFromName);
+                                            console.log(`💾 Found salesman from name extraction: ${idFromName}`);
+                                        }
+                                    }
+                                    
+                                    // Check nested structures (for daily data)
+                                    if (parsed.customers && typeof parsed.customers === 'object') {
+                                        // This might be daily aggregated data
+                                        if (parsed.salesman_name) {
+                                            const idFromDaily = parsed.salesman_name.replace('Salesman ', '').trim();
+                                            if (idFromDaily && idFromDaily.length <= 10) {
+                                                salesmanSet.add(idFromDaily);
+                                                console.log(`💾 Found salesman from daily data: ${idFromDaily}`);
+                                            }
+                                        }
+                                    }
+                                    
+                                    // Check if it's an array of events (pending data)
+                                    if (Array.isArray(parsed)) {
+                                        parsed.forEach(event => {
+                                            if (event && typeof event === 'object') {
+                                                if (event.salesman_id) {
+                                                    salesmanSet.add(event.salesman_id);
+                                                    console.log(`💾 Found salesman from event data: ${event.salesman_id}`);
+                                                }
+                                                if (event.salesman_name && event.salesman_name.includes('Salesman ')) {
+                                                    const idFromEvent = event.salesman_name.replace('Salesman ', '').trim();
+                                                    if (idFromEvent && idFromEvent.length <= 10) {
+                                                        salesmanSet.add(idFromEvent);
+                                                        console.log(`💾 Found salesman from event name: ${idFromEvent}`);
+                                                    }
+                                                }
+                                            }
+                                        });
+                                    }
+                                    
+                                } catch (parseError) {
+                                    // Skip invalid JSON, but still try to extract from key pattern
+                                    continue;
+                                }
+                            }
+                            
+                        } catch (error) {
+                            console.warn(`⚠️ Error processing localStorage key ${key}:`, error);
                         }
                     }
+                }
+                
+                console.log(`💾 localStorage scan complete: ${foundKeys} visit keys found, ${processedKeys} parsed, ${salesmanSet.size} unique salesman detected`);
+                
+                // Debug: Show a sample of what we found
+                if (salesmanSet.size > 0) {
+                    console.log(`💾 Detected salesman IDs:`, Array.from(salesmanSet));
+                } else {
+                    console.log('💾 No salesman found in localStorage. Listing available visit keys for debugging:');
+                    const visitKeys = [];
+                    for (let i = 0; i < localStorage.length && visitKeys.length < 5; i++) {
+                        const key = localStorage.key(i);
+                        if (key && key.includes('visit')) {
+                            visitKeys.push(key);
+                        }
+                    }
+                    console.log('💾 Sample visit keys:', visitKeys);
                 }
             }
             
@@ -1040,7 +1147,7 @@
             }
             
             loadFromLocalStorage(dateFrom, dateTo, salesmanFilter) {
-                console.log('💾 Loading from localStorage...');
+                console.log(`💾 Loading from localStorage for date range: ${dateFrom} to ${dateTo}`);
                 
                 let currentDate = new Date(dateFrom);
                 const endDate = new Date(dateTo);
@@ -1048,46 +1155,67 @@
                 
                 while (currentDate <= endDate) {
                     const dateStr = currentDate.toISOString().split('T')[0];
+                    console.log(`💾 Processing date: ${dateStr}`);
                     const dailyCount = this.loadDataForDate(dateStr, salesmanFilter);
                     localStorageCount += dailyCount;
+                    console.log(`💾 Found ${dailyCount} visits for ${dateStr}`);
                     currentDate.setDate(currentDate.getDate() + 1);
                 }
                 
-                console.log(`💾 localStorage data loaded: ${localStorageCount} visits`);
+                console.log(`💾 localStorage data loading complete: ${localStorageCount} total visits loaded`);
             }
             
             loadDataForDate(dateStr, salesmanFilter) {
                 const beforeCount = this.visitLocations.length;
+                console.log(`📅 Loading data for ${dateStr}, current visits: ${beforeCount}`);
                 
-                // Load from daily data
+                // Load from daily data first
                 this.loadFromDailyData(dateStr, salesmanFilter);
+                const afterDailyCount = this.visitLocations.length;
+                const dailyFound = afterDailyCount - beforeCount;
                 
                 // If no daily data found, fallback to analytics events
-                if (this.visitLocations.length === beforeCount) {
+                if (dailyFound === 0) {
+                    console.log(`📅 No daily data found for ${dateStr}, trying analytics events...`);
                     this.loadFromAnalyticsEvents(dateStr, salesmanFilter);
+                    const afterPendingCount = this.visitLocations.length;
+                    const pendingFound = afterPendingCount - afterDailyCount;
+                    console.log(`📅 Found ${pendingFound} visits from analytics events for ${dateStr}`);
+                } else {
+                    console.log(`📅 Found ${dailyFound} visits from daily data for ${dateStr}`);
                 }
                 
-                return this.visitLocations.length - beforeCount;
+                const totalFound = this.visitLocations.length - beforeCount;
+                console.log(`📅 Total found for ${dateStr}: ${totalFound} visits`);
+                return totalFound;
             }
             
             loadFromDailyData(dateStr, salesmanFilter) {
+                console.log(`💾 Loading daily data for ${dateStr}...`);
                 const dailyPattern = `visit_daily_local_${dateStr}_`;
+                let foundCount = 0;
                 
                 for (let i = 0; i < localStorage.length; i++) {
                     const key = localStorage.key(i);
                     
                     if (key && key.startsWith(dailyPattern)) {
+                        foundCount++;
                         const salesmanId = key.replace(dailyPattern, '');
+                        console.log(`💾 Found daily data key: ${key} for salesman: ${salesmanId}`);
                         
                         if (salesmanFilter && salesmanId !== salesmanFilter) {
+                            console.log(`💾 Skipping ${salesmanId} due to filter: ${salesmanFilter}`);
                             continue;
                         }
                         
                         try {
                             const dailyData = JSON.parse(localStorage.getItem(key) || '{}');
+                            console.log(`💾 Daily data structure:`, Object.keys(dailyData));
                             
                             if (dailyData.customers && Object.keys(dailyData.customers).length > 0) {
-                                Object.values(dailyData.customers).forEach(customerData => {
+                                console.log(`💾 Found ${Object.keys(dailyData.customers).length} customers in daily data`);
+                                
+                                Object.entries(dailyData.customers).forEach(([customerName, customerData]) => {
                                     if (customerData.sessions && customerData.sessions.length > 0) {
                                         const latestSession = customerData.sessions
                                             .filter(session => session.start_location && session.end)
@@ -1102,10 +1230,10 @@
                                             );
                                             
                                             const locationPoint = {
-                                                id: `localStorage_${dateStr}_${salesmanId}_${customerData.name}`,
+                                                id: `localStorage_daily_${dateStr}_${salesmanId}_${customerName}`,
                                                 salesman_id: salesmanId,
                                                 salesman_name: dailyData.salesman_name || `Salesman ${salesmanId}`,
-                                                customer_name: customerData.name,
+                                                customer_name: customerName,
                                                 actual_location: latestSession.start_location,
                                                 master_location: customerData.master_coordinates,
                                                 distance: distance,
@@ -1115,14 +1243,17 @@
                                                 compliance_status: this.getComplianceStatus(distance),
                                                 session_duration: latestSession.duration || 0,
                                                 visit_count: customerData.visitCount || 1,
-                                                source: 'localStorage'
+                                                source: 'localStorage-daily'
                                             };
                                             
                                             this.visitLocations.push(locationPoint);
                                             this.updateSalesmanData(salesmanId, dailyData.salesman_name, locationPoint);
+                                            console.log(`💾 Added visit: ${customerName} by ${salesmanId}`);
                                         }
                                     }
                                 });
+                            } else {
+                                console.log(`💾 No customer data found in ${key}`);
                             }
                             
                         } catch (error) {
@@ -1130,6 +1261,8 @@
                         }
                     }
                 }
+                
+                console.log(`💾 Daily data scan complete for ${dateStr}: ${foundCount} keys found`);
             }
             
             loadFromAnalyticsEvents(dateStr, salesmanFilter) {
@@ -1798,6 +1931,54 @@
                 console.log('✅ Firebase analytics reinitialized');
                 alert('Analytics system reinitialized!\n\nLocalStorage is recommended if Firebase access is limited.');
             }
+        }
+
+        // Debug localStorage function
+        function debugLocalStorage() {
+            console.log('🔍 DEBUG: Analyzing localStorage...');
+            
+            let visitKeys = [];
+            let totalKeys = localStorage.length;
+            
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.includes('visit')) {
+                    const data = localStorage.getItem(key);
+                    visitKeys.push({
+                        key: key,
+                        size: data ? data.length : 0,
+                        preview: data ? data.substring(0, 100) + '...' : 'null'
+                    });
+                }
+            }
+            
+            console.log(`🔍 Total localStorage keys: ${totalKeys}`);
+            console.log(`🔍 Visit-related keys: ${visitKeys.length}`);
+            
+            if (visitKeys.length > 0) {
+                console.log('🔍 Visit keys found:');
+                visitKeys.forEach((item, index) => {
+                    console.log(`${index + 1}. ${item.key} (${item.size} chars)`);
+                    console.log(`   Preview: ${item.preview}`);
+                });
+            } else {
+                console.log('🔍 No visit-related keys found in localStorage');
+                console.log('🔍 All localStorage keys:');
+                for (let i = 0; i < Math.min(localStorage.length, 10); i++) {
+                    console.log(`   ${i + 1}. ${localStorage.key(i)}`);
+                }
+            }
+            
+            // Show in alert for easy viewing
+            const summary = `🔍 localStorage Debug Summary:\n\n` +
+                          `📊 Total keys: ${totalKeys}\n` +
+                          `📍 Visit keys: ${visitKeys.length}\n\n` +
+                          `Visit Keys Found:\n` +
+                          visitKeys.slice(0, 5).map((item, i) => `${i+1}. ${item.key}`).join('\n') +
+                          (visitKeys.length > 5 ? `\n...and ${visitKeys.length - 5} more` : '') +
+                          `\n\nCheck console for detailed analysis.`;
+            
+            alert(summary);
         }
 
         // Clear analytics function  
