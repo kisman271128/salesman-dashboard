@@ -518,9 +518,6 @@
                     <button class="btn btn-secondary" onclick="debugLocalStorage()">
                         🔍 Debug Storage
                     </button>
-                    <button class="btn btn-secondary" onclick="analyzeDuplicates()">
-                        🔍 Check Duplicates
-                    </button>
                     <button class="btn btn-secondary" onclick="clearAnalytics()">
                         🧹 Clear Data
                     </button>
@@ -1545,23 +1542,20 @@
                 const beforeCount = this.visitLocations.length;
                 addDebugMessage(`📅 Loading data for ${dateStr}, current visits: ${beforeCount}`);
                 
-                // Track sources to detect duplicates
-                const visitTracker = new Map(); // key: "salesman_customer", value: {sources: [], visits: []}
-                
                 // Load from daily data first
-                this.loadFromDailyDataWithTracking(dateStr, salesmanFilter, visitTracker);
+                this.loadFromDailyData(dateStr, salesmanFilter);
                 const afterDailyCount = this.visitLocations.length;
                 const dailyFound = afterDailyCount - beforeCount;
                 
                 // Load from analytics events
-                this.loadFromAnalyticsEventsWithTracking(dateStr, salesmanFilter, visitTracker);
+                this.loadFromAnalyticsEvents(dateStr, salesmanFilter);
                 const afterAnalyticsCount = this.visitLocations.length;
                 const analyticsFound = afterAnalyticsCount - afterDailyCount;
                 
                 // Load from pending events if no other data
                 if (dailyFound === 0 && analyticsFound === 0) {
                     addDebugMessage(`📅 No daily/analytics data found for ${dateStr}, trying pending events...`);
-                    this.loadFromPendingEventsWithTracking(dateStr, salesmanFilter, visitTracker);
+                    this.loadFromPendingEvents(dateStr, salesmanFilter);
                     const afterPendingCount = this.visitLocations.length;
                     const pendingFound = afterPendingCount - afterAnalyticsCount;
                     addDebugMessage(`📅 Found ${pendingFound} visits from pending events for ${dateStr}`);
@@ -1569,295 +1563,9 @@
                     addDebugMessage(`📅 Found ${dailyFound} daily + ${analyticsFound} analytics visits for ${dateStr}`);
                 }
                 
-                // Check for potential duplicates in visitTracker
-                let duplicatesFound = 0;
-                visitTracker.forEach((data, key) => {
-                    if (data.sources.length > 1) {
-                        duplicatesFound++;
-                        addDebugMessage(`⚠️ Potential duplicate for ${key}: sources = ${data.sources.join(', ')}`);
-                    }
-                });
-                
-                if (duplicatesFound > 0) {
-                    addDebugMessage(`⚠️ Found ${duplicatesFound} potential duplicates for ${dateStr}`);
-                }
-                
                 const totalFound = this.visitLocations.length - beforeCount;
-                addDebugMessage(`📅 Total found for ${dateStr}: ${totalFound} visits (${duplicatesFound} potential duplicates detected)`);
+                addDebugMessage(`📅 Total found for ${dateStr}: ${totalFound} visits`);
                 return totalFound;
-            }
-            
-            loadFromDailyDataWithTracking(dateStr, salesmanFilter, visitTracker) {
-                addDebugMessage(`💾 Loading daily data for ${dateStr}...`);
-                let foundCount = 0;
-                
-                const dailyPattern = `visit_daily_local_${dateStr}_`;
-                
-                for (let i = 0; i < localStorage.length; i++) {
-                    const key = localStorage.key(i);
-                    
-                    if (key && key.startsWith(dailyPattern)) {
-                        foundCount++;
-                        const salesmanId = key.replace(dailyPattern, '');
-                        addDebugMessage(`💾 Found daily data key: ${key} for salesman: ${salesmanId}`);
-                        
-                        if (salesmanFilter && salesmanId !== salesmanFilter) {
-                            addDebugMessage(`💾 Skipping ${salesmanId} due to filter: ${salesmanFilter}`);
-                            continue;
-                        }
-                        
-                        this.processDailyDataKeyWithTracking(key, salesmanId, dateStr, visitTracker);
-                    }
-                }
-                
-                addDebugMessage(`💾 Daily data scan complete for ${dateStr}: ${foundCount} keys found`);
-            }
-            
-            loadFromAnalyticsEventsWithTracking(dateStr, salesmanFilter, visitTracker) {
-                addDebugMessage(`📊 Loading analytics data for ${dateStr}...`);
-                let foundCount = 0;
-                
-                const analyticsKey = `analytics_${dateStr}`;
-                
-                const analyticsData = localStorage.getItem(analyticsKey);
-                if (analyticsData) {
-                    foundCount++;
-                    addDebugMessage(`📊 Found analytics data key: ${analyticsKey}`);
-                    this.processAnalyticsDataKeyWithTracking(analyticsKey, dateStr, salesmanFilter, visitTracker);
-                } else {
-                    addDebugMessage(`📊 No analytics data found for ${dateStr}`);
-                }
-                
-                addDebugMessage(`📊 Analytics data scan complete for ${dateStr}: ${foundCount} keys found`);
-            }
-            
-            loadFromPendingEventsWithTracking(dateStr, salesmanFilter, visitTracker) {
-                addDebugMessage(`📋 Loading pending events for ${dateStr}...`);
-                let foundCount = 0;
-                
-                const pendingPattern = `visit_pending_${dateStr}_`;
-                
-                for (let i = 0; i < localStorage.length; i++) {
-                    const key = localStorage.key(i);
-                    
-                    if (key && key.startsWith(pendingPattern)) {
-                        foundCount++;
-                        const salesmanId = key.replace(pendingPattern, '');
-                        addDebugMessage(`📋 Found pending data key: ${key} for salesman: ${salesmanId}`);
-                        
-                        if (salesmanFilter && salesmanId !== salesmanFilter) {
-                            addDebugMessage(`📋 Skipping ${salesmanId} due to filter: ${salesmanFilter}`);
-                            continue;
-                        }
-                        
-                        this.processPendingDataKeyWithTracking(key, salesmanId, dateStr, visitTracker);
-                    }
-                }
-                
-                addDebugMessage(`📋 Pending data scan complete for ${dateStr}: ${foundCount} keys found`);
-            }
-            
-            processDailyDataKeyWithTracking(key, salesmanId, dateStr, visitTracker) {
-                try {
-                    const dailyData = JSON.parse(localStorage.getItem(key) || '{}');
-                    addDebugMessage(`💾 Daily data structure: ${Object.keys(dailyData).join(', ')}`);
-                    
-                    if (dailyData.customers && Object.keys(dailyData.customers).length > 0) {
-                        addDebugMessage(`💾 Found ${Object.keys(dailyData.customers).length} customers in daily data`);
-                        
-                        Object.entries(dailyData.customers).forEach(([customerName, customerData]) => {
-                            if (customerData.sessions && customerData.sessions.length > 0) {
-                                const latestSession = customerData.sessions
-                                    .filter(session => session.start_location && session.end)
-                                    .sort((a, b) => new Date(b.start) - new Date(a.start))[0];
-                                
-                                if (latestSession && latestSession.start_location) {
-                                    const distance = this.calculateDistance(
-                                        latestSession.start_location.latitude,
-                                        latestSession.start_location.longitude,
-                                        customerData.master_coordinates ? customerData.master_coordinates.latitude : 0,
-                                        customerData.master_coordinates ? customerData.master_coordinates.longitude : 0
-                                    );
-                                    
-                                    const locationPoint = {
-                                        id: `localStorage_daily_${dateStr}_${salesmanId}_${customerName}`,
-                                        salesman_id: salesmanId,
-                                        salesman_name: dailyData.salesman_name || `Salesman ${salesmanId}`,
-                                        customer_name: customerName,
-                                        actual_location: latestSession.start_location,
-                                        master_location: customerData.master_coordinates,
-                                        distance: distance,
-                                        timestamp: latestSession.start,
-                                        date: dateStr,
-                                        accuracy: latestSession.start_location.accuracy || 0,
-                                        compliance_status: this.getComplianceStatus(distance),
-                                        session_duration: latestSession.duration || 0,
-                                        visit_count: customerData.visitCount || 1,
-                                        source: 'localStorage-daily'
-                                    };
-                                    
-                                    // Track for duplicate detection
-                                    const trackingKey = `${salesmanId}_${customerName}`;
-                                    if (!visitTracker.has(trackingKey)) {
-                                        visitTracker.set(trackingKey, { sources: [], visits: [] });
-                                    }
-                                    visitTracker.get(trackingKey).sources.push('daily');
-                                    visitTracker.get(trackingKey).visits.push(locationPoint);
-                                    
-                                    this.visitLocations.push(locationPoint);
-                                    this.updateSalesmanData(salesmanId, dailyData.salesman_name, locationPoint);
-                                    addDebugMessage(`💾 Added daily visit: ${customerName} by ${salesmanId} at ${latestSession.start_location.latitude},${latestSession.start_location.longitude}`);
-                                }
-                            }
-                        });
-                    } else {
-                        addDebugMessage(`💾 No customer data found in ${key}`);
-                    }
-                    
-                } catch (error) {
-                    addDebugMessage(`⚠️ Error loading daily data for ${key}: ${error.message}`);
-                }
-            }
-            
-            processAnalyticsDataKeyWithTracking(key, dateStr, salesmanFilter, visitTracker) {
-                try {
-                    const analyticsData = JSON.parse(localStorage.getItem(key) || '{}');
-                    addDebugMessage(`📊 Analytics data structure for ${dateStr}: ${Object.keys(analyticsData).join(', ')}`);
-                    
-                    this.extractVisitsFromAnalyticsWithTracking(analyticsData, dateStr, salesmanFilter, visitTracker);
-                    
-                } catch (error) {
-                    addDebugMessage(`⚠️ Error loading analytics data for ${key}: ${error.message}`);
-                }
-            }
-            
-            processPendingDataKeyWithTracking(key, salesmanId, dateStr, visitTracker) {
-                try {
-                    const pendingData = JSON.parse(localStorage.getItem(key) || '[]');
-                    addDebugMessage(`📋 Pending data: ${pendingData.length} events`);
-                    
-                    const customerSelectedEvents = pendingData.filter(event => 
-                        event.event_name === 'visit_customer_selected' && 
-                        event.location && 
-                        event.event_data && 
-                        event.event_data.customer_name
-                    );
-                    
-                    addDebugMessage(`📋 Found ${customerSelectedEvents.length} customer selected events`);
-                    
-                    const processedCustomers = new Set();
-                    customerSelectedEvents.forEach(event => {
-                        const customerName = event.event_data.customer_name;
-                        const trackingKey = `${salesmanId}_${customerName}`;
-                        
-                        // Only process first occurrence to avoid duplicates within pending data
-                        if (!processedCustomers.has(trackingKey)) {
-                            processedCustomers.add(trackingKey);
-                            
-                            const distance = event.event_data.distance_meters || 0;
-                            
-                            const locationPoint = {
-                                id: `localStorage_pending_${dateStr}_${salesmanId}_${customerName}`,
-                                salesman_id: salesmanId,
-                                salesman_name: event.salesman_name || `Salesman ${salesmanId}`,
-                                customer_name: customerName,
-                                actual_location: event.location,
-                                master_location: event.event_data.master_coordinates,
-                                distance: distance,
-                                timestamp: event.timestamp,
-                                date: dateStr,
-                                accuracy: event.location.accuracy || 0,
-                                compliance_status: this.getComplianceStatus(distance),
-                                session_duration: 0,
-                                visit_count: 1,
-                                source: 'localStorage-pending'
-                            };
-                            
-                            // Track for duplicate detection
-                            if (!visitTracker.has(trackingKey)) {
-                                visitTracker.set(trackingKey, { sources: [], visits: [] });
-                            }
-                            visitTracker.get(trackingKey).sources.push('pending');
-                            visitTracker.get(trackingKey).visits.push(locationPoint);
-                            
-                            this.visitLocations.push(locationPoint);
-                            this.updateSalesmanData(salesmanId, event.salesman_name, locationPoint);
-                            addDebugMessage(`📋 Added pending visit: ${customerName} by ${salesmanId} at ${event.location.latitude},${event.location.longitude}`);
-                        }
-                    });
-                    
-                } catch (error) {
-                    addDebugMessage(`⚠️ Error loading pending data for ${key}: ${error.message}`);
-                }
-            }
-            
-            extractVisitsFromAnalyticsWithTracking(analyticsData, dateStr, salesmanFilter, visitTracker) {
-                let extractedCount = 0;
-                
-                if (typeof analyticsData === 'object') {
-                    Object.entries(analyticsData).forEach(([topKey, topValue]) => {
-                        if (topValue && typeof topValue === 'object') {
-                            
-                            if (this.isVisitLikeData(topValue)) {
-                                const visitData = this.convertAnalyticsToVisit(topKey, topValue, dateStr);
-                                if (visitData && (!salesmanFilter || visitData.salesman_id === salesmanFilter)) {
-                                    
-                                    // Track for duplicate detection
-                                    const trackingKey = `${visitData.salesman_id}_${visitData.customer_name}`;
-                                    if (!visitTracker.has(trackingKey)) {
-                                        visitTracker.set(trackingKey, { sources: [], visits: [] });
-                                    }
-                                    visitTracker.get(trackingKey).sources.push('analytics');
-                                    visitTracker.get(trackingKey).visits.push(visitData);
-                                    
-                                    this.visitLocations.push(visitData);
-                                    this.updateSalesmanData(visitData.salesman_id, visitData.salesman_name, visitData);
-                                    extractedCount++;
-                                    addDebugMessage(`📊 Extracted analytics visit: ${visitData.customer_name} by ${visitData.salesman_id} at ${visitData.actual_location.latitude},${visitData.actual_location.longitude}`);
-                                }
-                            }
-                            
-                            Object.entries(topValue).forEach(([subKey, subValue]) => {
-                                if (subValue && typeof subValue === 'object' && this.isVisitLikeData(subValue)) {
-                                    const visitData = this.convertAnalyticsToVisit(`${topKey}_${subKey}`, subValue, dateStr);
-                                    if (visitData && (!salesmanFilter || visitData.salesman_id === salesmanFilter)) {
-                                        
-                                        // Track for duplicate detection
-                                        const trackingKey = `${visitData.salesman_id}_${visitData.customer_name}`;
-                                        if (!visitTracker.has(trackingKey)) {
-                                            visitTracker.set(trackingKey, { sources: [], visits: [] });
-                                        }
-                                        visitTracker.get(trackingKey).sources.push('analytics-nested');
-                                        visitTracker.get(trackingKey).visits.push(visitData);
-                                        
-                                        this.visitLocations.push(visitData);
-                                        this.updateSalesmanData(visitData.salesman_id, visitData.salesman_name, visitData);
-                                        extractedCount++;
-                                        addDebugMessage(`📊 Extracted nested analytics visit: ${visitData.customer_name} by ${visitData.salesman_id} at ${visitData.actual_location.latitude},${visitData.actual_location.longitude}`);
-                                    }
-                                }
-                            });
-                        }
-                    });
-                }
-                
-                // Legacy functions - kept for compatibility but now using WithTracking versions
-            loadFromDailyData(dateStr, salesmanFilter) {
-                // Redirect to tracking version
-                const visitTracker = new Map();
-                this.loadFromDailyDataWithTracking(dateStr, salesmanFilter, visitTracker);
-            }
-            
-            loadFromAnalyticsEvents(dateStr, salesmanFilter) {
-                // Redirect to tracking version
-                const visitTracker = new Map();
-                this.loadFromAnalyticsEventsWithTracking(dateStr, salesmanFilter, visitTracker);
-            }
-            
-            loadFromPendingEvents(dateStr, salesmanFilter) {
-                // Redirect to tracking version
-                const visitTracker = new Map();
-                this.loadFromPendingEventsWithTracking(dateStr, salesmanFilter, visitTracker);
             }
             
             loadFromDailyData(dateStr, salesmanFilter) {
@@ -1933,21 +1641,57 @@
             }
             
             processDailyDataKey(key, salesmanId, dateStr) {
-                // Redirect to tracking version for consistency
-                const visitTracker = new Map();
-                this.processDailyDataKeyWithTracking(key, salesmanId, dateStr, visitTracker);
-            }
-            
-            processAnalyticsDataKey(key, dateStr, salesmanFilter) {
-                // Redirect to tracking version for consistency
-                const visitTracker = new Map();
-                this.processAnalyticsDataKeyWithTracking(key, dateStr, salesmanFilter, visitTracker);
-            }
-            
-            processPendingDataKey(key, salesmanId, dateStr) {
-                // Redirect to tracking version for consistency
-                const visitTracker = new Map();
-                this.processPendingDataKeyWithTracking(key, salesmanId, dateStr, visitTracker);
+                try {
+                    const dailyData = JSON.parse(localStorage.getItem(key) || '{}');
+                    addDebugMessage(`💾 Daily data structure: ${Object.keys(dailyData).join(', ')}`);
+                    
+                    if (dailyData.customers && Object.keys(dailyData.customers).length > 0) {
+                        addDebugMessage(`💾 Found ${Object.keys(dailyData.customers).length} customers in daily data`);
+                        
+                        Object.entries(dailyData.customers).forEach(([customerName, customerData]) => {
+                            if (customerData.sessions && customerData.sessions.length > 0) {
+                                const latestSession = customerData.sessions
+                                    .filter(session => session.start_location && session.end)
+                                    .sort((a, b) => new Date(b.start) - new Date(a.start))[0];
+                                
+                                if (latestSession && latestSession.start_location) {
+                                    const distance = this.calculateDistance(
+                                        latestSession.start_location.latitude,
+                                        latestSession.start_location.longitude,
+                                        customerData.master_coordinates ? customerData.master_coordinates.latitude : 0,
+                                        customerData.master_coordinates ? customerData.master_coordinates.longitude : 0
+                                    );
+                                    
+                                    const locationPoint = {
+                                        id: `localStorage_daily_${dateStr}_${salesmanId}_${customerName}`,
+                                        salesman_id: salesmanId,
+                                        salesman_name: dailyData.salesman_name || `Salesman ${salesmanId}`,
+                                        customer_name: customerName,
+                                        actual_location: latestSession.start_location,
+                                        master_location: customerData.master_coordinates,
+                                        distance: distance,
+                                        timestamp: latestSession.start,
+                                        date: dateStr,
+                                        accuracy: latestSession.start_location.accuracy || 0,
+                                        compliance_status: this.getComplianceStatus(distance),
+                                        session_duration: latestSession.duration || 0,
+                                        visit_count: customerData.visitCount || 1,
+                                        source: 'localStorage-daily'
+                                    };
+                                    
+                                    this.visitLocations.push(locationPoint);
+                                    this.updateSalesmanData(salesmanId, dailyData.salesman_name, locationPoint);
+                                    addDebugMessage(`💾 Added daily visit: ${customerName} by ${salesmanId} at ${latestSession.start_location.latitude},${latestSession.start_location.longitude}`);
+                                }
+                            }
+                        });
+                    } else {
+                        addDebugMessage(`💾 No customer data found in ${key}`);
+                    }
+                    
+                } catch (error) {
+                    addDebugMessage(`⚠️ Error loading daily data for ${key}: ${error.message}`);
+                }
             }
             
             processAnalyticsDataKey(key, dateStr, salesmanFilter) {
@@ -2713,19 +2457,6 @@
                     return (distance / 1000) <= 150;
                 });
                 
-                // Quick duplicate check
-                const duplicateCheck = new Map();
-                validLocations.forEach(visit => {
-                    const key = `${visit.salesman_id}_${visit.customer_name}_${visit.date}`;
-                    if (!duplicateCheck.has(key)) {
-                        duplicateCheck.set(key, 0);
-                    }
-                    duplicateCheck.set(key, duplicateCheck.get(key) + 1);
-                });
-                
-                const duplicateCount = Array.from(duplicateCheck.values()).filter(count => count > 1).length;
-                const totalDuplicateVisits = Array.from(duplicateCheck.values()).reduce((sum, count) => sum + Math.max(0, count - 1), 0);
-                
                 const filteredOutliers = locationData.length - validLocations.length;
                 const uniqueSalesman = new Set(validLocations.map(v => v.salesman_id)).size;
                 const firebaseVisits = validLocations.filter(v => v.source === 'firebase').length;
@@ -2738,8 +2469,7 @@
                     `📍 Total valid locations: ${validLocations.length}\n` +
                     `👥 ${uniqueSalesman} salesman routes tracked\n` +
                     `🚫 ${filteredOutliers} outlier locations filtered (>150km)\n` +
-                    `📊 ${enhancedAnalytics.complianceStats.complianceRate}% location compliance` +
-                    (duplicateCount > 0 ? `\n\n⚠️ ${duplicateCount} duplicate customer groups detected (${totalDuplicateVisits} extra visits)\n💡 Click "Check Duplicates" for detailed analysis` : '');
+                    `📊 ${enhancedAnalytics.complianceStats.complianceRate}% location compliance`;
                 
                 addDebugMessage(summaryMessage);
                 
@@ -2759,11 +2489,7 @@
                     const sourceUsed = dataSource === 'firebase' && localStorageVisits > 0 && firebaseVisits === 0 ? 
                         'localStorage (Firebase fallback)' : dataSource;
                     
-                    const duplicateWarning = duplicateCount > 0 ? 
-                        `\n\n⚠️ DUPLICATE ALERT:\n${duplicateCount} customer groups with duplicates\n${totalDuplicateVisits} extra visits detected\n\n🔍 Use "Check Duplicates" button for detailed analysis` : 
-                        '\n\n✅ No duplicate visits detected';
-                    
-                    alert(`✅ Analytics loaded successfully!\n\n📊 Found ${locationData.length} visits\n💾 LocalStorage: ${localStorageVisits} visits\n🔥 Firebase: ${firebaseVisits} visits\n🗺️ Data source used: ${sourceUsed}${duplicateWarning}\n\n🔍 Check debug panel for detailed information`);
+                    alert(`✅ Analytics loaded successfully!\n\n📊 Found ${locationData.length} visits\n💾 LocalStorage: ${localStorageVisits} visits\n🔥 Firebase: ${firebaseVisits} visits\n🗺️ Data source used: ${sourceUsed}\n\n🔍 Check debug panel for detailed information`);
                 }
                 
             } catch (error) {
@@ -2912,170 +2638,6 @@
             `;
             
             addDebugMessage('✅ Analytics cleared');
-        }
-
-        // Analyze duplicates function
-        function analyzeDuplicates() {
-            if (!enhancedAnalytics || enhancedAnalytics.visitLocations.length === 0) {
-                alert('⚠️ No data loaded!\n\nPlease load analytics data first, then check for duplicates.');
-                return;
-            }
-            
-            addDebugMessage('🔍 DUPLICATE ANALYSIS: Starting comprehensive duplicate check...');
-            
-            const visits = enhancedAnalytics.visitLocations;
-            const duplicateGroups = new Map(); // key: "salesman_customer_date", value: [visits]
-            const sourceAnalysis = new Map(); // key: "salesman_customer_date", value: {sources: Set, count: number}
-            const locationVariance = new Map(); // track location differences for same customer
-            
-            // Group visits by salesman, customer, and date
-            visits.forEach(visit => {
-                const key = `${visit.salesman_id}_${visit.customer_name}_${visit.date}`;
-                
-                if (!duplicateGroups.has(key)) {
-                    duplicateGroups.set(key, []);
-                    sourceAnalysis.set(key, { sources: new Set(), count: 0 });
-                    locationVariance.set(key, { locations: [], distances: [] });
-                }
-                
-                duplicateGroups.get(key).push(visit);
-                sourceAnalysis.get(key).sources.add(visit.source);
-                sourceAnalysis.get(key).count++;
-                
-                // Track location variance
-                locationVariance.get(key).locations.push({
-                    lat: visit.actual_location.latitude,
-                    lng: visit.actual_location.longitude,
-                    accuracy: visit.accuracy,
-                    timestamp: visit.timestamp
-                });
-                locationVariance.get(key).distances.push(visit.distance);
-            });
-            
-            // Analyze duplicates
-            const duplicateReport = {
-                totalVisits: visits.length,
-                uniqueCustomerVisits: duplicateGroups.size,
-                duplicateGroups: 0,
-                exactDuplicates: 0,
-                sourceDuplicates: 0,
-                locationVariance: 0,
-                details: []
-            };
-            
-            duplicateGroups.forEach((visitGroup, key) => {
-                if (visitGroup.length > 1) {
-                    duplicateReport.duplicateGroups++;
-                    
-                    const [salesman, customer, date] = key.split('_');
-                    const sources = Array.from(sourceAnalysis.get(key).sources);
-                    const locations = locationVariance.get(key).locations;
-                    const distances = locationVariance.get(key).distances;
-                    
-                    // Check if locations are similar (within 10 meters)
-                    let maxLocationDistance = 0;
-                    for (let i = 0; i < locations.length - 1; i++) {
-                        for (let j = i + 1; j < locations.length; j++) {
-                            const dist = enhancedAnalytics.calculateDistance(
-                                locations[i].lat, locations[i].lng,
-                                locations[j].lat, locations[j].lng
-                            );
-                            maxLocationDistance = Math.max(maxLocationDistance, dist);
-                        }
-                    }
-                    
-                    const isExactDuplicate = maxLocationDistance < 10; // Within 10 meters
-                    const isSourceDuplicate = sources.length > 1;
-                    const hasLocationVariance = maxLocationDistance > 50; // More than 50 meters apart
-                    
-                    if (isExactDuplicate) duplicateReport.exactDuplicates++;
-                    if (isSourceDuplicate) duplicateReport.sourceDuplicates++;
-                    if (hasLocationVariance) duplicateReport.locationVariance++;
-                    
-                    // Determine duplicate type
-                    let duplicateType = '';
-                    if (isExactDuplicate && isSourceDuplicate) {
-                        duplicateType = 'Source Overlap (Same Location)';
-                    } else if (isSourceDuplicate && hasLocationVariance) {
-                        duplicateType = 'Source Overlap (Different Locations)';
-                    } else if (isExactDuplicate) {
-                        duplicateType = 'Exact Location Duplicate';
-                    } else if (hasLocationVariance) {
-                        duplicateType = 'Multiple Visits (Different Locations)';
-                    } else {
-                        duplicateType = 'Multiple Visits (Similar Location)';
-                    }
-                    
-                    duplicateReport.details.push({
-                        key: key,
-                        salesman: salesman,
-                        customer: customer.length > 20 ? customer.substring(0, 20) + '...' : customer,
-                        date: date,
-                        count: visitGroup.length,
-                        sources: sources,
-                        type: duplicateType,
-                        maxLocationDistance: Math.round(maxLocationDistance),
-                        distanceRange: `${Math.min(...distances)}m - ${Math.max(...distances)}m`,
-                        timestamps: visitGroup.map(v => new Date(v.timestamp).toLocaleTimeString()).join(', ')
-                    });
-                    
-                    addDebugMessage(`🔍 DUPLICATE: ${customer} by ${salesman} on ${date}`);
-                    addDebugMessage(`   Count: ${visitGroup.length}, Sources: ${sources.join(', ')}, Max distance: ${Math.round(maxLocationDistance)}m`);
-                    addDebugMessage(`   Type: ${duplicateType}`);
-                }
-            });
-            
-            // Sort duplicates by count (highest first)
-            duplicateReport.details.sort((a, b) => b.count - a.count);
-            
-            // Generate summary message
-            const summary = `🔍 DUPLICATE ANALYSIS RESULTS:\n\n` +
-                          `📊 Total visits loaded: ${duplicateReport.totalVisits}\n` +
-                          `👥 Unique customer-date combinations: ${duplicateReport.uniqueCustomerVisits}\n` +
-                          `🔄 Duplicate groups found: ${duplicateReport.duplicateGroups}\n\n` +
-                          `📍 Exact duplicates (same location): ${duplicateReport.exactDuplicates}\n` +
-                          `📂 Source duplicates (multiple data sources): ${duplicateReport.sourceDuplicates}\n` +
-                          `📏 Location variance (>50m apart): ${duplicateReport.locationVariance}\n\n` +
-                          `TOP DUPLICATES:\n` +
-                          duplicateReport.details.slice(0, 5).map((item, i) => 
-                              `${i+1}. ${item.customer} (${item.count}x) - ${item.type}`
-                          ).join('\n') +
-                          (duplicateReport.details.length > 5 ? `\n...and ${duplicateReport.details.length - 5} more` : '') +
-                          `\n\n🔍 Check debug panel for detailed analysis.`;
-            
-            // Log detailed report
-            addDebugMessage('🔍 DETAILED DUPLICATE REPORT:');
-            duplicateReport.details.forEach((item, i) => {
-                addDebugMessage(`${i+1}. ${item.customer} by Salesman ${item.salesman}`);
-                addDebugMessage(`   Date: ${item.date}, Count: ${item.count}`);
-                addDebugMessage(`   Sources: ${item.sources.join(', ')}`);
-                addDebugMessage(`   Type: ${item.type}`);
-                addDebugMessage(`   Max location distance: ${item.maxLocationDistance}m`);
-                addDebugMessage(`   Distance range: ${item.distanceRange}`);
-                addDebugMessage(`   Times: ${item.timestamps}`);
-                addDebugMessage('');
-            });
-            
-            // Provide recommendations
-            if (duplicateReport.sourceDuplicates > 0) {
-                addDebugMessage('💡 RECOMMENDATION: Source duplicates detected.');
-                addDebugMessage('   This means same visits are appearing from multiple data sources.');
-                addDebugMessage('   Consider using "Local Storage" data source only to avoid overlaps.');
-            }
-            
-            if (duplicateReport.locationVariance > 0) {
-                addDebugMessage('💡 RECOMMENDATION: Location variance detected.');
-                addDebugMessage('   Same customer visited multiple times at different locations.');
-                addDebugMessage('   This might be legitimate multiple visits per day.');
-            }
-            
-            if (duplicateReport.exactDuplicates > 0) {
-                addDebugMessage('💡 RECOMMENDATION: Exact duplicates detected.');
-                addDebugMessage('   Same customer, same location, same day from same/different sources.');
-                addDebugMessage('   Consider implementing deduplication in data collection.');
-            }
-            
-            alert(summary);
         }
 
         // Focus map on location function
