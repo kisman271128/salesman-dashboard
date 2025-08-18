@@ -5,6 +5,12 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>Dashboard Desktop - Salesman App</title>
+
+<!-- Leaflet.js CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" 
+      crossorigin=""/>
+
 <style>
         * {
             margin: 0;
@@ -578,7 +584,7 @@
             color: #1e293b;
         }
 
-        /* ✅ SVG MAP SECTION */
+        /* ✅ LEAFLET MAP SECTION */
         .map-section {
             background: white;
             border-radius: 12px;
@@ -633,125 +639,102 @@
             border-color: #667eea;
         }
 
-        /* ✅ SVG MAP CONTAINER */
+        /* ✅ LEAFLET MAP CONTAINER */
         #mapContainer {
             flex: 1;
             border-radius: 8px;
             overflow: hidden;
             border: 1px solid #e2e8f0;
-            min-height: 300px;
+            min-height: 400px;
             position: relative;
-            background: #ffffff !important;
-            background-image: none !important;
+            background: #ffffff;
         }
 
-        #svgMap {
-            width: 100%;
-            height: 100%;
-            display: block;
-            background: #ffffff !important;
-            background-image: none !important;
-        }
-
-        /* ✅ SVG MAP STYLES */
-        .map-region {
-            stroke: #1e3a8a;
-            stroke-width: 1.5;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .map-region:hover {
-            stroke: #667eea;
-            stroke-width: 2.5;
-            filter: brightness(1.1);
-        }
-
-        .map-region.selected {
-            stroke: #667eea;
-            stroke-width: 3;
-        }
-
-        /* ✅ LOCATION MARKERS (for coordinate-based map) */
-        .location-marker {
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .location-marker:hover {
-            filter: brightness(1.2) drop-shadow(0 0 0.02 rgba(102, 126, 234, 0.8));
-        }
-
-        /* ✅ TOOLTIP STYLES */
-        .map-tooltip {
-            position: absolute;
-            background: white;
+        /* ✅ CUSTOM LEAFLET STYLES */
+        .leaflet-popup-content-wrapper {
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
             border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 12px 16px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            font-family: 'Inter', sans-serif;
-            font-size: 12px;
-            z-index: 2000;
-            pointer-events: none;
-            opacity: 0;
-            transform: translateY(10px);
-            transition: all 0.2s ease;
-            max-width: 280px;
-            min-width: 200px;
         }
 
-        .map-tooltip.visible {
-            opacity: 1;
-            transform: translateY(0);
+        .leaflet-popup-content {
+            margin: 0;
+            padding: 0;
+            min-width: 280px;
         }
 
-        .tooltip-header {
+        .popup-header {
             background: linear-gradient(135deg, #667eea, #764ba2);
             color: white;
-            padding: 8px 12px;
-            margin: -12px -16px 12px -16px;
-            border-radius: 6px 6px 0 0;
+            padding: 12px 16px;
             font-weight: 700;
-            font-size: 13px;
+            font-size: 14px;
+            border-radius: 10px 10px 0 0;
         }
 
-        .tooltip-content {
-            display: grid;
-            gap: 6px;
+        .popup-content {
+            padding: 16px;
         }
 
-        .tooltip-metric {
+        .popup-metric {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 4px 0;
+            padding: 8px 0;
             border-bottom: 1px solid #f1f5f9;
         }
 
-        .tooltip-metric:last-child {
+        .popup-metric:last-child {
             border-bottom: none;
         }
 
-        .tooltip-metric-label {
-            font-size: 11px;
+        .popup-metric-label {
+            font-size: 12px;
             color: #64748b;
             font-weight: 600;
         }
 
-        .tooltip-metric-value {
-            font-size: 11px;
+        .popup-metric-value {
+            font-size: 12px;
             font-weight: 700;
             color: #1e293b;
         }
 
-        .tooltip-metric-value.positive {
+        .popup-metric-value.positive {
             color: #059669;
         }
 
-        .tooltip-metric-value.negative {
+        .popup-metric-value.negative {
             color: #dc2626;
         }
+
+        /* ✅ CUSTOM LEAFLET MARKERS */
+        .custom-marker {
+            border: 2px solid white;
+            border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 10px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .custom-marker:hover {
+            transform: scale(1.2);
+            z-index: 1000;
+        }
+
+        .marker-excellent { background: #059669; }
+        .marker-good { background: #f59e0b; }
+        .marker-fair { background: #fb7185; }
+        .marker-poor { background: #ef4444; }
+        .marker-no-data { background: #94a3b8; }
 
         /* ✅ SALESMAN SECTION */
         .salesman-section {
@@ -931,54 +914,6 @@
             border-color: #667eea;
         }
 
-        /* ✅ MAP LEGEND STYLES - Moved to top right */
-        .map-legend {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: white;
-            padding: 16px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            border: 1px solid #e2e8f0;
-            z-index: 1000;
-            font-family: 'Inter', sans-serif;
-            min-width: 180px;
-        }
-
-        .legend-title {
-            font-size: 12px;
-            font-weight: 700;
-            color: #1e293b;
-            margin-bottom: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 6px;
-            font-size: 11px;
-        }
-
-        .legend-item:last-child {
-            margin-bottom: 0;
-        }
-
-        .legend-color {
-            width: 16px;
-            height: 16px;
-            border-radius: 3px;
-            border: 1px solid rgba(0, 0, 0, 0.1);
-        }
-
-        .legend-label {
-            color: #64748b;
-            font-weight: 500;
-        }
-
         /* ✅ LOADING AND ERROR STATES */
         .loading-spinner {
             display: flex;
@@ -1070,26 +1005,12 @@
                 grid-template-columns: repeat(3, 1fr);
                 gap: 8px;
             }
-            
-            .map-legend {
-                top: 15px;
-                right: 15px;
-                padding: 14px;
-                min-width: 160px;
-            }
         }
 
         @media (max-width: 1200px) {
             .metrics-row {
                 grid-template-columns: repeat(3, 1fr);
                 gap: 8px;
-            }
-            
-            .map-legend {
-                top: 12px;
-                right: 12px;
-                padding: 12px;
-                min-width: 150px;
             }
         }
 
@@ -1122,28 +1043,6 @@
             
             .lob-grid {
                 grid-template-columns: 1fr;
-            }
-
-            .map-legend {
-                top: 10px;
-                right: 10px;
-                padding: 12px;
-                min-width: 150px;
-            }
-
-            .legend-title {
-                font-size: 11px;
-                margin-bottom: 8px;
-            }
-
-            .legend-item {
-                margin-bottom: 4px;
-                font-size: 10px;
-            }
-
-            .legend-color {
-                width: 12px;
-                height: 12px;
             }
         }
     </style>
@@ -1229,7 +1128,7 @@
 </div>
 <!-- Error State -->
 <div class="error-message" id="errorMessage" style="display: none;">
-<h3>📡 Kesalahan Memuat Data</h3>
+<h3>🚨 Kesalahan Memuat Data</h3>
 <p>Tidak dapat memuat data dari folder \data\. Silakan periksa ketersediaan file JSON.</p>
 <button class="refresh-btn" onclick="loadDashboardData()" style="margin-top: 12px;">Coba Lagi</button>
 </div>
@@ -1279,13 +1178,13 @@
 </div>
 </div>
 </div>
-<!-- ✅ RIGHT COLUMN - SVG MAP SECTION -->
+<!-- ✅ RIGHT COLUMN - LEAFLET MAP SECTION -->
 <div class="right-column">
 <div class="map-section">
 <div class="map-header">
 <h3 class="map-title">
 <span>🗺️</span>
-                                    Peta Area Kecamatan
+                                    Peta Area Kecamatan (Leaflet.js)
                                 </h3>
 <div class="map-controls">
 <button class="map-control-btn active" data-metric="achievement">Achievement</button>
@@ -1294,23 +1193,7 @@
 </div>
 </div>
 <div id="mapContainer">
-<svg id="svgMap" viewBox="0 0 800 600" preserveAspectRatio="xMidYMid meet">
-<!-- SVG paths will be populated by JavaScript -->
-</svg>
-<div class="map-legend" id="mapLegend">
-<div class="legend-title" id="legendTitle">Achievement Level</div>
-<div id="legendItems">
-<!-- Legend items will be populated by JavaScript -->
-</div>
-</div>
-<!-- Tooltip -->
-<div class="map-tooltip" id="mapTooltip">
-<div class="tooltip-header" id="tooltipHeader">
-                                        Kecamatan
-                                    </div>
-<div class="tooltip-content" id="tooltipContent">
-<!-- Tooltip content will be populated by JavaScript -->
-</div>
+<!-- Leaflet map will be initialized here -->
 </div>
 </div>
 </div>
@@ -1321,6 +1204,11 @@
 </div>
 </div>
 
+<!-- Leaflet.js JavaScript -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" 
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" 
+        crossorigin=""></script>
+
 <script>
         // Global variables
         let dashboardData = null;
@@ -1329,8 +1217,8 @@
         let areaData = null;
         let depoData = null;
         let currentMapMetric = 'achievement';
-        let svgMap = null;
-        let tooltip = null;
+        let leafletMap = null;
+        let markersLayer = null;
 
         // ✅ FORMAT CURRENCY FUNCTION
         function formatCurrencyIndonesia(value) {
@@ -1510,9 +1398,9 @@
                 updateLOBCards(dashboardData.lob_cards);
                 updateSalesmanTable(salesmanData);
                 
-                // Initialize and render map
-                initializeSVGMap();
-                renderSVGMap();
+                // Initialize and render Leaflet map
+                initializeLeafletMap();
+                renderLeafletMap();
 
                 showLoading(false);
                 showMainContent(true);
@@ -1542,7 +1430,7 @@
                     loc.Kecamatan !== 'DEPO TANJUNG' && loc.Latitude && loc.Longitude
                 );
                 regionElement.style.color = '#059669';
-                regionElement.textContent += ` 📍 (${validLocations.length} Lokasi)`;
+                regionElement.textContent += ` 📍 (${validLocations.length} Lokasi) - Leaflet.js Interactive Map`;
             }
         }
 
@@ -1677,90 +1565,62 @@
             return card;
         }
 
-        // ✅ INITIALIZE SVG MAP
-        function initializeSVGMap() {
-            svgMap = document.getElementById('svgMap');
-            tooltip = document.getElementById('mapTooltip');
-            
-            // Ensure clean container
-            const mapContainer = document.getElementById('mapContainer');
-            if (mapContainer) {
-                mapContainer.style.background = '#ffffff';
-                mapContainer.style.backgroundImage = 'none';
-            }
-            
-            // Clean SVG element
-            if (svgMap) {
-                svgMap.style.background = '#ffffff';
-                svgMap.style.backgroundImage = 'none';
-                svgMap.innerHTML = '';
-            }
-            
-            // Add map control event listeners
-            document.querySelectorAll('.map-control-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    document.querySelectorAll('.map-control-btn').forEach(b => b.classList.remove('active'));
-                    e.target.classList.add('active');
-                    
-                    currentMapMetric = e.target.getAttribute('data-metric');
-                    console.log(`🗺️ Map metric changed to ${currentMapMetric}`);
-                    
-                    updateMapColors();
-                    updateMapLegend();
-                });
-            });
-
-            console.log('✅ SVG Map initialized');
-        }
-
-        // ✅ UPDATE MAP COLORS
-        function updateMapColors() {
-            const locationMarkers = svgMap.querySelectorAll('.location-marker');
-            
-            if (locationMarkers.length > 0) {
-                locationMarkers.forEach(marker => {
-                    try {
-                        const achievement = parseFloat(marker.getAttribute('data-achievement'));
-                        const newColor = getAchievementColor(achievement);
-                        marker.setAttribute('fill', newColor);
-                    } catch (error) {
-                        console.warn('Error updating marker color:', error);
-                    }
-                });
-            }
-        }
-
-        // ✅ RENDER SVG MAP - Using d.area.json data only
-        function renderSVGMap() {
-            if (!svgMap) {
-                console.warn('⚠️ SVG map element not found');
-                return;
-            }
-            
-            // Check if we have area data with coordinates
-            const hasAreaData = areaData && 
-                               Array.isArray(areaData) && 
-                               areaData.length > 0 &&
-                               areaData[0].Latitude && 
-                               areaData[0].Longitude;
-            
-            if (!hasAreaData) {
-                console.warn('⚠️ No area data available from d.area.json');
-                showNoMapData();
-                return;
-            }
-            
-            console.log('🗺️ Rendering coordinate-based map with', areaData.length, 'locations');
-            renderCoordinateMap();
-        }
-
-        // ✅ RENDER COORDINATE MAP from d.area.json
-        function renderCoordinateMap() {
+        // ✅ INITIALIZE LEAFLET MAP
+        function initializeLeafletMap() {
             try {
-                // Clear SVG
-                svgMap.innerHTML = '';
+                console.log('🗺️ Initializing Leaflet.js map...');
                 
-                // Filter out Grand Total and invalid data
+                // Clear any existing map
+                if (leafletMap) {
+                    leafletMap.remove();
+                    leafletMap = null;
+                }
+                
+                // Initialize Leaflet map
+                leafletMap = L.map('mapContainer').setView([-2.18, 115.4], 9);
+                
+                // Add OpenStreetMap tiles
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors | 🗺️ Leaflet.js Interactive Map',
+                    maxZoom: 18,
+                    minZoom: 7
+                }).addTo(leafletMap);
+                
+                // Initialize markers layer
+                markersLayer = L.layerGroup().addTo(leafletMap);
+                
+                // Add map control event listeners
+                document.querySelectorAll('.map-control-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelectorAll('.map-control-btn').forEach(b => b.classList.remove('active'));
+                        e.target.classList.add('active');
+                        
+                        currentMapMetric = e.target.getAttribute('data-metric');
+                        console.log(`🗺️ Map metric changed to ${currentMapMetric}`);
+                        
+                        updateMapMarkers();
+                    });
+                });
+                
+                console.log('✅ Leaflet map initialized successfully');
+                
+            } catch (error) {
+                console.error('❌ Error initializing Leaflet map:', error);
+                showMapError();
+            }
+        }
+
+        // ✅ RENDER LEAFLET MAP with coordinate data
+        function renderLeafletMap() {
+            if (!leafletMap || !areaData) {
+                console.warn('⚠️ Map or area data not available');
+                return;
+            }
+            
+            try {
+                console.log('🗺️ Rendering Leaflet map with coordinate data...');
+                
+                // Filter valid locations (exclude DEPO TANJUNG and invalid coordinates)
                 const validLocations = areaData.filter(location => 
                     location.Kecamatan !== 'DEPO TANJUNG' &&
                     location.Latitude && 
@@ -1771,331 +1631,230 @@
                 
                 if (validLocations.length === 0) {
                     console.warn('⚠️ No valid coordinate data found');
-                    showNoMapData();
+                    showMapError();
                     return;
                 }
                 
                 console.log(`📍 Processing ${validLocations.length} valid locations`);
                 
-                // Calculate bounds from coordinates
+                // Clear existing markers
+                markersLayer.clearLayers();
+                
+                // Calculate map bounds
                 const latitudes = validLocations.map(loc => loc.Latitude);
                 const longitudes = validLocations.map(loc => loc.Longitude);
                 
-                const minLat = Math.min(...latitudes);
-                const maxLat = Math.max(...latitudes);
-                const minLng = Math.min(...longitudes);
-                const maxLng = Math.max(...longitudes);
+                const southWest = L.latLng(Math.min(...latitudes), Math.min(...longitudes));
+                const northEast = L.latLng(Math.max(...latitudes), Math.max(...longitudes));
+                const bounds = L.latLngBounds(southWest, northEast);
                 
-                // Add padding to bounds
-                const latPadding = (maxLat - minLat) * 0.1;
-                const lngPadding = (maxLng - minLng) * 0.1;
+                // Fit map to bounds with padding
+                leafletMap.fitBounds(bounds, { padding: [20, 20] });
                 
-                const viewMinLng = minLng - lngPadding;
-                const viewMaxLng = maxLng + lngPadding;
-                const viewMinLat = minLat - latPadding;
-                const viewMaxLat = maxLat + latPadding;
-                
-                const svgWidth = viewMaxLng - viewMinLng;
-                const svgHeight = viewMaxLat - viewMinLat;
-                
-                svgMap.setAttribute('viewBox', `${viewMinLng} ${viewMinLat} ${svgWidth} ${svgHeight}`);
-                
-                // Add background
-                const background = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-                background.setAttribute('x', viewMinLng);
-                background.setAttribute('y', viewMinLat);
-                background.setAttribute('width', svgWidth);
-                background.setAttribute('height', svgHeight);
-                background.setAttribute('fill', '#ffffff');
-                svgMap.appendChild(background);
-                
-                // Create circles for each location
+                // Add markers for each location
                 validLocations.forEach((location, index) => {
-                    const circle = createLocationCircle(location, index);
-                    if (circle) {
-                        svgMap.appendChild(circle);
-                    }
+                    createLeafletMarker(location, index);
                 });
                 
-                // Add title
-                const title = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                title.setAttribute('x', minLng + (maxLng - minLng) / 2);
-                title.setAttribute('y', maxLat - latPadding / 3);
-                title.setAttribute('text-anchor', 'middle');
-                title.setAttribute('fill', '#64748b');
-                title.setAttribute('font-family', 'Inter, sans-serif');
-                title.setAttribute('font-size', '0.05');
-                title.setAttribute('font-weight', '500');
-                title.textContent = `${validLocations.length} Lokasi Kecamatan`;
-                svgMap.appendChild(title);
-                
-                // Update legend
-                updateMapLegend();
-                
-                console.log('✅ Coordinate map rendered successfully');
+                console.log('✅ Leaflet map rendered successfully');
                 
             } catch (error) {
-                console.error('❌ Error rendering coordinate map:', error);
-                showNoMapData();
+                console.error('❌ Error rendering Leaflet map:', error);
+                showMapError();
             }
         }
 
-        // ✅ CREATE LOCATION CIRCLE
-        function createLocationCircle(location, index) {
+        // ✅ CREATE LEAFLET MARKER
+        function createLeafletMarker(location, index) {
             try {
-                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                const lat = location.Latitude;
+                const lng = location.Longitude;
+                const achievement = location.Ach || 0;
                 
-                circle.setAttribute('cx', location.Longitude);
-                circle.setAttribute('cy', location.Latitude);
-                circle.setAttribute('r', '0.03');
+                // Get marker style based on achievement
+                const markerStyle = getMarkerStyle(achievement);
                 
-                const achievement = location.Ach;
-                const fillColor = getAchievementColor(achievement);
+                // Create custom HTML marker
+                const markerHtml = `
+                    <div class="custom-marker ${markerStyle.class}" 
+                         style="background: ${markerStyle.color};">
+                        ${markerStyle.icon}
+                    </div>
+                `;
                 
-                circle.setAttribute('fill', fillColor);
-                circle.setAttribute('stroke', '#1e3a8a');
-                circle.setAttribute('stroke-width', '0.005');
-                circle.setAttribute('opacity', '0.8');
-                circle.setAttribute('class', 'map-region location-marker');
-                
-                circle.setAttribute('data-kecamatan', location.Kecamatan);
-                circle.setAttribute('data-kabupaten', location.Kabupaten);
-                circle.setAttribute('data-achievement', achievement);
-                
-                // Add event listeners
-                circle.addEventListener('mouseenter', (e) => {
-                    circle.setAttribute('opacity', '1');
-                    circle.setAttribute('r', '0.04');
-                    handleLocationHover(e, location);
+                // Create custom icon
+                const customIcon = L.divIcon({
+                    html: markerHtml,
+                    className: 'custom-div-icon',
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 12],
+                    popupAnchor: [0, -12]
                 });
                 
-                circle.addEventListener('mousemove', (e) => {
-                    updateTooltipPosition(e);
+                // Create marker
+                const marker = L.marker([lat, lng], { icon: customIcon });
+                
+                // Create popup content
+                const popupContent = createPopupContent(location);
+                
+                // Bind popup
+                marker.bindPopup(popupContent, {
+                    maxWidth: 300,
+                    className: 'custom-popup'
                 });
                 
-                circle.addEventListener('mouseleave', () => {
-                    circle.setAttribute('opacity', '0.8');
-                    circle.setAttribute('r', '0.03');
-                    hideTooltip();
+                // Add to markers layer
+                marker.addTo(markersLayer);
+                
+                // Add hover effects
+                marker.on('mouseover', function() {
+                    this.openPopup();
                 });
                 
-                return circle;
+                return marker;
                 
             } catch (error) {
-                console.warn(`Error creating circle for location ${location.Kecamatan}:`, error);
+                console.warn(`Error creating marker for ${location.Kecamatan}:`, error);
                 return null;
             }
         }
 
-        // ✅ GET ACHIEVEMENT COLOR
-        function getAchievementColor(achievement) {
+        // ✅ GET MARKER STYLE based on achievement and current metric
+        function getMarkerStyle(achievement) {
             if (!achievement || typeof achievement !== 'number') {
-                return '#e2e8f0';
+                return {
+                    color: '#94a3b8',
+                    class: 'marker-no-data',
+                    icon: '?'
+                };
             }
+            
+            const ach = achievement * 100;
             
             if (currentMapMetric === 'achievement') {
-                const ach = achievement * 100;
-                if (ach >= 80) return '#059669';
-                else if (ach >= 60) return '#f59e0b';
-                else if (ach >= 40) return '#fb7185';
-                else return '#ef4444';
+                if (ach >= 80) return { color: '#059669', class: 'marker-excellent', icon: '★' };
+                else if (ach >= 60) return { color: '#f59e0b', class: 'marker-good', icon: '●' };
+                else if (ach >= 40) return { color: '#fb7185', class: 'marker-fair', icon: '▲' };
+                else return { color: '#ef4444', class: 'marker-poor', icon: '⚠' };
             } else if (currentMapMetric === 'actual') {
-                return '#667eea';
+                return { color: '#667eea', class: 'marker-actual', icon: '₹' };
             } else if (currentMapMetric === 'gap') {
-                return achievement >= 0.8 ? '#059669' : '#ef4444';
+                return achievement >= 0.8 ? 
+                    { color: '#059669', class: 'marker-positive', icon: '+' } : 
+                    { color: '#ef4444', class: 'marker-negative', icon: '-' };
             }
             
-            return '#667eea';
+            return { color: '#667eea', class: 'marker-default', icon: '●' };
         }
 
-        // ✅ HANDLE LOCATION HOVER
-        function handleLocationHover(event, location) {
-            try {
-                const tooltipHeaderElement = document.getElementById('tooltipHeader');
-                if (tooltipHeaderElement) {
-                    tooltipHeaderElement.textContent = `${location.Kecamatan}, ${location.Kabupaten}`;
-                }
-                
-                let tooltipContent = '';
-                
-                if (currentMapMetric === 'achievement') {
-                    tooltipContent = `
-                        <div class="tooltip-metric">
-                            <span class="tooltip-metric-label">Achievement:</span>
-                            <span class="tooltip-metric-value">${formatPercentage(location.Ach)}</span>
-                        </div>
-                        <div class="tooltip-metric">
-                            <span class="tooltip-metric-label">Actual:</span>
-                            <span class="tooltip-metric-value">${formatCurrency(location.Actual)}</span>
-                        </div>
-                        <div class="tooltip-metric">
-                            <span class="tooltip-metric-label">Target:</span>
-                            <span class="tooltip-metric-value">${formatCurrency(location.Target)}</span>
-                        </div>
-                        <div class="tooltip-metric">
-                            <span class="tooltip-metric-label">Gap:</span>
-                            <span class="tooltip-metric-value ${location.Gap >= 0 ? 'positive' : 'negative'}">${formatCurrency(location.Gap)}</span>
-                        </div>
-                    `;
-                } else if (currentMapMetric === 'actual') {
-                    tooltipContent = `
-                        <div class="tooltip-metric">
-                            <span class="tooltip-metric-label">Actual Sales:</span>
-                            <span class="tooltip-metric-value">${formatCurrency(location.Actual)}</span>
-                        </div>
-                        <div class="tooltip-metric">
-                            <span class="tooltip-metric-label">Target:</span>
-                            <span class="tooltip-metric-value">${formatCurrency(location.Target)}</span>
-                        </div>
-                        <div class="tooltip-metric">
-                            <span class="tooltip-metric-label">Achievement:</span>
-                            <span class="tooltip-metric-value">${formatPercentage(location.Ach)}</span>
-                        </div>
-                    `;
-                } else if (currentMapMetric === 'gap') {
-                    tooltipContent = `
-                        <div class="tooltip-metric">
-                            <span class="tooltip-metric-label">Gap vs Target:</span>
-                            <span class="tooltip-metric-value ${location.Gap >= 0 ? 'positive' : 'negative'}">${formatCurrency(location.Gap)}</span>
-                        </div>
-                        <div class="tooltip-metric">
-                            <span class="tooltip-metric-label">Actual:</span>
-                            <span class="tooltip-metric-value">${formatCurrency(location.Actual)}</span>
-                        </div>
-                        <div class="tooltip-metric">
-                            <span class="tooltip-metric-label">Target:</span>
-                            <span class="tooltip-metric-value">${formatCurrency(location.Target)}</span>
-                        </div>
-                    `;
-                }
-                
-                const tooltipContentElement = document.getElementById('tooltipContent');
-                if (tooltipContentElement) {
-                    tooltipContentElement.innerHTML = tooltipContent;
-                }
-                
-                showTooltip();
-                updateTooltipPosition(event);
-            } catch (error) {
-                console.warn('Error in handleLocationHover:', error);
-            }
-        }
-
-        // ✅ SHOW NO MAP DATA MESSAGE
-        function showNoMapData() {
-            if (!svgMap) return;
+        // ✅ CREATE POPUP CONTENT
+        function createPopupContent(location) {
+            let metricsContent = '';
             
-            svgMap.innerHTML = `
-                <rect x="0" y="0" width="800" height="600" fill="#f8fafc"/>
-                <text x="400" y="280" text-anchor="middle" fill="#d97706" font-family="Inter, sans-serif" font-size="24" font-weight="600">
-                    📊 Data Peta Tidak Tersedia
-                </text>
-                <text x="400" y="320" text-anchor="middle" fill="#64748b" font-family="Inter, sans-serif" font-size="16">
-                    File d.area.json tidak dapat dimuat atau tidak memiliki koordinat.
-                </text>
-            `;
-            
-            svgMap.setAttribute('viewBox', '0 0 800 600');
-            console.log('⚠️ Showing no map data message');
-        }
-
-        // ✅ UPDATE TOOLTIP POSITION
-        function updateTooltipPosition(event) {
-            if (!tooltip) return;
-            
-            try {
-                const mapContainer = document.getElementById('mapContainer');
-                if (!mapContainer) return;
-                
-                const rect = mapContainer.getBoundingClientRect();
-                const x = event.clientX - rect.left;
-                const y = event.clientY - rect.top;
-                
-                const tooltipRect = tooltip.getBoundingClientRect();
-                const containerWidth = rect.width;
-                const containerHeight = rect.height;
-                
-                let finalX = x + 10;
-                let finalY = y - 10;
-                
-                if (finalX + tooltipRect.width > containerWidth) {
-                    finalX = x - tooltipRect.width - 10;
-                }
-                
-                if (finalY < 0) {
-                    finalY = y + 20;
-                }
-                
-                tooltip.style.left = Math.max(0, finalX) + 'px';
-                tooltip.style.top = Math.max(0, finalY) + 'px';
-            } catch (error) {
-                console.warn('Error updating tooltip position:', error);
-            }
-        }
-
-        // ✅ SHOW/HIDE TOOLTIP
-        function showTooltip() {
-            if (tooltip) {
-                tooltip.classList.add('visible');
-            }
-        }
-
-        function hideTooltip() {
-            if (tooltip) {
-                tooltip.classList.remove('visible');
-            }
-        }
-
-        // ✅ UPDATE MAP LEGEND
-        function updateMapLegend() {
-            const legendTitle = document.getElementById('legendTitle');
-            const legendItems = document.getElementById('legendItems');
-
-            if (!legendTitle || !legendItems) return;
-
-            let title, items;
-
             if (currentMapMetric === 'achievement') {
-                title = 'Achievement Level';
-                items = [
-                    { color: '#059669', label: '≥ 80% - Excellent' },
-                    { color: '#f59e0b', label: '60-79% - Good' },
-                    { color: '#fb7185', label: '40-59% - Fair' },
-                    { color: '#ef4444', label: '< 40% - Poor' },
-                    { color: '#e2e8f0', label: 'No Data' }
-                ];
+                metricsContent = `
+                    <div class="popup-metric">
+                        <span class="popup-metric-label">Achievement:</span>
+                        <span class="popup-metric-value">${formatPercentage(location.Ach)}</span>
+                    </div>
+                    <div class="popup-metric">
+                        <span class="popup-metric-label">Actual:</span>
+                        <span class="popup-metric-value">${formatCurrency(location.Actual)}</span>
+                    </div>
+                    <div class="popup-metric">
+                        <span class="popup-metric-label">Target:</span>
+                        <span class="popup-metric-value">${formatCurrency(location.Target)}</span>
+                    </div>
+                    <div class="popup-metric">
+                        <span class="popup-metric-label">Gap:</span>
+                        <span class="popup-metric-value ${location.Gap >= 0 ? 'positive' : 'negative'}">${formatCurrency(location.Gap)}</span>
+                    </div>
+                `;
             } else if (currentMapMetric === 'actual') {
-                title = 'Actual Sales';
-                items = [
-                    { color: '#667eea', label: 'Sales Performance' },
-                    { color: '#e2e8f0', label: 'No Data' }
-                ];
+                metricsContent = `
+                    <div class="popup-metric">
+                        <span class="popup-metric-label">Actual Sales:</span>
+                        <span class="popup-metric-value">${formatCurrency(location.Actual)}</span>
+                    </div>
+                    <div class="popup-metric">
+                        <span class="popup-metric-label">Target:</span>
+                        <span class="popup-metric-value">${formatCurrency(location.Target)}</span>
+                    </div>
+                    <div class="popup-metric">
+                        <span class="popup-metric-label">Achievement:</span>
+                        <span class="popup-metric-value">${formatPercentage(location.Ach)}</span>
+                    </div>
+                `;
             } else if (currentMapMetric === 'gap') {
-                title = 'Gap Analysis';
-                items = [
-                    { color: '#059669', label: 'Good Performance (≥80% Ach)' },
-                    { color: '#ef4444', label: 'Needs Improvement (<80% Ach)' },
-                    { color: '#e2e8f0', label: 'No Data' }
-                ];
+                metricsContent = `
+                    <div class="popup-metric">
+                        <span class="popup-metric-label">Gap vs Target:</span>
+                        <span class="popup-metric-value ${location.Gap >= 0 ? 'positive' : 'negative'}">${formatCurrency(location.Gap)}</span>
+                    </div>
+                    <div class="popup-metric">
+                        <span class="popup-metric-label">Actual:</span>
+                        <span class="popup-metric-value">${formatCurrency(location.Actual)}</span>
+                    </div>
+                    <div class="popup-metric">
+                        <span class="popup-metric-label">Target:</span>
+                        <span class="popup-metric-value">${formatCurrency(location.Target)}</span>
+                    </div>
+                `;
             }
-
-            legendTitle.textContent = title;
-            legendItems.innerHTML = items.map(item => `
-                <div class="legend-item">
-                    <div class="legend-color" style="background-color: ${item.color};"></div>
-                    <span class="legend-label">${item.label}</span>
+            
+            return `
+                <div class="popup-header">
+                    📍 ${location.Kecamatan}, ${location.Kabupaten}
                 </div>
-            `).join('');
+                <div class="popup-content">
+                    ${metricsContent}
+                    <div class="popup-metric" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #f1f5f9;">
+                        <span class="popup-metric-label">Coordinates:</span>
+                        <span class="popup-metric-value">${location.Latitude.toFixed(6)}, ${location.Longitude.toFixed(6)}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ✅ UPDATE MAP MARKERS when metric changes
+        function updateMapMarkers() {
+            if (!markersLayer || !areaData) return;
             
-            // Add data source indicator
-            if (areaData && areaData.length > 1) {
-                const validLocations = areaData.filter(loc => 
-                    loc.Kecamatan !== 'DEPO TANJUNG' && loc.Latitude && loc.Longitude
+            try {
+                console.log(`🔄 Updating map markers for metric: ${currentMapMetric}`);
+                
+                // Clear and re-render all markers with new style
+                markersLayer.clearLayers();
+                
+                const validLocations = areaData.filter(location => 
+                    location.Kecamatan !== 'DEPO TANJUNG' &&
+                    location.Latitude && 
+                    location.Longitude &&
+                    typeof location.Latitude === 'number' &&
+                    typeof location.Longitude === 'number'
                 );
                 
-                legendItems.innerHTML += `
-                    <div class="legend-item" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e2e8f0;">
-                        <span style="font-size: 10px; color: #059669;">📍 ${validLocations.length} Lokasi (d.area.json)</span>
+                validLocations.forEach((location, index) => {
+                    createLeafletMarker(location, index);
+                });
+                
+                console.log('✅ Map markers updated successfully');
+                
+            } catch (error) {
+                console.error('❌ Error updating map markers:', error);
+            }
+        }
+
+        // ✅ SHOW MAP ERROR
+        function showMapError() {
+            const mapContainer = document.getElementById('mapContainer');
+            if (mapContainer) {
+                mapContainer.innerHTML = `
+                    <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; background: #f8fafc; color: #64748b; text-align: center; padding: 20px;">
+                        <div style="font-size: 48px; margin-bottom: 16px;">🗺️</div>
+                        <h3 style="color: #d97706; margin-bottom: 8px;">Map Data Tidak Tersedia</h3>
+                        <p>File d.area.json tidak dapat dimuat atau tidak memiliki koordinat yang valid.</p>
+                        <button onclick="loadDashboardData()" style="margin-top: 16px; padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer;">Coba Lagi</button>
                     </div>
                 `;
             }
@@ -2191,15 +1950,15 @@
         }
 
         function showActivity() {
-            alert('🔜 Activity module coming soon!');
+            alert('📜 Activity module coming soon!');
         }
 
         function showReports() {
-            alert('🔜 Reports module coming soon!');
+            alert('📜 Reports module coming soon!');
         }
 
         function showSettings() {
-            alert('🔜 Settings module coming soon!');
+            alert('📜 Settings module coming soon!');
         }
 
         function logout() {
@@ -2233,7 +1992,7 @@
                 return;
             }
 
-            console.log('🚀 Initializing dashboard with real data only...');
+            console.log('🚀 Initializing dashboard with Leaflet.js interactive map...');
             loadDashboardData();
         });
 
@@ -2245,7 +2004,7 @@
             }
         });
 
-        console.log('✅ Dashboard script loaded - Real data only from \\data\\ folder');
+        console.log('✅ Dashboard script loaded - Enhanced with Leaflet.js Interactive Map');
     </script>
 </body>
 </html>
