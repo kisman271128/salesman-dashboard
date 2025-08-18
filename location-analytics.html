@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Salesman Route Tracking - Enhanced Analytics</title>
+    <title>Salesman Route Tracking - Enhanced Analytics (Fixed)</title>
     
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
@@ -423,6 +423,24 @@
             color: #991b1b;
         }
 
+        /* Debug Output */
+        .debug-output {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 16px;
+            border-radius: 8px;
+            margin: 16px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+        }
+
+        .debug-output.show {
+            display: block;
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .control-grid {
@@ -447,7 +465,7 @@
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <h1>🛣️ Salesman Route Tracking Analytics</h1>
+            <h1>🛣️ Salesman Route Tracking Analytics (Fixed)</h1>
             <div class="header-subtitle">localStorage Analytics • Firebase Fallback • Route Visualization</div>
         </div>
 
@@ -479,8 +497,8 @@
                         <label>Data Source</label>
                         <select id="dataSourceFilter">
                             <option value="localStorage">Local Storage (Recommended)</option>
-                            <option value="firebase">Firebase Database</option>
-                            <option value="both">Both Sources</option>
+                            <option value="both">Both Sources (localStorage + Firebase)</option>
+                            <option value="firebase">Firebase Database Only</option>
                         </select>
                     </div>
                 </div>
@@ -498,8 +516,17 @@
                     <button class="btn btn-secondary" onclick="clearAnalytics()">
                         🧹 Clear Data
                     </button>
+                    <button class="btn btn-secondary" onclick="toggleDebugOutput()">
+                        📋 Toggle Debug
+                    </button>
                 </div>
             </div>
+        </div>
+
+        <!-- Debug Output -->
+        <div class="debug-output" id="debugOutput">
+            <strong>🔍 Debug Information:</strong><br>
+            <div id="debugContent">Debug information will appear here...</div>
         </div>
 
         <!-- Enhanced Statistics -->
@@ -599,6 +626,23 @@
         let firebaseDatabase = null;
         let isFirebaseConnected = false;
         let enhancedAnalytics = null;
+        let debugMessages = [];
+
+        // ===== DEBUG FUNCTIONS =====
+        function addDebugMessage(message) {
+            debugMessages.push(`[${new Date().toLocaleTimeString()}] ${message}`);
+            updateDebugOutput();
+        }
+
+        function updateDebugOutput() {
+            const debugContent = document.getElementById('debugContent');
+            debugContent.innerHTML = debugMessages.slice(-50).join('<br>');
+        }
+
+        function toggleDebugOutput() {
+            const debugOutput = document.getElementById('debugOutput');
+            debugOutput.classList.toggle('show');
+        }
 
         // ===== FIREBASE CONFIGURATION =====
         const firebaseConfig = {
@@ -612,7 +656,7 @@
             measurementId: "G-5RYSWKQ963"
         };
 
-        // ===== FIREBASE ANALYTICS CLASS =====
+        // ===== IMPROVED FIREBASE ANALYTICS CLASS =====
         class FirebaseLocationAnalytics {
             constructor() {
                 this.visitLocations = [];
@@ -620,29 +664,31 @@
                 this.complianceStats = {};
                 this.isInitialized = false;
                 
+                addDebugMessage('🚀 FirebaseLocationAnalytics constructor called');
                 this.init();
             }
             
             async init() {
                 if (this.isInitialized) return;
-                console.log('🚀 Firebase Location Analytics initializing...');
+                addDebugMessage('🚀 Firebase Location Analytics initializing...');
                 
                 await this.initializeFirebase();
                 this.initializeMap();
                 this.initializeDateInputs();
                 
                 this.isInitialized = true;
-                console.log('✅ Firebase Location Analytics ready');
+                addDebugMessage('✅ Firebase Location Analytics ready');
             }
             
             async initializeFirebase() {
                 try {
-                    console.log('🔗 Connecting to Firebase...');
+                    addDebugMessage('🔗 Connecting to Firebase...');
                     this.updateFirebaseStatus('🔄 Connecting to Firebase...', 'connecting');
                     
                     // Initialize Firebase
                     if (!firebase.apps.length) {
                         firebase.initializeApp(firebaseConfig);
+                        addDebugMessage('✅ Firebase app initialized');
                     }
                     
                     firebaseDatabase = firebase.database();
@@ -650,18 +696,19 @@
                     // Test connection with minimal access
                     try {
                         await firebaseDatabase.ref('.info/connected').once('value');
-                        console.log('✅ Firebase connection established');
+                        addDebugMessage('✅ Firebase connection established');
                         
                         // Try to test read access with a simple path
                         try {
                             await firebaseDatabase.ref('test').limitToFirst(1).once('value');
                             isFirebaseConnected = true;
                             this.updateFirebaseStatus('✅ Connected to Firebase with full access', 'connected');
+                            addDebugMessage('✅ Firebase full access confirmed');
                         } catch (accessError) {
                             // Limited access - Firebase connected but can't read all data
                             isFirebaseConnected = false; // Set to false to use localStorage
                             this.updateFirebaseStatus('⚠️ Firebase connected with limited access - using localStorage', 'error');
-                            console.warn('⚠️ Firebase access limited:', accessError.message);
+                            addDebugMessage('⚠️ Firebase access limited: ' + accessError.message);
                         }
                         
                         // Load available salesman regardless of access level
@@ -670,11 +717,11 @@
                     } catch (connectionError) {
                         isFirebaseConnected = false;
                         this.updateFirebaseStatus('❌ Firebase connection failed: ' + connectionError.message, 'error');
-                        console.error('❌ Firebase connection error:', connectionError);
+                        addDebugMessage('❌ Firebase connection error: ' + connectionError.message);
                     }
                     
                 } catch (error) {
-                    console.error('❌ Firebase initialization error:', error);
+                    addDebugMessage('❌ Firebase initialization error: ' + error.message);
                     isFirebaseConnected = false;
                     this.updateFirebaseStatus('❌ Firebase initialization failed - using localStorage only', 'error');
                 }
@@ -684,17 +731,18 @@
                 const statusElement = document.getElementById('firebaseStatus');
                 statusElement.textContent = message;
                 statusElement.className = `firebase-status ${status}`;
+                addDebugMessage('🔔 Firebase status: ' + message);
             }
             
             async loadAvailableSalesman() {
                 try {
-                    console.log('👥 Loading available salesman...');
+                    addDebugMessage('👥 Loading available salesman...');
                     const salesmanSet = new Set();
                     
                     // First try Firebase with limited access
                     if (isFirebaseConnected) {
                         try {
-                            console.log('🔥 Trying Firebase salesman data...');
+                            addDebugMessage('🔥 Trying Firebase salesman data...');
                             // Try specific known paths instead of root
                             const commonPaths = ['visits', 'analytics', 'salesman', 'data'];
                             
@@ -705,31 +753,31 @@
                                     
                                     if (data && typeof data === 'object') {
                                         this.extractSalesmanFromData(data, salesmanSet);
-                                        console.log(`✅ Found salesman data in Firebase path: ${path}`);
+                                        addDebugMessage(`✅ Found salesman data in Firebase path: ${path}`);
                                     }
                                 } catch (pathError) {
-                                    console.log(`⚠️ Path ${path} not accessible:`, pathError.message);
+                                    addDebugMessage(`⚠️ Path ${path} not accessible: ${pathError.message}`);
                                     continue;
                                 }
                             }
                         } catch (firebaseError) {
-                            console.warn('⚠️ Firebase salesman loading failed:', firebaseError.message);
+                            addDebugMessage('⚠️ Firebase salesman loading failed: ' + firebaseError.message);
                             isFirebaseConnected = false;
                             this.updateFirebaseStatus('⚠️ Firebase access limited - using localStorage', 'error');
                         }
                     }
                     
                     // Always check localStorage as fallback
-                    console.log('💾 Loading salesman from localStorage...');
+                    addDebugMessage('💾 Loading salesman from localStorage...');
                     this.loadSalesmanFromLocalStorage(salesmanSet);
                     
                     // Update salesman dropdown
                     this.updateSalesmanDropdown(salesmanSet);
                     
-                    console.log(`👥 Total found ${salesmanSet.size} salesman:`, Array.from(salesmanSet));
+                    addDebugMessage(`👥 Total found ${salesmanSet.size} salesman: ${Array.from(salesmanSet).join(', ')}`);
                     
                 } catch (error) {
-                    console.error('❌ Error loading salesman:', error);
+                    addDebugMessage('❌ Error loading salesman: ' + error.message);
                     // Continue with empty set - will use localStorage data when loading analytics
                     this.updateSalesmanDropdown(new Set());
                 }
@@ -754,7 +802,7 @@
             }
             
             loadSalesmanFromLocalStorage(salesmanSet) {
-                console.log('💾 Scanning localStorage for salesman data...');
+                addDebugMessage('💾 Scanning localStorage for salesman data...');
                 let foundKeys = 0;
                 let processedKeys = 0;
                 
@@ -769,9 +817,9 @@
                                 const parts = key.split('_');
                                 if (parts.length >= 4) {
                                     const salesmanId = parts[parts.length - 1];
-                                    if (salesmanId && salesmanId.length <= 10) {
+                                    if (salesmanId && salesmanId.length <= 20) {
                                         salesmanSet.add(salesmanId);
-                                        console.log(`💾 Found salesman from daily pattern: ${salesmanId}`);
+                                        addDebugMessage(`💾 Found salesman from daily pattern: ${salesmanId}`);
                                     }
                                 }
                             }
@@ -781,28 +829,9 @@
                                 const parts = key.split('_');
                                 if (parts.length >= 4) {
                                     const salesmanId = parts[parts.length - 1];
-                                    if (salesmanId && salesmanId.length <= 10) {
+                                    if (salesmanId && salesmanId.length <= 20) {
                                         salesmanSet.add(salesmanId);
-                                        console.log(`💾 Found salesman from pending pattern: ${salesmanId}`);
-                                    }
-                                }
-                            }
-                            
-                            // Pattern 3: analytics_YYYY-MM-DD (new pattern found)
-                            else if (key.startsWith('analytics_') && key.match(/analytics_\d{4}-\d{2}-\d{2}$/)) {
-                                console.log(`📊 Found analytics key: ${key}`);
-                                // These keys might contain visit data, check content
-                            }
-                            
-                            // Pattern 4: Any other visit_ pattern
-                            else if (key.startsWith('visit_')) {
-                                const parts = key.split('_');
-                                // Try last part as salesman ID
-                                if (parts.length >= 2) {
-                                    const lastPart = parts[parts.length - 1];
-                                    if (lastPart && lastPart.length <= 10 && /^[A-Za-z0-9]+$/.test(lastPart)) {
-                                        salesmanSet.add(lastPart);
-                                        console.log(`💾 Found salesman from generic pattern: ${lastPart}`);
+                                        addDebugMessage(`💾 Found salesman from pending pattern: ${salesmanId}`);
                                     }
                                 }
                             }
@@ -816,38 +845,26 @@
                                     
                                     // Check if this is analytics data with visits
                                     if (key.startsWith('analytics_')) {
-                                        console.log(`📊 Parsing analytics data from ${key}:`, Object.keys(parsed));
+                                        addDebugMessage(`📊 Parsing analytics data from ${key}`);
                                         this.extractSalesmanFromAnalytics(parsed, salesmanSet);
                                     }
                                     
                                     // Direct salesman fields
                                     if (parsed.salesman_id) {
                                         salesmanSet.add(parsed.salesman_id);
-                                        console.log(`💾 Found salesman from data.salesman_id: ${parsed.salesman_id}`);
+                                        addDebugMessage(`💾 Found salesman from data.salesman_id: ${parsed.salesman_id}`);
                                     }
                                     if (parsed.salesmanId) {
                                         salesmanSet.add(parsed.salesmanId);
-                                        console.log(`💾 Found salesman from data.salesmanId: ${parsed.salesmanId}`);
+                                        addDebugMessage(`💾 Found salesman from data.salesmanId: ${parsed.salesmanId}`);
                                     }
                                     
                                     // Extract from salesman_name
                                     if (parsed.salesman_name && parsed.salesman_name.includes('Salesman ')) {
                                         const idFromName = parsed.salesman_name.replace('Salesman ', '').trim();
-                                        if (idFromName && idFromName !== parsed.salesman_name && idFromName.length <= 10) {
+                                        if (idFromName && idFromName !== parsed.salesman_name && idFromName.length <= 20) {
                                             salesmanSet.add(idFromName);
-                                            console.log(`💾 Found salesman from name extraction: ${idFromName}`);
-                                        }
-                                    }
-                                    
-                                    // Check nested structures (for daily data)
-                                    if (parsed.customers && typeof parsed.customers === 'object') {
-                                        // This might be daily aggregated data
-                                        if (parsed.salesman_name) {
-                                            const idFromDaily = parsed.salesman_name.replace('Salesman ', '').trim();
-                                            if (idFromDaily && idFromDaily.length <= 10) {
-                                                salesmanSet.add(idFromDaily);
-                                                console.log(`💾 Found salesman from daily data: ${idFromDaily}`);
-                                            }
+                                            addDebugMessage(`💾 Found salesman from name extraction: ${idFromName}`);
                                         }
                                     }
                                     
@@ -857,13 +874,13 @@
                                             if (event && typeof event === 'object') {
                                                 if (event.salesman_id) {
                                                     salesmanSet.add(event.salesman_id);
-                                                    console.log(`💾 Found salesman from event data: ${event.salesman_id}`);
+                                                    addDebugMessage(`💾 Found salesman from event data: ${event.salesman_id}`);
                                                 }
                                                 if (event.salesman_name && event.salesman_name.includes('Salesman ')) {
                                                     const idFromEvent = event.salesman_name.replace('Salesman ', '').trim();
-                                                    if (idFromEvent && idFromEvent.length <= 10) {
+                                                    if (idFromEvent && idFromEvent.length <= 20) {
                                                         salesmanSet.add(idFromEvent);
-                                                        console.log(`💾 Found salesman from event name: ${idFromEvent}`);
+                                                        addDebugMessage(`💾 Found salesman from event name: ${idFromEvent}`);
                                                     }
                                                 }
                                             }
@@ -877,38 +894,21 @@
                             }
                             
                         } catch (error) {
-                            console.warn(`⚠️ Error processing localStorage key ${key}:`, error);
+                            addDebugMessage(`⚠️ Error processing localStorage key ${key}: ${error.message}`);
                         }
                     }
                 }
                 
-                console.log(`💾 localStorage scan complete: ${foundKeys} relevant keys found, ${processedKeys} parsed, ${salesmanSet.size} unique salesman detected`);
-                
-                // Debug: Show a sample of what we found
-                if (salesmanSet.size > 0) {
-                    console.log(`💾 Detected salesman IDs:`, Array.from(salesmanSet));
-                } else {
-                    console.log('💾 No salesman found in localStorage. Listing available keys for debugging:');
-                    const allKeys = [];
-                    for (let i = 0; i < localStorage.length && allKeys.length < 10; i++) {
-                        const key = localStorage.key(i);
-                        if (key) {
-                            allKeys.push(key);
-                        }
-                    }
-                    console.log('💾 All localStorage keys:', allKeys);
-                }
+                addDebugMessage(`💾 localStorage scan complete: ${foundKeys} relevant keys found, ${processedKeys} parsed, ${salesmanSet.size} unique salesman detected`);
             }
             
             extractSalesmanFromAnalytics(analyticsData, salesmanSet) {
                 // Analytics data might have different structures
-                // Try to find salesman info in various nested levels
-                
                 if (typeof analyticsData === 'object') {
                     // Check top level
                     if (analyticsData.salesman_id) {
                         salesmanSet.add(analyticsData.salesman_id);
-                        console.log(`📊 Found salesman from analytics root: ${analyticsData.salesman_id}`);
+                        addDebugMessage(`📊 Found salesman from analytics root: ${analyticsData.salesman_id}`);
                     }
                     
                     // Check nested objects
@@ -916,27 +916,11 @@
                         if (value && typeof value === 'object') {
                             if (value.salesman_id) {
                                 salesmanSet.add(value.salesman_id);
-                                console.log(`📊 Found salesman from analytics nested: ${value.salesman_id}`);
+                                addDebugMessage(`📊 Found salesman from analytics nested: ${value.salesman_id}`);
                             }
                             if (value.salesmanId) {
                                 salesmanSet.add(value.salesmanId);
-                                console.log(`📊 Found salesman from analytics nested: ${value.salesmanId}`);
-                            }
-                            
-                            // Check deeper nested structures
-                            if (typeof value === 'object') {
-                                Object.values(value).forEach(deepValue => {
-                                    if (deepValue && typeof deepValue === 'object') {
-                                        if (deepValue.salesman_id) {
-                                            salesmanSet.add(deepValue.salesman_id);
-                                            console.log(`📊 Found salesman from analytics deep: ${deepValue.salesman_id}`);
-                                        }
-                                        if (deepValue.salesmanId) {
-                                            salesmanSet.add(deepValue.salesmanId);
-                                            console.log(`📊 Found salesman from analytics deep: ${deepValue.salesmanId}`);
-                                        }
-                                    }
-                                });
+                                addDebugMessage(`📊 Found salesman from analytics nested: ${value.salesmanId}`);
                             }
                         }
                     });
@@ -966,6 +950,8 @@
                 if (currentValue && sortedSalesman.includes(currentValue)) {
                     salesmanSelect.value = currentValue;
                 }
+                
+                addDebugMessage(`👥 Salesman dropdown updated with ${sortedSalesman.length} entries`);
             }
             
             initializeMap() {
@@ -977,7 +963,7 @@
                         maxZoom: 18
                     }).addTo(visitMap);
                     
-                    console.log('🗺️ Map initialized');
+                    addDebugMessage('🗺️ Map initialized');
                 }
             }
             
@@ -985,43 +971,91 @@
                 const today = new Date().toISOString().split('T')[0];
                 document.getElementById('mapDateFrom').value = today;
                 document.getElementById('mapDateTo').value = today;
+                addDebugMessage('📅 Date inputs initialized to today: ' + today);
             }
             
             async loadAnalyticsData(dateFrom, dateTo, salesmanFilter = '', dataSource = 'localStorage') {
                 this.visitLocations = [];
                 this.salesmanData = {};
                 
-                console.log(`📊 Loading analytics from ${dataSource}: ${dateFrom} to ${dateTo}, salesman: ${salesmanFilter || 'all'}`);
+                addDebugMessage(`📊 Loading analytics from ${dataSource}: ${dateFrom} to ${dateTo}, salesman: ${salesmanFilter || 'all'}`);
                 
                 try {
+                    let firebaseDataLoaded = false;
+                    let localStorageDataLoaded = false;
+                    
+                    // Try Firebase first if requested
                     if (dataSource === 'firebase' || dataSource === 'both') {
-                        await this.loadFromFirebase(dateFrom, dateTo, salesmanFilter);
+                        if (isFirebaseConnected) {
+                            await this.loadFromFirebase(dateFrom, dateTo, salesmanFilter);
+                            firebaseDataLoaded = this.visitLocations.length > 0;
+                            addDebugMessage(`🔥 Firebase data loaded: ${this.visitLocations.length} visits`);
+                        } else {
+                            addDebugMessage('⚠️ Firebase not connected, will fallback to localStorage');
+                        }
                     }
                     
-                    if (dataSource === 'localStorage' || dataSource === 'both') {
+                    // Load from localStorage if requested OR if Firebase failed/unavailable
+                    if (dataSource === 'localStorage' || dataSource === 'both' || 
+                        (dataSource === 'firebase' && !firebaseDataLoaded)) {
+                        
+                        const beforeLocalStorage = this.visitLocations.length;
                         this.loadFromLocalStorage(dateFrom, dateTo, salesmanFilter);
+                        const localStorageVisits = this.visitLocations.length - beforeLocalStorage;
+                        localStorageDataLoaded = localStorageVisits > 0;
+                        addDebugMessage(`💾 localStorage data loaded: ${localStorageVisits} visits`);
+                        
+                        // If Firebase was requested but failed, show fallback message
+                        if (dataSource === 'firebase' && !firebaseDataLoaded && localStorageDataLoaded) {
+                            addDebugMessage('✅ Successfully fell back to localStorage data');
+                        }
                     }
                     
                     // Calculate stats
                     this.calculateAdvancedStats();
                     currentLocationData = this.visitLocations;
                     
-                    console.log(`✅ Analytics loaded: ${this.visitLocations.length} visits from ${dataSource}`);
+                    const totalVisits = this.visitLocations.length;
+                    let actualSource = dataSource;
+                    
+                    // Determine what actually loaded
+                    if (dataSource === 'firebase' && !firebaseDataLoaded && localStorageDataLoaded) {
+                        actualSource = 'localStorage (Firebase fallback)';
+                    } else if (dataSource === 'both') {
+                        actualSource = `both (${firebaseDataLoaded ? 'Firebase+' : ''}localStorage)`;
+                    }
+                    
+                    addDebugMessage(`✅ Analytics loaded: ${totalVisits} visits from ${actualSource}`);
                     return this.visitLocations;
                     
                 } catch (error) {
-                    console.error('❌ Error in loadAnalyticsData:', error);
+                    addDebugMessage('❌ Error in loadAnalyticsData: ' + error.message);
+                    
+                    // Last resort: try localStorage if not already tried
+                    if (dataSource === 'firebase' && this.visitLocations.length === 0) {
+                        addDebugMessage('🆘 Last resort: forcing localStorage load...');
+                        try {
+                            this.loadFromLocalStorage(dateFrom, dateTo, salesmanFilter);
+                            this.calculateAdvancedStats();
+                            currentLocationData = this.visitLocations;
+                            addDebugMessage(`🆘 Emergency localStorage load: ${this.visitLocations.length} visits`);
+                            return this.visitLocations;
+                        } catch (lastError) {
+                            addDebugMessage('❌ Emergency localStorage load failed: ' + lastError.message);
+                        }
+                    }
+                    
                     throw error;
                 }
             }
             
             async loadFromFirebase(dateFrom, dateTo, salesmanFilter) {
                 if (!isFirebaseConnected) {
-                    console.log('⚠️ Firebase not connected, skipping Firebase data loading');
+                    addDebugMessage('⚠️ Firebase not connected, skipping Firebase data loading');
                     return;
                 }
                 
-                console.log('🔥 Attempting to load from Firebase...');
+                addDebugMessage('🔥 Attempting to load from Firebase...');
                 
                 try {
                     // Try different Firebase path strategies
@@ -1036,12 +1070,12 @@
                     
                     for (const strategy of pathStrategies) {
                         try {
-                            console.log(`🔥 Trying Firebase path: ${strategy.path}`);
+                            addDebugMessage(`🔥 Trying Firebase path: ${strategy.path}`);
                             const snapshot = await firebaseDatabase.ref(strategy.path).limitToFirst(100).once('value');
                             const data = snapshot.val();
                             
                             if (data && typeof data === 'object') {
-                                console.log(`✅ Found data in ${strategy.description}:`, Object.keys(data).length, 'items');
+                                addDebugMessage(`✅ Found data in ${strategy.description}: ${Object.keys(data).length} items`);
                                 
                                 const beforeCount = this.visitLocations.length;
                                 Object.entries(data).forEach(([key, nodeData]) => {
@@ -1054,27 +1088,26 @@
                                 totalFirebaseVisits += found;
                                 
                                 if (found > 0) {
-                                    console.log(`✅ Extracted ${found} visits from ${strategy.description}`);
+                                    addDebugMessage(`✅ Extracted ${found} visits from ${strategy.description}`);
                                 }
                             } else {
-                                console.log(`ℹ️ No data found in ${strategy.description}`);
+                                addDebugMessage(`ℹ️ No data found in ${strategy.description}`);
                             }
                             
                         } catch (pathError) {
-                            console.log(`⚠️ Cannot access ${strategy.description}:`, pathError.message);
+                            addDebugMessage(`⚠️ Cannot access ${strategy.description}: ${pathError.message}`);
                             continue;
                         }
                     }
                     
                     if (totalFirebaseVisits > 0) {
-                        console.log(`🔥 Firebase data loaded successfully: ${totalFirebaseVisits} visits`);
+                        addDebugMessage(`🔥 Firebase data loaded successfully: ${totalFirebaseVisits} visits`);
                     } else {
-                        console.log('ℹ️ No visit data found in accessible Firebase paths');
+                        addDebugMessage('ℹ️ No visit data found in accessible Firebase paths');
                     }
                     
                 } catch (error) {
-                    console.error('❌ Firebase loading error:', error);
-                    console.log('💾 Falling back to localStorage only');
+                    addDebugMessage('❌ Firebase loading error: ' + error.message);
                     isFirebaseConnected = false;
                     this.updateFirebaseStatus('⚠️ Firebase access denied - using localStorage only', 'error');
                 }
@@ -1087,6 +1120,7 @@
                     if (visitData) {
                         this.visitLocations.push(visitData);
                         this.updateSalesmanData(visitData.salesman_id, visitData.salesman_name, visitData);
+                        addDebugMessage(`🔥 Added Firebase visit: ${visitData.customer_name} by ${visitData.salesman_id}`);
                     }
                 }
                 
@@ -1099,6 +1133,7 @@
                                 if (visitData) {
                                     this.visitLocations.push(visitData);
                                     this.updateSalesmanData(visitData.salesman_id, visitData.salesman_name, visitData);
+                                    addDebugMessage(`🔥 Added nested Firebase visit: ${visitData.customer_name} by ${visitData.salesman_id}`);
                                 }
                             }
                         }
@@ -1109,7 +1144,8 @@
             isVisitData(data) {
                 // Check if data structure looks like visit data
                 const hasLocation = data.latitude !== undefined || data.longitude !== undefined ||
-                                  data.location !== undefined || data.coordinates !== undefined;
+                                  data.location !== undefined || data.coordinates !== undefined ||
+                                  data.actual_location !== undefined;
                 
                 const hasVisitInfo = data.customer_name !== undefined || data.customerName !== undefined ||
                                    data.salesman_id !== undefined || data.salesmanId !== undefined;
@@ -1125,14 +1161,17 @@
                     // Extract location
                     let location = null;
                     if (data.latitude !== undefined && data.longitude !== undefined) {
-                        location = { latitude: data.latitude, longitude: data.longitude };
+                        location = { latitude: data.latitude, longitude: data.longitude, accuracy: data.accuracy || 0 };
                     } else if (data.location) {
                         location = data.location;
                     } else if (data.coordinates) {
                         location = data.coordinates;
+                    } else if (data.actual_location) {
+                        location = data.actual_location;
                     }
                     
                     if (!location || !location.latitude || !location.longitude) {
+                        addDebugMessage(`❌ No valid location found in ${key}`);
                         return null;
                     }
                     
@@ -1152,28 +1191,27 @@
                     
                     // Filter by date range
                     if (visitDate < dateFrom || visitDate > dateTo) {
+                        addDebugMessage(`📅 Visit ${customerName} filtered out by date: ${visitDate} not in ${dateFrom}-${dateTo}`);
                         return null;
                     }
                     
                     // Filter by salesman
                     if (salesmanFilter && salesmanId !== salesmanFilter) {
+                        addDebugMessage(`👤 Visit ${customerName} filtered out by salesman: ${salesmanId} != ${salesmanFilter}`);
                         return null;
                     }
                     
                     // Calculate distance if master location exists
-                    let distance = 0;
-                    let masterLocation = null;
+                    let distance = data.distance || 0;
+                    let masterLocation = data.master_location || data.master_coordinates || data.target_location;
                     
-                    if (data.master_coordinates || data.masterLocation || data.target_location) {
-                        masterLocation = data.master_coordinates || data.masterLocation || data.target_location;
-                        if (masterLocation && masterLocation.latitude && masterLocation.longitude) {
-                            distance = this.calculateDistance(
-                                location.latitude,
-                                location.longitude,
-                                masterLocation.latitude,
-                                masterLocation.longitude
-                            );
-                        }
+                    if (masterLocation && masterLocation.latitude && masterLocation.longitude && distance === 0) {
+                        distance = this.calculateDistance(
+                            location.latitude,
+                            location.longitude,
+                            masterLocation.latitude,
+                            masterLocation.longitude
+                        );
                     }
                     
                     const visitData = {
@@ -1193,103 +1231,151 @@
                         source: 'firebase'
                     };
                     
+                    addDebugMessage(`✅ Extracted Firebase visit: ${customerName} by ${salesmanId} at ${visitDate}`);
                     return visitData;
                     
                 } catch (error) {
-                    console.error('❌ Error extracting visit data:', error);
+                    addDebugMessage('❌ Error extracting visit data: ' + error.message);
                     return null;
                 }
             }
             
             loadFromLocalStorage(dateFrom, dateTo, salesmanFilter) {
-                console.log(`💾 Loading from localStorage for date range: ${dateFrom} to ${dateTo}`);
+                addDebugMessage(`💾 Loading from localStorage for date range: ${dateFrom} to ${dateTo}, salesman filter: ${salesmanFilter || 'none'}`);
                 
                 let currentDate = new Date(dateFrom);
                 const endDate = new Date(dateTo);
                 let localStorageCount = 0;
+                let datesProcessed = 0;
                 
                 while (currentDate <= endDate) {
                     const dateStr = currentDate.toISOString().split('T')[0];
-                    console.log(`💾 Processing date: ${dateStr}`);
+                    addDebugMessage(`💾 Processing date: ${dateStr}`);
                     const dailyCount = this.loadDataForDate(dateStr, salesmanFilter);
                     localStorageCount += dailyCount;
-                    console.log(`💾 Found ${dailyCount} visits for ${dateStr}`);
+                    datesProcessed++;
+                    addDebugMessage(`💾 Found ${dailyCount} visits for ${dateStr} (total so far: ${localStorageCount})`);
                     currentDate.setDate(currentDate.getDate() + 1);
                 }
                 
-                console.log(`💾 localStorage data loading complete: ${localStorageCount} total visits loaded`);
+                addDebugMessage(`💾 localStorage data loading complete: ${localStorageCount} total visits loaded from ${datesProcessed} dates`);
+                
+                // If no data found, provide detailed diagnosis
+                if (localStorageCount === 0) {
+                    addDebugMessage('🔍 No data found - running localStorage diagnostic...');
+                    this.diagnoseLocalStorageContents(dateFrom, dateTo, salesmanFilter);
+                }
             }
             
             loadDataForDate(dateStr, salesmanFilter) {
                 const beforeCount = this.visitLocations.length;
-                console.log(`📅 Loading data for ${dateStr}, current visits: ${beforeCount}`);
+                addDebugMessage(`📅 Loading data for ${dateStr}, current visits: ${beforeCount}`);
                 
                 // Load from daily data first
                 this.loadFromDailyData(dateStr, salesmanFilter);
                 const afterDailyCount = this.visitLocations.length;
                 const dailyFound = afterDailyCount - beforeCount;
                 
-                // If no daily data found, fallback to analytics events
-                if (dailyFound === 0) {
-                    console.log(`📅 No daily data found for ${dateStr}, trying analytics events...`);
-                    this.loadFromAnalyticsEvents(dateStr, salesmanFilter);
+                // Load from analytics events
+                this.loadFromAnalyticsEvents(dateStr, salesmanFilter);
+                const afterAnalyticsCount = this.visitLocations.length;
+                const analyticsFound = afterAnalyticsCount - afterDailyCount;
+                
+                // Load from pending events if no other data
+                if (dailyFound === 0 && analyticsFound === 0) {
+                    addDebugMessage(`📅 No daily/analytics data found for ${dateStr}, trying pending events...`);
+                    this.loadFromPendingEvents(dateStr, salesmanFilter);
                     const afterPendingCount = this.visitLocations.length;
-                    const pendingFound = afterPendingCount - afterDailyCount;
-                    console.log(`📅 Found ${pendingFound} visits from analytics events for ${dateStr}`);
+                    const pendingFound = afterPendingCount - afterAnalyticsCount;
+                    addDebugMessage(`📅 Found ${pendingFound} visits from pending events for ${dateStr}`);
                 } else {
-                    console.log(`📅 Found ${dailyFound} visits from daily data for ${dateStr}`);
+                    addDebugMessage(`📅 Found ${dailyFound} daily + ${analyticsFound} analytics visits for ${dateStr}`);
                 }
                 
                 const totalFound = this.visitLocations.length - beforeCount;
-                console.log(`📅 Total found for ${dateStr}: ${totalFound} visits`);
+                addDebugMessage(`📅 Total found for ${dateStr}: ${totalFound} visits`);
                 return totalFound;
             }
             
             loadFromDailyData(dateStr, salesmanFilter) {
-                console.log(`💾 Loading daily data for ${dateStr}...`);
+                addDebugMessage(`💾 Loading daily data for ${dateStr}...`);
                 let foundCount = 0;
                 
-                // Pattern 1: visit_daily_local_YYYY-MM-DD_SALESMANID
+                // Pattern: visit_daily_local_YYYY-MM-DD_SALESMANID
                 const dailyPattern = `visit_daily_local_${dateStr}_`;
-                
-                // Pattern 2: analytics_YYYY-MM-DD (new pattern discovered)
-                const analyticsPattern = `analytics_${dateStr}`;
                 
                 for (let i = 0; i < localStorage.length; i++) {
                     const key = localStorage.key(i);
                     
-                    // Check traditional visit pattern
                     if (key && key.startsWith(dailyPattern)) {
                         foundCount++;
                         const salesmanId = key.replace(dailyPattern, '');
-                        console.log(`💾 Found daily data key: ${key} for salesman: ${salesmanId}`);
+                        addDebugMessage(`💾 Found daily data key: ${key} for salesman: ${salesmanId}`);
                         
                         if (salesmanFilter && salesmanId !== salesmanFilter) {
-                            console.log(`💾 Skipping ${salesmanId} due to filter: ${salesmanFilter}`);
+                            addDebugMessage(`💾 Skipping ${salesmanId} due to filter: ${salesmanFilter}`);
                             continue;
                         }
                         
                         this.processDailyDataKey(key, salesmanId, dateStr);
                     }
+                }
+                
+                addDebugMessage(`💾 Daily data scan complete for ${dateStr}: ${foundCount} keys found`);
+            }
+            
+            loadFromAnalyticsEvents(dateStr, salesmanFilter) {
+                addDebugMessage(`📊 Loading analytics data for ${dateStr}...`);
+                let foundCount = 0;
+                
+                // Pattern: analytics_YYYY-MM-DD
+                const analyticsKey = `analytics_${dateStr}`;
+                
+                const analyticsData = localStorage.getItem(analyticsKey);
+                if (analyticsData) {
+                    foundCount++;
+                    addDebugMessage(`📊 Found analytics data key: ${analyticsKey}`);
+                    this.processAnalyticsDataKey(analyticsKey, dateStr, salesmanFilter);
+                } else {
+                    addDebugMessage(`📊 No analytics data found for ${dateStr}`);
+                }
+                
+                addDebugMessage(`📊 Analytics data scan complete for ${dateStr}: ${foundCount} keys found`);
+            }
+            
+            loadFromPendingEvents(dateStr, salesmanFilter) {
+                addDebugMessage(`📋 Loading pending events for ${dateStr}...`);
+                let foundCount = 0;
+                
+                const pendingPattern = `visit_pending_${dateStr}_`;
+                
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
                     
-                    // Check analytics pattern 
-                    else if (key && key === analyticsPattern) {
+                    if (key && key.startsWith(pendingPattern)) {
                         foundCount++;
-                        console.log(`📊 Found analytics data key: ${key}`);
-                        this.processAnalyticsDataKey(key, dateStr, salesmanFilter);
+                        const salesmanId = key.replace(pendingPattern, '');
+                        addDebugMessage(`📋 Found pending data key: ${key} for salesman: ${salesmanId}`);
+                        
+                        if (salesmanFilter && salesmanId !== salesmanFilter) {
+                            addDebugMessage(`📋 Skipping ${salesmanId} due to filter: ${salesmanFilter}`);
+                            continue;
+                        }
+                        
+                        this.processPendingDataKey(key, salesmanId, dateStr);
                     }
                 }
                 
-                console.log(`💾 Daily data scan complete for ${dateStr}: ${foundCount} keys found`);
+                addDebugMessage(`📋 Pending data scan complete for ${dateStr}: ${foundCount} keys found`);
             }
             
             processDailyDataKey(key, salesmanId, dateStr) {
                 try {
                     const dailyData = JSON.parse(localStorage.getItem(key) || '{}');
-                    console.log(`💾 Daily data structure:`, Object.keys(dailyData));
+                    addDebugMessage(`💾 Daily data structure: ${Object.keys(dailyData).join(', ')}`);
                     
                     if (dailyData.customers && Object.keys(dailyData.customers).length > 0) {
-                        console.log(`💾 Found ${Object.keys(dailyData.customers).length} customers in daily data`);
+                        addDebugMessage(`💾 Found ${Object.keys(dailyData.customers).length} customers in daily data`);
                         
                         Object.entries(dailyData.customers).forEach(([customerName, customerData]) => {
                             if (customerData.sessions && customerData.sessions.length > 0) {
@@ -1324,35 +1410,83 @@
                                     
                                     this.visitLocations.push(locationPoint);
                                     this.updateSalesmanData(salesmanId, dailyData.salesman_name, locationPoint);
-                                    console.log(`💾 Added visit: ${customerName} by ${salesmanId}`);
+                                    addDebugMessage(`💾 Added daily visit: ${customerName} by ${salesmanId} at ${latestSession.start_location.latitude},${latestSession.start_location.longitude}`);
                                 }
                             }
                         });
                     } else {
-                        console.log(`💾 No customer data found in ${key}`);
+                        addDebugMessage(`💾 No customer data found in ${key}`);
                     }
                     
                 } catch (error) {
-                    console.error(`⚠️ Error loading daily data for ${key}:`, error);
+                    addDebugMessage(`⚠️ Error loading daily data for ${key}: ${error.message}`);
                 }
             }
             
             processAnalyticsDataKey(key, dateStr, salesmanFilter) {
                 try {
                     const analyticsData = JSON.parse(localStorage.getItem(key) || '{}');
-                    console.log(`📊 Analytics data structure for ${dateStr}:`, Object.keys(analyticsData));
+                    addDebugMessage(`📊 Analytics data structure for ${dateStr}: ${Object.keys(analyticsData).join(', ')}`);
                     
                     // Analytics data might have different structure
-                    // Let's explore and extract visit data from it
                     this.extractVisitsFromAnalytics(analyticsData, dateStr, salesmanFilter);
                     
                 } catch (error) {
-                    console.error(`⚠️ Error loading analytics data for ${key}:`, error);
+                    addDebugMessage(`⚠️ Error loading analytics data for ${key}: ${error.message}`);
+                }
+            }
+            
+            processPendingDataKey(key, salesmanId, dateStr) {
+                try {
+                    const pendingData = JSON.parse(localStorage.getItem(key) || '[]');
+                    addDebugMessage(`📋 Pending data: ${pendingData.length} events`);
+                    
+                    const customerSelectedEvents = pendingData.filter(event => 
+                        event.event_name === 'visit_customer_selected' && 
+                        event.location && 
+                        event.event_data && 
+                        event.event_data.customer_name
+                    );
+                    
+                    addDebugMessage(`📋 Found ${customerSelectedEvents.length} customer selected events`);
+                    
+                    const visitMap = new Map();
+                    customerSelectedEvents.forEach(event => {
+                        const visitKey = `${salesmanId}_${event.event_data.customer_name}`;
+                        
+                        if (!visitMap.has(visitKey)) {
+                            const distance = event.event_data.distance_meters || 0;
+                            
+                            const locationPoint = {
+                                id: `localStorage_pending_${dateStr}_${salesmanId}_${event.event_data.customer_name}`,
+                                salesman_id: salesmanId,
+                                salesman_name: event.salesman_name || `Salesman ${salesmanId}`,
+                                customer_name: event.event_data.customer_name,
+                                actual_location: event.location,
+                                master_location: event.event_data.master_coordinates,
+                                distance: distance,
+                                timestamp: event.timestamp,
+                                date: dateStr,
+                                accuracy: event.location.accuracy || 0,
+                                compliance_status: this.getComplianceStatus(distance),
+                                session_duration: 0,
+                                visit_count: 1,
+                                source: 'localStorage-pending'
+                            };
+                            
+                            visitMap.set(visitKey, locationPoint);
+                            this.visitLocations.push(locationPoint);
+                            this.updateSalesmanData(salesmanId, event.salesman_name, locationPoint);
+                            addDebugMessage(`📋 Added pending visit: ${event.event_data.customer_name} by ${salesmanId} at ${event.location.latitude},${event.location.longitude}`);
+                        }
+                    });
+                    
+                } catch (error) {
+                    addDebugMessage(`⚠️ Error loading pending data for ${key}: ${error.message}`);
                 }
             }
             
             extractVisitsFromAnalytics(analyticsData, dateStr, salesmanFilter) {
-                // Try to find visit data in analytics structure
                 let extractedCount = 0;
                 
                 if (typeof analyticsData === 'object') {
@@ -1366,7 +1500,7 @@
                                     this.visitLocations.push(visitData);
                                     this.updateSalesmanData(visitData.salesman_id, visitData.salesman_name, visitData);
                                     extractedCount++;
-                                    console.log(`📊 Extracted analytics visit: ${visitData.customer_name} by ${visitData.salesman_id}`);
+                                    addDebugMessage(`📊 Extracted analytics visit: ${visitData.customer_name} by ${visitData.salesman_id} at ${visitData.actual_location.latitude},${visitData.actual_location.longitude}`);
                                 }
                             }
                             
@@ -1378,7 +1512,7 @@
                                         this.visitLocations.push(visitData);
                                         this.updateSalesmanData(visitData.salesman_id, visitData.salesman_name, visitData);
                                         extractedCount++;
-                                        console.log(`📊 Extracted nested analytics visit: ${visitData.customer_name} by ${visitData.salesman_id}`);
+                                        addDebugMessage(`📊 Extracted nested analytics visit: ${visitData.customer_name} by ${visitData.salesman_id} at ${visitData.actual_location.latitude},${visitData.actual_location.longitude}`);
                                     }
                                 }
                             });
@@ -1386,56 +1520,59 @@
                     });
                 }
                 
-                console.log(`📊 Extracted ${extractedCount} visits from analytics data for ${dateStr}`);
+                addDebugMessage(`📊 Extracted ${extractedCount} visits from analytics data for ${dateStr}`);
             }
             
             isVisitLikeData(data) {
-                // Check if data structure looks like visit data
+                // More comprehensive check for visit-like data
                 const hasLocation = data.latitude !== undefined || data.longitude !== undefined ||
                                   data.location !== undefined || data.coordinates !== undefined ||
-                                  data.actual_location !== undefined;
+                                  data.actual_location !== undefined || data.start_location !== undefined;
                 
                 const hasVisitInfo = data.customer_name !== undefined || data.customerName !== undefined ||
                                    data.salesman_id !== undefined || data.salesmanId !== undefined ||
-                                   data.salesman_name !== undefined;
+                                   data.salesman_name !== undefined || data.name !== undefined;
                 
                 const hasTimestamp = data.timestamp !== undefined || data.time !== undefined ||
-                                   data.date !== undefined || data.created_at !== undefined;
+                                   data.date !== undefined || data.created_at !== undefined || data.start !== undefined;
                 
                 return hasLocation || hasVisitInfo || hasTimestamp;
             }
             
             convertAnalyticsToVisit(key, data, dateStr) {
                 try {
-                    // Extract location
+                    // Extract location with more fallback options
                     let location = null;
                     if (data.latitude !== undefined && data.longitude !== undefined) {
-                        location = { latitude: data.latitude, longitude: data.longitude };
+                        location = { latitude: data.latitude, longitude: data.longitude, accuracy: data.accuracy || 0 };
                     } else if (data.location) {
                         location = data.location;
                     } else if (data.actual_location) {
                         location = data.actual_location;
                     } else if (data.coordinates) {
                         location = data.coordinates;
+                    } else if (data.start_location) {
+                        location = data.start_location;
                     }
                     
                     if (!location || !location.latitude || !location.longitude) {
+                        addDebugMessage(`❌ No valid location found in analytics data ${key}`);
                         return null;
                     }
                     
-                    // Extract basic info
+                    // Extract basic info with more fallback options
                     const salesmanId = data.salesman_id || data.salesmanId || 'unknown';
                     const salesmanName = data.salesman_name || data.salesmanName || `Salesman ${salesmanId}`;
                     const customerName = data.customer_name || data.customerName || data.name || `Customer_${key}`;
                     
-                    // Extract timestamp
-                    let timestamp = data.timestamp || data.time || data.created_at || data.date;
+                    // Extract timestamp with more fallback options
+                    let timestamp = data.timestamp || data.time || data.created_at || data.date || data.start;
                     if (!timestamp) {
-                        timestamp = new Date().toISOString();
+                        timestamp = new Date(`${dateStr}T12:00:00`).toISOString();
                     }
                     
                     // Calculate distance if master location exists
-                    let distance = data.distance || 0;
+                    let distance = data.distance || data.distance_meters || 0;
                     let masterLocation = data.master_location || data.master_coordinates || data.target_location;
                     
                     if (masterLocation && masterLocation.latitude && masterLocation.longitude && distance === 0) {
@@ -1464,71 +1601,12 @@
                         source: 'localStorage-analytics'
                     };
                     
+                    addDebugMessage(`✅ Converted analytics to visit: ${customerName} by ${salesmanId}`);
                     return visitData;
                     
                 } catch (error) {
-                    console.error('❌ Error converting analytics to visit data:', error);
+                    addDebugMessage('❌ Error converting analytics to visit data: ' + error.message);
                     return null;
-                }
-            }
-            
-            loadFromAnalyticsEvents(dateStr, salesmanFilter) {
-                const pendingPattern = `visit_pending_${dateStr}_`;
-                
-                for (let i = 0; i < localStorage.length; i++) {
-                    const key = localStorage.key(i);
-                    
-                    if (key && key.startsWith(pendingPattern)) {
-                        const salesmanId = key.replace(pendingPattern, '');
-                        
-                        if (salesmanFilter && salesmanId !== salesmanFilter) {
-                            continue;
-                        }
-                        
-                        try {
-                            const pendingData = JSON.parse(localStorage.getItem(key) || '[]');
-                            
-                            const customerSelectedEvents = pendingData.filter(event => 
-                                event.event_name === 'visit_customer_selected' && 
-                                event.location && 
-                                event.event_data && 
-                                event.event_data.customer_name
-                            );
-                            
-                            const visitMap = new Map();
-                            customerSelectedEvents.forEach(event => {
-                                const visitKey = `${salesmanId}_${event.event_data.customer_name}`;
-                                
-                                if (!visitMap.has(visitKey)) {
-                                    const distance = event.event_data.distance_meters || 0;
-                                    
-                                    const locationPoint = {
-                                        id: `localStorage_pending_${dateStr}_${salesmanId}_${event.event_data.customer_name}`,
-                                        salesman_id: salesmanId,
-                                        salesman_name: event.salesman_name || `Salesman ${salesmanId}`,
-                                        customer_name: event.event_data.customer_name,
-                                        actual_location: event.location,
-                                        master_location: event.event_data.master_coordinates,
-                                        distance: distance,
-                                        timestamp: event.timestamp,
-                                        date: dateStr,
-                                        accuracy: event.location.accuracy || 0,
-                                        compliance_status: this.getComplianceStatus(distance),
-                                        session_duration: 0,
-                                        visit_count: 1,
-                                        source: 'localStorage'
-                                    };
-                                    
-                                    visitMap.set(visitKey, locationPoint);
-                                    this.visitLocations.push(locationPoint);
-                                    this.updateSalesmanData(salesmanId, event.salesman_name, locationPoint);
-                                }
-                            });
-                            
-                        } catch (error) {
-                            console.error(`⚠️ Error loading pending data for ${key}:`, error);
-                        }
-                    }
                 }
             }
             
@@ -1609,38 +1687,42 @@
                     salesmanCount: Object.keys(this.salesmanData).length
                 };
                 
-                console.log('📊 Advanced stats calculated:', this.complianceStats);
+                addDebugMessage(`📊 Advanced stats calculated: ${this.complianceStats.totalVisits} visits, ${this.complianceStats.complianceRate}% compliance`);
             }
             
             renderEnhancedMap() {
                 this.clearMapMarkers();
                 
                 if (this.visitLocations.length === 0) {
-                    console.log('⚠️ No location data to render');
+                    addDebugMessage('⚠️ No location data to render');
                     return;
                 }
                 
                 const validLocations = this.filterOutlierLocations(this.visitLocations);
                 
                 if (validLocations.length === 0) {
-                    console.log('⚠️ No valid location data after outlier filtering');
+                    addDebugMessage('⚠️ No valid location data after outlier filtering');
                     return;
                 }
                 
                 const salesmanRoutes = this.groupLocationsBySalesman(validLocations);
                 const salesmanColors = this.generateSalesmanColors();
                 
+                addDebugMessage(`🗺️ Rendering routes for ${Object.keys(salesmanRoutes).length} salesman`);
+                
                 Object.entries(salesmanRoutes).forEach(([salesmanId, salesmanData]) => {
                     const color = salesmanColors[salesmanId];
                     this.renderSalesmanRoute(salesmanData, color, salesmanId);
+                    addDebugMessage(`🗺️ Rendered route for ${salesmanData.salesman_name}: ${salesmanData.visits.length} visits`);
                 });
                 
                 if (mapMarkers.length > 0) {
                     const group = new L.featureGroup(mapMarkers);
                     visitMap.fitBounds(group.getBounds().pad(0.1));
+                    addDebugMessage(`🗺️ Map bounds adjusted to fit ${mapMarkers.length} markers`);
                 }
                 
-                console.log(`🗺️ Rendered routes for ${Object.keys(salesmanRoutes).length} salesman with ${validLocations.length} valid locations`);
+                addDebugMessage(`🗺️ Map rendering complete: ${Object.keys(salesmanRoutes).length} salesman routes with ${validLocations.length} valid locations`);
             }
             
             filterOutlierLocations(locations) {
@@ -1659,13 +1741,13 @@
                     const isValid = distanceKm <= maxDistanceKm;
                     
                     if (!isValid) {
-                        console.log(`🚫 Filtered outlier: ${location.salesman_name} - ${location.customer_name} (${distanceKm.toFixed(1)}km from Depo)`);
+                        addDebugMessage(`🚫 Filtered outlier: ${location.salesman_name} - ${location.customer_name} (${distanceKm.toFixed(1)}km from Depo)`);
                     }
                     
                     return isValid;
                 });
                 
-                console.log(`📊 Location filtering: ${validLocations.length}/${locations.length} locations within 150km radius`);
+                addDebugMessage(`📊 Location filtering: ${validLocations.length}/${locations.length} locations within 150km radius`);
                 return validLocations;
             }
             
@@ -1750,8 +1832,8 @@
                         color: white; 
                         border: 3px solid white; 
                         border-radius: 50%; 
-                        width: 24px; 
-                        height: 24px; 
+                        width: 28px; 
+                        height: 28px; 
                         display: flex; 
                         align-items: center; 
                         justify-content: center; 
@@ -1759,8 +1841,8 @@
                         font-size: 12px;
                         box-shadow: 0 2px 6px rgba(0,0,0,0.3);
                     ">${visitNumber}</div>`,
-                    iconSize: [24, 24],
-                    iconAnchor: [12, 12]
+                    iconSize: [28, 28],
+                    iconAnchor: [14, 14]
                 });
                 
                 const numberedMarker = L.marker([location.actual_location.latitude, location.actual_location.longitude], {
@@ -1785,7 +1867,7 @@
                     'N/A';
                 
                 return `
-                    <div style="font-family: 'Segoe UI', sans-serif; min-width: 280px;">
+                    <div style="font-family: 'Segoe UI', sans-serif; min-width: 300px;">
                         <h4 style="margin: 0 0 8px 0; color: #1e293b; font-size: 14px;">
                             📍 Visit #${visitNumber} of ${totalVisits}
                         </h4>
@@ -1797,7 +1879,7 @@
                         </div>
                         <div style="background: #f1f5f9; padding: 8px; border-radius: 6px; margin-bottom: 8px;">
                             <p style="margin: 0 0 4px 0; font-size: 11px;"><strong>📍 Coordinates:</strong> ${location.actual_location.latitude.toFixed(6)}, ${location.actual_location.longitude.toFixed(6)}</p>
-                            <p style="margin: 0 0 4px 0; font-size: 11px;"><strong>🎯 Accuracy:</strong> ±${Math.round(location.actual_location.accuracy)}m</p>
+                            <p style="margin: 0 0 4px 0; font-size: 11px;"><strong>🎯 Accuracy:</strong> ±${Math.round(location.actual_location.accuracy || location.accuracy)}m</p>
                             <p style="margin: 0 0 4px 0; font-size: 11px;"><strong>📏 Distance:</strong> ${formattedDistance}</p>
                             <p style="margin: 0; font-size: 11px;"><strong>🔗 Source:</strong> ${location.source}</p>
                         </div>
@@ -1818,11 +1900,11 @@
                     className: 'custom-flag-marker',
                     html: `<div style="
                         color: #10b981; 
-                        font-size: 20px;
+                        font-size: 24px;
                         text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
-                    ">🏁</div>`,
-                    iconSize: [20, 20],
-                    iconAnchor: [10, 20]
+                    ">🚩</div>`,
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 24]
                 });
                 
                 const startMarker = L.marker([startVisit.actual_location.latitude, startVisit.actual_location.longitude], {
@@ -1831,7 +1913,7 @@
                 
                 startMarker.bindPopup(`
                     <div style="font-family: 'Segoe UI', sans-serif; text-align: center;">
-                        <h4 style="margin: 0 0 8px 0; color: #10b981;">🏁 Route Start</h4>
+                        <h4 style="margin: 0 0 8px 0; color: #10b981;">🚩 Route Start</h4>
                         <p style="margin: 0; font-size: 12px;">${startVisit.customer_name}</p>
                         <p style="margin: 0; font-size: 11px; color: #64748b;">${new Date(startVisit.timestamp).toLocaleString()}</p>
                     </div>
@@ -1844,11 +1926,11 @@
                     className: 'custom-flag-marker',
                     html: `<div style="
                         color: #ef4444; 
-                        font-size: 20px;
+                        font-size: 24px;
                         text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
-                    ">🏆</div>`,
-                    iconSize: [20, 20],
-                    iconAnchor: [10, 20]
+                    ">🏁</div>`,
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 24]
                 });
                 
                 const endMarker = L.marker([endVisit.actual_location.latitude, endVisit.actual_location.longitude], {
@@ -1857,7 +1939,7 @@
                 
                 endMarker.bindPopup(`
                     <div style="font-family: 'Segoe UI', sans-serif; text-align: center;">
-                        <h4 style="margin: 0 0 8px 0; color: #ef4444;">🏆 Route End</h4>
+                        <h4 style="margin: 0 0 8px 0; color: #ef4444;">🏁 Route End</h4>
                         <p style="margin: 0; font-size: 12px;">${endVisit.customer_name}</p>
                         <p style="margin: 0; font-size: 11px; color: #64748b;">${new Date(endVisit.timestamp).toLocaleString()}</p>
                     </div>
@@ -1903,7 +1985,7 @@
             
             addMasterMarker(location) {
                 const marker = L.circleMarker([location.master_location.latitude, location.master_location.longitude], {
-                    radius: 6,
+                    radius: 8,
                     fillColor: '#10b981',
                     color: 'white',
                     weight: 2,
@@ -1940,9 +2022,12 @@
             
             clearMapMarkers() {
                 mapMarkers.forEach(marker => {
-                    visitMap.removeLayer(marker);
+                    if (visitMap.hasLayer(marker)) {
+                        visitMap.removeLayer(marker);
+                    }
                 });
                 mapMarkers = [];
+                addDebugMessage('🗺️ Map markers cleared');
             }
             
             updateStatistics() {
@@ -1971,7 +2056,7 @@
                     
                 document.getElementById('mapStats').textContent = mapStatsText;
                 
-                console.log(`📊 Statistics updated: ${validLocations.length} valid locations, ${filteredCount} outliers filtered`);
+                addDebugMessage(`📊 Statistics updated: ${validLocations.length} valid locations, ${filteredCount} outliers filtered`);
             }
             
             renderLocationList() {
@@ -2035,7 +2120,7 @@
                                 </div>
                                 <div class="detail-item">
                                     <div class="detail-label">Accuracy</div>
-                                    <div class="detail-value">±${Math.round(location.accuracy)}m</div>
+                                    <div class="detail-value">±${Math.round(location.accuracy || 0)}m</div>
                                 </div>
                                 <div class="detail-item">
                                     <div class="detail-label">Source</div>
@@ -2048,7 +2133,7 @@
                 
                 content.innerHTML = html;
                 
-                console.log(`📋 Location list rendered: ${this.visitLocations.length} unique visits`);
+                addDebugMessage(`📋 Location list rendered: ${this.visitLocations.length} unique visits`);
             }
         }
 
@@ -2066,20 +2151,28 @@
                 return;
             }
             
-            console.log('📊 Loading ROUTE TRACKING analytics...');
-            console.log('💾 Features: localStorage data, Firebase fallback, route visualization');
+            addDebugMessage('📊 Loading ROUTE TRACKING analytics...');
+            addDebugMessage(`🎯 Target: ${dateFrom} to ${dateTo}, salesman: ${salesmanFilter || 'all'}, source: ${dataSource}`);
             
             if (!enhancedAnalytics) {
-                console.log('📊 Initializing analytics system...');
+                addDebugMessage('📊 Initializing analytics system...');
                 enhancedAnalytics = new FirebaseLocationAnalytics();
                 await enhancedAnalytics.init();
             }
             
             try {
                 const locationData = await enhancedAnalytics.loadAnalyticsData(dateFrom, dateTo, salesmanFilter, dataSource);
-                enhancedAnalytics.renderEnhancedMap();
-                enhancedAnalytics.updateStatistics();
-                enhancedAnalytics.renderLocationList();
+                
+                // Only render if we have data
+                if (locationData.length > 0) {
+                    enhancedAnalytics.renderEnhancedMap();
+                    enhancedAnalytics.updateStatistics();
+                    enhancedAnalytics.renderLocationList();
+                } else {
+                    addDebugMessage('⚠️ No location data found, showing empty state');
+                    enhancedAnalytics.updateStatistics();
+                    enhancedAnalytics.renderLocationList();
+                }
                 
                 // Calculate route statistics
                 const DepoCenter = { lat: -2.1869912738751607, lng: 115.397471857672 };
@@ -2096,104 +2189,147 @@
                 const filteredOutliers = locationData.length - validLocations.length;
                 const uniqueSalesman = new Set(validLocations.map(v => v.salesman_id)).size;
                 const firebaseVisits = validLocations.filter(v => v.source === 'firebase').length;
-                const localStorageVisits = validLocations.filter(v => v.source === 'localStorage').length;
+                const localStorageVisits = validLocations.filter(v => v.source.includes('localStorage')).length;
                 
-                const summaryMessage = `🗺️ Route Tracking loaded successfully!\n\n` +
+                const summaryMessage = `🗺️ Route Tracking Analysis Complete!\n\n` +
                     `📊 Data source: ${dataSource}\n` +
                     `💾 LocalStorage visits: ${localStorageVisits}\n` +
                     `🔥 Firebase visits: ${firebaseVisits}\n` +
                     `📍 Total valid locations: ${validLocations.length}\n` +
-                    `🛣️ Chronological route paths displayed\n` +
-                    `🔢 Numbered visit sequence markers\n` +
                     `👥 ${uniqueSalesman} salesman routes tracked\n` +
                     `🚫 ${filteredOutliers} outlier locations filtered (>150km)\n` +
                     `📊 ${enhancedAnalytics.complianceStats.complianceRate}% location compliance`;
                 
-                console.log(summaryMessage);
+                addDebugMessage(summaryMessage);
                 
                 if (locationData.length === 0) {
-                    alert('No visit data found for the selected date range.\n\nTip: Check data source or ensure salesman have visited customers.');
+                    // Provide helpful suggestions based on what was found
+                    let suggestion = '';
+                    if (dataSource === 'firebase') {
+                        suggestion = '\n\n💡 Try switching to "Local Storage" data source.\nDebug shows localStorage has visit data available.';
+                    } else if (salesmanFilter) {
+                        suggestion = '\n\n💡 Try selecting "All Salesman" to see if other salesman have data for this date.';
+                    } else {
+                        suggestion = '\n\n💡 Try different date range or check if data exists using "Debug Storage" button.';
+                    }
+                    
+                    alert(`⚠️ No visit data found for selected criteria.${suggestion}`);
                 } else {
-                    alert(`✅ Analytics loaded successfully!\n\n📊 Found ${locationData.length} visits\n💾 LocalStorage: ${localStorageVisits} visits\n🔥 Firebase: ${firebaseVisits} visits`);
+                    const sourceUsed = dataSource === 'firebase' && localStorageVisits > 0 && firebaseVisits === 0 ? 
+                        'localStorage (Firebase fallback)' : dataSource;
+                    
+                    alert(`✅ Analytics loaded successfully!\n\n📊 Found ${locationData.length} visits\n💾 LocalStorage: ${localStorageVisits} visits\n🔥 Firebase: ${firebaseVisits} visits\n🗺️ Data source used: ${sourceUsed}\n\n🔍 Check debug panel for detailed information`);
                 }
                 
             } catch (error) {
-                console.error('❌ Error loading analytics:', error);
-                alert('Error loading analytics: ' + error.message + '\n\nTrying localStorage fallback...');
+                addDebugMessage('❌ Error loading analytics: ' + error.message);
+                
+                // Provide more specific error guidance
+                let errorGuidance = '';
+                if (error.message.includes('Firebase')) {
+                    errorGuidance = '\n\n💡 Try using "Local Storage" data source instead.';
+                } else if (error.message.includes('localStorage')) {
+                    errorGuidance = '\n\n💡 Check if visit data exists using "Debug Storage" button.';
+                }
+                
+                alert(`❌ Error loading analytics: ${error.message}${errorGuidance}\n\n🔍 Check debug panel for more details.`);
             }
         }
 
         // Refresh Firebase connection
         async function refreshFirebaseConnection() {
-            console.log('🔄 Refreshing Firebase connection...');
+            addDebugMessage('🔄 Refreshing Firebase connection...');
             
             if (enhancedAnalytics) {
                 await enhancedAnalytics.initializeFirebase();
                 await enhancedAnalytics.loadAvailableSalesman();
-                console.log('✅ Firebase connection refreshed');
+                addDebugMessage('✅ Firebase connection refreshed');
                 alert('Firebase connection check completed!\n\nNote: If permission denied, use localStorage data source.');
             } else {
                 enhancedAnalytics = new FirebaseLocationAnalytics();
                 await enhancedAnalytics.init();
-                console.log('✅ Firebase analytics reinitialized');
+                addDebugMessage('✅ Firebase analytics reinitialized');
                 alert('Analytics system reinitialized!\n\nLocalStorage is recommended if Firebase access is limited.');
             }
         }
 
         // Debug localStorage function
         function debugLocalStorage() {
-            console.log('🔍 DEBUG: Analyzing localStorage...');
+            addDebugMessage('🔍 DEBUG: Analyzing localStorage...');
             
             let visitKeys = [];
+            let analyticsKeys = [];
             let totalKeys = localStorage.length;
             
             for (let i = 0; i < localStorage.length; i++) {
                 const key = localStorage.key(i);
-                if (key && key.includes('visit')) {
-                    const data = localStorage.getItem(key);
-                    visitKeys.push({
-                        key: key,
-                        size: data ? data.length : 0,
-                        preview: data ? data.substring(0, 100) + '...' : 'null'
-                    });
+                if (key) {
+                    if (key.includes('visit')) {
+                        const data = localStorage.getItem(key);
+                        visitKeys.push({
+                            key: key,
+                            size: data ? data.length : 0,
+                            preview: data ? data.substring(0, 100) + '...' : 'null'
+                        });
+                    } else if (key.includes('analytics')) {
+                        const data = localStorage.getItem(key);
+                        analyticsKeys.push({
+                            key: key,
+                            size: data ? data.length : 0,
+                            preview: data ? data.substring(0, 100) + '...' : 'null'
+                        });
+                    }
                 }
             }
             
-            console.log(`🔍 Total localStorage keys: ${totalKeys}`);
-            console.log(`🔍 Visit-related keys: ${visitKeys.length}`);
+            addDebugMessage(`🔍 Total localStorage keys: ${totalKeys}`);
+            addDebugMessage(`🔍 Visit-related keys: ${visitKeys.length}`);
+            addDebugMessage(`🔍 Analytics-related keys: ${analyticsKeys.length}`);
             
             if (visitKeys.length > 0) {
-                console.log('🔍 Visit keys found:');
+                addDebugMessage('🔍 Visit keys found:');
                 visitKeys.forEach((item, index) => {
-                    console.log(`${index + 1}. ${item.key} (${item.size} chars)`);
-                    console.log(`   Preview: ${item.preview}`);
+                    addDebugMessage(`${index + 1}. ${item.key} (${item.size} chars)`);
                 });
-            } else {
-                console.log('🔍 No visit-related keys found in localStorage');
-                console.log('🔍 All localStorage keys:');
+            }
+            
+            if (analyticsKeys.length > 0) {
+                addDebugMessage('🔍 Analytics keys found:');
+                analyticsKeys.forEach((item, index) => {
+                    addDebugMessage(`${index + 1}. ${item.key} (${item.size} chars)`);
+                });
+            }
+            
+            if (visitKeys.length === 0 && analyticsKeys.length === 0) {
+                addDebugMessage('🔍 No visit or analytics keys found in localStorage');
+                addDebugMessage('🔍 All localStorage keys:');
                 for (let i = 0; i < Math.min(localStorage.length, 10); i++) {
-                    console.log(`   ${i + 1}. ${localStorage.key(i)}`);
+                    addDebugMessage(`   ${i + 1}. ${localStorage.key(i)}`);
                 }
             }
             
             // Show in alert for easy viewing
             const summary = `🔍 localStorage Debug Summary:\n\n` +
                           `📊 Total keys: ${totalKeys}\n` +
-                          `📍 Visit keys: ${visitKeys.length}\n\n` +
-                          `Visit Keys Found:\n` +
+                          `📍 Visit keys: ${visitKeys.length}\n` +
+                          `📈 Analytics keys: ${analyticsKeys.length}\n\n` +
+                          `Recent Visit Keys:\n` +
                           visitKeys.slice(0, 5).map((item, i) => `${i+1}. ${item.key}`).join('\n') +
                           (visitKeys.length > 5 ? `\n...and ${visitKeys.length - 5} more` : '') +
-                          `\n\nCheck console for detailed analysis.`;
+                          `\n\nRecent Analytics Keys:\n` +
+                          analyticsKeys.slice(0, 3).map((item, i) => `${i+1}. ${item.key}`).join('\n') +
+                          (analyticsKeys.length > 3 ? `\n...and ${analyticsKeys.length - 3} more` : '') +
+                          `\n\nCheck debug output for detailed analysis.`;
             
             alert(summary);
         }
 
         // Clear analytics function  
         function clearAnalytics() {
-            console.log('🧹 Clear analytics called');
+            addDebugMessage('🧹 Clear analytics called');
             if (enhancedAnalytics) {
                 enhancedAnalytics.clearMapMarkers();
-                console.log('✅ Map cleared');
+                addDebugMessage('✅ Map cleared');
             }
             
             // Reset statistics
@@ -2211,7 +2347,7 @@
                 </div>
             `;
             
-            console.log('✅ Analytics cleared');
+            addDebugMessage('✅ Analytics cleared');
         }
 
         // Focus map on location function
@@ -2223,30 +2359,35 @@
                         location.actual_location.latitude,
                         location.actual_location.longitude
                     ], 16);
-                    console.log(`🎯 Focused map on ${location.customer_name}`);
+                    addDebugMessage(`🎯 Focused map on ${location.customer_name} at ${location.actual_location.latitude},${location.actual_location.longitude}`);
                 }
             }
         }
 
         // ===== INITIALIZATION =====
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🛣️ Starting Route Tracking Analytics...');
-            console.log('💾 Features: localStorage primary, Firebase fallback, route visualization');
+            addDebugMessage('🛣️ Starting Route Tracking Analytics (Fixed Version)...');
+            addDebugMessage('💾 Features: localStorage primary, Firebase fallback, route visualization, enhanced debug');
             
             // Set today's date
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('mapDateFrom').value = today;
             document.getElementById('mapDateTo').value = today;
+            addDebugMessage('📅 Date inputs set to today: ' + today);
             
             // Initialize analytics
             setTimeout(async () => {
-                enhancedAnalytics = new FirebaseLocationAnalytics();
-                await enhancedAnalytics.init();
-                console.log('✅ Route Tracking Analytics ready');
+                try {
+                    enhancedAnalytics = new FirebaseLocationAnalytics();
+                    await enhancedAnalytics.init();
+                    addDebugMessage('✅ Route Tracking Analytics ready');
+                } catch (error) {
+                    addDebugMessage('❌ Analytics initialization error: ' + error.message);
+                }
             }, 1000);
         });
 
-        console.log('✅ Enhanced route tracking location-analytics.html loaded');
+        addDebugMessage('✅ Enhanced route tracking location-analytics.html (Fixed) loaded');
     </script>
 </body>
 </html>
