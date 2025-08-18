@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Visit Outlet - Sales Dashboard</title>
+    <title>Visit Outlet - Sales Dashboard (Fixed)</title>
     
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
@@ -182,6 +182,31 @@
             display: block;
         }
 
+        /* ===== DUPLICATE PREVENTION STATUS ===== */
+        .duplicate-status {
+            position: fixed;
+            top: 90px;
+            right: 10px;
+            background: rgba(16, 185, 129, 0.9);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 8px;
+            font-size: 9px;
+            font-weight: 600;
+            z-index: 998;
+            display: none;
+        }
+
+        .duplicate-status.show {
+            display: block;
+            animation: fadeInOut 3s ease-in-out;
+        }
+
+        @keyframes fadeInOut {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 1; }
+        }
+
         /* ===== LOCATION INFO DISPLAY ===== */
         .location-info {
             background: rgba(255, 255, 255, 0.95);
@@ -254,6 +279,33 @@
         @keyframes slideIn {
             from { opacity: 0; transform: translateY(-10px); }
             to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ===== DEBUG PANEL ===== */
+        .debug-panel {
+            position: fixed;
+            top: 60px;
+            right: 10px;
+            z-index: 1002;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .debug-btn {
+            background: rgba(0,0,0,0.8);
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .debug-btn:hover {
+            background: rgba(0,0,0,0.9);
+            transform: scale(1.05);
         }
 
         /* ===== REST OF EXISTING STYLES ===== */
@@ -898,10 +950,23 @@
             🔄 Sync: 0/0 events
         </div>
 
+        <!-- Duplicate Prevention Status -->
+        <div class="duplicate-status" id="duplicateStatus">
+            🚫 Prevented: 0
+        </div>
+
+        <!-- Debug Panel (only shows with debug=true) -->
+        <div class="debug-panel" id="debugPanel" style="display: none;">
+            <button class="debug-btn" onclick="debugDuplicateEvents()">🔍 Debug</button>
+            <button class="debug-btn" onclick="cleanupDuplicateEvents()">🧹 Cleanup</button>
+            <button class="debug-btn" onclick="resetSessionTracking()">🔄 Reset</button>
+            <button class="debug-btn" onclick="monitorAnalyticsHealth()">💊 Health</button>
+        </div>
+
         <div class="detail-header">
             <a href="dashboard.html" class="back-btn">←</a>
             <div class="detail-title-container">
-                <div class="detail-title">Visit Outlet</div>
+                <div class="detail-title">Visit Outlet (Fixed)</div>
                 <div class="salesman-name" id="salesmanName">Loading...</div>
             </div>
             <button class="user-btn" onclick="showProfile()">👤</button>
@@ -1259,7 +1324,14 @@
         let pendingSyncCount = 0;
         let syncedCount = 0;
 
-        // ===== ENHANCED ANALYTICS WITH FIREBASE INTEGRATION =====
+        // ===== DUPLICATE PREVENTION TRACKING =====
+        let duplicatePreventionStats = {
+            totalPrevented: 0,
+            lastPreventedTime: null,
+            preventedEvents: []
+        };
+
+        // ===== ENHANCED ANALYTICS WITH FIREBASE INTEGRATION (FIXED VERSION) =====
         class VisitAnalyticsWithFirebase {
             constructor() {
                 this.sessionId = this.generateSessionId();
@@ -1273,13 +1345,22 @@
                 this.lastKnownPosition = null;
                 this.locationAccuracy = null;
                 
+                // ===== BARU: Deduplication tracking =====
+                this.lastLocationVerificationTime = null;
+                this.lastVerificationPosition = null;
+                this.locationVerificationThrottle = 30000; // 30 detik
+                this.lastEventHashes = new Set(); // Track event yang sudah dikirim
+                this.customerSessionActive = false;
+                this.lastLocationEventTime = null;
+                this.locationEventThrottle = 60000; // 1 menit untuk location acquired events
+                
                 this.init();
             }
             
             init() {
                 if (this.isInitialized) return;
                 
-                console.log('🚀 Enhanced Visit Analytics with Firebase initialized');
+                console.log('🚀 Enhanced Visit Analytics with Firebase initialized (Fixed Version)');
                 this.isInitialized = true;
                 
                 // Setup Firebase authentication
@@ -1290,6 +1371,20 @@
                 
                 // Setup unload tracking
                 this.setupUnloadTracking();
+            }
+
+            // ===== BARU: Generate unique hash untuk event =====
+            generateEventHash(eventName, eventData) {
+                const hashData = {
+                    event: eventName,
+                    salesman: this.salesmanId,
+                    customer: this.currentCustomer,
+                    // Hanya ambil koordinat dengan 4 desimal untuk menghindari micro-movement
+                    lat: eventData.latitude ? Math.round(eventData.latitude * 10000) / 10000 : null,
+                    lng: eventData.longitude ? Math.round(eventData.longitude * 10000) / 10000 : null,
+                    timestamp_rounded: Math.floor(Date.now() / this.locationVerificationThrottle) // Round ke interval tertentu
+                };
+                return btoa(JSON.stringify(hashData));
             }
 
             // ===== FIREBASE INITIALIZATION - FIXED VERSION =====
@@ -1398,7 +1493,7 @@
                     statusElement.innerHTML = '🔥 Firebase Online';
                     statusElement.className = 'firebase-status connected';
                 } else if (status === 'disconnected') {
-                    statusElement.innerHTML = '🔺 Offline Mode';
+                    statusElement.innerHTML = '📺 Offline Mode';
                     statusElement.className = 'firebase-status disconnected';
                 } else if (status === 'syncing') {
                     statusElement.innerHTML = '🔄 Syncing...';
@@ -1417,6 +1512,19 @@
                     syncElement.classList.add('visible');
                 } else {
                     syncElement.classList.remove('visible');
+                }
+            }
+
+            // ===== BARU: Update duplicate prevention status =====
+            updateDuplicateStatus() {
+                const duplicateElement = document.getElementById('duplicateStatus');
+                duplicateElement.textContent = `🚫 Prevented: ${duplicatePreventionStats.totalPrevented}`;
+                
+                if (duplicatePreventionStats.totalPrevented > 0) {
+                    duplicateElement.classList.add('show');
+                    setTimeout(() => {
+                        duplicateElement.classList.remove('show');
+                    }, 3000);
                 }
             }
             
@@ -1506,9 +1614,44 @@
                 }
             }
 
-            // ===== FIREBASE ANALYTICS EVENT TRACKING =====
+            // ===== FIXED: Track dengan deduplication =====
             async track(eventName, eventData = {}) {
                 if (!this.salesmanId) return;
+                
+                // Generate hash untuk event ini
+                const eventHash = this.generateEventHash(eventName, eventData);
+                
+                // DEDUPLICATION: Cek apakah event serupa sudah dikirim recently
+                if (this.lastEventHashes.has(eventHash)) {
+                    console.log(`🚫 Prevented duplicate event: ${eventName} for ${this.currentCustomer}`);
+                    
+                    // Track duplicate prevention
+                    duplicatePreventionStats.totalPrevented++;
+                    duplicatePreventionStats.lastPreventedTime = new Date();
+                    duplicatePreventionStats.preventedEvents.push({
+                        event: eventName,
+                        customer: this.currentCustomer,
+                        time: new Date().toISOString()
+                    });
+                    
+                    // Keep only last 20 prevented events
+                    if (duplicatePreventionStats.preventedEvents.length > 20) {
+                        duplicatePreventionStats.preventedEvents = duplicatePreventionStats.preventedEvents.slice(-20);
+                    }
+                    
+                    this.updateDuplicateStatus();
+                    return; // Skip event yang duplikat
+                }
+                
+                // Tambahkan hash ke tracking set
+                this.lastEventHashes.add(eventHash);
+                
+                // Clean up old hashes (keep only last 50)
+                if (this.lastEventHashes.size > 50) {
+                    const hashArray = Array.from(this.lastEventHashes);
+                    this.lastEventHashes.clear();
+                    hashArray.slice(-30).forEach(hash => this.lastEventHashes.add(hash));
+                }
                 
                 const event = {
                     session_id: this.sessionId,
@@ -1517,6 +1660,7 @@
                     event_name: eventName,
                     event_data: eventData,
                     timestamp: new Date().toISOString(),
+                    event_hash: eventHash, // Tambahkan hash untuk tracking di Firebase
                     location: this.lastKnownPosition ? {
                         latitude: this.lastKnownPosition.coords.latitude,
                         longitude: this.lastKnownPosition.coords.longitude,
@@ -1525,7 +1669,6 @@
                 };
                 
                 try {
-                    // Try to save to Firebase first
                     if (isFirebaseConnected && firebaseUser) {
                         this.updateFirebaseStatus('syncing');
                         
@@ -1538,13 +1681,11 @@
                         
                         syncedCount++;
                         this.updateFirebaseStatus('connected');
-                        console.log(`🔥 Event "${eventName}" saved to Firebase`);
+                        console.log(`✅ Event "${eventName}" saved to Firebase (deduplicated)`);
                         
-                        // Remove from localStorage pending queue if it was there
                         this.removeFromPendingQueue(event);
                         
                     } else {
-                        // Save to localStorage pending queue
                         this.addToPendingQueue(event);
                         pendingSyncCount++;
                     }
@@ -1553,8 +1694,6 @@
                     
                 } catch (error) {
                     console.error('❌ Error saving event to Firebase:', error);
-                    
-                    // Fallback to localStorage pending queue
                     this.addToPendingQueue(event);
                     pendingSyncCount++;
                     this.updateSyncStatus(pendingSyncCount, syncedCount);
@@ -1575,7 +1714,7 @@
                     }
                     
                     localStorage.setItem(queueKey, JSON.stringify(pendingEvents));
-                    console.log(`🔺 Event "${event.event_name}" queued for sync (${pendingEvents.length} pending)`);
+                    console.log(`📺 Event "${event.event_name}" queued for sync (${pendingEvents.length} pending)`);
                     
                 } catch (error) {
                     console.error('❌ Error adding event to pending queue:', error);
@@ -1603,7 +1742,7 @@
                 }
             }
 
-            // ===== SYNC PENDING DATA WHEN CONNECTION IS RESTORED =====
+            // ===== FIXED: Improved sync dengan deduplication =====
             async syncPendingData() {
                 if (!this.salesmanId || !isFirebaseConnected || !firebaseUser) {
                     return;
@@ -1623,9 +1762,34 @@
                     console.log(`🔄 Syncing ${pendingEvents.length} pending events...`);
                     this.updateFirebaseStatus('syncing');
                     
+                    // ===== BARU: Check existing events di Firebase untuk deduplication =====
+                    const existingEventsRef = window.Firebase.ref('visit_events')
+                        .orderByChild('salesman_id')
+                        .equalTo(this.salesmanId);
+                    
+                    const existingSnapshot = await existingEventsRef.once('value');
+                    const existingEvents = existingSnapshot.val() || {};
+                    const existingHashes = new Set();
+                    
+                    // Collect existing event hashes
+                    Object.values(existingEvents).forEach(event => {
+                        if (event.event_hash) {
+                            existingHashes.add(event.event_hash);
+                        }
+                    });
+                    
                     let syncedEvents = 0;
+                    let skippedDuplicates = 0;
+                    
                     for (const event of pendingEvents) {
                         try {
+                            // Check jika event sudah ada di Firebase
+                            if (event.event_hash && existingHashes.has(event.event_hash)) {
+                                skippedDuplicates++;
+                                console.log(`🚫 Skipped duplicate event: ${event.event_name}`);
+                                continue;
+                            }
+                            
                             const eventsRef = window.Firebase.ref('visit_events');
                             const newEventRef = window.Firebase.push(eventsRef);
                             await window.Firebase.set(newEventRef, {
@@ -1637,27 +1801,27 @@
                             syncedEvents++;
                             console.log(`✅ Synced event: ${event.event_name}`);
                             
-                            // Small delay to avoid overwhelming Firebase
+                            // Small delay untuk menghindari rate limiting
                             await new Promise(resolve => setTimeout(resolve, 100));
                             
                         } catch (error) {
                             console.error(`❌ Failed to sync event: ${event.event_name}`, error);
-                            break; // Stop syncing on error
+                            break;
                         }
                     }
                     
                     // Update counters
                     syncedCount += syncedEvents;
-                    pendingSyncCount = pendingEvents.length - syncedEvents;
+                    pendingSyncCount = pendingEvents.length - syncedEvents - skippedDuplicates;
                     
-                    // Remove synced events from queue
-                    const remainingEvents = pendingEvents.slice(syncedEvents);
+                    // Remove synced dan duplicate events dari queue
+                    const remainingEvents = pendingEvents.slice(syncedEvents + skippedDuplicates);
                     localStorage.setItem(queueKey, JSON.stringify(remainingEvents));
                     
                     this.updateFirebaseStatus('connected');
                     this.updateSyncStatus(pendingSyncCount, syncedCount);
                     
-                    console.log(`🔄 Sync completed: ${syncedEvents}/${pendingEvents.length} events synced`);
+                    console.log(`🔄 Sync completed: ${syncedEvents} synced, ${skippedDuplicates} duplicates skipped, ${remainingEvents.length} remaining`);
                     
                 } catch (error) {
                     console.error('❌ Error syncing pending data:', error);
@@ -1697,6 +1861,7 @@
                 );
             }
             
+            // ===== FIXED: Location handling dengan throttling =====
             handleLocationSuccess(position) {
                 this.lastKnownPosition = position;
                 this.locationAccuracy = position.coords.accuracy;
@@ -1716,35 +1881,41 @@
                     this.saveDailyData();
                 }
                 
-                // Track analytics event
-                this.track('visit_location_acquired', {
-                    latitude: position.coords.latitude,
-                    longitude: position.coords.longitude,
-                    accuracy: position.coords.accuracy,
-                    customer: this.currentCustomer,
-                    distance_to_customer: this.currentCustomer && customerMasterCoordinates ? 
-                        this.calculateDistance(
-                            position.coords.latitude,
-                            position.coords.longitude,
-                            customerMasterCoordinates.latitude,
-                            customerMasterCoordinates.longitude
-                        ) : null
-                });
+                // ===== FIXED: Throttle location acquired events =====
+                const now = Date.now();
+                if (!this.lastLocationEventTime || (now - this.lastLocationEventTime) > this.locationEventThrottle) {
+                    this.lastLocationEventTime = now;
+                    
+                    this.track('visit_location_acquired', {
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude,
+                        accuracy: position.coords.accuracy,
+                        customer: this.currentCustomer,
+                        distance_to_customer: this.currentCustomer && customerMasterCoordinates ? 
+                            this.calculateDistance(
+                                position.coords.latitude,
+                                position.coords.longitude,
+                                customerMasterCoordinates.latitude,
+                                customerMasterCoordinates.longitude
+                            ) : null
+                    });
+                }
                 
-                // Verify customer location if customer is selected
+                // ===== FIXED: Throttled customer location verification =====
                 if (this.currentCustomer && customerMasterCoordinates) {
-                    this.verifyCustomerLocation(position);
+                    this.verifyCustomerLocationThrottled(position);
                 }
             }
             
+            // ===== FIXED: Location update dengan throttling =====
             handleLocationUpdate(position) {
                 this.lastKnownPosition = position;
                 this.locationAccuracy = position.coords.accuracy;
                 this.updateLocationUI(position);
                 
-                // Verify customer location if customer is selected
+                // ===== FIXED: Hanya verify location jika customer aktif dan sudah throttle period =====
                 if (this.currentCustomer && customerMasterCoordinates) {
-                    this.verifyCustomerLocation(position);
+                    this.verifyCustomerLocationThrottled(position);
                 }
             }
             
@@ -1800,8 +1971,38 @@
                 }
             }
             
-            verifyCustomerLocation(currentPosition) {
+            // ===== BARU: Throttled location verification =====
+            verifyCustomerLocationThrottled(currentPosition) {
                 if (!customerMasterCoordinates) return;
+                
+                const now = Date.now();
+                
+                // Check throttling: hanya verify setiap 30 detik
+                if (this.lastLocationVerificationTime && 
+                    (now - this.lastLocationVerificationTime) < this.locationVerificationThrottle) {
+                    return; // Skip jika masih dalam throttle period
+                }
+                
+                // Check movement: hanya verify jika ada pergerakan signifikan (>10 meter)
+                if (this.lastVerificationPosition) {
+                    const movementDistance = this.calculateDistance(
+                        currentPosition.coords.latitude,
+                        currentPosition.coords.longitude,
+                        this.lastVerificationPosition.latitude,
+                        this.lastVerificationPosition.longitude
+                    );
+                    
+                    if (movementDistance < 10) {
+                        return; // Skip jika movement terlalu kecil
+                    }
+                }
+                
+                // Update tracking vars
+                this.lastLocationVerificationTime = now;
+                this.lastVerificationPosition = {
+                    latitude: currentPosition.coords.latitude,
+                    longitude: currentPosition.coords.longitude
+                };
                 
                 const distance = this.calculateDistance(
                     currentPosition.coords.latitude,
@@ -1812,13 +2013,9 @@
                 
                 this.updateLocationVerificationUI(currentPosition, distance);
                 
-                // Track location verification with enhanced data
+                // ===== FIXED: Track dengan data minimal untuk mengurangi duplikasi =====
                 this.track('visit_location_verification', {
                     customer_name: this.currentCustomer,
-                    actual_latitude: currentPosition.coords.latitude,
-                    actual_longitude: currentPosition.coords.longitude,
-                    master_latitude: customerMasterCoordinates.latitude,
-                    master_longitude: customerMasterCoordinates.longitude,
                     distance_meters: Math.round(distance),
                     accuracy: currentPosition.coords.accuracy,
                     is_within_range: distance <= 100,
@@ -1890,11 +2087,12 @@
                 });
             }
             
+            // ===== FIXED: Customer selection dengan session management =====
             trackCustomerSelection(customerName, hariJKS, masterCoordinates) {
                 const now = Date.now();
                 const nowISO = new Date(now).toISOString();
                 
-                // End previous customer tracking
+                // End previous customer tracking jika ada
                 if (this.currentCustomer && this.customerStartTime) {
                     this.endCustomerTracking();
                 }
@@ -1902,8 +2100,13 @@
                 // Start new customer tracking
                 this.currentCustomer = customerName;
                 this.customerStartTime = now;
+                this.customerSessionActive = true;
                 customerMasterCoordinates = masterCoordinates;
                 selectedCustomerName = customerName;
+                
+                // Reset verification tracking untuk customer baru
+                this.lastLocationVerificationTime = null;
+                this.lastVerificationPosition = null;
                 
                 // Initialize customer in daily data
                 if (!this.dailyData.customers[customerName]) {
@@ -1920,7 +2123,6 @@
                 
                 this.dailyData.customers[customerName].visitCount++;
                 
-                // Add new session with location
                 const sessionData = {
                     start: nowISO,
                     end: null,
@@ -1937,12 +2139,13 @@
                 
                 console.log(`👥 Customer selected: ${customerName}`);
                 
-                // Track analytics event with enhanced Firebase data
+                // ===== FIXED: Track customer selection hanya sekali per session =====
                 this.track('visit_customer_selected', {
                     customer_name: customerName,
                     hari_jks: hariJKS,
                     selection_time: nowISO,
                     master_coordinates: masterCoordinates,
+                    session_start: true,
                     actual_location: this.lastKnownPosition ? {
                         latitude: this.lastKnownPosition.coords.latitude,
                         longitude: this.lastKnownPosition.coords.longitude,
@@ -1954,14 +2157,12 @@
                             this.lastKnownPosition.coords.longitude,
                             masterCoordinates.latitude,
                             masterCoordinates.longitude
-                        ) : null,
-                    session_id: this.sessionId,
-                    firebase_connected: isFirebaseConnected
+                        ) : null
                 });
                 
-                // Verify location if we have current position
+                // Verify location sekali saat customer dipilih
                 if (this.lastKnownPosition && masterCoordinates) {
-                    this.verifyCustomerLocation(this.lastKnownPosition);
+                    this.verifyCustomerLocationThrottled(this.lastKnownPosition);
                 }
             }
             
@@ -2015,11 +2216,70 @@
                 // Clear current tracking
                 this.currentCustomer = null;
                 this.customerStartTime = null;
+                this.customerSessionActive = false;
                 customerMasterCoordinates = null;
                 selectedCustomerName = null;
                 
                 // Hide location alert
                 document.getElementById('locationAlert').style.display = 'none';
+            }
+
+            // ===== BARU: Method untuk cleaning up duplicates (utility) =====
+            async cleanupDuplicateEvents() {
+                if (!isFirebaseConnected || !firebaseUser) {
+                    console.log('❌ Firebase not connected, cannot cleanup duplicates');
+                    return;
+                }
+                
+                try {
+                    console.log('🧹 Starting duplicate cleanup...');
+                    
+                    const eventsRef = window.Firebase.ref('visit_events')
+                        .orderByChild('salesman_id')
+                        .equalTo(this.salesmanId);
+                        
+                    const snapshot = await eventsRef.once('value');
+                    const events = snapshot.val() || {};
+                    
+                    const eventsByHash = new Map();
+                    const duplicatesToDelete = [];
+                    
+                    // Group events by hash
+                    Object.entries(events).forEach(([eventId, eventData]) => {
+                        if (eventData.event_hash) {
+                            if (eventsByHash.has(eventData.event_hash)) {
+                                // This is a duplicate
+                                duplicatesToDelete.push(eventId);
+                            } else {
+                                eventsByHash.set(eventData.event_hash, eventId);
+                            }
+                        }
+                    });
+                    
+                    // Delete duplicates
+                    for (const duplicateId of duplicatesToDelete) {
+                        await window.Firebase.ref(`visit_events/${duplicateId}`).remove();
+                        console.log(`🗑️ Deleted duplicate event: ${duplicateId}`);
+                    }
+                    
+                    console.log(`✅ Cleanup completed: ${duplicatesToDelete.length} duplicates removed`);
+                    
+                } catch (error) {
+                    console.error('❌ Error during duplicate cleanup:', error);
+                }
+            }
+
+            // ===== BARU: Method untuk reset session tracking =====
+            resetSessionTracking() {
+                this.lastLocationVerificationTime = null;
+                this.lastVerificationPosition = null;
+                this.lastEventHashes.clear();
+                this.customerSessionActive = false;
+                this.lastLocationEventTime = null;
+                duplicatePreventionStats.totalPrevented = 0;
+                duplicatePreventionStats.preventedEvents = [];
+                this.updateDuplicateStatus();
+                console.log('🔄 Session tracking reset');
             }
             
             setupUnloadTracking() {
@@ -2041,11 +2301,167 @@
                             accuracy: this.lastKnownPosition.coords.accuracy
                         } : null,
                         firebase_connected: isFirebaseConnected,
-                        pending_events: pendingSyncCount
+                        pending_events: pendingSyncCount,
+                        duplicates_prevented: duplicatePreventionStats.totalPrevented
                     });
                 });
             }
         }
+
+        // ===== UTILITY FUNCTIONS UNTUK MENCEGAH DUPLIKASI =====
+
+        // Function untuk cleanup duplicate events (bisa dipanggil manual)
+        function cleanupDuplicateEvents() {
+            if (visitAnalytics) {
+                visitAnalytics.cleanupDuplicateEvents();
+            } else {
+                alert('❌ Analytics tidak tersedia');
+            }
+        }
+
+        // Function untuk reset session tracking
+        function resetSessionTracking() {
+            if (visitAnalytics) {
+                visitAnalytics.resetSessionTracking();
+                alert('✅ Session tracking telah direset');
+            }
+        }
+
+        // Function untuk debug duplicate events
+        function debugDuplicateEvents() {
+            if (!isFirebaseConnected) {
+                alert('❌ Firebase tidak terkoneksi');
+                return;
+            }
+            
+            const salesmanId = currentSalesmanId;
+            if (!salesmanId) {
+                alert('❌ Salesman ID tidak ditemukan');
+                return;
+            }
+            
+            // Debug duplicate events di Firebase
+            const eventsRef = window.Firebase.ref('visit_events')
+                .orderByChild('salesman_id')
+                .equalTo(salesmanId);
+                
+            eventsRef.once('value').then(snapshot => {
+                const events = snapshot.val() || {};
+                const eventsByHash = new Map();
+                const duplicates = [];
+                let totalEvents = 0;
+                
+                Object.entries(events).forEach(([eventId, eventData]) => {
+                    totalEvents++;
+                    if (eventData.event_hash) {
+                        if (eventsByHash.has(eventData.event_hash)) {
+                            duplicates.push({
+                                id: eventId,
+                                hash: eventData.event_hash,
+                                event_name: eventData.event_name,
+                                customer: eventData.event_data?.customer_name,
+                                timestamp: eventData.timestamp
+                            });
+                        } else {
+                            eventsByHash.set(eventData.event_hash, eventId);
+                        }
+                    }
+                });
+                
+                const uniqueEvents = eventsByHash.size;
+                const duplicateCount = duplicates.length;
+                
+                console.log('🔍 DUPLICATE ANALYSIS:');
+                console.log(`📊 Total events: ${totalEvents}`);
+                console.log(`✅ Unique events: ${uniqueEvents}`);
+                console.log(`🚫 Duplicate events: ${duplicateCount}`);
+                
+                if (duplicates.length > 0) {
+                    console.log('🚫 Duplicate events found:');
+                    duplicates.forEach((dup, index) => {
+                        console.log(`${index + 1}. ${dup.event_name} - ${dup.customer} (${dup.timestamp})`);
+                    });
+                }
+                
+                alert(`🔍 Duplicate Analysis:\n\n` +
+                      `📊 Total events: ${totalEvents}\n` +
+                      `✅ Unique events: ${uniqueEvents}\n` +
+                      `🚫 Duplicates: ${duplicateCount}\n\n` +
+                      `${duplicateCount > 0 ? '⚠️ Duplicates found! Check console for details.' : '✅ No duplicates found!'}`);
+                      
+            }).catch(error => {
+                console.error('❌ Error analyzing duplicates:', error);
+                alert('❌ Error analyzing duplicates: ' + error.message);
+            });
+        }
+
+        // Enhanced error handling untuk Firebase operations
+        function handleFirebaseError(error) {
+            console.error('🔥 Firebase Error:', error);
+            
+            // Specific error handling
+            if (error.code === 'PERMISSION_DENIED') {
+                visitAnalytics?.updateFirebaseStatus('⚠️ Firebase access denied - using localStorage only', 'error');
+            } else if (error.code === 'NETWORK_ERROR') {
+                visitAnalytics?.updateFirebaseStatus('🌐 Network error - retrying...', 'error');
+            } else {
+                visitAnalytics?.updateFirebaseStatus('❌ Firebase error - using localStorage', 'error');
+            }
+        }
+
+        // Function untuk monitoring analytics health
+        function monitorAnalyticsHealth() {
+            if (!visitAnalytics) {
+                console.log('❌ Analytics not initialized');
+                return;
+            }
+            
+            const health = {
+                firebase_connected: isFirebaseConnected,
+                pending_sync_count: pendingSyncCount,
+                synced_count: syncedCount,
+                current_customer: visitAnalytics.currentCustomer,
+                session_active: visitAnalytics.customerSessionActive,
+                location_available: !!visitAnalytics.lastKnownPosition,
+                duplicates_prevented: duplicatePreventionStats.totalPrevented,
+                last_location_verification: visitAnalytics.lastLocationVerificationTime,
+                throttle_status: {
+                    location_verification: visitAnalytics.locationVerificationThrottle,
+                    location_event: visitAnalytics.locationEventThrottle
+                }
+            };
+            
+            console.log('💊 ANALYTICS HEALTH CHECK:', health);
+            
+            // Show in alert for convenience
+            alert(`💊 Analytics Health Check:\n\n` +
+                  `🔥 Firebase: ${health.firebase_connected ? 'Connected' : 'Disconnected'}\n` +
+                  `🔄 Pending sync: ${health.pending_sync_count}\n` +
+                  `✅ Synced: ${health.synced_count}\n` +
+                  `👥 Current customer: ${health.current_customer || 'None'}\n` +
+                  `📍 Location: ${health.location_available ? 'Available' : 'Unavailable'}\n` +
+                  `🚫 Duplicates prevented: ${health.duplicates_prevented}\n` +
+                  `⏱️ Throttle verification: ${health.throttle_status.location_verification / 1000}s\n` +
+                  `⏱️ Throttle events: ${health.throttle_status.location_event / 1000}s`);
+            
+            return health;
+        }
+
+        // Auto health check setiap 5 menit
+        setInterval(() => {
+            if (visitAnalytics) {
+                const health = monitorAnalyticsHealth();
+                
+                // Alert jika ada masalah
+                if (health.pending_sync_count > 100) {
+                    console.warn('⚠️ High pending sync count: ' + health.pending_sync_count);
+                }
+                
+                if (health.duplicates_prevented > 50) {
+                    console.warn('⚠️ High duplicate prevention count: ' + health.duplicates_prevented);
+                }
+            }
+        }, 5 * 60 * 1000); // 5 minutes
 
         // ===== INITIALIZE ANALYTICS =====
         let visitAnalytics = null;
@@ -2336,7 +2752,7 @@
                     <tr>
                         <td colspan="5">
                             <div class="empty-state">
-                                <div class="empty-state-icon">📭</div>
+                                <div class="empty-state-icon">🔭</div>
                                 <div>Tidak ada data untuk Hari JKS yang dipilih</div>
                             </div>
                         </td>
@@ -2429,7 +2845,7 @@
             const dapHariSelect = document.getElementById('dapHari');
             if (!dapHariSelect || detailsData.length === 0) return;
             
-            console.log('📄 Populating DAP Hari dropdown from d.details.json');
+            console.log('🔄 Populating DAP Hari dropdown from d.details.json');
             
             dapHariSelect.innerHTML = '<option value="">📅 Pilih Hari JKS</option>';
             
@@ -2651,7 +3067,7 @@
                 // ===== PERBAIKAN: Tambahkan error handling untuk bagian ini =====
                 try {
                     // Create hari data from pelanggan data or use hardcoded fallback
-                    console.log('📄 Processing hari data from pelangganData...');
+                    console.log('🔄 Processing hari data from pelangganData...');
                     console.log('📊 pelangganData length: ' + pelangganData.length);
                     console.log('🔍 currentSalesmanId: ' + currentSalesmanId);
                     
@@ -2672,7 +3088,7 @@
                         const uniqueHari = [...new Set(filteredData
                             .map(item => {
                                 const hari = normalizeHariFormat(item.Hari_Kunjungan);
-                                console.log('📄 Processing hari: ' + item.Hari_Kunjungan + ' -> ' + hari);
+                                console.log('🔄 Processing hari: ' + item.Hari_Kunjungan + ' -> ' + hari);
                                 return hari;
                             })
                             .filter(hari => {
@@ -2704,7 +3120,7 @@
                         console.log('✅ Fallback hari data created:', hariData);
                     }
                     
-                    console.log('📄 Populating hari dropdown...');
+                    console.log('🔄 Populating hari dropdown...');
                     // Populate hari dropdown
                     const hariSelect = document.getElementById('hari');
                     if (!hariSelect) {
@@ -2739,7 +3155,7 @@
                     }
                 }
                 
-                console.log('📄 Finishing initialization...');
+                console.log('🔄 Finishing initialization...');
                 showLoading(false);
                 showMainContent(true);
                 
@@ -2747,6 +3163,7 @@
                 console.log('🔥 Firebase features: Real-time sync, offline support, analytics tracking');
                 console.log('📍 Location features: GPS tracking, customer verification, distance calculation');
                 console.log('📊 Integrated with TPOM data for SKU highlighting and POM items');
+                console.log('🚫 Anti-duplication: Event deduplication, throttled location updates');
                 
             } catch (error) {
                 console.error('❌ Critical error in initializeData:', error);
@@ -3168,6 +3585,14 @@
                     }
                 });
             }
+
+            // ===== DEBUG PANEL INITIALIZATION =====
+            // Show debug panel if debug=true in URL
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('debug') === 'true') {
+                document.getElementById('debugPanel').style.display = 'flex';
+                console.log('🔧 Debug mode enabled');
+            }
         });
 
         // ===== NAVIGATION FUNCTIONS =====
@@ -3236,6 +3661,7 @@
             console.log('🔥 Firebase user: ' + (firebaseUser ? firebaseUser.uid : 'null'));
             console.log('📡 Pending sync count: ' + pendingSyncCount);
             console.log('📡 Synced count: ' + syncedCount);
+            console.log('🚫 Duplicates prevented: ' + duplicatePreventionStats.totalPrevented);
             
             if (pelangganData.length > 0) {
                 console.log('📋 Sample pelangganData:', pelangganData[0]);
@@ -3256,17 +3682,19 @@
         window.onload = function() {
             if (!checkLoginStatus()) return;
             
-            console.log('📱 Starting Enhanced Visit Outlet with Firebase Integration...');
+            console.log('📱 Starting Enhanced Visit Outlet with Firebase Integration (Fixed Version)...');
             console.log('🔥 Features: Firebase real-time sync, offline support with auto-sync');
             console.log('📍 Features: Real-time location tracking, customer location verification');
             console.log('📊 Features: Enhanced table rendering with TPOM integration');
             console.log('📋 Features: Real DAP data from d.details.json with BE MTD analysis');
+            console.log('🚫 Features: Anti-duplication system with event deduplication and throttling');
             console.log('🎯 Firebase benefits: Manager can monitor real-time, data persisted in cloud');
+            console.log('🔧 Debug mode: Add ?debug=true to URL for debug controls');
             
             initializeData();
         };
 
-        console.log('✅ Enhanced Visit script: Firebase + Geolocation + Real table data + Real DAP loaded');
+        console.log('✅ Enhanced Visit script: Fixed Anti-Duplication Firebase + Geolocation + Real table data + Real DAP loaded');
     </script>
 </body>
 </html>
