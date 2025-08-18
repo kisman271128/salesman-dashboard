@@ -760,7 +760,7 @@
                 
                 for (let i = 0; i < localStorage.length; i++) {
                     const key = localStorage.key(i);
-                    if (key && key.includes('visit')) {
+                    if (key && (key.includes('visit') || key.includes('analytics'))) {
                         foundKeys++;
                         
                         try {
@@ -788,7 +788,13 @@
                                 }
                             }
                             
-                            // Pattern 3: Any other visit_ pattern
+                            // Pattern 3: analytics_YYYY-MM-DD (new pattern found)
+                            else if (key.startsWith('analytics_') && key.match(/analytics_\d{4}-\d{2}-\d{2}$/)) {
+                                console.log(`📊 Found analytics key: ${key}`);
+                                // These keys might contain visit data, check content
+                            }
+                            
+                            // Pattern 4: Any other visit_ pattern
                             else if (key.startsWith('visit_')) {
                                 const parts = key.split('_');
                                 // Try last part as salesman ID
@@ -801,12 +807,18 @@
                                 }
                             }
                             
-                            // Also parse data content for salesman info
+                            // Parse data content for salesman info
                             const data = localStorage.getItem(key);
                             if (data && data.length > 10) {
                                 try {
                                     const parsed = JSON.parse(data);
                                     processedKeys++;
+                                    
+                                    // Check if this is analytics data with visits
+                                    if (key.startsWith('analytics_')) {
+                                        console.log(`📊 Parsing analytics data from ${key}:`, Object.keys(parsed));
+                                        this.extractSalesmanFromAnalytics(parsed, salesmanSet);
+                                    }
                                     
                                     // Direct salesman fields
                                     if (parsed.salesman_id) {
@@ -870,21 +882,64 @@
                     }
                 }
                 
-                console.log(`💾 localStorage scan complete: ${foundKeys} visit keys found, ${processedKeys} parsed, ${salesmanSet.size} unique salesman detected`);
+                console.log(`💾 localStorage scan complete: ${foundKeys} relevant keys found, ${processedKeys} parsed, ${salesmanSet.size} unique salesman detected`);
                 
                 // Debug: Show a sample of what we found
                 if (salesmanSet.size > 0) {
                     console.log(`💾 Detected salesman IDs:`, Array.from(salesmanSet));
                 } else {
-                    console.log('💾 No salesman found in localStorage. Listing available visit keys for debugging:');
-                    const visitKeys = [];
-                    for (let i = 0; i < localStorage.length && visitKeys.length < 5; i++) {
+                    console.log('💾 No salesman found in localStorage. Listing available keys for debugging:');
+                    const allKeys = [];
+                    for (let i = 0; i < localStorage.length && allKeys.length < 10; i++) {
                         const key = localStorage.key(i);
-                        if (key && key.includes('visit')) {
-                            visitKeys.push(key);
+                        if (key) {
+                            allKeys.push(key);
                         }
                     }
-                    console.log('💾 Sample visit keys:', visitKeys);
+                    console.log('💾 All localStorage keys:', allKeys);
+                }
+            }
+            
+            extractSalesmanFromAnalytics(analyticsData, salesmanSet) {
+                // Analytics data might have different structures
+                // Try to find salesman info in various nested levels
+                
+                if (typeof analyticsData === 'object') {
+                    // Check top level
+                    if (analyticsData.salesman_id) {
+                        salesmanSet.add(analyticsData.salesman_id);
+                        console.log(`📊 Found salesman from analytics root: ${analyticsData.salesman_id}`);
+                    }
+                    
+                    // Check nested objects
+                    Object.values(analyticsData).forEach(value => {
+                        if (value && typeof value === 'object') {
+                            if (value.salesman_id) {
+                                salesmanSet.add(value.salesman_id);
+                                console.log(`📊 Found salesman from analytics nested: ${value.salesman_id}`);
+                            }
+                            if (value.salesmanId) {
+                                salesmanSet.add(value.salesmanId);
+                                console.log(`📊 Found salesman from analytics nested: ${value.salesmanId}`);
+                            }
+                            
+                            // Check deeper nested structures
+                            if (typeof value === 'object') {
+                                Object.values(value).forEach(deepValue => {
+                                    if (deepValue && typeof deepValue === 'object') {
+                                        if (deepValue.salesman_id) {
+                                            salesmanSet.add(deepValue.salesman_id);
+                                            console.log(`📊 Found salesman from analytics deep: ${deepValue.salesman_id}`);
+                                        }
+                                        if (deepValue.salesmanId) {
+                                            salesmanSet.add(deepValue.salesmanId);
+                                            console.log(`📊 Found salesman from analytics deep: ${deepValue.salesmanId}`);
+                                        }
+                                    }
+                                });
+                            }
+                        }
+                    });
                 }
             }
             
@@ -1192,12 +1247,18 @@
             
             loadFromDailyData(dateStr, salesmanFilter) {
                 console.log(`💾 Loading daily data for ${dateStr}...`);
-                const dailyPattern = `visit_daily_local_${dateStr}_`;
                 let foundCount = 0;
+                
+                // Pattern 1: visit_daily_local_YYYY-MM-DD_SALESMANID
+                const dailyPattern = `visit_daily_local_${dateStr}_`;
+                
+                // Pattern 2: analytics_YYYY-MM-DD (new pattern discovered)
+                const analyticsPattern = `analytics_${dateStr}`;
                 
                 for (let i = 0; i < localStorage.length; i++) {
                     const key = localStorage.key(i);
                     
+                    // Check traditional visit pattern
                     if (key && key.startsWith(dailyPattern)) {
                         foundCount++;
                         const salesmanId = key.replace(dailyPattern, '');
@@ -1208,61 +1269,207 @@
                             continue;
                         }
                         
-                        try {
-                            const dailyData = JSON.parse(localStorage.getItem(key) || '{}');
-                            console.log(`💾 Daily data structure:`, Object.keys(dailyData));
-                            
-                            if (dailyData.customers && Object.keys(dailyData.customers).length > 0) {
-                                console.log(`💾 Found ${Object.keys(dailyData.customers).length} customers in daily data`);
-                                
-                                Object.entries(dailyData.customers).forEach(([customerName, customerData]) => {
-                                    if (customerData.sessions && customerData.sessions.length > 0) {
-                                        const latestSession = customerData.sessions
-                                            .filter(session => session.start_location && session.end)
-                                            .sort((a, b) => new Date(b.start) - new Date(a.start))[0];
-                                        
-                                        if (latestSession && latestSession.start_location) {
-                                            const distance = this.calculateDistance(
-                                                latestSession.start_location.latitude,
-                                                latestSession.start_location.longitude,
-                                                customerData.master_coordinates ? customerData.master_coordinates.latitude : 0,
-                                                customerData.master_coordinates ? customerData.master_coordinates.longitude : 0
-                                            );
-                                            
-                                            const locationPoint = {
-                                                id: `localStorage_daily_${dateStr}_${salesmanId}_${customerName}`,
-                                                salesman_id: salesmanId,
-                                                salesman_name: dailyData.salesman_name || `Salesman ${salesmanId}`,
-                                                customer_name: customerName,
-                                                actual_location: latestSession.start_location,
-                                                master_location: customerData.master_coordinates,
-                                                distance: distance,
-                                                timestamp: latestSession.start,
-                                                date: dateStr,
-                                                accuracy: latestSession.start_location.accuracy || 0,
-                                                compliance_status: this.getComplianceStatus(distance),
-                                                session_duration: latestSession.duration || 0,
-                                                visit_count: customerData.visitCount || 1,
-                                                source: 'localStorage-daily'
-                                            };
-                                            
-                                            this.visitLocations.push(locationPoint);
-                                            this.updateSalesmanData(salesmanId, dailyData.salesman_name, locationPoint);
-                                            console.log(`💾 Added visit: ${customerName} by ${salesmanId}`);
-                                        }
-                                    }
-                                });
-                            } else {
-                                console.log(`💾 No customer data found in ${key}`);
-                            }
-                            
-                        } catch (error) {
-                            console.error(`⚠️ Error loading daily data for ${key}:`, error);
-                        }
+                        this.processDailyDataKey(key, salesmanId, dateStr);
+                    }
+                    
+                    // Check analytics pattern 
+                    else if (key && key === analyticsPattern) {
+                        foundCount++;
+                        console.log(`📊 Found analytics data key: ${key}`);
+                        this.processAnalyticsDataKey(key, dateStr, salesmanFilter);
                     }
                 }
                 
                 console.log(`💾 Daily data scan complete for ${dateStr}: ${foundCount} keys found`);
+            }
+            
+            processDailyDataKey(key, salesmanId, dateStr) {
+                try {
+                    const dailyData = JSON.parse(localStorage.getItem(key) || '{}');
+                    console.log(`💾 Daily data structure:`, Object.keys(dailyData));
+                    
+                    if (dailyData.customers && Object.keys(dailyData.customers).length > 0) {
+                        console.log(`💾 Found ${Object.keys(dailyData.customers).length} customers in daily data`);
+                        
+                        Object.entries(dailyData.customers).forEach(([customerName, customerData]) => {
+                            if (customerData.sessions && customerData.sessions.length > 0) {
+                                const latestSession = customerData.sessions
+                                    .filter(session => session.start_location && session.end)
+                                    .sort((a, b) => new Date(b.start) - new Date(a.start))[0];
+                                
+                                if (latestSession && latestSession.start_location) {
+                                    const distance = this.calculateDistance(
+                                        latestSession.start_location.latitude,
+                                        latestSession.start_location.longitude,
+                                        customerData.master_coordinates ? customerData.master_coordinates.latitude : 0,
+                                        customerData.master_coordinates ? customerData.master_coordinates.longitude : 0
+                                    );
+                                    
+                                    const locationPoint = {
+                                        id: `localStorage_daily_${dateStr}_${salesmanId}_${customerName}`,
+                                        salesman_id: salesmanId,
+                                        salesman_name: dailyData.salesman_name || `Salesman ${salesmanId}`,
+                                        customer_name: customerName,
+                                        actual_location: latestSession.start_location,
+                                        master_location: customerData.master_coordinates,
+                                        distance: distance,
+                                        timestamp: latestSession.start,
+                                        date: dateStr,
+                                        accuracy: latestSession.start_location.accuracy || 0,
+                                        compliance_status: this.getComplianceStatus(distance),
+                                        session_duration: latestSession.duration || 0,
+                                        visit_count: customerData.visitCount || 1,
+                                        source: 'localStorage-daily'
+                                    };
+                                    
+                                    this.visitLocations.push(locationPoint);
+                                    this.updateSalesmanData(salesmanId, dailyData.salesman_name, locationPoint);
+                                    console.log(`💾 Added visit: ${customerName} by ${salesmanId}`);
+                                }
+                            }
+                        });
+                    } else {
+                        console.log(`💾 No customer data found in ${key}`);
+                    }
+                    
+                } catch (error) {
+                    console.error(`⚠️ Error loading daily data for ${key}:`, error);
+                }
+            }
+            
+            processAnalyticsDataKey(key, dateStr, salesmanFilter) {
+                try {
+                    const analyticsData = JSON.parse(localStorage.getItem(key) || '{}');
+                    console.log(`📊 Analytics data structure for ${dateStr}:`, Object.keys(analyticsData));
+                    
+                    // Analytics data might have different structure
+                    // Let's explore and extract visit data from it
+                    this.extractVisitsFromAnalytics(analyticsData, dateStr, salesmanFilter);
+                    
+                } catch (error) {
+                    console.error(`⚠️ Error loading analytics data for ${key}:`, error);
+                }
+            }
+            
+            extractVisitsFromAnalytics(analyticsData, dateStr, salesmanFilter) {
+                // Try to find visit data in analytics structure
+                let extractedCount = 0;
+                
+                if (typeof analyticsData === 'object') {
+                    Object.entries(analyticsData).forEach(([topKey, topValue]) => {
+                        if (topValue && typeof topValue === 'object') {
+                            
+                            // Check if this looks like visit data
+                            if (this.isVisitLikeData(topValue)) {
+                                const visitData = this.convertAnalyticsToVisit(topKey, topValue, dateStr);
+                                if (visitData && (!salesmanFilter || visitData.salesman_id === salesmanFilter)) {
+                                    this.visitLocations.push(visitData);
+                                    this.updateSalesmanData(visitData.salesman_id, visitData.salesman_name, visitData);
+                                    extractedCount++;
+                                    console.log(`📊 Extracted analytics visit: ${visitData.customer_name} by ${visitData.salesman_id}`);
+                                }
+                            }
+                            
+                            // Check nested levels
+                            Object.entries(topValue).forEach(([subKey, subValue]) => {
+                                if (subValue && typeof subValue === 'object' && this.isVisitLikeData(subValue)) {
+                                    const visitData = this.convertAnalyticsToVisit(`${topKey}_${subKey}`, subValue, dateStr);
+                                    if (visitData && (!salesmanFilter || visitData.salesman_id === salesmanFilter)) {
+                                        this.visitLocations.push(visitData);
+                                        this.updateSalesmanData(visitData.salesman_id, visitData.salesman_name, visitData);
+                                        extractedCount++;
+                                        console.log(`📊 Extracted nested analytics visit: ${visitData.customer_name} by ${visitData.salesman_id}`);
+                                    }
+                                }
+                            });
+                        }
+                    });
+                }
+                
+                console.log(`📊 Extracted ${extractedCount} visits from analytics data for ${dateStr}`);
+            }
+            
+            isVisitLikeData(data) {
+                // Check if data structure looks like visit data
+                const hasLocation = data.latitude !== undefined || data.longitude !== undefined ||
+                                  data.location !== undefined || data.coordinates !== undefined ||
+                                  data.actual_location !== undefined;
+                
+                const hasVisitInfo = data.customer_name !== undefined || data.customerName !== undefined ||
+                                   data.salesman_id !== undefined || data.salesmanId !== undefined ||
+                                   data.salesman_name !== undefined;
+                
+                const hasTimestamp = data.timestamp !== undefined || data.time !== undefined ||
+                                   data.date !== undefined || data.created_at !== undefined;
+                
+                return hasLocation || hasVisitInfo || hasTimestamp;
+            }
+            
+            convertAnalyticsToVisit(key, data, dateStr) {
+                try {
+                    // Extract location
+                    let location = null;
+                    if (data.latitude !== undefined && data.longitude !== undefined) {
+                        location = { latitude: data.latitude, longitude: data.longitude };
+                    } else if (data.location) {
+                        location = data.location;
+                    } else if (data.actual_location) {
+                        location = data.actual_location;
+                    } else if (data.coordinates) {
+                        location = data.coordinates;
+                    }
+                    
+                    if (!location || !location.latitude || !location.longitude) {
+                        return null;
+                    }
+                    
+                    // Extract basic info
+                    const salesmanId = data.salesman_id || data.salesmanId || 'unknown';
+                    const salesmanName = data.salesman_name || data.salesmanName || `Salesman ${salesmanId}`;
+                    const customerName = data.customer_name || data.customerName || data.name || `Customer_${key}`;
+                    
+                    // Extract timestamp
+                    let timestamp = data.timestamp || data.time || data.created_at || data.date;
+                    if (!timestamp) {
+                        timestamp = new Date().toISOString();
+                    }
+                    
+                    // Calculate distance if master location exists
+                    let distance = data.distance || 0;
+                    let masterLocation = data.master_location || data.master_coordinates || data.target_location;
+                    
+                    if (masterLocation && masterLocation.latitude && masterLocation.longitude && distance === 0) {
+                        distance = this.calculateDistance(
+                            location.latitude,
+                            location.longitude,
+                            masterLocation.latitude,
+                            masterLocation.longitude
+                        );
+                    }
+                    
+                    const visitData = {
+                        id: `analytics_${dateStr}_${key}`,
+                        salesman_id: salesmanId,
+                        salesman_name: salesmanName,
+                        customer_name: customerName,
+                        actual_location: location,
+                        master_location: masterLocation,
+                        distance: distance,
+                        timestamp: timestamp,
+                        date: dateStr,
+                        accuracy: location.accuracy || data.accuracy || 0,
+                        compliance_status: this.getComplianceStatus(distance),
+                        session_duration: data.duration || data.session_duration || 0,
+                        visit_count: data.visit_count || 1,
+                        source: 'localStorage-analytics'
+                    };
+                    
+                    return visitData;
+                    
+                } catch (error) {
+                    console.error('❌ Error converting analytics to visit data:', error);
+                    return null;
+                }
             }
             
             loadFromAnalyticsEvents(dateStr, salesmanFilter) {
