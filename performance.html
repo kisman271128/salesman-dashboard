@@ -540,6 +540,38 @@
             font-weight: 500;
         }
 
+        /* Debug Panel */
+        .debug-panel {
+            margin: 16px;
+            padding: 12px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 11px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .debug-panel h4 {
+            color: #1e293b;
+            margin-bottom: 8px;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        .debug-panel .debug-item {
+            margin-bottom: 4px;
+            color: #64748b;
+        }
+
+        .debug-panel .debug-success {
+            color: #059669;
+            font-weight: 600;
+        }
+
+        .debug-panel .debug-error {
+            color: #dc2626;
+            font-weight: 600;
+        }
+
         /* Responsive */
         @media (max-width: 380px) {
             .metrics-grid { gap: 8px; }
@@ -658,9 +690,15 @@
 
         <!-- Error State -->
         <div class="error-message" id="errorMessage" style="display: none;">
-            <h3>📡 Data Loading Error</h3>
+            <h3>🚨 Data Loading Error</h3>
             <p>Unable to load performance data. Please check your connection.</p>
             <button onclick="loadPerformanceData()" style="margin-top: 10px; padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer;">Retry</button>
+        </div>
+
+        <!-- Debug Panel -->
+        <div class="debug-panel" id="debugPanel" style="display: none;">
+            <h4>🔍 Data Loading Debug Info</h4>
+            <div id="debugContent"></div>
         </div>
 
         <!-- Main Content -->
@@ -742,16 +780,16 @@
 
             <div class="tab-content" id="channelContent">
                 <div class="table-container">
-                    <div class="table-header">📈 Channel Fokus Performance</div>
+                    <div class="table-header">📈 Channel Performance</div>
                     <div class="table-wrapper">
                         <table class="data-table channel-table">
                             <thead>
                                 <tr>
                                     <th class="sticky-col channel-group-col col-wide">Channel Group</th>
-                                    <th class="sticky-col channel-project-col col-wide">Project</th>
                                     <th class="col-wide value-currency">Target</th>
                                     <th class="col-wide value-currency">Actual</th>
                                     <th class="col-wide value-currency">Gap</th>
+                                    <th class="col-wide value-percentage">Ach%</th>
                                     <th class="col-wide value-currency">LY</th>
                                     <th class="col-wide value-currency">3LM</th>
                                     <th class="col-wide value-currency">LM</th>
@@ -835,12 +873,6 @@
                         </table>
                     </div>
                 </div>
-                
-                <!-- Debug Info Panel -->
-                <div style="margin: 16px; padding: 12px; background: #f8fafc; border-radius: 8px; font-size: 11px; display: none;" id="pomDebugPanel">
-                    <strong>🔍 Debug Info:</strong>
-                    <div id="pomDebugInfo" style="margin-top: 4px; color: #64748b;"></div>
-                </div>
             </div>
         </div>
 
@@ -868,12 +900,31 @@
     <script>
         // ===== GLOBAL VARIABLES =====
         let jksData = [];
-        let channelProjData = [];
+        let channelData = [];  // CHANGED: from channelProjData to channelData
         let projectData = [];
         let paretoData = [];
         let pomData = [];
         let currentSalesmanId = null;
         let currentSalesmanName = null;
+
+        // ===== DEBUG HELPER =====
+        function addDebugInfo(message, isError = false) {
+            const debugContent = document.getElementById('debugContent');
+            if (debugContent) {
+                const className = isError ? 'debug-error' : 'debug-success';
+                debugContent.innerHTML += `<div class="debug-item ${className}">• ${message}</div>`;
+            }
+            console.log(isError ? '❌' : '✅', message);
+        }
+
+        function showDebugPanel() {
+            document.getElementById('debugPanel').style.display = 'block';
+        }
+
+        function clearDebugInfo() {
+            const debugContent = document.getElementById('debugContent');
+            if (debugContent) debugContent.innerHTML = '';
+        }
 
         // ===== UTILITY FUNCTIONS =====
         function formatCurrencyIndonesia(value) {
@@ -904,8 +955,11 @@
             return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
         }
 
-        // ===== DATA LOADING =====
+        // ===== DATA LOADING - FIXED FOR d.channel.json =====
         async function loadJSONData() {
+            clearDebugInfo();
+            showDebugPanel();
+            
             const possiblePaths = [
                 'data/',
                 './data/',
@@ -945,45 +999,79 @@
                     .filter(item => item !== null);
             }
 
-            // Load all data files
+            // Load all data files with proper debugging
+            
+            // 1. Load JKS data
             try {
                 const jksText = await loadFile('d.jks.json');
                 jksData = parseJSONLines(jksText);
-            } catch {
-                console.warn('JKS data not found');
+                addDebugInfo(`JKS data loaded: ${jksData.length} records`);
+            } catch (error) {
+                addDebugInfo(`JKS data loading failed: ${error.message}`, true);
             }
 
+            // 2. Load Channel data - FIXED TO USE d.channel.json
             try {
-                const channelText = await loadFile('d.channelproj.json');
-                channelProjData = parseJSONLines(channelText);
-            } catch {
-                console.warn('Channel data not found');
+                const channelText = await loadFile('d.channel.json');
+                channelData = parseJSONLines(channelText);
+                addDebugInfo(`Channel data loaded: ${channelData.length} records from d.channel.json`);
+                
+                if (channelData.length > 0) {
+                    const sampleRecord = channelData[0];
+                    addDebugInfo(`Channel sample fields: ${Object.keys(sampleRecord).join(', ')}`);
+                    
+                    // Check for expected fields
+                    const expectedFields = ['szEmployeeId', 'szname', 'Channel Group', ' T.MTD', ' A.MTD', ' Gap MTD', ' Ach'];
+                    const hasExpectedFields = expectedFields.every(field => field in sampleRecord);
+                    
+                    if (hasExpectedFields) {
+                        addDebugInfo('Channel data structure validation: PASSED ✓');
+                    } else {
+                        addDebugInfo('Channel data structure validation: Some fields missing', true);
+                    }
+                }
+            } catch (error) {
+                addDebugInfo(`Channel data loading failed: ${error.message}`, true);
+                
+                // Try alternative names for backward compatibility
+                try {
+                    const altChannelText = await loadFile('d.channelproj.json');
+                    channelData = parseJSONLines(altChannelText);
+                    addDebugInfo(`Channel data loaded from alternative file: ${channelData.length} records`);
+                } catch (altError) {
+                    addDebugInfo('Alternative channel file also failed', true);
+                }
             }
 
+            // 3. Load Project data
             try {
                 const projectText = await loadFile('d.project.json');
                 projectData = parseJSONLines(projectText);
-            } catch {
-                console.warn('Project data not found');
+                addDebugInfo(`Project data loaded: ${projectData.length} records`);
+            } catch (error) {
+                addDebugInfo(`Project data loading failed: ${error.message}`, true);
             }
 
+            // 4. Load Pareto data
             try {
                 const paretoText = await loadFile('d.30pareto.json');
                 paretoData = parseJSONLines(paretoText);
-            } catch {
-                console.warn('Pareto data not found');
+                addDebugInfo(`Pareto data loaded: ${paretoData.length} records`);
+            } catch (error) {
+                addDebugInfo(`Pareto data loading failed: ${error.message}`, true);
             }
 
+            // 5. Load POM data
             try {
                 const pomText = await loadFile('d.tpom.json');
                 pomData = parseJSONLines(pomText);
-                console.log('✅ POM data loaded successfully:', pomData.length, 'records');
+                addDebugInfo(`POM data loaded: ${pomData.length} records`);
+                
                 if (pomData.length > 0) {
-                    console.log('📋 Sample POM data structure:', Object.keys(pomData[0]));
+                    addDebugInfo(`POM sample fields: ${Object.keys(pomData[0]).join(', ')}`);
                 }
             } catch (error) {
-                console.warn('❌ POM data loading failed:', error.message);
-                console.log('🔍 Trying alternative POM file names...');
+                addDebugInfo(`POM data loading failed: ${error.message}`, true);
                 
                 // Try alternative file names
                 const alternativeNames = ['d.pom.json', 'pom.json', 'd.tpom.jsonl'];
@@ -991,20 +1079,33 @@
                     try {
                         const altText = await loadFile(altName);
                         pomData = parseJSONLines(altText);
-                        console.log('✅ POM data loaded from alternative file:', altName, pomData.length, 'records');
+                        addDebugInfo(`POM data loaded from alternative file ${altName}: ${pomData.length} records`);
                         break;
                     } catch (altError) {
-                        console.log('❌ Alternative file', altName, 'not found');
+                        addDebugInfo(`Alternative POM file ${altName} failed`, true);
                     }
                 }
             }
         }
 
-        // ===== UI UPDATE FUNCTIONS =====
+        // ===== UI UPDATE FUNCTIONS - FIXED FOR CORRECT FIELD NAMES =====
         function updateMetricsCards(salesmanName) {
-            const salesmanChannelData = channelProjData.filter(item => item.szname === salesmanName);
+            addDebugInfo(`Updating metrics for salesman: ${salesmanName}`);
+            
+            // FIXED: Use channelData instead of channelProjData
+            const salesmanChannelData = channelData.filter(item => {
+                const match = item.szname === salesmanName;
+                if (match) {
+                    addDebugInfo(`Found channel record for ${salesmanName}: ${item['Channel Group']}`);
+                }
+                return match;
+            });
+
+            addDebugInfo(`Found ${salesmanChannelData.length} channel records for ${salesmanName}`);
 
             if (salesmanChannelData.length === 0) {
+                addDebugInfo('No channel data found, falling back to JKS data', true);
+                
                 // Fallback to JKS data
                 const salesmanJKSData = jksData.filter(item => item.szname === salesmanName);
                 let totalTarget = 0, totalActual = 0;
@@ -1021,22 +1122,36 @@
                 const totalAchElement = document.getElementById('totalAch');
                 totalAchElement.textContent = `${totalAchPercentage}%`;
                 totalAchElement.className = `achievement ${getAchievementClass(totalAchPercentage)}`;
+                
+                // Clear other cards
+                ['wholesaler', 'retail', 'mti'].forEach(channel => {
+                    document.getElementById(`${channel}Value`).textContent = '0';
+                    document.getElementById(`${channel}Target`).textContent = '0';
+                    document.getElementById(`${channel}Ach`).textContent = '0%';
+                    document.getElementById(`${channel}Ach`).className = 'achievement low';
+                });
                 return;
             }
 
-            // Group by channel
+            // Group by channel using correct field names
             const channelMap = {};
             salesmanChannelData.forEach(item => {
                 const channel = item['Channel Group'];
+                const target = parseFloat(item[' T.MTD'] || 0);  // Note the leading space
+                const actual = parseFloat(item[' A.MTD'] || 0);   // Note the leading space
+                
                 if (!channelMap[channel]) {
                     channelMap[channel] = { target: 0, actual: 0 };
                 }
-                channelMap[channel].target += parseFloat(item[' T.MTD'] || 0);
-                channelMap[channel].actual += parseFloat(item[' A.MTD'] || 0);
+                channelMap[channel].target += target;
+                channelMap[channel].actual += actual;
+                
+                addDebugInfo(`Channel ${channel}: Target=${formatCurrencyIndonesia(target)}, Actual=${formatCurrencyIndonesia(actual)}`);
             });
 
             let totalTarget = 0, totalActual = 0;
 
+            // Update individual channel cards
             ['WHOLESALER', 'RETAIL', 'MTI'].forEach(channel => {
                 const data = channelMap[channel] || { target: 0, actual: 0 };
                 totalTarget += data.target;
@@ -1050,6 +1165,8 @@
                 const achElement = document.getElementById(`${channelKey}Ach`);
                 achElement.textContent = `${achPercentage}%`;
                 achElement.className = `achievement ${getAchievementClass(achPercentage)}`;
+                
+                addDebugInfo(`${channel}: Target=${formatCurrencyIndonesia(data.target)}, Actual=${formatCurrencyIndonesia(data.actual)}, Ach=${achPercentage}%`);
             });
 
             // Update total
@@ -1060,6 +1177,8 @@
             const totalAchElement = document.getElementById('totalAch');
             totalAchElement.textContent = `${totalAchPercentage}%`;
             totalAchElement.className = `achievement ${getAchievementClass(totalAchPercentage)}`;
+            
+            addDebugInfo(`TOTAL: Target=${formatCurrencyIndonesia(totalTarget)}, Actual=${formatCurrencyIndonesia(totalActual)}, Ach=${totalAchPercentage}%`);
         }
 
         function updateJKSTable(salesmanName) {
@@ -1097,27 +1216,32 @@
         }
 
         function updateChannelTable(salesmanName) {
-            const salesmanChannelData = channelProjData.filter(item => item.szname === salesmanName);
+            // FIXED: Use channelData instead of channelProjData
+            const salesmanChannelData = channelData.filter(item => item.szname === salesmanName);
             const tbody = document.getElementById('channelTableBody');
             
             if (salesmanChannelData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><div class="icon">📈</div><div>No channel fokus data available</div></td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><div class="icon">📈</div><div>No channel data available</div></td></tr>';
                 return;
             }
 
             let html = '';
             salesmanChannelData.forEach(item => {
+                const target = parseFloat(item[' T.MTD'] || 0);
+                const actual = parseFloat(item[' A.MTD'] || 0);
                 const gap = parseFloat(item[' Gap MTD'] || 0);
+                const ach = parseFloat(item[' Ach'] || 0);
+                const achPercentage = Math.round(ach * 100);
                 const gapClass = gap >= 0 ? 'value-positive' : 'value-negative';
                 
                 html += `
                     <tr>
                         <td class="sticky-col channel-group-col col-text"><strong>${item['Channel Group'] || ''}</strong></td>
-                        <td class="sticky-col channel-project-col col-medium"><span class="status-badge">${item.Project || ''}</span></td>
-                        <td class="value-currency col-wide">${formatCurrencyIndonesia(item[' T.MTD'])}</td>
-                        <td class="value-currency col-wide">${formatCurrencyIndonesia(item[' A.MTD'])}</td>
-                        <td class="value-currency col-wide ${gapClass}">${gap >= 0 ? '+' : ''}${formatCurrencyIndonesia(gap)}</td>                
-						<td class="value-currency col-wide">${formatCurrencyIndonesia(item[' LY'])}</td>
+                        <td class="value-currency col-wide">${formatCurrencyIndonesia(target)}</td>
+                        <td class="value-currency col-wide">${formatCurrencyIndonesia(actual)}</td>
+                        <td class="value-currency col-wide ${gapClass}">${gap >= 0 ? '+' : ''}${formatCurrencyIndonesia(gap)}</td>
+                        <td class="value-percentage col-wide ${getAchievementClass(achPercentage)}">${achPercentage}%</td>
+                        <td class="value-currency col-wide">${formatCurrencyIndonesia(item[' LY'])}</td>
                         <td class="value-currency col-wide">${formatCurrencyIndonesia(item[' 3LM'])}</td>
                         <td class="value-currency col-wide">${formatCurrencyIndonesia(item[' LM'])}</td>
                     </tr>
@@ -1133,7 +1257,7 @@
             const tbody = document.getElementById('projectTableBody');
             
             if (salesmanProjectData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="empty-state"><div class="icon">🎯</div><div>No project data available</div></td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">🎯</div><div>No project data available</div></td></tr>';
                 return;
             }
 
@@ -1143,9 +1267,6 @@
                 const statusClass = item.Status === 'Lanjut' ? 'status-lanjut' : 
                                   item.Status === 'Gugur' ? 'status-gugur' : 
                                   item.Status === '> 70%' ? 'status-high' : 'status-low' ;
-								  //item.Status === '< 70%' ? 'status-low' :
-								  // achPercentage >= 70 ? 'status-high' : 'status-low';
-                                  // achPercentage >= 70 ? 'status-high' : 'status-low';
                 
                 html += `
                     <tr>
@@ -1207,27 +1328,13 @@
 
         function updatePOMTable(salesmanName) {
             const tbody = document.getElementById('pomTableBody');
-            const debugPanel = document.getElementById('pomDebugPanel');
-            const debugInfo = document.getElementById('pomDebugInfo');
             
-            // Debug logging
-            console.log('🔍 POM Debug Info:');
-            console.log('- POM data length:', pomData.length);
-            console.log('- Salesman name:', salesmanName);
-            console.log('- Current salesman ID:', currentSalesmanId);
-            
-            let debugText = `
-                • Total POM records: ${pomData.length}<br>
-                • Salesman: ${salesmanName}<br>
-                • Salesman ID: ${currentSalesmanId}<br>
-            `;
+            addDebugInfo(`Updating POM table for: ${salesmanName}`);
+            addDebugInfo(`Total POM records available: ${pomData.length}`);
             
             if (pomData.length > 0) {
-                console.log('- Sample POM data:', pomData[0]);
-                console.log('- Available salesman names:', [...new Set(pomData.map(item => item['Nama Salesman']))]);
-                const sampleData = pomData[0];
-                debugText += `• Sample fields: ${Object.keys(sampleData).join(', ')}<br>`;
-                debugText += `• Available names: ${[...new Set(pomData.map(item => item['Nama Salesman']))].slice(0, 5).join(', ')}...<br>`;
+                addDebugInfo(`POM sample record: ${JSON.stringify(pomData[0])}`);
+                addDebugInfo(`Available salesman names in POM: ${[...new Set(pomData.map(item => item['Nama Salesman']))].slice(0, 5).join(', ')}...`);
             }
             
             // Try multiple filtering approaches with CORRECT field names
@@ -1236,14 +1343,20 @@
             
             // Method 1: Exact match using "Nama Salesman" field
             salesmanPOMData = pomData.filter(item => item['Nama Salesman'] === salesmanName);
-            if (salesmanPOMData.length > 0) filterMethod = 'Exact name match (Nama Salesman)';
+            if (salesmanPOMData.length > 0) {
+                filterMethod = 'Exact name match (Nama Salesman)';
+                addDebugInfo(`Method 1 SUCCESS: Found ${salesmanPOMData.length} records`);
+            }
             
             // Method 2: Case insensitive match if Method 1 fails
             if (salesmanPOMData.length === 0) {
                 salesmanPOMData = pomData.filter(item => 
                     (item['Nama Salesman'] || '').toLowerCase() === (salesmanName || '').toLowerCase()
                 );
-                if (salesmanPOMData.length > 0) filterMethod = 'Case insensitive match (Nama Salesman)';
+                if (salesmanPOMData.length > 0) {
+                    filterMethod = 'Case insensitive match (Nama Salesman)';
+                    addDebugInfo(`Method 2 SUCCESS: Found ${salesmanPOMData.length} records`);
+                }
             }
             
             // Method 3: Try with NIK (Employee ID) if we have currentSalesmanId
@@ -1251,7 +1364,10 @@
                 salesmanPOMData = pomData.filter(item => 
                     item.NIK && item.NIK.toString() === currentSalesmanId.toString()
                 );
-                if (salesmanPOMData.length > 0) filterMethod = 'Employee ID match (NIK)';
+                if (salesmanPOMData.length > 0) {
+                    filterMethod = 'Employee ID match (NIK)';
+                    addDebugInfo(`Method 3 SUCCESS: Found ${salesmanPOMData.length} records`);
+                }
             }
             
             // Method 4: Partial name match as last resort
@@ -1260,18 +1376,14 @@
                     (item['Nama Salesman'] || '').includes(salesmanName) || 
                     (salesmanName || '').includes(item['Nama Salesman'] || '')
                 );
-                if (salesmanPOMData.length > 0) filterMethod = 'Partial name match (Nama Salesman)';
+                if (salesmanPOMData.length > 0) {
+                    filterMethod = 'Partial name match (Nama Salesman)';
+                    addDebugInfo(`Method 4 SUCCESS: Found ${salesmanPOMData.length} records`);
+                }
             }
             
-            debugText += `• Filter method: ${filterMethod || 'No match found'}<br>`;
-            debugText += `• Filtered records: ${salesmanPOMData.length}`;
-            
-            console.log('- Filtered POM data length:', salesmanPOMData.length);
-            console.log('- Filter method used:', filterMethod);
-            
-            // Show debug panel
-            if (debugInfo) debugInfo.innerHTML = debugText;
-            if (debugPanel) debugPanel.style.display = 'block';
+            addDebugInfo(`Filter method used: ${filterMethod || 'No match found'}`);
+            addDebugInfo(`Final filtered POM records: ${salesmanPOMData.length}`);
             
             if (salesmanPOMData.length === 0) {
                 tbody.innerHTML = `
@@ -1280,7 +1392,7 @@
                             <div class="icon">📋</div>
                             <div>No POM data found for ${salesmanName}</div>
                             <small style="color: #64748b; margin-top: 8px; display: block;">
-                                Check Console (F12) for detailed debug info
+                                Check Debug Panel above for detailed info
                             </small>
                         </td>
                     </tr>
@@ -1323,12 +1435,7 @@
             });
 
             tbody.innerHTML = html;
-            console.log('✅ POM table updated with', salesmanPOMData.length, 'records');
-            
-            // Hide debug panel if data found
-            if (debugPanel && salesmanPOMData.length > 0) {
-                debugPanel.style.display = 'none';
-            }
+            addDebugInfo(`POM table updated successfully with ${salesmanPOMData.length} records`);
         }
 
         // ===== STICKY COLUMN ADJUSTMENT =====
@@ -1370,9 +1477,11 @@
                     throw new Error('No salesman ID specified');
                 }
 
+                addDebugInfo(`Loading performance data for salesman ID: ${currentSalesmanId}`);
+
                 await loadJSONData();
                 
-                // Find salesman
+                // Find salesman in JKS data first
                 let salesmanJKSData = jksData.find(item => 
                     item.szEmployeeId.toString() === currentSalesmanId.toString() ||
                     Number(item.szEmployeeId) === Number(currentSalesmanId) ||
@@ -1380,27 +1489,38 @@
                 );
 
                 if (!salesmanJKSData) {
-                    throw new Error(`Salesman with ID ${currentSalesmanId} not found`);
+                    // Try finding in channel data
+                    salesmanJKSData = channelData.find(item => 
+                        item.szEmployeeId.toString() === currentSalesmanId.toString() ||
+                        Number(item.szEmployeeId) === Number(currentSalesmanId) ||
+                        item.szEmployeeId == currentSalesmanId
+                    );
+                }
+
+                if (!salesmanJKSData) {
+                    throw new Error(`Salesman with ID ${currentSalesmanId} not found in any data source`);
                 }
 
                 currentSalesmanName = salesmanJKSData.szname;
+                addDebugInfo(`Salesman found: ${currentSalesmanName}`);
+                
                 document.getElementById('salesmanName').textContent = currentSalesmanName;
                 document.getElementById('backBtn').href = `salesman-detail.html?id=${currentSalesmanId}`;
 
                 // Show/hide tabs based on data availability
-                ['channel', 'project', 'pareto', 'pom'].forEach(tabName => {
+                const tabAvailability = {
+                    'channel': channelData.length > 0,
+                    'project': projectData.length > 0,
+                    'pareto': paretoData.length > 0,
+                    'pom': pomData.length > 0
+                };
+                
+                Object.entries(tabAvailability).forEach(([tabName, hasData]) => {
                     const tab = document.querySelector(`[onclick="switchTab('${tabName}')"]`);
-                    
-                    // For POM, always show the tab for debugging purposes
-                    if (tabName === 'pom') {
-                        if (tab) tab.style.display = 'block';
-                        return;
+                    if (tab) {
+                        tab.style.display = hasData ? 'block' : 'none';
+                        addDebugInfo(`Tab ${tabName}: ${hasData ? 'Available' : 'Hidden (no data)'}`);
                     }
-                    
-                    const hasData = tabName === 'channel' ? channelProjData.length > 0 :
-                                   tabName === 'project' ? projectData.length > 0 :
-                                   tabName === 'pareto' ? paretoData.length > 0 : false;
-                    if (tab) tab.style.display = hasData ? 'block' : 'none';
                 });
 
                 // Update all sections
@@ -1413,9 +1533,12 @@
                 
                 showLoading(false);
                 showMainContent(true);
+                
+                addDebugInfo('Performance data loading completed successfully');
 
             } catch (error) {
                 console.error('Error loading performance data:', error);
+                addDebugInfo(`CRITICAL ERROR: ${error.message}`, true);
                 showLoading(false);
                 showError(true, error.message);
             }
