@@ -277,6 +277,29 @@
             background: rgba(102, 126, 234, 0.05);
         }
 
+        /* Total row styling */
+        .total-row {
+            background: #f1f5f9 !important;
+            font-weight: 700;
+            border-top: 2px solid #667eea;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .total-row td {
+            background: #f1f5f9 !important;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .total-row:hover {
+            background: #e2e8f0 !important;
+        }
+
+        .total-row .sticky-col {
+            background: #e2e8f0 !important;
+            font-weight: 700;
+        }
+
         /* Sticky Column Auto-Width */
         .sticky-col {
             position: sticky;
@@ -318,12 +341,45 @@
             font-family: 'Courier New', monospace; 
             text-align: right;
             min-width: 80px;
-			color: #000000 !important;  /* TAMBAHKAN INI - Hitam */
+            color: #000000 !important;
         }
         .value-percentage { 
             font-weight: 600; 
             text-align: center;
             min-width: 60px;
+        }
+
+        /* Updated Gap styling */
+        .gap-positive { 
+            color: #059669 !important; 
+            font-weight: 600; 
+        }
+        .gap-negative { 
+            color: #dc2626 !important; 
+            font-weight: 600; 
+        }
+
+        /* Updated Achievement styling */
+        .ach-high { 
+            background: rgba(16, 185, 129, 0.1); 
+            color: #059669 !important; 
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 6px;
+        }
+        .ach-medium { 
+            background: rgba(245, 158, 11, 0.1); 
+            color: #d97706 !important; 
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 6px;
+        }
+        .ach-low { 
+            background: rgba(239, 68, 68, 0.1); 
+            color: #dc2626 !important; 
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 6px;
         }
 
         /* Status badges */
@@ -540,38 +596,6 @@
             font-weight: 500;
         }
 
-        /* Debug Panel */
-        .debug-panel {
-            margin: 16px;
-            padding: 12px;
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 11px;
-            font-family: 'Courier New', monospace;
-        }
-
-        .debug-panel h4 {
-            color: #1e293b;
-            margin-bottom: 8px;
-            font-family: 'Segoe UI', sans-serif;
-        }
-
-        .debug-panel .debug-item {
-            margin-bottom: 4px;
-            color: #64748b;
-        }
-
-        .debug-panel .debug-success {
-            color: #059669;
-            font-weight: 600;
-        }
-
-        .debug-panel .debug-error {
-            color: #dc2626;
-            font-weight: 600;
-        }
-
         /* Responsive */
         @media (max-width: 380px) {
             .metrics-grid { gap: 8px; }
@@ -695,12 +719,6 @@
             <button onclick="loadPerformanceData()" style="margin-top: 10px; padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer;">Retry</button>
         </div>
 
-        <!-- Debug Panel -->
-        <div class="debug-panel" id="debugPanel" style="display: none;">
-            <h4>🔍 Data Loading Debug Info</h4>
-            <div id="debugContent"></div>
-        </div>
-
         <!-- Main Content -->
         <div id="mainContent" style="display: none;">
             <!-- Metrics Cards -->
@@ -765,10 +783,10 @@
                                 <tr>
                                     <th class="sticky-col jks-hari-col col-wide">Hari JKS</th>
                                     <th class="col-narrow">CR</th>
+									<th class="col-wide value-currency">Gap</th>
                                     <th class="col-wide value-currency">Target</th>
                                     <th class="col-wide value-currency">Actual</th>
                                     <th class="col-wide value-percentage">Ach%</th>
-                                    <th class="col-wide value-currency">Gap</th>
                                     <th class="col-wide value-percentage">vs LM</th>
                                 </tr>
                             </thead>
@@ -900,31 +918,12 @@
     <script>
         // ===== GLOBAL VARIABLES =====
         let jksData = [];
-        let channelData = [];  // CHANGED: from channelProjData to channelData
+        let channelData = [];
         let projectData = [];
         let paretoData = [];
         let pomData = [];
         let currentSalesmanId = null;
         let currentSalesmanName = null;
-
-        // ===== DEBUG HELPER =====
-        function addDebugInfo(message, isError = false) {
-            const debugContent = document.getElementById('debugContent');
-            if (debugContent) {
-                const className = isError ? 'debug-error' : 'debug-success';
-                debugContent.innerHTML += `<div class="debug-item ${className}">• ${message}</div>`;
-            }
-            console.log(isError ? '❌' : '✅', message);
-        }
-
-        function showDebugPanel() {
-            document.getElementById('debugPanel').style.display = 'block';
-        }
-
-        function clearDebugInfo() {
-            const debugContent = document.getElementById('debugContent');
-            if (debugContent) debugContent.innerHTML = '';
-        }
 
         // ===== UTILITY FUNCTIONS =====
         function formatCurrencyIndonesia(value) {
@@ -944,9 +943,13 @@
         }
 
         function getAchievementClass(percentage) {
-            if (percentage >= 100) return 'high';
-            if (percentage >= 70) return 'medium';
-            return 'low';
+            if (percentage >= 100) return 'ach-high';
+            if (percentage >= 90) return 'ach-medium';
+            return 'ach-low';
+        }
+
+        function getGapClass(gap) {
+            return parseFloat(gap) <= 0 ? 'gap-negative' : 'gap-positive';
         }
 
         function getUrlParameter(name) {
@@ -955,11 +958,8 @@
             return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
         }
 
-        // ===== DATA LOADING - FIXED FOR d.channel.json =====
+        // ===== DATA LOADING =====
         async function loadJSONData() {
-            clearDebugInfo();
-            showDebugPanel();
-            
             const possiblePaths = [
                 'data/',
                 './data/',
@@ -999,114 +999,64 @@
                     .filter(item => item !== null);
             }
 
-            // Load all data files with proper debugging
-            
-            // 1. Load JKS data
+            // Load all data files
             try {
                 const jksText = await loadFile('d.jks.json');
                 jksData = parseJSONLines(jksText);
-                addDebugInfo(`JKS data loaded: ${jksData.length} records`);
             } catch (error) {
-                addDebugInfo(`JKS data loading failed: ${error.message}`, true);
+                console.error('JKS data loading failed:', error.message);
             }
 
-            // 2. Load Channel data - FIXED TO USE d.channel.json
             try {
                 const channelText = await loadFile('d.channel.json');
                 channelData = parseJSONLines(channelText);
-                addDebugInfo(`Channel data loaded: ${channelData.length} records from d.channel.json`);
-                
-                if (channelData.length > 0) {
-                    const sampleRecord = channelData[0];
-                    addDebugInfo(`Channel sample fields: ${Object.keys(sampleRecord).join(', ')}`);
-                    
-                    // Check for expected fields
-                    const expectedFields = ['szEmployeeId', 'szname', 'Channel Group', ' T.MTD', ' A.MTD', ' Gap MTD', ' Ach'];
-                    const hasExpectedFields = expectedFields.every(field => field in sampleRecord);
-                    
-                    if (hasExpectedFields) {
-                        addDebugInfo('Channel data structure validation: PASSED ✓');
-                    } else {
-                        addDebugInfo('Channel data structure validation: Some fields missing', true);
-                    }
-                }
             } catch (error) {
-                addDebugInfo(`Channel data loading failed: ${error.message}`, true);
-                
-                // Try alternative names for backward compatibility
+                console.error('Channel data loading failed:', error.message);
                 try {
                     const altChannelText = await loadFile('d.channelproj.json');
                     channelData = parseJSONLines(altChannelText);
-                    addDebugInfo(`Channel data loaded from alternative file: ${channelData.length} records`);
                 } catch (altError) {
-                    addDebugInfo('Alternative channel file also failed', true);
+                    console.error('Alternative channel file also failed');
                 }
             }
 
-            // 3. Load Project data
             try {
                 const projectText = await loadFile('d.project.json');
                 projectData = parseJSONLines(projectText);
-                addDebugInfo(`Project data loaded: ${projectData.length} records`);
             } catch (error) {
-                addDebugInfo(`Project data loading failed: ${error.message}`, true);
+                console.error('Project data loading failed:', error.message);
             }
 
-            // 4. Load Pareto data
             try {
                 const paretoText = await loadFile('d.30pareto.json');
                 paretoData = parseJSONLines(paretoText);
-                addDebugInfo(`Pareto data loaded: ${paretoData.length} records`);
             } catch (error) {
-                addDebugInfo(`Pareto data loading failed: ${error.message}`, true);
+                console.error('Pareto data loading failed:', error.message);
             }
 
-            // 5. Load POM data
             try {
                 const pomText = await loadFile('d.tpom.json');
                 pomData = parseJSONLines(pomText);
-                addDebugInfo(`POM data loaded: ${pomData.length} records`);
-                
-                if (pomData.length > 0) {
-                    addDebugInfo(`POM sample fields: ${Object.keys(pomData[0]).join(', ')}`);
-                }
             } catch (error) {
-                addDebugInfo(`POM data loading failed: ${error.message}`, true);
-                
-                // Try alternative file names
+                console.error('POM data loading failed:', error.message);
                 const alternativeNames = ['d.pom.json', 'pom.json', 'd.tpom.jsonl'];
                 for (const altName of alternativeNames) {
                     try {
                         const altText = await loadFile(altName);
                         pomData = parseJSONLines(altText);
-                        addDebugInfo(`POM data loaded from alternative file ${altName}: ${pomData.length} records`);
                         break;
                     } catch (altError) {
-                        addDebugInfo(`Alternative POM file ${altName} failed`, true);
+                        continue;
                     }
                 }
             }
         }
 
-        // ===== UI UPDATE FUNCTIONS - FIXED FOR CORRECT FIELD NAMES =====
+        // ===== UI UPDATE FUNCTIONS =====
         function updateMetricsCards(salesmanName) {
-            addDebugInfo(`Updating metrics for salesman: ${salesmanName}`);
-            
-            // FIXED: Use channelData instead of channelProjData
-            const salesmanChannelData = channelData.filter(item => {
-                const match = item.szname === salesmanName;
-                if (match) {
-                    addDebugInfo(`Found channel record for ${salesmanName}: ${item['Channel Group']}`);
-                }
-                return match;
-            });
-
-            addDebugInfo(`Found ${salesmanChannelData.length} channel records for ${salesmanName}`);
+            const salesmanChannelData = channelData.filter(item => item.szname === salesmanName);
 
             if (salesmanChannelData.length === 0) {
-                addDebugInfo('No channel data found, falling back to JKS data', true);
-                
-                // Fallback to JKS data
                 const salesmanJKSData = jksData.filter(item => item.szname === salesmanName);
                 let totalTarget = 0, totalActual = 0;
                 
@@ -1121,9 +1071,8 @@
                 const totalAchPercentage = calculateAchievementPercentage(totalTarget, totalActual);
                 const totalAchElement = document.getElementById('totalAch');
                 totalAchElement.textContent = `${totalAchPercentage}%`;
-                totalAchElement.className = `achievement ${getAchievementClass(totalAchPercentage)}`;
+                totalAchElement.className = `achievement ${getAchievementClass(totalAchPercentage).replace('ach-', '')}`;
                 
-                // Clear other cards
                 ['wholesaler', 'retail', 'mti'].forEach(channel => {
                     document.getElementById(`${channel}Value`).textContent = '0';
                     document.getElementById(`${channel}Target`).textContent = '0';
@@ -1133,25 +1082,21 @@
                 return;
             }
 
-            // Group by channel using correct field names
             const channelMap = {};
             salesmanChannelData.forEach(item => {
                 const channel = item['Channel Group'];
-                const target = parseFloat(item[' T.MTD'] || 0);  // Note the leading space
-                const actual = parseFloat(item[' A.MTD'] || 0);   // Note the leading space
+                const target = parseFloat(item[' T.MTD'] || 0);
+                const actual = parseFloat(item[' A.MTD'] || 0);
                 
                 if (!channelMap[channel]) {
                     channelMap[channel] = { target: 0, actual: 0 };
                 }
                 channelMap[channel].target += target;
                 channelMap[channel].actual += actual;
-                
-                addDebugInfo(`Channel ${channel}: Target=${formatCurrencyIndonesia(target)}, Actual=${formatCurrencyIndonesia(actual)}`);
             });
 
             let totalTarget = 0, totalActual = 0;
 
-            // Update individual channel cards
             ['WHOLESALER', 'RETAIL', 'MTI'].forEach(channel => {
                 const data = channelMap[channel] || { target: 0, actual: 0 };
                 totalTarget += data.target;
@@ -1164,21 +1109,16 @@
                 const achPercentage = calculateAchievementPercentage(data.target, data.actual);
                 const achElement = document.getElementById(`${channelKey}Ach`);
                 achElement.textContent = `${achPercentage}%`;
-                achElement.className = `achievement ${getAchievementClass(achPercentage)}`;
-                
-                addDebugInfo(`${channel}: Target=${formatCurrencyIndonesia(data.target)}, Actual=${formatCurrencyIndonesia(data.actual)}, Ach=${achPercentage}%`);
+                achElement.className = `achievement ${getAchievementClass(achPercentage).replace('ach-', '')}`;
             });
 
-            // Update total
             document.getElementById('totalValue').textContent = formatCurrencyIndonesia(totalActual);
             document.getElementById('totalTarget').textContent = formatCurrencyIndonesia(totalTarget);
             
             const totalAchPercentage = calculateAchievementPercentage(totalTarget, totalActual);
             const totalAchElement = document.getElementById('totalAch');
             totalAchElement.textContent = `${totalAchPercentage}%`;
-            totalAchElement.className = `achievement ${getAchievementClass(totalAchPercentage)}`;
-            
-            addDebugInfo(`TOTAL: Target=${formatCurrencyIndonesia(totalTarget)}, Actual=${formatCurrencyIndonesia(totalActual)}, Ach=${totalAchPercentage}%`);
+            totalAchElement.className = `achievement ${getAchievementClass(totalAchPercentage).replace('ach-', '')}`;
         }
 
         function updateJKSTable(salesmanName) {
@@ -1190,13 +1130,37 @@
                 return;
             }
 
-            let html = '';
+            // Calculate totals
+            let totalCR = 0, totalTarget = 0, totalActual = 0, totalGap = 0;
+            let totalVsLM = 0;
+
+            salesmanJKSData.forEach(item => {
+                totalCR += parseFloat(item['CR on JKS'] || 0);
+                totalTarget += parseFloat(item[' T.MTD'] || 0);
+                totalActual += parseFloat(item[' A.MTD'] || 0);
+                totalGap += parseFloat(item[' Gap MTD'] || 0);
+                totalVsLM += parseFloat(item[' vs LY'] || 0);
+            });
+
+            const totalAchPercentage = calculateAchievementPercentage(totalTarget, totalActual);
+            const avgVsLM = Math.round(totalVsLM / salesmanJKSData.length * 100);
+
+            let html = `
+                <tr class="total-row">
+                    <td class="sticky-col jks-hari-col"><strong>TOTAL</strong></td>
+                    <td class="col-narrow"><strong>${totalCR}</strong></td>
+					<td class="value-currency col-wide ${getGapClass(totalGap)}"><strong>${totalGap >= 0 ? '+' : ''}${formatCurrencyIndonesia(totalGap)}</strong></td>
+                    <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(totalTarget)}</strong></td>
+                    <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(totalActual)}</strong></td>
+                    <td class="value-percentage col-medium ${getAchievementClass(totalAchPercentage)}"><strong>${totalAchPercentage}%</strong></td>                 
+                    <td class="value-percentage col-medium ${totalGap >= 0 ? 'gap-positive' : 'gap-negative'}"><strong>${avgVsLM >= 0 ? '+' : ''}${avgVsLM}%</strong></td>
+                </tr>
+            `;
+
             salesmanJKSData.forEach(item => {
                 const achPercentage = Math.round((item[' Ach'] || 0) * 100);
                 const gap = parseFloat(item[' Gap MTD'] || 0);
-                const gapClass = gap >= 0 ? 'value-positive' : 'value-negative';
                 const vsLY = Math.round((item[' vs LY'] || 0) * 100);
-                const vsLYClass = vsLY >= 0 ? 'value-positive' : 'value-negative';
                 
                 html += `
                     <tr>
@@ -1205,8 +1169,8 @@
                         <td class="value-currency col-wide">${formatCurrencyIndonesia(item[' T.MTD'])}</td>
                         <td class="value-currency col-wide">${formatCurrencyIndonesia(item[' A.MTD'])}</td>
                         <td class="value-percentage col-medium ${getAchievementClass(achPercentage)}">${achPercentage}%</td>
-                        <td class="value-currency col-wide ${gapClass}">${gap >= 0 ? '+' : ''}${formatCurrencyIndonesia(gap)}</td>
-                        <td class="value-percentage col-medium ${vsLYClass}">${vsLY >= 0 ? '+' : ''}${vsLY}%</td>
+                        <td class="value-currency col-wide ${getGapClass(gap)}">${gap >= 0 ? '+' : ''}${formatCurrencyIndonesia(gap)}</td>
+                        <td class="value-percentage col-medium ${gap >= 0 ? 'gap-positive' : 'gap-negative'}">${vsLY >= 0 ? '+' : ''}${vsLY}%</td>
                     </tr>
                 `;
             });
@@ -1216,7 +1180,6 @@
         }
 
         function updateChannelTable(salesmanName) {
-            // FIXED: Use channelData instead of channelProjData
             const salesmanChannelData = channelData.filter(item => item.szname === salesmanName);
             const tbody = document.getElementById('channelTableBody');
             
@@ -1225,21 +1188,47 @@
                 return;
             }
 
-            let html = '';
+            // Calculate totals
+            let totalTarget = 0, totalActual = 0, totalGap = 0;
+            let totalLY = 0, total3LM = 0, totalLM = 0;
+
+            salesmanChannelData.forEach(item => {
+                totalTarget += parseFloat(item[' T.MTD'] || 0);
+                totalActual += parseFloat(item[' A.MTD'] || 0);
+                totalGap += parseFloat(item[' Gap MTD'] || 0);
+                totalLY += parseFloat(item[' LY'] || 0);
+                total3LM += parseFloat(item[' 3LM'] || 0);
+                totalLM += parseFloat(item[' LM'] || 0);
+            });
+
+            const totalAchPercentage = calculateAchievementPercentage(totalTarget, totalActual);
+
+            let html = `
+                <tr class="total-row">
+                    <td class="sticky-col channel-group-col col-text"><strong>TOTAL</strong></td>
+                    <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(totalTarget)}</strong></td>
+                    <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(totalActual)}</strong></td>
+                    <td class="value-currency col-wide ${getGapClass(totalGap)}"><strong>${totalGap >= 0 ? '+' : ''}${formatCurrencyIndonesia(totalGap)}</strong></td>
+                    <td class="value-percentage col-wide ${getAchievementClass(totalAchPercentage)}"><strong>${totalAchPercentage}%</strong></td>
+                    <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(totalLY)}</strong></td>
+                    <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(total3LM)}</strong></td>
+                    <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(totalLM)}</strong></td>
+                </tr>
+            `;
+
             salesmanChannelData.forEach(item => {
                 const target = parseFloat(item[' T.MTD'] || 0);
                 const actual = parseFloat(item[' A.MTD'] || 0);
                 const gap = parseFloat(item[' Gap MTD'] || 0);
                 const ach = parseFloat(item[' Ach'] || 0);
                 const achPercentage = Math.round(ach * 100);
-                const gapClass = gap >= 0 ? 'value-positive' : 'value-negative';
                 
                 html += `
                     <tr>
                         <td class="sticky-col channel-group-col col-text"><strong>${item['Channel Group'] || ''}</strong></td>
                         <td class="value-currency col-wide">${formatCurrencyIndonesia(target)}</td>
                         <td class="value-currency col-wide">${formatCurrencyIndonesia(actual)}</td>
-                        <td class="value-currency col-wide ${gapClass}">${gap >= 0 ? '+' : ''}${formatCurrencyIndonesia(gap)}</td>
+                        <td class="value-currency col-wide ${getGapClass(gap)}">${gap >= 0 ? '+' : ''}${formatCurrencyIndonesia(gap)}</td>
                         <td class="value-percentage col-wide ${getAchievementClass(achPercentage)}">${achPercentage}%</td>
                         <td class="value-currency col-wide">${formatCurrencyIndonesia(item[' LY'])}</td>
                         <td class="value-currency col-wide">${formatCurrencyIndonesia(item[' 3LM'])}</td>
@@ -1261,9 +1250,34 @@
                 return;
             }
 
-            let html = '';
+            // Calculate totals
+            let totalTMTD = 0, totalAMTD = 0, totalGapMTD = 0, totalGapQ3 = 0;
+
+            salesmanProjectData.forEach(item => {
+                totalTMTD += parseFloat(item['T.MTD'] || 0);
+                totalAMTD += parseFloat(item['A.MTD'] || 0);
+                totalGapMTD += parseFloat(item['Gap MTD'] || 0);
+                totalGapQ3 += parseFloat(item['Gap Q3'] || 0);
+            });
+
+            const totalAchPercentage = calculateAchievementPercentage(totalTMTD, totalAMTD);
+
+            let html = `
+                <tr class="total-row">
+                    <td class="sticky-col project-customer-col col-text"><strong>TOTAL</strong></td>
+                    <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(totalTMTD)}</strong></td>
+                    <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(totalAMTD)}</strong></td>
+                    <td class="value-currency col-wide ${getGapClass(totalGapMTD)}"><strong>${formatCurrencyIndonesia(totalGapMTD)}</strong></td>
+                    <td class="value-percentage col-medium ${getAchievementClass(totalAchPercentage)}"><strong>${totalAchPercentage}%</strong></td>
+                    <td class="value-currency col-wide ${getGapClass(totalGapQ3)}"><strong>${formatCurrencyIndonesia(totalGapQ3)}</strong></td>
+                    <td class="col-medium">-</td>
+                </tr>
+            `;
+
             salesmanProjectData.forEach(item => {
                 const achPercentage = Math.round((item['Ach MTD'] || 0) * 100);
+                const gapMTD = parseFloat(item['Gap MTD'] || 0);
+                const gapQ3 = parseFloat(item['Gap Q3'] || 0);
                 const statusClass = item.Status === 'Lanjut' ? 'status-lanjut' : 
                                   item.Status === 'Gugur' ? 'status-gugur' : 
                                   item.Status === '> 70%' ? 'status-high' : 'status-low' ;
@@ -1276,9 +1290,9 @@
                         </td>
                         <td class="value-currency col-wide">${formatCurrencyIndonesia(item['T.MTD'])}</td>
                         <td class="value-currency col-wide">${formatCurrencyIndonesia(item['A.MTD'])}</td>
-						<td class="value-currency col-wide">${formatCurrencyIndonesia(item['Gap MTD'])}</td>
+                        <td class="value-currency col-wide ${getGapClass(gapMTD)}">${formatCurrencyIndonesia(gapMTD)}</td>
                         <td class="value-percentage col-medium ${getAchievementClass(achPercentage)}">${achPercentage}%</td>
-						<td class="value-currency col-wide">${formatCurrencyIndonesia(item['Gap Q3'])}</td>
+                        <td class="value-currency col-wide ${getGapClass(gapQ3)}">${formatCurrencyIndonesia(gapQ3)}</td>
                         <td class="col-medium"><span class="status-badge ${statusClass}">${item.Status || ''}</span></td>
                     </tr>
                 `;
@@ -1298,10 +1312,36 @@
                 return;
             }
 
-            let html = '';
+            // Calculate totals
+            let totalGapMTD = 0, totalTarget = 0, totalActMTD = 0;
+            let totalLM = 0, totalLY = 0, total3LM = 0, totalMax = 0;
+
+            salesmanParetoData.forEach(item => {
+                totalGapMTD += parseFloat(item[' Gap MTD'] || 0);
+                totalTarget += parseFloat(item[' T.MTD'] || 0);
+                totalActMTD += parseFloat(item[' A.MTD'] || 0);
+                totalLM += parseFloat(item[' LM'] || 0);
+                totalLY += parseFloat(item[' LY'] || 0);
+                total3LM += parseFloat(item[' 3LM'] || 0);
+                totalMax += parseFloat(item[' Max'] || 0);
+            });
+
+            let html = `
+                <tr class="total-row">
+                    <td class="sticky-col pareto-rank-col col-narrow">-</td>
+                    <td class="sticky-col pareto-customer-col col-text"><strong>TOTAL</strong></td>
+                    <td class="value-currency col-wide ${getGapClass(totalGapMTD)}"><strong>${totalGapMTD >= 0 ? '+' : ''}${formatCurrencyIndonesia(totalGapMTD)}</strong></td>
+                    <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(totalTarget)}</strong></td>
+                    <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(totalActMTD)}</strong></td>
+                    <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(totalLM)}</strong></td>
+                    <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(totalLY)}</strong></td>
+                    <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(total3LM)}</strong></td>
+                    <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(totalMax)}</strong></td>
+                </tr>
+            `;
+
             salesmanParetoData.forEach(item => {
                 const gap = parseFloat(item[' Gap MTD'] || 0);
-                const gapClass = gap >= 0 ? 'value-positive' : 'value-negative';
                 
                 html += `
                     <tr>
@@ -1310,14 +1350,13 @@
                             <strong style="font-size: 10px;">${(item['Nama Pelanggan'] || '').substring(0, 25)}</strong><br>
                             <small style="color: #64748b; font-size: 9px;">${item['Hari JKS'] || ''}</small>
                         </td>
-						<td class="value-currency col-wide ${gapClass}">${gap >= 0 ? '+' : ''}${formatCurrencyIndonesia(gap)}</td>
+                        <td class="value-currency col-wide ${getGapClass(gap)}">${gap >= 0 ? '+' : ''}${formatCurrencyIndonesia(gap)}</td>
                         <td class="value-currency col-wide">${formatCurrencyIndonesia(item[' T.MTD'])}</td>
                         <td class="value-currency col-wide">${formatCurrencyIndonesia(item[' A.MTD'])}</td>
                         <td class="value-currency col-wide">${formatCurrencyIndonesia(item[' LM'])}</td>
                         <td class="value-currency col-wide">${formatCurrencyIndonesia(item[' LY'])}</td>
                         <td class="value-currency col-wide">${formatCurrencyIndonesia(item[' 3LM'])}</td>
                         <td class="value-currency col-wide">${formatCurrencyIndonesia(item[' Max'])}</td>
-
                     </tr>
                 `;
             });
@@ -1329,61 +1368,29 @@
         function updatePOMTable(salesmanName) {
             const tbody = document.getElementById('pomTableBody');
             
-            addDebugInfo(`Updating POM table for: ${salesmanName}`);
-            addDebugInfo(`Total POM records available: ${pomData.length}`);
-            
-            if (pomData.length > 0) {
-                addDebugInfo(`POM sample record: ${JSON.stringify(pomData[0])}`);
-                addDebugInfo(`Available salesman names in POM: ${[...new Set(pomData.map(item => item['Nama Salesman']))].slice(0, 5).join(', ')}...`);
-            }
-            
-            // Try multiple filtering approaches with CORRECT field names
             let salesmanPOMData = [];
-            let filterMethod = '';
             
-            // Method 1: Exact match using "Nama Salesman" field
+            // Try multiple filtering approaches
             salesmanPOMData = pomData.filter(item => item['Nama Salesman'] === salesmanName);
-            if (salesmanPOMData.length > 0) {
-                filterMethod = 'Exact name match (Nama Salesman)';
-                addDebugInfo(`Method 1 SUCCESS: Found ${salesmanPOMData.length} records`);
-            }
             
-            // Method 2: Case insensitive match if Method 1 fails
             if (salesmanPOMData.length === 0) {
                 salesmanPOMData = pomData.filter(item => 
                     (item['Nama Salesman'] || '').toLowerCase() === (salesmanName || '').toLowerCase()
                 );
-                if (salesmanPOMData.length > 0) {
-                    filterMethod = 'Case insensitive match (Nama Salesman)';
-                    addDebugInfo(`Method 2 SUCCESS: Found ${salesmanPOMData.length} records`);
-                }
             }
             
-            // Method 3: Try with NIK (Employee ID) if we have currentSalesmanId
             if (salesmanPOMData.length === 0 && currentSalesmanId) {
                 salesmanPOMData = pomData.filter(item => 
                     item.NIK && item.NIK.toString() === currentSalesmanId.toString()
                 );
-                if (salesmanPOMData.length > 0) {
-                    filterMethod = 'Employee ID match (NIK)';
-                    addDebugInfo(`Method 3 SUCCESS: Found ${salesmanPOMData.length} records`);
-                }
             }
             
-            // Method 4: Partial name match as last resort
             if (salesmanPOMData.length === 0 && salesmanName) {
                 salesmanPOMData = pomData.filter(item => 
                     (item['Nama Salesman'] || '').includes(salesmanName) || 
                     (salesmanName || '').includes(item['Nama Salesman'] || '')
                 );
-                if (salesmanPOMData.length > 0) {
-                    filterMethod = 'Partial name match (Nama Salesman)';
-                    addDebugInfo(`Method 4 SUCCESS: Found ${salesmanPOMData.length} records`);
-                }
             }
-            
-            addDebugInfo(`Filter method used: ${filterMethod || 'No match found'}`);
-            addDebugInfo(`Final filtered POM records: ${salesmanPOMData.length}`);
             
             if (salesmanPOMData.length === 0) {
                 tbody.innerHTML = `
@@ -1391,23 +1398,42 @@
                         <td colspan="6" class="empty-state">
                             <div class="icon">📋</div>
                             <div>No POM data found for ${salesmanName}</div>
-                            <small style="color: #64748b; margin-top: 8px; display: block;">
-                                Check Debug Panel above for detailed info
-                            </small>
                         </td>
                     </tr>
                 `;
                 return;
             }
 
-            let html = '';
+            // Calculate totals
+            let totalCR = 0, totalTarget = 0, totalActual = 0, totalGap = 0;
+            let totalAchSum = 0;
+
+            salesmanPOMData.forEach(item => {
+                totalCR += parseFloat(item['CR JKS'] || 0);
+                totalTarget += parseFloat(item['T.POMAdj'] || 0);
+                totalActual += parseFloat(item['A.POM'] || 0);
+                const gap = parseFloat(item['A.POM'] || 0) - parseFloat(item['T.POMAdj'] || 0);
+                totalGap += gap;
+                totalAchSum += parseFloat(item['Ach_POM'] || 0);
+            });
+
+            const avgAchPercentage = Math.round((totalAchSum / salesmanPOMData.length) * 100);
+
+            let html = `
+                <tr class="total-row">
+                    <td class="pom-sku-col"><strong>TOTAL</strong></td>
+                    <td><strong>${totalCR}</strong></td>
+                    <td><strong>${formatCurrencyIndonesia(totalTarget)}</strong></td>
+                    <td><strong>${formatCurrencyIndonesia(totalActual)}</strong></td>
+                    <td class="${getAchievementClass(avgAchPercentage)}"><strong>${avgAchPercentage}%</strong></td>
+                    <td class="${getGapClass(totalGap)}"><strong>${totalGap >= 0 ? '+' : ''}${formatCurrencyIndonesia(totalGap)}</strong></td>
+                </tr>
+            `;
+
             salesmanPOMData.forEach(item => {
                 const target = parseFloat(item['T.POMAdj'] || 0);
                 const actual = parseFloat(item['A.POM'] || 0);
                 const gap = actual - target;
-                const gapClass = gap >= 0 ? 'value-positive' : 'value-negative';
-                
-                // Use Ach_POM field from the actual data structure
                 const achPercentage = Math.round((item['Ach_POM'] || 0) * 100);
                 
                 html += `
@@ -1415,27 +1441,16 @@
                         <td class="pom-sku-col">
                             <strong style="font-size: 9px;">${item.SKU || 'N/A'}</strong>
                         </td>
-                        <td>
-                            ${item['CR JKS'] || 0}
-                        </td>
-                        <td>
-                            ${formatCurrencyIndonesia(target)}
-                        </td>
-                        <td>
-                            ${formatCurrencyIndonesia(actual)}
-                        </td>
-                        <td class="${getAchievementClass(achPercentage)}">
-                            ${achPercentage}%
-                        </td>
-                        <td class="${gapClass}">
-                            ${gap >= 0 ? '+' : ''}${formatCurrencyIndonesia(gap)}
-                        </td>
+                        <td>${item['CR JKS'] || 0}</td>
+                        <td>${formatCurrencyIndonesia(target)}</td>
+                        <td>${formatCurrencyIndonesia(actual)}</td>
+                        <td class="${getAchievementClass(achPercentage)}">${achPercentage}%</td>
+                        <td class="${getGapClass(gap)}">${gap >= 0 ? '+' : ''}${formatCurrencyIndonesia(gap)}</td>
                     </tr>
                 `;
             });
 
             tbody.innerHTML = html;
-            addDebugInfo(`POM table updated successfully with ${salesmanPOMData.length} records`);
         }
 
         // ===== STICKY COLUMN ADJUSTMENT =====
@@ -1477,11 +1492,8 @@
                     throw new Error('No salesman ID specified');
                 }
 
-                addDebugInfo(`Loading performance data for salesman ID: ${currentSalesmanId}`);
-
                 await loadJSONData();
                 
-                // Find salesman in JKS data first
                 let salesmanJKSData = jksData.find(item => 
                     item.szEmployeeId.toString() === currentSalesmanId.toString() ||
                     Number(item.szEmployeeId) === Number(currentSalesmanId) ||
@@ -1489,7 +1501,6 @@
                 );
 
                 if (!salesmanJKSData) {
-                    // Try finding in channel data
                     salesmanJKSData = channelData.find(item => 
                         item.szEmployeeId.toString() === currentSalesmanId.toString() ||
                         Number(item.szEmployeeId) === Number(currentSalesmanId) ||
@@ -1502,7 +1513,6 @@
                 }
 
                 currentSalesmanName = salesmanJKSData.szname;
-                addDebugInfo(`Salesman found: ${currentSalesmanName}`);
                 
                 document.getElementById('salesmanName').textContent = currentSalesmanName;
                 document.getElementById('backBtn').href = `salesman-detail.html?id=${currentSalesmanId}`;
@@ -1519,7 +1529,6 @@
                     const tab = document.querySelector(`[onclick="switchTab('${tabName}')"]`);
                     if (tab) {
                         tab.style.display = hasData ? 'block' : 'none';
-                        addDebugInfo(`Tab ${tabName}: ${hasData ? 'Available' : 'Hidden (no data)'}`);
                     }
                 });
 
@@ -1533,12 +1542,9 @@
                 
                 showLoading(false);
                 showMainContent(true);
-                
-                addDebugInfo('Performance data loading completed successfully');
 
             } catch (error) {
                 console.error('Error loading performance data:', error);
-                addDebugInfo(`CRITICAL ERROR: ${error.message}`, true);
                 showLoading(false);
                 showError(true, error.message);
             }
