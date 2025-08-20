@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Visit Outlet - Sales Dashboard (Fixed)</title>
+    <title>Visit Outlet - Session Managed (Anti-Duplikasi)</title>
     
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
@@ -94,11 +94,160 @@
             background: rgba(255, 255, 255, 0.3);
         }
 
+        /* ===== VISIT SESSION MODAL STYLES ===== */
+        .visit-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            backdrop-filter: blur(5px);
+        }
+
+        .visit-modal.show {
+            display: flex;
+            animation: modalFadeIn 0.3s ease;
+        }
+
+        @keyframes modalFadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .visit-modal-content {
+            background: white;
+            padding: 24px;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            max-width: 350px;
+            width: 90%;
+            text-align: center;
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .visit-modal-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+
+        .visit-modal-subtitle {
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 16px;
+        }
+
+        .visit-modal-customer {
+            background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+            padding: 12px;
+            border-radius: 8px;
+            margin: 16px 0;
+            border: 1px solid #cbd5e1;
+        }
+
+        .visit-modal-customer-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+
+        .visit-modal-customer-details {
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        .visit-modal-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .visit-modal-btn {
+            flex: 1;
+            padding: 12px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .visit-modal-btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .visit-modal-btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .visit-modal-btn-secondary {
+            background: #f1f5f9;
+            color: #64748b;
+            border: 1px solid #e2e8f0;
+        }
+
+        .visit-modal-btn-secondary:hover {
+            background: #e2e8f0;
+        }
+
+        /* ===== VISIT SESSION STATUS ===== */
+        .visit-session-status {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(16, 185, 129, 0.95);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            min-width: 120px;
+        }
+
+        .visit-session-status.active {
+            display: block;
+            animation: pulse 2s infinite;
+        }
+
+        .visit-session-customer {
+            font-size: 10px;
+            opacity: 0.9;
+            margin-bottom: 2px;
+        }
+
+        .visit-session-timer {
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.95; }
+            50% { opacity: 1; }
+        }
+
         /* ===== FIREBASE CONNECTION STATUS ===== */
         .firebase-status {
             position: fixed;
             top: 10px;
-            left: 10px;
+            right: 10px;
             background: rgba(16, 185, 129, 0.9);
             color: white;
             padding: 6px 12px;
@@ -123,88 +272,6 @@
         .firebase-status.syncing {
             background: rgba(245, 158, 11, 0.9);
             animation: pulse 2s infinite;
-        }
-
-        /* ===== GEOLOCATION STATUS INDICATORS ===== */
-        .location-status {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            background: rgba(16, 185, 129, 0.9);
-            color: white;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: 600;
-            z-index: 1000;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-        }
-
-        .location-status.tracking {
-            background: rgba(239, 68, 68, 0.9);
-            animation: pulse 2s infinite;
-        }
-
-        .location-status.error {
-            background: rgba(245, 158, 11, 0.9);
-        }
-
-        .location-status.success {
-            background: rgba(16, 185, 129, 0.9);
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 0.9; }
-            50% { opacity: 1; }
-        }
-
-        /* ===== SYNC STATUS INDICATOR ===== */
-        .sync-status {
-            position: fixed;
-            top: 50px;
-            right: 10px;
-            background: rgba(255, 255, 255, 0.95);
-            color: #374151;
-            padding: 8px 12px;
-            border-radius: 12px;
-            font-size: 10px;
-            font-weight: 600;
-            z-index: 999;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            border: 1px solid #e5e7eb;
-            display: none;
-        }
-
-        .sync-status.visible {
-            display: block;
-        }
-
-        /* ===== DUPLICATE PREVENTION STATUS ===== */
-        .duplicate-status {
-            position: fixed;
-            top: 90px;
-            right: 10px;
-            background: rgba(16, 185, 129, 0.9);
-            color: white;
-            padding: 4px 8px;
-            border-radius: 8px;
-            font-size: 9px;
-            font-weight: 600;
-            z-index: 998;
-            display: none;
-        }
-
-        .duplicate-status.show {
-            display: block;
-            animation: fadeInOut 3s ease-in-out;
-        }
-
-        @keyframes fadeInOut {
-            0%, 100% { opacity: 0; }
-            50% { opacity: 1; }
         }
 
         /* ===== LOCATION INFO DISPLAY ===== */
@@ -279,33 +346,6 @@
         @keyframes slideIn {
             from { opacity: 0; transform: translateY(-10px); }
             to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* ===== DEBUG PANEL ===== */
-        .debug-panel {
-            position: fixed;
-            top: 60px;
-            right: 10px;
-            z-index: 1002;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .debug-btn {
-            background: rgba(0,0,0,0.8);
-            color: white;
-            border: none;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 10px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .debug-btn:hover {
-            background: rgba(0,0,0,0.9);
-            transform: scale(1.05);
         }
 
         /* ===== REST OF EXISTING STYLES ===== */
@@ -400,13 +440,6 @@
             display: grid;
             grid-template-columns: 1fr;
             gap: 8px;
-        }
-
-        .additional-summary-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 8px;
-            margin-top: 12px;
         }
 
         .summary-item {
@@ -709,126 +742,6 @@
 			}
 		}
 
-		/* Row highlight untuk item POM baru */
-		.pom-new-row {
-			background: linear-gradient(135deg, #fef3c7, #fef9e7) !important;
-			border-left: 4px solid #f59e0b;
-		}
-
-		.pom-new-row:hover {
-			background: linear-gradient(135deg, #fef3c7, #fed7aa) !important;
-		}
-
-		/* Badge untuk menandai item TPOM */
-		.tpom-badge {
-			position: relative;
-		}
-
-		.tpom-badge::after {
-			content: "TPOM";
-			position: absolute;
-			top: -8px;
-			right: -8px;
-			background: #f59e0b;
-			color: white;
-			font-size: 8px;
-			padding: 2px 4px;
-			border-radius: 3px;
-			font-weight: 600;
-			z-index: 10;
-		}
-		
-        .recommendation {
-            font-size: 9px;
-            color: #64748b;
-            font-style: italic;
-        }
-
-        .metric-value {
-            font-weight: 600;
-            font-size: 12px;
-        }
-
-        .gap-badge {
-            padding: 2px 4px;
-            border-radius: 8px;
-            font-size: 9px;
-            font-weight: 600;
-            color: white;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-        }
-
-        .gap-positive {
-            background: linear-gradient(135deg, #10b981, #059669);
-        }
-
-        .gap-negative {
-            background: linear-gradient(135deg, #ef4444, #dc2626);
-        }
-
-        .gap-neutral {
-            background: linear-gradient(135deg, #64748b, #475569);
-        }
-
-        .summary-row {
-            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-            border-top: 2px solid #667eea;
-        }
-
-        .summary-row td {
-            font-weight: 700;
-            color: #1e293b;
-            padding: 12px 6px;
-            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-        }
-
-        tr:hover {
-            background-color: #f8fafc;
-        }
-
-        /* ===== DAP TABLE STYLING ===== */
-        #dapTable {
-            min-width: auto;
-        }
-
-        #dapTable th {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            padding: 12px 8px;
-            text-align: center;
-            font-weight: 600;
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-            position: sticky;
-            top: 0;
-            z-index: 50;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-        }
-
-        #dapTable td {
-            padding: 10px 8px;
-            text-align: center;
-            border-bottom: 1px solid #f1f5f9;
-            vertical-align: middle;
-            font-size: 11px;
-        }
-
-        /* Enhanced summary grid for DAP */
-        .summary-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 8px;
-        }
-
-        /* 4-item summary grid for DAP */
-        .summary-grid.dap-summary {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 6px;
-        }
-
         .empty-state {
             text-align: center;
             padding: 40px 20px;
@@ -940,33 +853,16 @@
             🔥 Connecting Firebase...
         </div>
 
-        <!-- Location Status Indicator -->
-        <div class="location-status" id="locationStatus">
-            📍 Location Ready
-        </div>
-
-        <!-- Sync Status Indicator -->
-        <div class="sync-status" id="syncStatus">
-            🔄 Sync: 0/0 events
-        </div>
-
-        <!-- Duplicate Prevention Status -->
-        <div class="duplicate-status" id="duplicateStatus">
-            🚫 Prevented: 0
-        </div>
-
-        <!-- Debug Panel (only shows with debug=true) -->
-        <div class="debug-panel" id="debugPanel" style="display: none;">
-            <button class="debug-btn" onclick="debugDuplicateEvents()">🔍 Debug</button>
-            <button class="debug-btn" onclick="cleanupDuplicateEvents()">🧹 Cleanup</button>
-            <button class="debug-btn" onclick="resetSessionTracking()">🔄 Reset</button>
-            <button class="debug-btn" onclick="monitorAnalyticsHealth()">💊 Health</button>
+        <!-- Visit Session Status -->
+        <div class="visit-session-status" id="visitSessionStatus">
+            <div class="visit-session-customer" id="sessionCustomerName">No Active Visit</div>
+            <div class="visit-session-timer" id="sessionTimer">00:00:00</div>
         </div>
 
         <div class="detail-header">
             <a href="dashboard.html" class="back-btn">←</a>
             <div class="detail-title-container">
-                <div class="detail-title">Visit Outlet (Fixed)</div>
+                <div class="detail-title">Visit Outlet (Session Managed)</div>
                 <div class="salesman-name" id="salesmanName">Loading...</div>
             </div>
             <button class="user-btn" onclick="showProfile()">👤</button>
@@ -999,12 +895,6 @@
 
         <!-- Main Content -->
         <div id="mainContent" style="display: none;">
-            <!-- Tab Navigation -->
-            <div class="tab-navigation">
-                <button class="tab-btn active" onclick="showTab('visit')">🏪 Visit Outlet</button>
-                <button class="tab-btn" onclick="showTab('dap')">📋 Create DAP</button>
-            </div>
-
             <!-- Visit Tab Content -->
             <div id="visitTab" class="tab-content">
                 <!-- Two Frame Layout -->
@@ -1087,81 +977,44 @@
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- DAP Tab Content -->
-            <div id="dapTab" class="tab-content" style="display: none;">
-                <!-- DAP Filter Frame -->
-                <div class="content-section">
-                    <div class="frames-container">
-                        <!-- Left Frame - DAP Filters -->
-                        <div class="frame">
-                            <div class="frame-title">🔍 DAP Filters</div>
-                            <div class="filter-item">
-                                <select id="dapHari">
-                                    <option value="">📅 Pilih Hari JKS</option>
-                                </select>
-                            </div>
-                            
-                            <!-- DAP Info Display -->
-                            <div id="dapInfo" class="customer-info">
-                                <div class="customer-info-label">Selected Day:</div>
-                                <div id="dapStatusInfo" class="customer-info-value">-</div>
-                            </div>
-                        </div>
-
-                        <!-- Right Frame - DAP Summary -->
-                        <div class="frame">
-                            <div class="frame-title">📊 DAP Summary</div>
-                            <div class="summary-grid dap-summary">
-                                <div class="summary-item">
-                                    <div class="summary-label">Total Customers</div>
-                                    <div class="summary-value" id="dapTotalCustomers">-</div>
-                                </div>
-                                <div class="summary-item">
-                                    <div class="summary-label">Total BE MTD</div>
-                                    <div class="summary-value" id="dapTotalBE">-</div>
-                                </div>
-                                <div class="summary-item">
-                                    <div class="summary-label">Total A.MTD</div>
-                                    <div class="summary-value" id="dapTotalActual">-</div>
-                                </div>
-                                <div class="summary-item">
-                                    <div class="summary-label">Total Gap</div>
-                                    <div class="summary-value" id="dapTotalGap">-</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+        <!-- Visit Start Confirmation Modal -->
+        <div class="visit-modal" id="visitStartModal">
+            <div class="visit-modal-content">
+                <div class="visit-modal-title">🏪 Mulai Kunjungan?</div>
+                <div class="visit-modal-subtitle">Anda akan memulai kunjungan ke outlet berikut:</div>
+                <div class="visit-modal-customer">
+                    <div class="visit-modal-customer-name" id="startModalCustomerName">Customer Name</div>
+                    <div class="visit-modal-customer-details" id="startModalCustomerDetails">Details</div>
                 </div>
+                <div class="visit-modal-buttons">
+                    <button class="visit-modal-btn visit-modal-btn-secondary" onclick="cancelVisitStart()">
+                        ❌ Tidak
+                    </button>
+                    <button class="visit-modal-btn visit-modal-btn-primary" onclick="confirmVisitStart()">
+                        ✅ Ya, Mulai
+                    </button>
+                </div>
+            </div>
+        </div>
 
-                <!-- DAP Table Section -->
-                <div class="table-section">
-                    <div class="section-title">Daily Activity Plan (DAP) :</div>
-                    <div class="table-wrapper">
-                        <div class="table-container">
-                            <table id="dapTable">
-                                <thead>
-                                    <tr>
-                                        <th>No</th>
-                                        <th>Nama Pelanggan</th>
-                                        <th>BE MTD</th>
-                                        <th>A.MTD</th>
-                                        <th>Gap</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="dapTableBody">
-                                    <tr>
-                                        <td colspan="5">
-                                            <div class="empty-state">
-                                                <div class="empty-state-icon">📋</div>
-                                                <div>Pilih Hari JKS untuk melihat DAP</div>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+        <!-- Visit End Confirmation Modal -->
+        <div class="visit-modal" id="visitEndModal">
+            <div class="visit-modal-content">
+                <div class="visit-modal-title">🏁 Akhiri Kunjungan?</div>
+                <div class="visit-modal-subtitle">Anda sedang mengunjungi outlet:</div>
+                <div class="visit-modal-customer">
+                    <div class="visit-modal-customer-name" id="endModalCustomerName">Current Customer</div>
+                    <div class="visit-modal-customer-details" id="endModalCustomerDetails">Duration: 00:00:00</div>
+                </div>
+                <div class="visit-modal-buttons">
+                    <button class="visit-modal-btn visit-modal-btn-secondary" onclick="cancelVisitEnd()">
+                        ❌ Lanjutkan
+                    </button>
+                    <button class="visit-modal-btn visit-modal-btn-primary" onclick="confirmVisitEnd()">
+                        ✅ Ya, Akhiri
+                    </button>
                 </div>
             </div>
         </div>
@@ -1324,6 +1177,18 @@
         let pendingSyncCount = 0;
         let syncedCount = 0;
 
+        // ===== VISIT SESSION MANAGEMENT =====
+        let visitSession = {
+            isActive: false,
+            customerName: null,
+            startTime: null,
+            duration: 0,
+            pendingCustomer: null,
+            pendingHari: null,
+            pendingCoordinates: null
+        };
+        let sessionTimer = null;
+
         // ===== DUPLICATE PREVENTION TRACKING =====
         let duplicatePreventionStats = {
             totalPrevented: 0,
@@ -1331,7 +1196,200 @@
             preventedEvents: []
         };
 
-        // ===== ENHANCED ANALYTICS WITH FIREBASE INTEGRATION (FIXED VERSION) =====
+        // ===== VISIT SESSION MANAGEMENT FUNCTIONS =====
+        function showVisitStartModal(customerName, hariJKS, masterCoordinates) {
+            visitSession.pendingCustomer = customerName;
+            visitSession.pendingHari = hariJKS;
+            visitSession.pendingCoordinates = masterCoordinates;
+            
+            document.getElementById('startModalCustomerName').textContent = customerName;
+            document.getElementById('startModalCustomerDetails').textContent = `Hari JKS: ${hariJKS}`;
+            document.getElementById('visitStartModal').classList.add('show');
+            
+            console.log(`🏪 Showing start modal for: ${customerName}`);
+        }
+
+        function showVisitEndModal() {
+            if (!visitSession.isActive) return;
+            
+            const duration = Math.floor((Date.now() - visitSession.startTime) / 1000);
+            const durationText = formatDuration(duration);
+            
+            document.getElementById('endModalCustomerName').textContent = visitSession.customerName;
+            document.getElementById('endModalCustomerDetails').textContent = `Durasi: ${durationText}`;
+            document.getElementById('visitEndModal').classList.add('show');
+            
+            console.log(`🏁 Showing end modal for: ${visitSession.customerName}`);
+        }
+
+        function confirmVisitStart() {
+            document.getElementById('visitStartModal').classList.remove('show');
+            
+            startVisitSession(
+                visitSession.pendingCustomer,
+                visitSession.pendingHari,
+                visitSession.pendingCoordinates
+            );
+            
+            // Clear pending data
+            visitSession.pendingCustomer = null;
+            visitSession.pendingHari = null;
+            visitSession.pendingCoordinates = null;
+        }
+
+        function cancelVisitStart() {
+            document.getElementById('visitStartModal').classList.remove('show');
+            
+            // Reset pelanggan selection
+            const pelangganSelect = document.getElementById('pelanggan');
+            if (pelangganSelect) {
+                pelangganSelect.value = '';
+            }
+            
+            // Clear pending data
+            visitSession.pendingCustomer = null;
+            visitSession.pendingHari = null;
+            visitSession.pendingCoordinates = null;
+            
+            console.log(`❌ Visit start cancelled`);
+        }
+
+        function confirmVisitEnd() {
+            document.getElementById('visitEndModal').classList.remove('show');
+            endVisitSession();
+        }
+
+        function cancelVisitEnd() {
+            document.getElementById('visitEndModal').classList.remove('show');
+            console.log(`❌ Visit end cancelled, continuing visit`);
+        }
+
+        function startVisitSession(customerName, hariJKS, masterCoordinates) {
+            // End any existing session first
+            if (visitSession.isActive) {
+                endVisitSession();
+            }
+            
+            visitSession.isActive = true;
+            visitSession.customerName = customerName;
+            visitSession.startTime = Date.now();
+            visitSession.duration = 0;
+            
+            // Update UI
+            updateVisitSessionStatus();
+            startSessionTimer();
+            
+            // Track customer selection with coordinates via Firebase
+            if (visitAnalytics) {
+                visitAnalytics.trackCustomerSelection(customerName, hariJKS, masterCoordinates);
+            }
+            
+            // Populate table now that session is active
+            populateVisitTable(customerName);
+            
+            console.log(`✅ Visit session started: ${customerName}`);
+        }
+
+        function endVisitSession() {
+            if (!visitSession.isActive) return;
+            
+            const duration = Math.floor((Date.now() - visitSession.startTime) / 1000);
+            const endedCustomer = visitSession.customerName;
+            
+            // Track session end
+            if (visitAnalytics) {
+                visitAnalytics.endCustomerTracking();
+            }
+            
+            // Reset session
+            visitSession.isActive = false;
+            visitSession.customerName = null;
+            visitSession.startTime = null;
+            visitSession.duration = 0;
+            
+            // Update UI
+            updateVisitSessionStatus();
+            stopSessionTimer();
+            
+            // Clear table when session ends
+            clearTableData();
+            
+            console.log(`🏁 Visit session ended: ${endedCustomer}, duration: ${formatDuration(duration)}`);
+        }
+
+        function startSessionTimer() {
+            if (sessionTimer) {
+                clearInterval(sessionTimer);
+            }
+            
+            sessionTimer = setInterval(() => {
+                if (visitSession.isActive && visitSession.startTime) {
+                    visitSession.duration = Math.floor((Date.now() - visitSession.startTime) / 1000);
+                    updateSessionTimerDisplay();
+                }
+            }, 1000);
+        }
+
+        function stopSessionTimer() {
+            if (sessionTimer) {
+                clearInterval(sessionTimer);
+                sessionTimer = null;
+            }
+        }
+
+        function updateSessionTimerDisplay() {
+            const timerElement = document.getElementById('sessionTimer');
+            if (timerElement) {
+                timerElement.textContent = formatDuration(visitSession.duration);
+            }
+        }
+
+        function updateVisitSessionStatus() {
+            const statusElement = document.getElementById('visitSessionStatus');
+            const customerElement = document.getElementById('sessionCustomerName');
+            const timerElement = document.getElementById('sessionTimer');
+            
+            if (visitSession.isActive) {
+                statusElement.classList.add('active');
+                customerElement.textContent = `🏪 ${visitSession.customerName}`;
+                timerElement.textContent = formatDuration(visitSession.duration);
+            } else {
+                statusElement.classList.remove('active');
+                customerElement.textContent = 'No Active Visit';
+                timerElement.textContent = '00:00:00';
+            }
+        }
+
+        function formatDuration(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            
+            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function clearTableData() {
+            const tableBody = document.getElementById('tableBody');
+            if (tableBody) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="9">
+                            <div class="empty-state">
+                                <div class="empty-state-icon">📊</div>
+                                <div>Pilih filter untuk melihat data</div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }
+            
+            // Clear summary
+            document.getElementById('summaryTarget').textContent = '-';
+            document.getElementById('summaryActual').textContent = '-';
+            document.getElementById('summaryGap').textContent = '-';
+        }
+
+        // ===== ENHANCED ANALYTICS WITH FIREBASE INTEGRATION (SESSION MANAGED) =====
         class VisitAnalyticsWithFirebase {
             constructor() {
                 this.sessionId = this.generateSessionId();
@@ -1345,7 +1403,7 @@
                 this.lastKnownPosition = null;
                 this.locationAccuracy = null;
                 
-                // ===== BARU: Deduplication tracking =====
+                // ===== SESSION MANAGED: Deduplication tracking =====
                 this.lastLocationVerificationTime = null;
                 this.lastVerificationPosition = null;
                 this.locationVerificationThrottle = 30000; // 30 detik
@@ -1360,7 +1418,7 @@
             init() {
                 if (this.isInitialized) return;
                 
-                console.log('🚀 Enhanced Visit Analytics with Firebase initialized (Fixed Version)');
+                console.log('🚀 Enhanced Visit Analytics with Session Management initialized');
                 this.isInitialized = true;
                 
                 // Setup Firebase authentication
@@ -1379,6 +1437,7 @@
                     event: eventName,
                     salesman: this.salesmanId,
                     customer: this.currentCustomer,
+                    session_active: visitSession.isActive,
                     // Hanya ambil koordinat dengan 4 desimal untuk menghindari micro-movement
                     lat: eventData.latitude ? Math.round(eventData.latitude * 10000) / 10000 : null,
                     lng: eventData.longitude ? Math.round(eventData.longitude * 10000) / 10000 : null,
@@ -1454,7 +1513,7 @@
                     const testRef = window.Firebase.ref('connection_test');
                     await window.Firebase.set(testRef, {
                         timestamp: window.Firebase.serverTimestamp(),
-                        test_message: "Basic write test successful",
+                        test_message: "Session managed visit test",
                         user_uid: firebaseUser?.uid || 'anonymous',
                         test_id: Date.now()
                     });
@@ -1475,7 +1534,6 @@
                     window.Firebase.onValue(visitEventsRef, (snapshot) => {
                         const data = snapshot.val();
                         const count = data ? Object.keys(data).length : 0;
-                        this.updateSyncStatus(pendingSyncCount, count);
                         console.log(`📊 Visit events count: ${count}`);
                     });
 
@@ -1503,33 +1561,9 @@
                     statusElement.className = 'firebase-status syncing';
                 }
             }
-
-            updateSyncStatus(pending, synced) {
-                const syncElement = document.getElementById('syncStatus');
-                syncElement.textContent = `🔄 Sync: ${synced}/${pending + synced} events`;
-                
-                if (pending > 0) {
-                    syncElement.classList.add('visible');
-                } else {
-                    syncElement.classList.remove('visible');
-                }
-            }
-
-            // ===== BARU: Update duplicate prevention status =====
-            updateDuplicateStatus() {
-                const duplicateElement = document.getElementById('duplicateStatus');
-                duplicateElement.textContent = `🚫 Prevented: ${duplicatePreventionStats.totalPrevented}`;
-                
-                if (duplicatePreventionStats.totalPrevented > 0) {
-                    duplicateElement.classList.add('show');
-                    setTimeout(() => {
-                        duplicateElement.classList.remove('show');
-                    }, 3000);
-                }
-            }
             
             generateSessionId() {
-                return 'visit_firebase_session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                return 'visit_session_managed_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
             }
             
             setSalesman(salesmanId, salesmanName) {
@@ -1614,9 +1648,22 @@
                 }
             }
 
-            // ===== FIXED: Track dengan deduplication =====
+            // ===== SESSION MANAGED: Track dengan deduplication dan session check =====
             async track(eventName, eventData = {}) {
                 if (!this.salesmanId) return;
+                
+                // ===== PREVENT TRACKING SELAMA SESSION TIDAK AKTIF (kecuali events tertentu) =====
+                const allowedEventsWithoutSession = [
+                    'visit_page_access',
+                    'visit_session_end',
+                    'visit_customer_selected',
+                    'visit_customer_duration'
+                ];
+                
+                if (!visitSession.isActive && !allowedEventsWithoutSession.includes(eventName)) {
+                    console.log(`⏸️ Event tracking paused: ${eventName} (no active session)`);
+                    return;
+                }
                 
                 // Generate hash untuk event ini
                 const eventHash = this.generateEventHash(eventName, eventData);
@@ -1639,7 +1686,6 @@
                         duplicatePreventionStats.preventedEvents = duplicatePreventionStats.preventedEvents.slice(-20);
                     }
                     
-                    this.updateDuplicateStatus();
                     return; // Skip event yang duplikat
                 }
                 
@@ -1653,12 +1699,21 @@
                     hashArray.slice(-30).forEach(hash => this.lastEventHashes.add(hash));
                 }
                 
+                // ===== TAMBAHKAN SESSION INFO KE EVENT DATA =====
+                const enrichedEventData = {
+                    ...eventData,
+                    visit_session_active: visitSession.isActive,
+                    visit_session_customer: visitSession.customerName,
+                    visit_session_duration: visitSession.isActive ? 
+                        Math.floor((Date.now() - visitSession.startTime) / 1000) : 0
+                };
+                
                 const event = {
                     session_id: this.sessionId,
                     salesman_id: this.salesmanId,
                     salesman_name: this.salesmanName,
                     event_name: eventName,
-                    event_data: eventData,
+                    event_data: enrichedEventData,
                     timestamp: new Date().toISOString(),
                     event_hash: eventHash, // Tambahkan hash untuk tracking di Firebase
                     location: this.lastKnownPosition ? {
@@ -1681,7 +1736,7 @@
                         
                         syncedCount++;
                         this.updateFirebaseStatus('connected');
-                        console.log(`✅ Event "${eventName}" saved to Firebase (deduplicated)`);
+                        console.log(`✅ Event "${eventName}" saved to Firebase (session-managed)`);
                         
                         this.removeFromPendingQueue(event);
                         
@@ -1690,13 +1745,10 @@
                         pendingSyncCount++;
                     }
                     
-                    this.updateSyncStatus(pendingSyncCount, syncedCount);
-                    
                 } catch (error) {
                     console.error('❌ Error saving event to Firebase:', error);
                     this.addToPendingQueue(event);
                     pendingSyncCount++;
-                    this.updateSyncStatus(pendingSyncCount, syncedCount);
                 }
             }
 
@@ -1742,7 +1794,7 @@
                 }
             }
 
-            // ===== FIXED: Improved sync dengan deduplication =====
+            // ===== IMPROVED: Sync dengan session context =====
             async syncPendingData() {
                 if (!this.salesmanId || !isFirebaseConnected || !firebaseUser) {
                     return;
@@ -1759,10 +1811,10 @@
                         return;
                     }
                     
-                    console.log(`🔄 Syncing ${pendingEvents.length} pending events...`);
+                    console.log(`🔄 Syncing ${pendingEvents.length} pending events (session managed)...`);
                     this.updateFirebaseStatus('syncing');
                     
-                    // ===== BARU: Check existing events di Firebase untuk deduplication =====
+                    // Check existing events di Firebase untuk deduplication
                     const existingEventsRef = window.Firebase.ref('visit_events')
                         .orderByChild('salesman_id')
                         .equalTo(this.salesmanId);
@@ -1819,7 +1871,6 @@
                     localStorage.setItem(queueKey, JSON.stringify(remainingEvents));
                     
                     this.updateFirebaseStatus('connected');
-                    this.updateSyncStatus(pendingSyncCount, syncedCount);
                     
                     console.log(`🔄 Sync completed: ${syncedEvents} synced, ${skippedDuplicates} duplicates skipped, ${remainingEvents.length} remaining`);
                     
@@ -1832,11 +1883,11 @@
             // ===== GEOLOCATION METHODS =====
             initializeGeolocation() {
                 if (!navigator.geolocation) {
-                    this.updateLocationStatus('error', 'Geolocation not supported');
+                    console.log('❌ Geolocation not supported');
                     return;
                 }
                 
-                this.updateLocationStatus('tracking', 'Getting location...');
+                console.log('📍 Initializing geolocation...');
                 
                 // Get initial position
                 navigator.geolocation.getCurrentPosition(
@@ -1861,13 +1912,12 @@
                 );
             }
             
-            // ===== FIXED: Location handling dengan throttling =====
+            // ===== SESSION MANAGED: Location handling dengan session check =====
             handleLocationSuccess(position) {
                 this.lastKnownPosition = position;
                 this.locationAccuracy = position.coords.accuracy;
                 
                 this.updateLocationUI(position);
-                this.updateLocationStatus('success', 'Location active');
                 
                 // Store location in daily data
                 if (this.dailyData) {
@@ -1876,45 +1926,48 @@
                         latitude: position.coords.latitude,
                         longitude: position.coords.longitude,
                         accuracy: position.coords.accuracy,
-                        customer: this.currentCustomer
+                        customer: this.currentCustomer,
+                        session_active: visitSession.isActive
                     });
                     this.saveDailyData();
                 }
                 
-                // ===== FIXED: Throttle location acquired events =====
-                const now = Date.now();
-                if (!this.lastLocationEventTime || (now - this.lastLocationEventTime) > this.locationEventThrottle) {
-                    this.lastLocationEventTime = now;
-                    
-                    this.track('visit_location_acquired', {
-                        latitude: position.coords.latitude,
-                        longitude: position.coords.longitude,
-                        accuracy: position.coords.accuracy,
-                        customer: this.currentCustomer,
-                        distance_to_customer: this.currentCustomer && customerMasterCoordinates ? 
-                            this.calculateDistance(
-                                position.coords.latitude,
-                                position.coords.longitude,
-                                customerMasterCoordinates.latitude,
-                                customerMasterCoordinates.longitude
-                            ) : null
-                    });
+                // ===== SESSION MANAGED: Throttle location acquired events hanya saat session aktif =====
+                if (visitSession.isActive) {
+                    const now = Date.now();
+                    if (!this.lastLocationEventTime || (now - this.lastLocationEventTime) > this.locationEventThrottle) {
+                        this.lastLocationEventTime = now;
+                        
+                        this.track('visit_location_acquired', {
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude,
+                            accuracy: position.coords.accuracy,
+                            customer: this.currentCustomer,
+                            distance_to_customer: this.currentCustomer && customerMasterCoordinates ? 
+                                this.calculateDistance(
+                                    position.coords.latitude,
+                                    position.coords.longitude,
+                                    customerMasterCoordinates.latitude,
+                                    customerMasterCoordinates.longitude
+                                ) : null
+                        });
+                    }
                 }
                 
-                // ===== FIXED: Throttled customer location verification =====
-                if (this.currentCustomer && customerMasterCoordinates) {
+                // ===== SESSION MANAGED: Customer location verification hanya saat session aktif =====
+                if (visitSession.isActive && this.currentCustomer && customerMasterCoordinates) {
                     this.verifyCustomerLocationThrottled(position);
                 }
             }
             
-            // ===== FIXED: Location update dengan throttling =====
+            // ===== SESSION MANAGED: Location update dengan session check =====
             handleLocationUpdate(position) {
                 this.lastKnownPosition = position;
                 this.locationAccuracy = position.coords.accuracy;
                 this.updateLocationUI(position);
                 
-                // ===== FIXED: Hanya verify location jika customer aktif dan sudah throttle period =====
-                if (this.currentCustomer && customerMasterCoordinates) {
+                // ===== SESSION MANAGED: Hanya verify location jika session aktif =====
+                if (visitSession.isActive && this.currentCustomer && customerMasterCoordinates) {
                     this.verifyCustomerLocationThrottled(position);
                 }
             }
@@ -1934,7 +1987,6 @@
                         break;
                 }
                 
-                this.updateLocationStatus('error', errorMessage);
                 console.error('Geolocation error:', error);
             }
             
@@ -1956,24 +2008,15 @@
                 document.getElementById('locationTime').textContent = new Date().toLocaleTimeString();
             }
             
-            updateLocationStatus(status, message) {
-                const statusElement = document.getElementById('locationStatus');
-                
-                if (status === 'tracking') {
-                    statusElement.innerHTML = `🔄 ${message}`;
-                    statusElement.className = 'location-status tracking';
-                } else if (status === 'success') {
-                    statusElement.innerHTML = `📍 ${message}`;
-                    statusElement.className = 'location-status success';
-                } else if (status === 'error') {
-                    statusElement.innerHTML = `⚠️ ${message}`;
-                    statusElement.className = 'location-status error';
-                }
-            }
-            
-            // ===== BARU: Throttled location verification =====
+            // ===== SESSION MANAGED: Throttled location verification dengan session check =====
             verifyCustomerLocationThrottled(currentPosition) {
                 if (!customerMasterCoordinates) return;
+                
+                // ===== PREVENT TRACKING SAAT SESSION TIDAK AKTIF =====
+                if (!visitSession.isActive) {
+                    console.log(`⏸️ Location verification paused - no active visit session`);
+                    return;
+                }
                 
                 const now = Date.now();
                 
@@ -2013,12 +2056,15 @@
                 
                 this.updateLocationVerificationUI(currentPosition, distance);
                 
-                // ===== FIXED: Track dengan data minimal untuk mengurangi duplikasi =====
+                // ===== SESSION MANAGED: Track dengan session info =====
                 this.track('visit_location_verification', {
                     customer_name: this.currentCustomer,
                     distance_meters: Math.round(distance),
                     accuracy: currentPosition.coords.accuracy,
                     is_within_range: distance <= 100,
+                    visit_session_active: visitSession.isActive,
+                    session_duration: visitSession.isActive ? 
+                        Math.floor((Date.now() - visitSession.startTime) / 1000) : 0,
                     compliance_status: distance <= 50 ? 'perfect' : 
                                      distance <= 100 ? 'compliant' : 
                                      distance <= 500 ? 'warning' : 'non_compliant'
@@ -2083,12 +2129,19 @@
                     session_start: new Date(this.sessionStart).toISOString(),
                     access_count: this.dailyData.accessCount,
                     has_location: !!this.lastKnownPosition,
-                    firebase_connected: isFirebaseConnected
+                    firebase_connected: isFirebaseConnected,
+                    session_managed: true
                 });
             }
             
-            // ===== FIXED: Customer selection dengan session management =====
+            // ===== SESSION MANAGED: Customer selection yang hanya track jika session aktif =====
             trackCustomerSelection(customerName, hariJKS, masterCoordinates) {
+                // Only track if visit session is active
+                if (!visitSession.isActive || visitSession.customerName !== customerName) {
+                    console.log(`⏸️ Customer tracking paused - session not active for ${customerName}`);
+                    return;
+                }
+                
                 const now = Date.now();
                 const nowISO = new Date(now).toISOString();
                 
@@ -2137,15 +2190,17 @@
                 this.dailyData.customers[customerName].sessions.push(sessionData);
                 this.saveDailyData();
                 
-                console.log(`👥 Customer selected: ${customerName}`);
+                console.log(`👥 Customer tracking started: ${customerName}`);
                 
-                // ===== FIXED: Track customer selection hanya sekali per session =====
+                // ===== SESSION MANAGED: Track customer selection dengan session info =====
                 this.track('visit_customer_selected', {
                     customer_name: customerName,
                     hari_jks: hariJKS,
                     selection_time: nowISO,
                     master_coordinates: masterCoordinates,
                     session_start: true,
+                    visit_session_active: visitSession.isActive,
+                    session_managed: true,
                     actual_location: this.lastKnownPosition ? {
                         latitude: this.lastKnownPosition.coords.latitude,
                         longitude: this.lastKnownPosition.coords.longitude,
@@ -2210,7 +2265,9 @@
                         accuracy: this.lastKnownPosition.coords.accuracy
                     } : null,
                     session_id: this.sessionId,
-                    firebase_connected: isFirebaseConnected
+                    firebase_connected: isFirebaseConnected,
+                    session_managed: true,
+                    visit_session_active: visitSession.isActive
                 });
                 
                 // Clear current tracking
@@ -2222,64 +2279,6 @@
                 
                 // Hide location alert
                 document.getElementById('locationAlert').style.display = 'none';
-            }
-
-            // ===== BARU: Method untuk cleaning up duplicates (utility) =====
-            async cleanupDuplicateEvents() {
-                if (!isFirebaseConnected || !firebaseUser) {
-                    console.log('❌ Firebase not connected, cannot cleanup duplicates');
-                    return;
-                }
-                
-                try {
-                    console.log('🧹 Starting duplicate cleanup...');
-                    
-                    const eventsRef = window.Firebase.ref('visit_events')
-                        .orderByChild('salesman_id')
-                        .equalTo(this.salesmanId);
-                        
-                    const snapshot = await eventsRef.once('value');
-                    const events = snapshot.val() || {};
-                    
-                    const eventsByHash = new Map();
-                    const duplicatesToDelete = [];
-                    
-                    // Group events by hash
-                    Object.entries(events).forEach(([eventId, eventData]) => {
-                        if (eventData.event_hash) {
-                            if (eventsByHash.has(eventData.event_hash)) {
-                                // This is a duplicate
-                                duplicatesToDelete.push(eventId);
-                            } else {
-                                eventsByHash.set(eventData.event_hash, eventId);
-                            }
-                        }
-                    });
-                    
-                    // Delete duplicates
-                    for (const duplicateId of duplicatesToDelete) {
-                        await window.Firebase.ref(`visit_events/${duplicateId}`).remove();
-                        console.log(`🗑️ Deleted duplicate event: ${duplicateId}`);
-                    }
-                    
-                    console.log(`✅ Cleanup completed: ${duplicatesToDelete.length} duplicates removed`);
-                    
-                } catch (error) {
-                    console.error('❌ Error during duplicate cleanup:', error);
-                }
-            }
-
-            // ===== BARU: Method untuk reset session tracking =====
-            resetSessionTracking() {
-                this.lastLocationVerificationTime = null;
-                this.lastVerificationPosition = null;
-                this.lastEventHashes.clear();
-                this.customerSessionActive = false;
-                this.lastLocationEventTime = null;
-                duplicatePreventionStats.totalPrevented = 0;
-                duplicatePreventionStats.preventedEvents = [];
-                this.updateDuplicateStatus();
-                console.log('🔄 Session tracking reset');
             }
             
             setupUnloadTracking() {
@@ -2302,172 +2301,16 @@
                         } : null,
                         firebase_connected: isFirebaseConnected,
                         pending_events: pendingSyncCount,
-                        duplicates_prevented: duplicatePreventionStats.totalPrevented
+                        duplicates_prevented: duplicatePreventionStats.totalPrevented,
+                        session_managed: true,
+                        visit_session_was_active: visitSession.isActive
                     });
                 });
             }
         }
-
-        // ===== UTILITY FUNCTIONS UNTUK MENCEGAH DUPLIKASI =====
-
-        // Function untuk cleanup duplicate events (bisa dipanggil manual)
-        function cleanupDuplicateEvents() {
-            if (visitAnalytics) {
-                visitAnalytics.cleanupDuplicateEvents();
-            } else {
-                alert('❌ Analytics tidak tersedia');
-            }
-        }
-
-        // Function untuk reset session tracking
-        function resetSessionTracking() {
-            if (visitAnalytics) {
-                visitAnalytics.resetSessionTracking();
-                alert('✅ Session tracking telah direset');
-            }
-        }
-
-        // Function untuk debug duplicate events
-        function debugDuplicateEvents() {
-            if (!isFirebaseConnected) {
-                alert('❌ Firebase tidak terkoneksi');
-                return;
-            }
-            
-            const salesmanId = currentSalesmanId;
-            if (!salesmanId) {
-                alert('❌ Salesman ID tidak ditemukan');
-                return;
-            }
-            
-            // Debug duplicate events di Firebase
-            const eventsRef = window.Firebase.ref('visit_events')
-                .orderByChild('salesman_id')
-                .equalTo(salesmanId);
-                
-            eventsRef.once('value').then(snapshot => {
-                const events = snapshot.val() || {};
-                const eventsByHash = new Map();
-                const duplicates = [];
-                let totalEvents = 0;
-                
-                Object.entries(events).forEach(([eventId, eventData]) => {
-                    totalEvents++;
-                    if (eventData.event_hash) {
-                        if (eventsByHash.has(eventData.event_hash)) {
-                            duplicates.push({
-                                id: eventId,
-                                hash: eventData.event_hash,
-                                event_name: eventData.event_name,
-                                customer: eventData.event_data?.customer_name,
-                                timestamp: eventData.timestamp
-                            });
-                        } else {
-                            eventsByHash.set(eventData.event_hash, eventId);
-                        }
-                    }
-                });
-                
-                const uniqueEvents = eventsByHash.size;
-                const duplicateCount = duplicates.length;
-                
-                console.log('🔍 DUPLICATE ANALYSIS:');
-                console.log(`📊 Total events: ${totalEvents}`);
-                console.log(`✅ Unique events: ${uniqueEvents}`);
-                console.log(`🚫 Duplicate events: ${duplicateCount}`);
-                
-                if (duplicates.length > 0) {
-                    console.log('🚫 Duplicate events found:');
-                    duplicates.forEach((dup, index) => {
-                        console.log(`${index + 1}. ${dup.event_name} - ${dup.customer} (${dup.timestamp})`);
-                    });
-                }
-                
-                alert(`🔍 Duplicate Analysis:\n\n` +
-                      `📊 Total events: ${totalEvents}\n` +
-                      `✅ Unique events: ${uniqueEvents}\n` +
-                      `🚫 Duplicates: ${duplicateCount}\n\n` +
-                      `${duplicateCount > 0 ? '⚠️ Duplicates found! Check console for details.' : '✅ No duplicates found!'}`);
-                      
-            }).catch(error => {
-                console.error('❌ Error analyzing duplicates:', error);
-                alert('❌ Error analyzing duplicates: ' + error.message);
-            });
-        }
-
-        // Enhanced error handling untuk Firebase operations
-        function handleFirebaseError(error) {
-            console.error('🔥 Firebase Error:', error);
-            
-            // Specific error handling
-            if (error.code === 'PERMISSION_DENIED') {
-                visitAnalytics?.updateFirebaseStatus('⚠️ Firebase access denied - using localStorage only', 'error');
-            } else if (error.code === 'NETWORK_ERROR') {
-                visitAnalytics?.updateFirebaseStatus('🌐 Network error - retrying...', 'error');
-            } else {
-                visitAnalytics?.updateFirebaseStatus('❌ Firebase error - using localStorage', 'error');
-            }
-        }
-
-        // Function untuk monitoring analytics health
-        function monitorAnalyticsHealth() {
-            if (!visitAnalytics) {
-                console.log('❌ Analytics not initialized');
-                return;
-            }
-            
-            const health = {
-                firebase_connected: isFirebaseConnected,
-                pending_sync_count: pendingSyncCount,
-                synced_count: syncedCount,
-                current_customer: visitAnalytics.currentCustomer,
-                session_active: visitAnalytics.customerSessionActive,
-                location_available: !!visitAnalytics.lastKnownPosition,
-                duplicates_prevented: duplicatePreventionStats.totalPrevented,
-                last_location_verification: visitAnalytics.lastLocationVerificationTime,
-                throttle_status: {
-                    location_verification: visitAnalytics.locationVerificationThrottle,
-                    location_event: visitAnalytics.locationEventThrottle
-                }
-            };
-            
-            console.log('💊 ANALYTICS HEALTH CHECK:', health);
-            
-            // Show in alert for convenience
-            alert(`💊 Analytics Health Check:\n\n` +
-                  `🔥 Firebase: ${health.firebase_connected ? 'Connected' : 'Disconnected'}\n` +
-                  `🔄 Pending sync: ${health.pending_sync_count}\n` +
-                  `✅ Synced: ${health.synced_count}\n` +
-                  `👥 Current customer: ${health.current_customer || 'None'}\n` +
-                  `📍 Location: ${health.location_available ? 'Available' : 'Unavailable'}\n` +
-                  `🚫 Duplicates prevented: ${health.duplicates_prevented}\n` +
-                  `⏱️ Throttle verification: ${health.throttle_status.location_verification / 1000}s\n` +
-                  `⏱️ Throttle events: ${health.throttle_status.location_event / 1000}s`);
-            
-            return health;
-        }
-
-        // Auto health check setiap 5 menit
-        setInterval(() => {
-            if (visitAnalytics) {
-                const health = monitorAnalyticsHealth();
-                
-                // Alert jika ada masalah
-                if (health.pending_sync_count > 100) {
-                    console.warn('⚠️ High pending sync count: ' + health.pending_sync_count);
-                }
-                
-                if (health.duplicates_prevented > 50) {
-                    console.warn('⚠️ High duplicate prevention count: ' + health.duplicates_prevented);
-                }
-            }
-        }, 5 * 60 * 1000); // 5 minutes
 
         // ===== INITIALIZE ANALYTICS =====
         let visitAnalytics = null;
-
-        // ===== REST OF THE ORIGINAL FUNCTIONS ===== 
-        // (All the existing utility functions, data loading functions, etc. remain the same)
 
         // ===== UTILITY FUNCTIONS =====
         function checkLoginStatus() {
@@ -2504,46 +2347,6 @@
             var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
             var results = regex.exec(location.search);
             return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
-        }
-
-        // ===== GEOLOCATION FUNCTIONS =====
-        function refreshLocation() {
-            if (!visitAnalytics) return;
-            
-            visitAnalytics.updateLocationStatus('tracking', 'Refreshing location...');
-            
-            navigator.geolocation.getCurrentPosition(
-                (position) => visitAnalytics.handleLocationSuccess(position),
-                (error) => visitAnalytics.handleLocationError(error),
-                {
-                    enableHighAccuracy: true,
-                    timeout: 10000,
-                    maximumAge: 0
-                }
-            );
-        }
-
-        function showLocationMap() {
-            if (!visitAnalytics || !visitAnalytics.lastKnownPosition || !customerMasterCoordinates) {
-                alert('Location data not available');
-                return;
-            }
-            
-            // Create a simple map popup with coordinates
-            const actual = visitAnalytics.lastKnownPosition.coords;
-            const master = customerMasterCoordinates;
-            const distance = visitAnalytics.calculateDistance(actual.latitude, actual.longitude, master.latitude, master.longitude);
-            
-            const mapInfo = 'Location Comparison:\n\n' +
-                'Your Location:\n' + actual.latitude.toFixed(6) + ', ' + actual.longitude.toFixed(6) + '\n\n' +
-                'Customer Location:\n' + master.latitude.toFixed(6) + ', ' + master.longitude.toFixed(6) + '\n\n' +
-                'Distance: ' + (distance > 1000 ? (distance/1000).toFixed(2) + 'km' : Math.round(distance) + 'm') + '\n\n' +
-                'Open in Google Maps?';
-            
-            if (confirm(mapInfo)) {
-                const googleMapsUrl = 'https://www.google.com/maps/dir/' + actual.latitude + ',' + actual.longitude + '/' + master.latitude + ',' + master.longitude;
-                window.open(googleMapsUrl, '_blank');
-            }
         }
 
         // ===== DATA LOADING FUNCTIONS =====
@@ -2622,10 +2425,8 @@
 			console.log(`🎯 Found ${filteredTPOM.length} TPOM records for ${salesmanName}`);
 			return filteredTPOM;
 		}
-		
-        // ===== DAP (Daily Activity Plan) FUNCTIONS - REAL DATA FROM d.details.json =====
-        let currentDAPData = [];
 
+        // ===== DATA PROCESSING FUNCTIONS =====
         // Format currency to Indonesian format with Jt/Rb
 		function formatCurrency(value) {
 			if (!value || value === 0) return '0';
@@ -2649,223 +2450,7 @@
 			
 			return formatted;
 		}
-
-		function getDAPDataFromDetails(hariJKS) {
-            if (!hariJKS || detailsData.length === 0 || !currentSalesman) {
-                return [];
-            }
-            
-            console.log(`🔍 Looking for DAP data for Salesman: ${currentSalesman}, Hari JKS: ${hariJKS}`);
-            console.log(`📊 Total detailsData records: ${detailsData.length}`);
-            
-            // Filter data from d.details.json based on "szname" (salesman) and "Hari JKS" 
-            const filteredData = detailsData.filter(item => {
-                const itemSalesman = (item['szname'] || '').toString().trim();
-                const itemHariJKS = (item['Hari JKS'] || '').toString().trim();
-                
-                const salesmanMatch = itemSalesman === currentSalesman;
-                const hariMatch = itemHariJKS.toLowerCase() === hariJKS.toLowerCase(); // Case insensitive
-                
-                return salesmanMatch && hariMatch;
-            });
-            
-            console.log(`🔍 Found ${filteredData.length} records for Salesman: ${currentSalesman}, Hari JKS: ${hariJKS}`);
-            
-            if (filteredData.length > 0) {
-                console.log('📋 Sample DAP record structure:', filteredData[0]);
-            }
-            
-            // Group by customer name and sum the values
-            const customerGroups = {};
-            
-            filteredData.forEach(item => {
-                const customerName = item['Nama Pelanggan'] || 'Unknown Customer';
-                const beMTD = parseFloat(item['BE MTD']) || 0;
-                const actualMTD = parseFloat(item['A.MTD']) || 0;
-                
-                if (!customerGroups[customerName]) {
-                    customerGroups[customerName] = {
-                        nama_pelanggan: customerName,
-                        be_mtd: 0,
-                        a_mtd: 0,
-                        gap: 0,
-                        kode_pelanggan: item['Kode_Pelanggan'] || '',
-                        channel_group: item['Channel Group'] || '',
-                        project: item['Project'] || ''
-                    };
-                }
-                
-                customerGroups[customerName].be_mtd += beMTD;
-                customerGroups[customerName].a_mtd += actualMTD;
-            });
-            
-            // Calculate gaps and convert to array
-            const dapData = Object.values(customerGroups).map(customer => {
-                customer.gap = customer.a_mtd - customer.be_mtd; // A.MTD - BE MTD
-                return customer;
-            });
-            
-            // Sort by customer name
-            dapData.sort((a, b) => a.nama_pelanggan.localeCompare(b.nama_pelanggan));
-            
-            console.log(`✅ Processed ${dapData.length} unique customers for DAP`);
-            console.log(`🎯 DAP data for ${currentSalesman} on ${hariJKS}:`, dapData.slice(0, 3)); // Show first 3 records
-            return dapData;
-        }
-
-        function updateDAPTable() {
-            const dapHariSelect = document.getElementById('dapHari');
-            const dapTableBody = document.getElementById('dapTableBody');
-            
-            if (!dapHariSelect || !dapTableBody) return;
-            
-            if (!dapHariSelect.value) {
-                dapTableBody.innerHTML = `
-                    <tr>
-                        <td colspan="5">
-                            <div class="empty-state">
-                                <div class="empty-state-icon">📋</div>
-                                <div>Pilih Hari JKS untuk melihat DAP</div>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-                currentDAPData = [];
-                updateDAPSummary([]);
-                return;
-            }
-            
-            // Get real DAP data from d.details.json
-            const selectedHari = dapHariSelect.value.trim();
-            const dapData = getDAPDataFromDetails(selectedHari);
-            
-            currentDAPData = dapData;
-            renderDAPTable(dapData);
-            updateDAPSummary(dapData);
-        }
-
-        function renderDAPTable(data) {
-            const dapTableBody = document.getElementById('dapTableBody');
-            
-            if (data.length === 0) {
-                dapTableBody.innerHTML = `
-                    <tr>
-                        <td colspan="5">
-                            <div class="empty-state">
-                                <div class="empty-state-icon">🔭</div>
-                                <div>Tidak ada data untuk Hari JKS yang dipilih</div>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
-            
-            let html = '';
-            let totalBE = 0, totalActual = 0, totalGap = 0;
-            
-            data.forEach((item, index) => {
-                const beMTD = item.be_mtd || 0;
-                const actualMTD = item.a_mtd || 0;
-                const gap = item.gap || 0;
-                
-                totalBE += beMTD;
-                totalActual += actualMTD;
-                totalGap += gap;
-                
-                // Color coding: Hijau jika Gap > 0, Merah jika Gap < 0
-                const gapClass = gap > 0 ? 'positive' : gap < 0 ? 'negative' : 'neutral';
-                const gapBadgeClass = gap > 0 ? 'gap-positive' : gap < 0 ? 'gap-negative' : 'gap-neutral';
-                
-                html += `
-                    <tr>
-                        <td>${index + 1}</td>
-                        <td style="text-align: left; padding-left: 12px;"><strong>${item.nama_pelanggan}</strong></td>
-                        <td class="metric-value">${formatCurrency(beMTD)}</td>
-                        <td class="metric-value">${formatCurrency(actualMTD)}</td>
-                        <td><span class="gap-badge ${gapBadgeClass}">${gap > 0 ? '+' : ''}${formatCurrency(gap)}</span></td>
-                    </tr>
-                `;
-            });
-            
-            // Add summary row
-            const totalGapBadgeClass = totalGap > 0 ? 'gap-positive' : totalGap < 0 ? 'gap-negative' : 'gap-neutral';
-            
-            html += `
-                <tr class="summary-row">
-                    <td></td>
-                    <td><strong>TOTAL</strong></td>
-                    <td><strong>${formatCurrency(totalBE)}</strong></td>
-                    <td><strong>${formatCurrency(totalActual)}</strong></td>
-                    <td><span class="gap-badge ${totalGapBadgeClass}"><strong>${totalGap > 0 ? '+' : ''}${formatCurrency(totalGap)}</strong></span></td>
-                </tr>
-            `;
-            
-            dapTableBody.innerHTML = html;
-        }
-
-        function updateDAPSummary(data) {
-            const dapTotalCustomersElement = document.getElementById('dapTotalCustomers');
-            const dapTotalBEElement = document.getElementById('dapTotalBE');
-            const dapTotalActualElement = document.getElementById('dapTotalActual');
-            const dapTotalGapElement = document.getElementById('dapTotalGap');
-            
-            if (!data || data.length === 0) {
-                dapTotalCustomersElement.textContent = '-';
-                dapTotalBEElement.textContent = '-';
-                dapTotalActualElement.textContent = '-';
-                dapTotalGapElement.textContent = '-';
-                return;
-            }
-            
-            const totalCustomers = data.length;
-            const totalBE = data.reduce((sum, item) => sum + (item.be_mtd || 0), 0);
-            const totalActual = data.reduce((sum, item) => sum + (item.a_mtd || 0), 0);
-            const totalGap = totalActual - totalBE;
-            
-            dapTotalCustomersElement.textContent = totalCustomers;
-            dapTotalBEElement.textContent = formatCurrency(totalBE);
-            dapTotalActualElement.textContent = formatCurrency(totalActual);
-            dapTotalGapElement.textContent = (totalGap > 0 ? '+' : '') + formatCurrency(totalGap);
-            
-            // Update styling: Hijau jika Gap > 0, Merah jika Gap < 0
-            if (totalGap > 0) {
-                dapTotalGapElement.className = 'summary-value positive';
-                dapTotalActualElement.className = 'summary-value positive';
-            } else if (totalGap < 0) {
-                dapTotalGapElement.className = 'summary-value negative';
-                dapTotalActualElement.className = 'summary-value neutral';
-            } else {
-                dapTotalGapElement.className = 'summary-value neutral';
-                dapTotalActualElement.className = 'summary-value neutral';
-            }
-        }
-
-        function populateDAPHari() {
-            const dapHariSelect = document.getElementById('dapHari');
-            if (!dapHariSelect || detailsData.length === 0) return;
-            
-            console.log('🔄 Populating DAP Hari dropdown from d.details.json');
-            
-            dapHariSelect.innerHTML = '<option value="">📅 Pilih Hari JKS</option>';
-            
-            // Get unique "Hari JKS" values from d.details.json (case sensitive)
-            const uniqueHariJKS = [...new Set(detailsData
-                .map(item => item['Hari JKS'])
-                .filter(hari => hari && hari.toString().trim() !== '')
-                .map(hari => hari.toString().trim()) // Keep original case
-            )].sort();
-            
-            console.log('📅 Found ' + uniqueHariJKS.length + ' unique Hari JKS:', uniqueHariJKS);
-            
-            uniqueHariJKS.forEach(hari => {
-                const option = document.createElement('option');
-                option.value = hari;
-                option.textContent = hari;
-                dapHariSelect.appendChild(option);
-            });
-        }
-        
+		
         let currentFilteredData = [];
         let sortState = { column: null, direction: 'asc' };
 
@@ -3036,7 +2621,7 @@
             try {
                 showLoading(true);
                 
-                console.log('🚀 Starting enhanced data initialization with Firebase + geolocation...');
+                console.log('🚀 Starting session-managed data initialization with Firebase + geolocation...');
                 
                 // Wait for Firebase to be ready before initializing analytics
                 while (!window.firebaseReady) {
@@ -3044,7 +2629,7 @@
                     await new Promise(resolve => setTimeout(resolve, 100));
                 }
                 
-                console.log('🔥 Firebase ready, initializing analytics...');
+                console.log('🔥 Firebase ready, initializing session-managed analytics...');
                 visitAnalytics = new VisitAnalyticsWithFirebase();
                 
                 console.log('🔍 Initializing salesman from URL...');
@@ -3064,10 +2649,9 @@
                 
                 console.log('✅ All data loaded successfully. Processing hari data...');
                 
-                // ===== PERBAIKAN: Tambahkan error handling untuk bagian ini =====
+                // ===== PROCESS HARI DATA =====
                 try {
-                    // Create hari data from pelanggan data or use hardcoded fallback
-                    console.log('🔄 Processing hari data from pelangganData...');
+                    console.log('📄 Processing hari data from pelangganData...');
                     console.log('📊 pelangganData length: ' + pelangganData.length);
                     console.log('🔍 currentSalesmanId: ' + currentSalesmanId);
                     
@@ -3088,7 +2672,7 @@
                         const uniqueHari = [...new Set(filteredData
                             .map(item => {
                                 const hari = normalizeHariFormat(item.Hari_Kunjungan);
-                                console.log('🔄 Processing hari: ' + item.Hari_Kunjungan + ' -> ' + hari);
+                                console.log('📄 Processing hari: ' + item.Hari_Kunjungan + ' -> ' + hari);
                                 return hari;
                             })
                             .filter(hari => {
@@ -3120,7 +2704,7 @@
                         console.log('✅ Fallback hari data created:', hariData);
                     }
                     
-                    console.log('🔄 Populating hari dropdown...');
+                    console.log('📄 Populating hari dropdown...');
                     // Populate hari dropdown
                     const hariSelect = document.getElementById('hari');
                     if (!hariSelect) {
@@ -3155,15 +2739,16 @@
                     }
                 }
                 
-                console.log('🔄 Finishing initialization...');
+                console.log('📄 Finishing initialization...');
                 showLoading(false);
                 showMainContent(true);
                 
-                console.log('✅ Enhanced visit system with Firebase + geolocation ready');
+                console.log('✅ Session-managed visit system ready');
                 console.log('🔥 Firebase features: Real-time sync, offline support, analytics tracking');
-                console.log('📍 Location features: GPS tracking, customer verification, distance calculation');
+                console.log('🔍 Location features: GPS tracking, customer verification, distance calculation');
                 console.log('📊 Integrated with TPOM data for SKU highlighting and POM items');
-                console.log('🚫 Anti-duplication: Event deduplication, throttled location updates');
+                console.log('🚫 Session Management: Modal confirmations, anti-duplication, controlled tracking');
+                console.log('⏰ Session Features: Start/End confirmation, timer display, session-based tracking');
                 
             } catch (error) {
                 console.error('❌ Critical error in initializeData:', error);
@@ -3174,6 +2759,13 @@
         }
 		
         function populateVisitTable(customerName) {
+            // ===== SESSION MANAGED: Hanya populate table jika session aktif =====
+            if (!visitSession.isActive) {
+                console.log('⏸️ Table population paused - no active visit session');
+                clearTableData();
+                return;
+            }
+            
             const hariSelect = document.getElementById('hari');
             
             if (!customerName || !hariSelect.value) {
@@ -3192,6 +2784,13 @@
             const pelangganSelect = document.getElementById('pelanggan');
             
             if (!tableBody || !hariSelect || !pelangganSelect) {
+                return;
+            }
+            
+            // ===== SESSION MANAGED: Hanya update table jika session aktif =====
+            if (!visitSession.isActive) {
+                console.log('⏸️ Table update paused - no active visit session');
+                clearTableData();
                 return;
             }
             
@@ -3390,13 +2989,14 @@
             
             pelangganSelect.innerHTML = '<option value="">🏪 Pilih Pelanggan</option>';
             
-            // End current customer tracking
-            if (visitAnalytics && visitAnalytics.currentCustomer) {
-                visitAnalytics.endCustomerTracking();
+            // ===== SESSION MANAGED: End current session jika hari berubah =====
+            if (visitSession.isActive) {
+                showVisitEndModal();
+                return; // Wait for user confirmation
             }
             
             // Clear table when day changes
-            updateTable();
+            clearTableData();
             
             if (pelangganData.length > 0 && currentSalesmanId && hariSelect.value) {
                 const selectedHari = hariSelect.value.trim().toUpperCase();
@@ -3427,6 +3027,12 @@
             const customerInfo = document.getElementById('customerInfo');
             
             if (pelangganSelect.value && hariSelect.value) {
+                // ===== SESSION MANAGED: Jika ada session aktif dan customer berbeda, tanya konfirmasi end =====
+                if (visitSession.isActive && visitSession.customerName !== pelangganSelect.value) {
+                    showVisitEndModal();
+                    return; // Wait for user confirmation
+                }
+                
                 const selectedPelanggan = pelangganSelect.value.trim();
                 const selectedHari = hariSelect.value.trim().toUpperCase();
                 
@@ -3467,15 +3073,10 @@
                     masterCoordinates = getCustomerCoordinates(selectedPelanggan, null);
                 }
                 
-                // Track customer selection with coordinates via Firebase
-                if (visitAnalytics) {
-                    visitAnalytics.trackCustomerSelection(selectedPelanggan, selectedHari, masterCoordinates);
-                }
+                // ===== SESSION MANAGED: Show confirmation modal instead of direct start =====
+                showVisitStartModal(selectedPelanggan, selectedHari, masterCoordinates);
                 
-                // MOST IMPORTANT: Populate the table regardless of location
-                populateVisitTable(selectedPelanggan);
-                
-                console.log('👥 Customer selected: ' + selectedPelanggan, {
+                console.log(`👥 Customer selection initiated: ${selectedPelanggan}`, {
                     coordinates: masterCoordinates,
                     channelGroup: pelangganRecord?.['Channel Group'],
                     project: pelangganRecord?.Project
@@ -3484,10 +3085,11 @@
             } else {
                 // Hide customer info and clear table
                 customerInfo.style.display = 'none';
-                populateVisitTable(null);
+                clearTableData();
                 
-                if (visitAnalytics && !pelangganSelect.value) {
-                    visitAnalytics.endCustomerTracking();
+                // ===== SESSION MANAGED: End session jika customer deselected =====
+                if (visitSession.isActive && !pelangganSelect.value) {
+                    showVisitEndModal();
                 }
             }
         }
@@ -3513,32 +3115,6 @@
             document.getElementById('mainContent').style.display = show ? 'block' : 'none';
         }
 
-        function showTab(tabName) {
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-
-            if (tabName === 'visit') {
-                document.getElementById('visitTab').style.display = 'block';
-                document.getElementById('dapTab').style.display = 'none';
-            } else if (tabName === 'dap') {
-                document.getElementById('visitTab').style.display = 'none';
-                document.getElementById('dapTab').style.display = 'block';
-                
-                // Initialize DAP data when tab is opened
-                populateDAPHari();
-                updateDAPTable();
-                
-                // Track DAP tab access via Firebase
-                if (visitAnalytics) {
-                    visitAnalytics.track('visit_dap_tab_accessed', {
-                        access_time: new Date().toISOString(),
-                        salesman_id: currentSalesmanId,
-                        salesman_name: currentSalesman
-                    });
-                }
-            }
-        }
-
         // ===== EVENT LISTENERS =====
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('hari').addEventListener('change', function() {
@@ -3556,43 +3132,25 @@
             document.getElementById('pelanggan').addEventListener('change', function() {
                 handlePelangganSelection();
                 
-                // Customer selection is tracked inside handlePelangganSelection via Firebase
+                // Customer selection is tracked inside session management
+            });
+
+            // ===== SESSION MODAL EVENT LISTENERS =====
+            // Close modals when clicking outside
+            document.getElementById('visitStartModal').addEventListener('click', (e) => {
+                if (e.target.id === 'visitStartModal') {
+                    cancelVisitStart();
+                }
             });
             
-            // DAP event listeners
-            const dapHariSelect = document.getElementById('dapHari');
-            
-            if (dapHariSelect) {
-                dapHariSelect.addEventListener('change', function() {
-                    updateDAPTable();
-                    const dapInfo = document.getElementById('dapInfo');
-                    const dapStatusInfo = document.getElementById('dapStatusInfo');
-                    
-                    if (this.value) {
-                        dapInfo.style.display = 'block';
-                        dapStatusInfo.textContent = `${this.value}`;
-                        
-                        // Track DAP hari selection via Firebase
-                        if (visitAnalytics) {
-                            visitAnalytics.track('visit_dap_hari_selected', {
-                                hari_jks: this.value,
-                                selection_time: new Date().toISOString(),
-                                customers_count: currentDAPData.length
-                            });
-                        }
-                    } else {
-                        dapInfo.style.display = 'none';
-                    }
-                });
-            }
+            document.getElementById('visitEndModal').addEventListener('click', (e) => {
+                if (e.target.id === 'visitEndModal') {
+                    cancelVisitEnd();
+                }
+            });
 
-            // ===== DEBUG PANEL INITIALIZATION =====
-            // Show debug panel if debug=true in URL
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.get('debug') === 'true') {
-                document.getElementById('debugPanel').style.display = 'flex';
-                console.log('🔧 Debug mode enabled');
-            }
+            // Initialize session status
+            updateVisitSessionStatus();
         });
 
         // ===== NAVIGATION FUNCTIONS =====
@@ -3648,53 +3206,23 @@
             }
         }
 
-        function debugDataStatus() {
-            console.log('🔍 DEBUG DATA STATUS:');
-            console.log('👤 currentSalesmanId: ' + currentSalesmanId);
-            console.log('👤 currentSalesman: ' + currentSalesman);
-            console.log('📊 salesmanData.length: ' + salesmanData.length);
-            console.log('🏪 pelangganData.length: ' + pelangganData.length);
-            console.log('📋 detailsData.length: ' + detailsData.length);
-            console.log('🎯 tpomData.length: ' + tpomData.length);
-            console.log('📅 hariData.length: ' + hariData.length);
-            console.log('🔥 Firebase connected: ' + isFirebaseConnected);
-            console.log('🔥 Firebase user: ' + (firebaseUser ? firebaseUser.uid : 'null'));
-            console.log('📡 Pending sync count: ' + pendingSyncCount);
-            console.log('📡 Synced count: ' + syncedCount);
-            console.log('🚫 Duplicates prevented: ' + duplicatePreventionStats.totalPrevented);
-            
-            if (pelangganData.length > 0) {
-                console.log('📋 Sample pelangganData:', pelangganData[0]);
-            }
-            
-            if (currentSalesmanId && pelangganData.length > 0) {
-                const salesmanRecords = pelangganData.filter(item => 
-                    (item.szEmployeeId || '').toString().trim() === currentSalesmanId
-                );
-                console.log('🔍 Records for salesman ' + currentSalesmanId + ': ' + salesmanRecords.length);
-                if (salesmanRecords.length > 0) {
-                    console.log('📋 Sample salesman record:', salesmanRecords[0]);
-                }
-            }
-        }
-
         // ===== PAGE LOAD =====
         window.onload = function() {
             if (!checkLoginStatus()) return;
             
-            console.log('📱 Starting Enhanced Visit Outlet with Firebase Integration (Fixed Version)...');
+            console.log('📱 Starting Session-Managed Visit Outlet with Firebase Integration...');
             console.log('🔥 Features: Firebase real-time sync, offline support with auto-sync');
             console.log('📍 Features: Real-time location tracking, customer location verification');
             console.log('📊 Features: Enhanced table rendering with TPOM integration');
-            console.log('📋 Features: Real DAP data from d.details.json with BE MTD analysis');
-            console.log('🚫 Features: Anti-duplication system with event deduplication and throttling');
-            console.log('🎯 Firebase benefits: Manager can monitor real-time, data persisted in cloud');
-            console.log('🔧 Debug mode: Add ?debug=true to URL for debug controls');
+            console.log('⏰ Features: Session management with start/end confirmations');
+            console.log('🚫 Features: Anti-duplication system with modal confirmations');
+            console.log('🎯 Session benefits: Controlled tracking, prevent double entries, timer display');
+            console.log('🎛️ Manager benefits: Real-time monitoring, session duration tracking, compliance verification');
             
             initializeData();
         };
 
-        console.log('✅ Enhanced Visit script: Fixed Anti-Duplication Firebase + Geolocation + Real table data + Real DAP loaded');
+        console.log('✅ Session-Managed Visit script with Anti-Duplication loaded');
     </script>
 </body>
 </html>
