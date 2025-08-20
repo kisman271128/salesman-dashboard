@@ -3,10 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Real-time Location Monitoring</title>
+    <title>Real-time Location Monitoring - Firebase Integrated</title>
     
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-database-compat.js"></script>
     
     <style>
         * {
@@ -61,6 +66,32 @@
             flex: 1;
             padding: 20px;
             overflow-y: auto;
+        }
+
+        /* ===== FIREBASE STATUS ===== */
+        .firebase-status {
+            background: #f0f9ff;
+            border: 1px solid #0ea5e9;
+            color: #0369a1;
+            padding: 8px 12px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .firebase-status.connected {
+            background: #f0fdf4;
+            border-color: #10b981;
+            color: #065f46;
+        }
+
+        .firebase-status.error {
+            background: #fef2f2;
+            border-color: #ef4444;
+            color: #991b1b;
         }
 
         /* ===== CONTROL PANEL ===== */
@@ -414,6 +445,24 @@
             margin-bottom: 0;
         }
 
+        /* ===== DEBUG OUTPUT ===== */
+        .debug-output {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-family: monospace;
+            font-size: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+            display: none;
+        }
+
+        .debug-output.show {
+            display: block;
+        }
+
         /* ===== RESPONSIVE ===== */
         @media (max-width: 1024px) {
             .dashboard-container {
@@ -472,10 +521,21 @@
         <div class="sidebar">
             <div class="sidebar-header">
                 <div class="sidebar-title">🎛️ Control Center</div>
-                <div class="sidebar-subtitle">Real-time Monitoring</div>
+                <div class="sidebar-subtitle">Real-time Monitoring + Firebase</div>
             </div>
             
             <div class="sidebar-content">
+                <!-- Firebase Status -->
+                <div class="firebase-status" id="firebaseStatus">
+                    🔄 Connecting to Firebase...
+                </div>
+                
+                <!-- Debug Output -->
+                <div class="debug-output" id="debugOutput">
+                    <strong>🔍 Debug Information:</strong><br>
+                    <div id="debugContent">Initializing...</div>
+                </div>
+
                 <!-- Control Panel -->
                 <div class="control-panel">
                     <div class="control-title">🔧 Settings</div>
@@ -495,6 +555,15 @@
                     </div>
                     
                     <div class="control-item">
+                        <label>Data Source</label>
+                        <select id="dataSourceFilter" onchange="updateDataSource()">
+                            <option value="localStorage">Local Storage (Primary)</option>
+                            <option value="both">Both Sources (localStorage + Firebase)</option>
+                            <option value="firebase">Firebase Database Only</option>
+                        </select>
+                    </div>
+                    
+                    <div class="control-item">
                         <label>Date Filter</label>
                         <input type="date" id="monitoringDate">
                     </div>
@@ -507,6 +576,15 @@
                             <option value="60000">1 minute</option>
                             <option value="300000">5 minutes</option>
                         </select>
+                    </div>
+
+                    <div style="display: flex; gap: 4px; margin-top: 8px;">
+                        <button class="map-btn map-btn-secondary" onclick="refreshFirebaseConnection()" style="flex: 1; font-size: 10px;">
+                            🔄 Firebase
+                        </button>
+                        <button class="map-btn map-btn-secondary" onclick="toggleDebugOutput()" style="flex: 1; font-size: 10px;">
+                            🔍 Debug
+                        </button>
                     </div>
                 </div>
 
@@ -555,7 +633,7 @@
         <div class="main-content">
             <div class="main-header">
                 <div class="main-title">
-                    🗺️ Real-time Location Tracking
+                    🗺️ Real-time Location Tracking + Firebase
                 </div>
                 <div class="live-indicator">
                     <div class="live-dot"></div>
@@ -616,6 +694,115 @@
         let refreshIntervalMs = 30000;
         let activeSalesman = {};
         let heatmapEnabled = false;
+        let firebaseDatabase = null;
+        let isFirebaseConnected = false;
+        let debugMessages = [];
+        let currentDataSource = 'localStorage';
+
+        // ===== FIREBASE CONFIGURATION =====
+        const firebaseConfig = {
+            apiKey: "AIzaSyAoRV3qVAXQ14AEVA8Mo49HXfAyhMMm8Bs",
+            authDomain: "salesman-route-tracker.firebaseapp.com",
+            databaseURL: "https://salesman-route-tracker-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "salesman-route-tracker",
+            storageBucket: "salesman-route-tracker.firebasestorage.app",
+            messagingSenderId: "590789273516",
+            appId: "1:590789273516:web:79abe0c7e4cbccfa44fc09",
+            measurementId: "G-5RYSWKQ963"
+        };
+
+        // ===== DEBUG FUNCTIONS =====
+        function addDebugMessage(message) {
+            debugMessages.push(`[${new Date().toLocaleTimeString()}] ${message}`);
+            if (debugMessages.length > 50) debugMessages.shift();
+            updateDebugOutput();
+        }
+
+        function updateDebugOutput() {
+            const debugContent = document.getElementById('debugContent');
+            debugContent.innerHTML = debugMessages.slice(-20).join('<br>');
+        }
+
+        function toggleDebugOutput() {
+            const debugOutput = document.getElementById('debugOutput');
+            debugOutput.classList.toggle('show');
+        }
+
+        function updateFirebaseStatus(message, status) {
+            const statusElement = document.getElementById('firebaseStatus');
+            statusElement.textContent = message;
+            statusElement.className = `firebase-status ${status}`;
+            addDebugMessage('🔔 Firebase status: ' + message);
+        }
+
+        // ===== FIREBASE INITIALIZATION =====
+        async function initializeFirebase() {
+            try {
+                addDebugMessage('🔗 Initializing Firebase with Authentication...');
+                updateFirebaseStatus('🔄 Initializing Firebase...', 'connecting');
+                
+                // Initialize Firebase
+                if (!firebase.apps.length) {
+                    firebase.initializeApp(firebaseConfig);
+                    addDebugMessage('✅ Firebase app initialized');
+                }
+                
+                firebaseDatabase = firebase.database();
+                
+                // Try Anonymous Authentication
+                try {
+                    addDebugMessage('🔐 Attempting anonymous authentication...');
+                    await firebase.auth().signInAnonymously();
+                    addDebugMessage('✅ Anonymous authentication successful');
+                    
+                    // Test database access
+                    try {
+                        addDebugMessage('🔍 Testing database access...');
+                        const testPaths = [
+                            { path: 'visit_events', description: 'visit events' },
+                            { path: 'daily_visits', description: 'daily visits' }
+                        ];
+                        
+                        let hasAccess = false;
+                        for (const testPath of testPaths) {
+                            try {
+                                const snapshot = await firebaseDatabase.ref(testPath.path).limitToFirst(1).once('value');
+                                addDebugMessage(`✅ Successfully accessed ${testPath.description} path`);
+                                hasAccess = true;
+                                break;
+                            } catch (pathError) {
+                                addDebugMessage(`⚠️ Cannot access ${testPath.description}: ${pathError.message}`);
+                            }
+                        }
+                        
+                        if (hasAccess) {
+                            isFirebaseConnected = true;
+                            updateFirebaseStatus('✅ Firebase connected with database access', 'connected');
+                            addDebugMessage('✅ Firebase authentication and database access confirmed');
+                        } else {
+                            isFirebaseConnected = false;
+                            updateFirebaseStatus('⚠️ Firebase auth OK but limited data access', 'error');
+                            addDebugMessage('⚠️ Firebase authenticated but cannot access data paths');
+                        }
+                        
+                    } catch (dbError) {
+                        isFirebaseConnected = false;
+                        updateFirebaseStatus('⚠️ Firebase auth OK but database access failed', 'error');
+                        addDebugMessage('⚠️ Database access test failed: ' + dbError.message);
+                    }
+                    
+                } catch (authError) {
+                    addDebugMessage('⚠️ Firebase authentication failed: ' + authError.message);
+                    isFirebaseConnected = false;
+                    updateFirebaseStatus('⚠️ Firebase authentication failed', 'error');
+                }
+                
+            } catch (error) {
+                addDebugMessage('❌ Firebase initialization error: ' + error.message);
+                isFirebaseConnected = false;
+                updateFirebaseStatus('❌ Firebase initialization failed', 'error');
+            }
+        }
 
         // ===== REAL-TIME MONITORING CLASS =====
         class RealtimeLocationMonitor {
@@ -629,11 +816,12 @@
                 this.init();
             }
             
-            init() {
+            async init() {
                 if (this.isInitialized) return;
-                console.log('🔴 Real-time Location Monitor initialized');
+                addDebugMessage('🔴 Real-time Location Monitor with Firebase initializing...');
                 this.isInitialized = true;
                 
+                await initializeFirebase();
                 this.initializeMap();
                 this.startMonitoring();
             }
@@ -648,7 +836,7 @@
                     maxZoom: 18
                 }).addTo(realtimeMap);
                 
-                console.log('🗺️ Real-time map initialized');
+                addDebugMessage('🗺️ Real-time map initialized');
             }
             
             startMonitoring() {
@@ -658,7 +846,7 @@
                 // Set up auto-refresh
                 this.setupAutoRefresh();
                 
-                console.log('👁️ Real-time monitoring started');
+                addDebugMessage('👁️ Real-time monitoring started');
             }
             
             setupAutoRefresh() {
@@ -670,16 +858,16 @@
                     this.refreshData();
                 }, refreshIntervalMs);
                 
-                console.log(`⏰ Auto-refresh set to ${refreshIntervalMs/1000} seconds`);
+                addDebugMessage(`⏰ Auto-refresh set to ${refreshIntervalMs/1000} seconds`);
             }
             
-            refreshData() {
+            async refreshData() {
                 const monitoringDate = document.getElementById('monitoringDate').value || 
                     new Date().toISOString().split('T')[0];
                 
-                console.log(`🔄 Refreshing real-time data for ${monitoringDate}`);
+                addDebugMessage(`🔄 Refreshing real-time data for ${monitoringDate} from ${currentDataSource}`);
                 
-                this.loadSalesmanData(monitoringDate);
+                await this.loadSalesmanData(monitoringDate);
                 this.updateSalesmanList();
                 this.updateMapMarkers();
                 this.updateStatistics();
@@ -688,12 +876,162 @@
                 this.lastUpdateTime = new Date();
             }
             
-            loadSalesmanData(dateStr) {
+            async loadSalesmanData(dateStr) {
                 this.salesmanData = {};
+                
+                try {
+                    // Load from both sources if needed
+                    if (currentDataSource === 'firebase' || currentDataSource === 'both') {
+                        if (isFirebaseConnected) {
+                            await this.loadFromFirebase(dateStr);
+                        } else {
+                            addDebugMessage('⚠️ Firebase not connected, will use localStorage');
+                        }
+                    }
+                    
+                    if (currentDataSource === 'localStorage' || currentDataSource === 'both' || 
+                        (currentDataSource === 'firebase' && Object.keys(this.salesmanData).length === 0)) {
+                        this.loadFromLocalStorage(dateStr);
+                    }
+                    
+                    addDebugMessage(`📊 Loaded data for ${Object.keys(this.salesmanData).length} salesman from ${currentDataSource}`);
+                    
+                } catch (error) {
+                    addDebugMessage('❌ Error loading salesman data: ' + error.message);
+                    // Fallback to localStorage
+                    this.loadFromLocalStorage(dateStr);
+                }
+            }
+            
+            async loadFromFirebase(dateStr) {
+                if (!isFirebaseConnected) return;
+                
+                addDebugMessage(`🔥 Loading Firebase data for ${dateStr}...`);
+                
+                try {
+                    // Load from visit_events
+                    const eventsSnapshot = await firebaseDatabase.ref('visit_events')
+                        .orderByChild('timestamp')
+                        .startAt(`${dateStr}T00:00:00`)
+                        .endAt(`${dateStr}T23:59:59`)
+                        .limitToLast(100)
+                        .once('value');
+                    
+                    const eventsData = eventsSnapshot.val();
+                    if (eventsData) {
+                        Object.entries(eventsData).forEach(([eventId, eventData]) => {
+                            if (eventData && eventData.location && eventData.salesman_id) {
+                                this.processFirebaseEvent(eventData, dateStr);
+                            }
+                        });
+                        addDebugMessage(`🔥 Processed ${Object.keys(eventsData).length} Firebase events`);
+                    }
+                    
+                    // Load from daily_visits
+                    const dailySnapshot = await firebaseDatabase.ref('daily_visits')
+                        .orderByChild('date')
+                        .equalTo(dateStr)
+                        .once('value');
+                    
+                    const dailyData = dailySnapshot.val();
+                    if (dailyData) {
+                        Object.entries(dailyData).forEach(([salesmanId, salesmanDaily]) => {
+                            if (salesmanDaily && typeof salesmanDaily === 'object') {
+                                this.processFirebaseDailyData(salesmanId, salesmanDaily, dateStr);
+                            }
+                        });
+                        addDebugMessage(`🔥 Processed ${Object.keys(dailyData).length} Firebase daily records`);
+                    }
+                    
+                } catch (error) {
+                    addDebugMessage('❌ Firebase loading error: ' + error.message);
+                }
+            }
+            
+            processFirebaseEvent(eventData, dateStr) {
+                const salesmanId = eventData.salesman_id;
+                const salesmanName = eventData.salesman_name || `Salesman ${salesmanId}`;
+                
+                if (!this.salesmanData[salesmanId]) {
+                    this.salesmanData[salesmanId] = {
+                        salesman_id: salesmanId,
+                        salesman_name: salesmanName,
+                        last_location: null,
+                        last_update: null,
+                        current_customer: null,
+                        status: 'inactive',
+                        total_visits: 0,
+                        location_alerts: 0,
+                        source: 'firebase-events'
+                    };
+                }
+                
+                const salesman = this.salesmanData[salesmanId];
+                
+                // Update latest location
+                if (eventData.location && eventData.timestamp) {
+                    const eventTime = new Date(eventData.timestamp);
+                    const lastUpdateTime = salesman.last_update ? new Date(salesman.last_update) : new Date(0);
+                    
+                    if (eventTime > lastUpdateTime) {
+                        salesman.last_location = eventData.location;
+                        salesman.last_update = eventData.timestamp;
+                        salesman.status = this.determineSalesmanStatus({ timestamp: eventData.timestamp });
+                    }
+                }
+                
+                // Update customer info
+                if (eventData.customer_name || (eventData.event_data && eventData.event_data.customer_name)) {
+                    salesman.current_customer = eventData.customer_name || eventData.event_data.customer_name;
+                    salesman.total_visits++;
+                }
+                
+                // Check distance alerts
+                if (eventData.distance_meters && eventData.distance_meters > this.alertThreshold) {
+                    salesman.location_alerts++;
+                }
+            }
+            
+            processFirebaseDailyData(salesmanId, dailyData, dateStr) {
+                const salesmanName = dailyData.salesman_name || `Salesman ${salesmanId}`;
+                
+                if (!this.salesmanData[salesmanId]) {
+                    this.salesmanData[salesmanId] = {
+                        salesman_id: salesmanId,
+                        salesman_name: salesmanName,
+                        last_location: null,
+                        last_update: null,
+                        current_customer: null,
+                        status: 'inactive',
+                        total_visits: 0,
+                        location_alerts: 0,
+                        source: 'firebase-daily'
+                    };
+                }
+                
+                const salesman = this.salesmanData[salesmanId];
+                
+                // Extract location from daily data
+                if (dailyData.location || dailyData.latest_location) {
+                    salesman.last_location = dailyData.location || dailyData.latest_location;
+                    salesman.last_update = dailyData.last_update || `${dateStr}T12:00:00Z`;
+                    salesman.status = this.determineSalesmanStatus({ timestamp: salesman.last_update });
+                }
+                
+                // Extract visit statistics
+                if (dailyData.total_visits) salesman.total_visits = dailyData.total_visits;
+                if (dailyData.total_customers) salesman.current_customer = `${dailyData.total_customers} customers`;
+                if (dailyData.location_alerts) salesman.location_alerts = dailyData.location_alerts;
+            }
+            
+            loadFromLocalStorage(dateStr) {
+                addDebugMessage(`💾 Loading localStorage data for ${dateStr}...`);
                 
                 // Scan localStorage for geolocation data
                 const geoAnalyticsPattern = `visit_analytics_geo_${dateStr}_`;
                 const geoDailyPattern = `visit_daily_geo_${dateStr}_`;
+                
+                let localStorageCount = 0;
                 
                 for (let i = 0; i < localStorage.length; i++) {
                     const key = localStorage.key(i);
@@ -724,16 +1062,19 @@
                                 daily_data: dailyData,
                                 status: this.determineSalesmanStatus(latestLocationEvent),
                                 total_visits: customerEvents.length,
-                                location_alerts: this.calculateLocationAlerts(analyticsData)
+                                location_alerts: this.calculateLocationAlerts(analyticsData),
+                                source: 'localStorage'
                             };
                             
+                            localStorageCount++;
+                            
                         } catch (error) {
-                            console.error(`❌ Error loading data for salesman ${salesmanId}:`, error);
+                            addDebugMessage(`❌ Error loading localStorage data for salesman ${salesmanId}: ${error.message}`);
                         }
                     }
                 }
                 
-                console.log(`📊 Loaded data for ${Object.keys(this.salesmanData).length} salesman`);
+                addDebugMessage(`💾 LocalStorage: found ${localStorageCount} salesman records`);
             }
             
             determineSalesmanStatus(latestEvent) {
@@ -766,7 +1107,7 @@
                                 <div class="salesman-name">No Active Data</div>
                                 <div class="salesman-status status-inactive">Inactive</div>
                             </div>
-                            <div class="salesman-details">No salesman activity detected today</div>
+                            <div class="salesman-details">No salesman activity detected for selected date and source</div>
                         </div>
                     `;
                     return;
@@ -797,7 +1138,8 @@
                                 <div class="salesman-details">
                                     📍 ${salesman.current_customer || 'No active customer'}<br>
                                     🕐 Last: ${lastUpdate}<br>
-                                    📊 Visits: ${salesman.total_visits} | Alerts: ${salesman.location_alerts}
+                                    📊 Visits: ${salesman.total_visits} | Alerts: ${salesman.location_alerts}<br>
+                                    🔗 Source: ${salesman.source}
                                 </div>
                                 <div class="salesman-location">${locationText}</div>
                             </div>
@@ -817,7 +1159,7 @@
                     }
                 });
                 
-                console.log(`🗺️ Updated ${Object.keys(salesmanMarkers).length} salesman markers`);
+                addDebugMessage(`🗺️ Updated ${Object.keys(salesmanMarkers).length} salesman markers`);
             }
             
             addSalesmanMarker(salesman) {
@@ -870,10 +1212,13 @@
                             ${salesman.last_location.latitude.toFixed(6)}, ${salesman.last_location.longitude.toFixed(6)}
                         </p>
                         <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Accuracy:</strong> 
-                            ±${Math.round(salesman.last_location.accuracy)}m
+                            ±${Math.round(salesman.last_location.accuracy || 0)}m
                         </p>
                         <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Today's Visits:</strong> 
                             ${salesman.total_visits}
+                        </p>
+                        <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Data Source:</strong> 
+                            ${salesman.source}
                         </p>
                         <p style="margin: 0; font-size: 11px; color: #64748b;">
                             Last update: ${new Date(salesman.last_update).toLocaleString()}
@@ -947,6 +1292,8 @@
                 if (notificationsEnabled) {
                     this.showNotificationPanel();
                 }
+                
+                addDebugMessage(`🔔 Notification: ${message}`);
             }
             
             updateNotificationPanel() {
@@ -989,6 +1336,8 @@
                     if (salesmanMarkers[salesmanId]) {
                         salesmanMarkers[salesmanId].openPopup();
                     }
+                    
+                    addDebugMessage(`🎯 Focused on ${salesman.salesman_name}`);
                 }
             }
             
@@ -1001,7 +1350,8 @@
                     last_location: salesman.last_location,
                     last_update: salesman.last_update,
                     total_visits: salesman.total_visits,
-                    location_alerts: salesman.location_alerts
+                    location_alerts: salesman.location_alerts,
+                    source: salesman.source
                 }));
                 
                 const csvContent = this.convertToCSV(data);
@@ -1020,7 +1370,7 @@
                 const headers = [
                     'Salesman_ID', 'Salesman_Name', 'Status', 'Current_Customer',
                     'Latitude', 'Longitude', 'Location_Accuracy', 'Last_Update',
-                    'Total_Visits', 'Location_Alerts'
+                    'Total_Visits', 'Location_Alerts', 'Data_Source'
                 ];
                 
                 const rows = data.map(item => [
@@ -1033,7 +1383,8 @@
                     item.last_location ? item.last_location.accuracy : '',
                     item.last_update || '',
                     item.total_visits,
-                    item.location_alerts
+                    item.location_alerts,
+                    item.source
                 ]);
                 
                 return [headers, ...rows]
@@ -1054,13 +1405,13 @@
                 if (locationMonitor) {
                     locationMonitor.setupAutoRefresh();
                 }
-                console.log('✅ Auto-refresh enabled');
+                addDebugMessage('✅ Auto-refresh enabled');
             } else {
                 if (autoRefreshInterval) {
                     clearInterval(autoRefreshInterval);
                     autoRefreshInterval = null;
                 }
-                console.log('⏸️ Auto-refresh disabled');
+                addDebugMessage('⏸️ Auto-refresh disabled');
             }
         }
 
@@ -1073,10 +1424,20 @@
                 if (locationMonitor) {
                     locationMonitor.addNotification('🔔 Live notifications enabled', 'info');
                 }
-                console.log('🔔 Notifications enabled');
+                addDebugMessage('🔔 Notifications enabled');
             } else {
                 document.getElementById('notificationPanel').style.display = 'none';
-                console.log('🔕 Notifications disabled');
+                addDebugMessage('🔕 Notifications disabled');
+            }
+        }
+
+        function updateDataSource() {
+            const select = document.getElementById('dataSourceFilter');
+            currentDataSource = select.value;
+            addDebugMessage(`🔄 Data source changed to: ${currentDataSource}`);
+            
+            if (locationMonitor) {
+                locationMonitor.addNotification(`🔄 Data source: ${currentDataSource}`, 'info');
             }
         }
 
@@ -1088,7 +1449,7 @@
                 locationMonitor.setupAutoRefresh();
             }
             
-            console.log(`⏰ Refresh interval updated to ${refreshIntervalMs/1000} seconds`);
+            addDebugMessage(`⏰ Refresh interval updated to ${refreshIntervalMs/1000} seconds`);
         }
 
         function refreshMapData() {
@@ -1119,8 +1480,7 @@
                 );
             }
             
-            // TODO: Implement heatmap visualization
-            console.log(`🔥 Heatmap ${heatmapEnabled ? 'enabled' : 'disabled'}`);
+            addDebugMessage(`🔥 Heatmap ${heatmapEnabled ? 'enabled' : 'disabled'}`);
         }
 
         function exportLiveData() {
@@ -1135,9 +1495,36 @@
             }
         }
 
+        async function refreshFirebaseConnection() {
+            addDebugMessage('🔄 Refreshing Firebase connection...');
+            
+            try {
+                if (firebase.auth().currentUser) {
+                    addDebugMessage('🔓 Signing out current user...');
+                    await firebase.auth().signOut();
+                }
+                
+                await initializeFirebase();
+                
+                if (isFirebaseConnected) {
+                    alert('✅ Firebase connection successful!\n\n🔐 Authentication: OK\n📊 Database access: Confirmed\n🔥 You can now use Firebase data source');
+                } else {
+                    alert('⚠️ Firebase connection partial!\n\n🔐 Authentication may have limitations\n💾 localStorage remains available\n💡 Recommend using localStorage data source');
+                }
+                
+                if (locationMonitor) {
+                    locationMonitor.addNotification('🔄 Firebase connection refreshed', 'info');
+                }
+                
+            } catch (error) {
+                addDebugMessage('❌ Firebase refresh error: ' + error.message);
+                alert('❌ Firebase refresh failed!\n\n' + error.message + '\n\n💾 Continue using localStorage data source');
+            }
+        }
+
         // ===== INITIALIZATION =====
-        function initializeRealtimeMonitoring() {
-            console.log('🚀 Initializing Real-time Location Monitoring...');
+        async function initializeRealtimeMonitoring() {
+            addDebugMessage('🚀 Initializing Real-time Location Monitoring with Firebase...');
             
             // Set today's date
             const today = new Date().toISOString().split('T')[0];
@@ -1153,13 +1540,13 @@
                 }
             });
             
-            console.log('✅ Real-time monitoring system ready');
+            addDebugMessage('✅ Real-time monitoring system with Firebase ready');
         }
 
         // ===== PAGE LOAD =====
         window.onload = function() {
-            console.log('🔴 Starting Real-time Location Monitoring Dashboard...');
-            console.log('📊 Features: Live tracking, auto-refresh, notifications, location alerts');
+            addDebugMessage('🔴 Starting Real-time Location Monitoring Dashboard with Firebase...');
+            addDebugMessage('📊 Features: Live tracking, Firebase integration, auto-refresh, notifications');
             
             initializeRealtimeMonitoring();
         };
@@ -1184,8 +1571,8 @@
         `;
         document.head.appendChild(style);
 
-        console.log('✅ Real-time Location Monitoring Dashboard loaded');
-        console.log('🎛️ Control Center ready with live tracking capabilities');
+        addDebugMessage('✅ Real-time Location Monitoring Dashboard with Firebase loaded');
+        addDebugMessage('🎛️ Control Center ready with Firebase and localStorage integration');
     </script>
 </body>
 </html>
