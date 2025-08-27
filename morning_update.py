@@ -1157,6 +1157,7 @@ class SalesmanDashboardUpdater:
                 'dashboard_insentif_sales_desktop.html',
                 'visit.html',
                 'performance.html',
+                'performance_all.html',
                 'analytics.html',
                 'geolocation-utilities.html',
                 'geolocations_system.html',
