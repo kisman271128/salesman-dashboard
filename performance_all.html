@@ -1,0 +1,1214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performance Summary - All Salesman</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(180deg, #f8f9ff 0%, #e8ecff 100%);
+            min-height: 100vh;
+            color: #2c3e50;
+            padding-bottom: 100px;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin-bottom: 16px;
+        }
+
+        .back-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            padding: 10px;
+            border-radius: 12px;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateX(-2px);
+        }
+
+        .header-title {
+            text-align: center;
+            flex: 1;
+        }
+
+        .header-title h1 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .header-title p {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .menu-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            padding: 10px;
+            border-radius: 12px;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        /* Loading & Error States */
+        .loading-spinner {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            flex-direction: column;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: rgba(231, 76, 60, 0.1);
+            border: 1px solid rgba(231, 76, 60, 0.3);
+            color: #e74c3c;
+            padding: 16px;
+            border-radius: 12px;
+            margin: 16px;
+            text-align: center;
+        }
+
+        /* Metrics Cards */
+        .metrics-container {
+            padding: 0 16px 16px;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .metric-card {
+            background: white;
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid;
+            transition: transform 0.2s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .metric-card.total { border-left-color: #667eea; }
+        .metric-card.wholesaler { border-left-color: #10b981; }
+        .metric-card.retail { border-left-color: #f59e0b; }
+        .metric-card.mti { border-left-color: #ef4444; }
+
+        .metric-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #64748b;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .metric-value {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .metric-subtitle {
+            font-size: 11px;
+            color: #64748b;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .achievement {
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 10px;
+        }
+
+        .achievement.high { background: rgba(16, 185, 129, 0.1); color: #059669; }
+        .achievement.medium { background: rgba(245, 158, 11, 0.1); color: #d97706; }
+        .achievement.low { background: rgba(239, 68, 68, 0.1); color: #dc2626; }
+
+        /* Tab Navigation */
+        .tab-container {
+            padding: 0 16px;
+            margin-bottom: 16px;
+        }
+
+        .tab-nav {
+            display: flex;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 12px;
+            padding: 4px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 16px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 10px 8px;
+            border: none;
+            background: transparent;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #64748b;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        /* Tab Content */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Table Styles */
+        .table-container {
+            background: white;
+            border-radius: 16px;
+            margin: 0 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .table-header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 12px 16px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .table-wrapper {
+            max-height: 400px;
+            overflow-y: auto;
+            overflow-x: auto;
+        }
+
+        .data-table {
+            width: auto;
+            border-collapse: collapse;
+            min-width: fit-content;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 8px 12px;
+            text-align: left;
+            border-bottom: 1px solid #f1f3f4;
+            font-size: 11px;
+            white-space: nowrap;
+            width: auto;
+        }
+
+        .data-table th {
+            background: #f8fafc;
+            font-weight: 600;
+            color: #374151;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .data-table tbody tr:hover {
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        /* Total row styling */
+        .total-row {
+            background: #f1f5f9 !important;
+            font-weight: 700;
+            border-top: 2px solid #667eea;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .total-row td {
+            background: #f1f5f9 !important;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .total-row:hover {
+            background: #e2e8f0 !important;
+        }
+
+        .total-row .sticky-col {
+            background: #e2e8f0 !important;
+            font-weight: 700;
+        }
+
+        /* Sticky Column */
+        .sticky-col {
+            position: sticky;
+            background: #f8fafc !important;
+            z-index: 15;
+            box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+            width: max-content;
+            min-width: fit-content;
+        }
+
+        .data-table tbody .sticky-col {
+            background: white !important;
+            z-index: 5;
+            box-shadow: 2px 0 4px rgba(0, 0, 0, 0.15);
+        }
+
+        .data-table tbody tr:hover .sticky-col {
+            background: rgba(102, 126, 234, 0.05) !important;
+            z-index: 16;
+        }
+
+        .data-table thead .sticky-col {
+            z-index: 20;
+        }
+
+        /* Column positioning */
+        .salesman-name-col { left: 0; min-width: 120px; max-width: 180px; }
+        .channel-group-col { left: 0; min-width: 80px; }
+        .rank-col { left: 0; min-width: 40px; width: 50px; }
+
+        /* Value formatting */
+        .value-positive { color: #059669; font-weight: 600; }
+        .value-negative { color: #dc2626; font-weight: 600; }
+        .value-currency { 
+            font-family: 'Courier New', monospace; 
+            text-align: right;
+            min-width: 80px;
+            color: #000000 !important;
+        }
+        .value-percentage { 
+            font-weight: 600; 
+            text-align: center;
+            min-width: 60px;
+        }
+
+        /* Gap styling */
+        .gap-positive { 
+            color: #059669 !important; 
+            font-weight: 600; 
+        }
+        .gap-negative { 
+            color: #dc2626 !important; 
+            font-weight: 600; 
+        }
+
+        /* Achievement styling */
+        .ach-high { 
+            background: rgba(16, 185, 129, 0.1); 
+            color: #059669 !important; 
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 6px;
+        }
+        .ach-medium { 
+            background: rgba(245, 158, 11, 0.1); 
+            color: #d97706 !important; 
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 6px;
+        }
+        .ach-low { 
+            background: rgba(239, 68, 68, 0.1); 
+            color: #dc2626 !important; 
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 6px;
+        }
+
+        /* Status badges */
+        .status-badge {
+            padding: 2px 6px;
+            border-radius: 6px;
+            font-size: 9px;
+            font-weight: 600;
+            text-transform: uppercase;
+            display: inline-block;
+            min-width: 40px;
+            text-align: center;
+        }
+
+        .rank-badge {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 600;
+            min-width: 30px;
+            text-align: center;
+            display: inline-block;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #64748b;
+        }
+
+        .empty-state .icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        /* Column width classes */
+        .col-narrow { min-width: 60px; max-width: 80px; }
+        .col-medium { min-width: 80px; max-width: 120px; }
+        .col-wide { min-width: 40px; max-width: 60px; }
+        .col-text { min-width: 120px; max-width: 200px; }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 400px;
+            background: white;
+            border-top: 1px solid #f1f2f6;
+            padding: 15px 0;
+            display: flex;
+            justify-content: space-around;
+            box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-decoration: none;
+            color: #bdc3c7;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            padding: 8px 6px;
+            border-radius: 12px;
+            min-width: 50px;
+        }
+
+        .nav-item.active {
+            color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .nav-item:hover {
+            color: #667eea;
+            transform: translateY(-2px);
+        }
+
+        .nav-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 4px;
+            font-size: 12px;
+        }
+
+        .nav-icon.home { background: #3b82f6; color: white; }
+        .nav-icon.activity { background: #ef4444; color: white; }
+        .nav-icon.incentive { background: #f59e0b; color: white; }
+        .nav-icon.performance { background: #8b5cf6; color: white; }
+        .nav-icon.profile { background: #10b981; color: white; }
+
+        .nav-label {
+            font-size: 10px;
+            font-weight: 500;
+        }
+
+        /* Responsive */
+        @media (max-width: 380px) {
+            .metrics-grid { gap: 8px; }
+            .metric-card { padding: 12px; }
+            .metric-value { font-size: 18px; }
+            .data-table th, .data-table td { padding: 6px 8px; font-size: 10px; }
+            .salesman-name-col { min-width: 100px; max-width: 140px; }
+            .channel-group-col { min-width: 70px; }
+            .rank-col { min-width: 35px; width: 40px; }
+            .value-currency { min-width: 70px; font-size: 10px; }
+            .value-percentage { min-width: 50px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <a href="dashboard.html" class="back-btn" id="backBtn">←</a>
+            <div class="header-title">
+                <h1>Performance Summary</h1>
+                <p>All Salesman Overview</p>
+            </div>
+            <button class="menu-btn">⋮</button>
+        </div>
+
+        <!-- Loading State -->
+        <div class="loading-spinner" id="loadingSpinner">
+            <div class="spinner"></div>
+            <div>Loading performance data...</div>
+        </div>
+
+        <!-- Error State -->
+        <div class="error-message" id="errorMessage" style="display: none;">
+            <h3>🚨 Data Loading Error</h3>
+            <p>Unable to load performance data. Please check your connection.</p>
+            <button onclick="loadPerformanceData()" style="margin-top: 10px; padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer;">Retry</button>
+        </div>
+
+        <!-- Main Content -->
+        <div id="mainContent" style="display: none;">
+            <!-- Metrics Cards -->
+            <div class="metrics-container">
+                <div class="metrics-grid">
+                    <div class="metric-card total">
+                        <div class="metric-label">Total</div>
+                        <div class="metric-value" id="totalValue">0</div>
+                        <div class="metric-subtitle">
+                            <span>Target: <span id="totalTarget">0</span></span>
+                            <span class="achievement" id="totalAch">0%</span>
+                        </div>
+                    </div>
+                    
+                    <div class="metric-card wholesaler">
+                        <div class="metric-label">Wholesaler</div>
+                        <div class="metric-value" id="wholesalerValue">0</div>
+                        <div class="metric-subtitle">
+                            <span>Target: <span id="wholesalerTarget">0</span></span>
+                            <span class="achievement" id="wholesalerAch">0%</span>
+                        </div>
+                    </div>
+                    
+                    <div class="metric-card retail">
+                        <div class="metric-label">Retail</div>
+                        <div class="metric-value" id="retailValue">0</div>
+                        <div class="metric-subtitle">
+                            <span>Target: <span id="retailTarget">0</span></span>
+                            <span class="achievement" id="retailAch">0%</span>
+                        </div>
+                    </div>
+                    
+                    <div class="metric-card mti">
+                        <div class="metric-label">MTI</div>
+                        <div class="metric-value" id="mtiValue">0</div>
+                        <div class="metric-subtitle">
+                            <span>Target: <span id="mtiTarget">0</span></span>
+                            <span class="achievement" id="mtiAch">0%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Navigation -->
+            <div class="tab-container">
+                <div class="tab-nav">
+                    <button class="tab-btn active" onclick="switchTab('summary')">Summary</button>
+                    <button class="tab-btn" onclick="switchTab('channel')">By Channel</button>
+                    <button class="tab-btn" onclick="switchTab('ranking')">Top Ranking</button>
+                    <button class="tab-btn" onclick="switchTab('project')">Top Projects</button>
+                </div>
+            </div>
+
+            <!-- Tab Contents -->
+            <div class="tab-content active" id="summaryContent">
+                <div class="table-container">
+                    <div class="table-header">📊 Salesman Performance Summary</div>
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th class="sticky-col salesman-name-col">Salesman</th>
+                                    <th class="col-wide value-currency">Target</th>
+                                    <th class="col-wide value-currency">Actual</th>
+                                    <th class="col-wide value-currency">Gap</th>
+                                    <th class="col-wide value-percentage">Ach%</th>
+                                    <th class="col-wide value-currency">LM</th>
+                                    <th class="col-narrow">Rank</th>
+                                </tr>
+                            </thead>
+                            <tbody id="summaryTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="channelContent">
+                <div class="table-container">
+                    <div class="table-header">📈 Channel Performance Summary</div>
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th class="sticky-col channel-group-col">Channel</th>
+                                    <th class="col-wide value-currency">Target</th>
+                                    <th class="col-wide value-currency">Actual</th>
+                                    <th class="col-wide value-currency">Gap</th>
+                                    <th class="col-wide value-percentage">Ach%</th>
+                                    <th class="col-wide value-currency">LY</th>
+                                    <th class="col-wide value-currency">LM</th>
+                                </tr>
+                            </thead>
+                            <tbody id="channelTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="rankingContent">
+                <div class="table-container">
+                    <div class="table-header">🏆 Top Performance Ranking</div>
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th class="sticky-col rank-col">Rank</th>
+                                    <th class="sticky-col salesman-name-col">Salesman</th>
+                                    <th class="col-wide value-percentage">Ach%</th>
+                                    <th class="col-wide value-currency">Actual</th>
+                                    <th class="col-wide value-currency">Gap</th>
+                                    <th class="col-wide value-currency">vs LM</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rankingTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="projectContent">
+                <div class="table-container">
+                    <div class="table-header">🎯 Top Project Performance</div>
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th class="sticky-col salesman-name-col">Customer</th>
+                                    <th class="col-wide value-currency">T.MTD</th>
+                                    <th class="col-wide value-currency">A.MTD</th>
+                                    <th class="col-wide value-currency">Gap</th>
+                                    <th class="col-wide value-percentage">Ach%</th>
+                                    <th class="col-medium">Salesman</th>
+                                </tr>
+                            </thead>
+                            <tbody id="projectTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Navigation -->
+        <div class="bottom-nav">
+            <div class="nav-item" onclick="goHome()">
+                <div class="nav-icon home">🏠</div>
+                <div class="nav-label">Home</div>
+            </div>
+            <div class="nav-item" onclick="showVisitOutlet()">
+                <div class="nav-icon activity">📊</div>
+                <div class="nav-label">Visit Outlet</div>
+            </div>
+            <div class="nav-item" onclick="showIncentive()">
+                <div class="nav-icon incentive">💰</div>
+                <div class="nav-label">Incentive</div>
+            </div>
+            <div class="nav-item" onclick="showProfile()">
+                <div class="nav-icon profile">👤</div>
+                <div class="nav-label">Profile</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== GLOBAL VARIABLES =====
+        let jksData = [];
+        let channelData = [];
+        let projectData = [];
+        let paretoData = [];
+        let pomData = [];
+
+        // ===== UTILITY FUNCTIONS =====
+        function formatCurrencyIndonesia(value) {
+            const val = Math.abs(parseFloat(value) || 0);
+            if (val >= 1000000000) return `${(val/1000000000).toFixed(1)}M`;
+            if (val >= 1000000) return `${(val/1000000).toFixed(1)}jt`;
+            if (val >= 1000) return `${(val/1000).toFixed(0)}rb`;
+            return `${val.toFixed(0)}`;
+        }
+
+        function calculateAchievementPercentage(target, actual) {
+            const targetValue = parseFloat(target || 0);
+            const actualValue = parseFloat(actual || 0);
+            if (targetValue === 0 && actualValue > 0) return 100;
+            if (targetValue > 0) return Math.round((actualValue / targetValue) * 100);
+            return 0;
+        }
+
+        function getAchievementClass(percentage) {
+            if (percentage >= 100) return 'ach-high';
+            if (percentage >= 90) return 'ach-medium';
+            return 'ach-low';
+        }
+
+        function getGapClass(gap) {
+            return parseFloat(gap) <= 0 ? 'gap-negative' : 'gap-positive';
+        }
+
+        // ===== DATA LOADING =====
+        async function loadJSONData() {
+            const possiblePaths = [
+                'data/',
+                './data/',
+                './',
+                ''
+            ];
+
+            async function loadFile(filename) {
+                for (const basePath of possiblePaths) {
+                    const fullPath = basePath + filename;
+                    try {
+                        if (window.fs && window.fs.readFile) {
+                            const text = await window.fs.readFile(fullPath, { encoding: 'utf8' });
+                            return text;
+                        }
+                        const response = await fetch(fullPath);
+                        if (response.ok) {
+                            return await response.text();
+                        }
+                    } catch (error) {
+                        continue;
+                    }
+                }
+                throw new Error(`Cannot load ${filename}`);
+            }
+
+            function parseJSONLines(text) {
+                return text.split('\n')
+                    .filter(line => line.trim())
+                    .map(line => {
+                        try {
+                            return JSON.parse(line);
+                        } catch {
+                            return null;
+                        }
+                    })
+                    .filter(item => item !== null);
+            }
+
+            // Load all data files
+            try {
+                const jksText = await loadFile('d.jks.json');
+                jksData = parseJSONLines(jksText);
+            } catch (error) {
+                console.error('JKS data loading failed:', error.message);
+            }
+
+            try {
+                const channelText = await loadFile('d.channel.json');
+                channelData = parseJSONLines(channelText);
+            } catch (error) {
+                console.error('Channel data loading failed:', error.message);
+                try {
+                    const altChannelText = await loadFile('d.channelproj.json');
+                    channelData = parseJSONLines(altChannelText);
+                } catch (altError) {
+                    console.error('Alternative channel file also failed');
+                }
+            }
+
+            try {
+                const projectText = await loadFile('d.project.json');
+                projectData = parseJSONLines(projectText);
+            } catch (error) {
+                console.error('Project data loading failed:', error.message);
+            }
+
+            try {
+                const paretoText = await loadFile('d.30pareto.json');
+                paretoData = parseJSONLines(paretoText);
+            } catch (error) {
+                console.error('Pareto data loading failed:', error.message);
+            }
+        }
+
+        // ===== SUMMARY CALCULATIONS =====
+        function calculateSalesmanSummary() {
+            const salesmanMap = new Map();
+
+            // Process JKS data first
+            jksData.forEach(item => {
+                const name = item.szname;
+                if (!salesmanMap.has(name)) {
+                    salesmanMap.set(name, {
+                        name: name,
+                        target: 0,
+                        actual: 0,
+                        lm: 0,
+                        ly: 0,
+                        gap: 0,
+                        ach: 0
+                    });
+                }
+                
+                const salesman = salesmanMap.get(name);
+                salesman.target += parseFloat(item[' T.MTD'] || 0);
+                salesman.actual += parseFloat(item[' A.MTD'] || 0);
+                salesman.lm += parseFloat(item[' LM'] || 0);
+                salesman.ly += parseFloat(item[' LY'] || 0);
+                salesman.gap += parseFloat(item[' Gap MTD'] || 0);
+            });
+
+            // Update with channel data if available
+            channelData.forEach(item => {
+                const name = item.szname;
+                if (!salesmanMap.has(name)) {
+                    salesmanMap.set(name, {
+                        name: name,
+                        target: 0,
+                        actual: 0,
+                        lm: 0,
+                        ly: 0,
+                        gap: 0,
+                        ach: 0
+                    });
+                }
+                
+                const salesman = salesmanMap.get(name);
+                salesman.target += parseFloat(item[' T.MTD'] || 0);
+                salesman.actual += parseFloat(item[' A.MTD'] || 0);
+                salesman.lm += parseFloat(item[' LM'] || 0);
+                salesman.ly += parseFloat(item[' LY'] || 0);
+                salesman.gap += parseFloat(item[' Gap MTD'] || 0);
+            });
+
+            // Calculate achievement percentages
+            salesmanMap.forEach(salesman => {
+                salesman.ach = calculateAchievementPercentage(salesman.target, salesman.actual);
+            });
+
+            return Array.from(salesmanMap.values());
+        }
+
+        function calculateChannelSummary() {
+            const channelMap = new Map();
+
+            channelData.forEach(item => {
+                const channel = item['Channel Group'];
+                if (!channelMap.has(channel)) {
+                    channelMap.set(channel, {
+                        channel: channel,
+                        target: 0,
+                        actual: 0,
+                        gap: 0,
+                        ly: 0,
+                        lm: 0,
+                        threeLM: 0,
+                        ach: 0
+                    });
+                }
+                
+                const channelSummary = channelMap.get(channel);
+                channelSummary.target += parseFloat(item[' T.MTD'] || 0);
+                channelSummary.actual += parseFloat(item[' A.MTD'] || 0);
+                channelSummary.gap += parseFloat(item[' Gap MTD'] || 0);
+                channelSummary.ly += parseFloat(item[' LY'] || 0);
+                channelSummary.lm += parseFloat(item[' LM'] || 0);
+                channelSummary.threeLM += parseFloat(item[' 3LM'] || 0);
+            });
+
+            // Calculate achievement percentages using actual data
+            channelMap.forEach(channel => {
+                channel.ach = calculateAchievementPercentage(channel.target, channel.actual);
+            });
+
+            return Array.from(channelMap.values());
+        }
+
+        // ===== UI UPDATE FUNCTIONS =====
+        function updateMetricsCards() {
+            const channelSummary = calculateChannelSummary();
+
+            // Calculate total from channel data (more accurate)
+            let totalTarget = 0, totalActual = 0;
+            channelSummary.forEach(channel => {
+                totalTarget += channel.target;
+                totalActual += channel.actual;
+            });
+
+            // Create channel totals map from actual channel data
+            const channelTotals = {
+                'WHOLESALER': { target: 0, actual: 0 },
+                'RETAIL': { target: 0, actual: 0 },
+                'MTI': { target: 0, actual: 0 }
+            };
+
+            // Use actual channel data from d.channel.json
+            channelSummary.forEach(channel => {
+                if (channelTotals[channel.channel]) {
+                    channelTotals[channel.channel].target = channel.target;
+                    channelTotals[channel.channel].actual = channel.actual;
+                }
+            });
+
+            // Update total card
+            document.getElementById('totalValue').textContent = formatCurrencyIndonesia(totalActual);
+            document.getElementById('totalTarget').textContent = formatCurrencyIndonesia(totalTarget);
+            
+            const totalAchPercentage = calculateAchievementPercentage(totalTarget, totalActual);
+            const totalAchElement = document.getElementById('totalAch');
+            totalAchElement.textContent = `${totalAchPercentage}%`;
+            totalAchElement.className = `achievement ${getAchievementClass(totalAchPercentage).replace('ach-', '')}`;
+
+            // Update channel cards using actual channel data
+            ['WHOLESALER', 'RETAIL', 'MTI'].forEach(channel => {
+                const data = channelTotals[channel];
+                const channelKey = channel.toLowerCase();
+                
+                document.getElementById(`${channelKey}Value`).textContent = formatCurrencyIndonesia(data.actual);
+                document.getElementById(`${channelKey}Target`).textContent = formatCurrencyIndonesia(data.target);
+                
+                const achPercentage = calculateAchievementPercentage(data.target, data.actual);
+                const achElement = document.getElementById(`${channelKey}Ach`);
+                achElement.textContent = `${achPercentage}%`;
+                achElement.className = `achievement ${getAchievementClass(achPercentage).replace('ach-', '')}`;
+            });
+        }
+
+        function updateSummaryTable() {
+            const salesmanSummary = calculateSalesmanSummary();
+            const tbody = document.getElementById('summaryTableBody');
+            
+            if (salesmanSummary.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">📊</div><div>No salesman data available</div></td></tr>';
+                return;
+            }
+
+            // Sort by achievement percentage descending
+            salesmanSummary.sort((a, b) => b.ach - a.ach);
+
+            // Calculate totals
+            let totalTarget = 0, totalActual = 0, totalGap = 0, totalLM = 0;
+            salesmanSummary.forEach(salesman => {
+                totalTarget += salesman.target;
+                totalActual += salesman.actual;
+                totalGap += salesman.gap;
+                totalLM += salesman.lm;
+            });
+
+            const totalAchPercentage = calculateAchievementPercentage(totalTarget, totalActual);
+
+            let html = `
+                <tr class="total-row">
+                    <td class="sticky-col salesman-name-col"><strong>TOTAL</strong></td>
+                    <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(totalTarget)}</strong></td>
+                    <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(totalActual)}</strong></td>
+                    <td class="value-currency col-wide ${getGapClass(totalGap)}"><strong>${formatCurrencyIndonesia(totalGap)}</strong></td>
+                    <td class="value-percentage col-wide ${getAchievementClass(totalAchPercentage)}"><strong>${totalAchPercentage}%</strong></td>
+                    <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(totalLM)}</strong></td>
+                    <td class="col-narrow">-</td>
+                </tr>
+            `;
+
+            salesmanSummary.forEach((salesman, index) => {
+                const vsLM = salesman.lm > 0 ? Math.round(((salesman.actual - salesman.lm) / salesman.lm) * 100) : 0;
+                
+                html += `
+                    <tr onclick="viewSalesmanDetail('${salesman.name}')" style="cursor: pointer;">
+                        <td class="sticky-col salesman-name-col">
+                            <strong style="font-size: 11px;">${salesman.name}</strong>
+                        </td>
+                        <td class="value-currency col-wide">${formatCurrencyIndonesia(salesman.target)}</td>
+                        <td class="value-currency col-wide">${formatCurrencyIndonesia(salesman.actual)}</td>
+                        <td class="value-currency col-wide ${getGapClass(salesman.gap)}">${formatCurrencyIndonesia(salesman.gap)}</td>
+                        <td class="value-percentage col-wide ${getAchievementClass(salesman.ach)}">${salesman.ach}%</td>
+                        <td class="value-currency col-wide">${formatCurrencyIndonesia(salesman.lm)}</td>
+                        <td class="col-narrow"><span class="rank-badge">#${index + 1}</span></td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+        }
+
+        function updateChannelTable() {
+            const channelSummary = calculateChannelSummary();
+            const tbody = document.getElementById('channelTableBody');
+            
+            if (channelSummary.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">📈</div><div>No channel data available</div></td></tr>';
+                return;
+            }
+
+            // Calculate totals
+            let totalTarget = 0, totalActual = 0, totalGap = 0, totalLY = 0, totalLM = 0;
+            channelSummary.forEach(channel => {
+                totalTarget += channel.target;
+                totalActual += channel.actual;
+                totalGap += channel.gap;
+                totalLY += channel.ly;
+                totalLM += channel.lm;
+            });
+
+            const totalAchPercentage = calculateAchievementPercentage(totalTarget, totalActual);
+
+            let html = `
+                <tr class="total-row">
+                    <td class="sticky-col channel-group-col"><strong>TOTAL</strong></td>
+                    <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(totalTarget)}</strong></td>
+                    <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(totalActual)}</strong></td>
+                    <td class="value-currency col-wide ${getGapClass(totalGap)}"><strong>${formatCurrencyIndonesia(totalGap)}</strong></td>
+                    <td class="value-percentage col-wide ${getAchievementClass(totalAchPercentage)}"><strong>${totalAchPercentage}%</strong></td>
+                    <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(totalLY)}</strong></td>
+                    <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(totalLM)}</strong></td>
+                </tr>
+            `;
+
+            channelSummary.forEach(channel => {
+                html += `
+                    <tr>
+                        <td class="sticky-col channel-group-col"><strong>${channel.channel}</strong></td>
+                        <td class="value-currency col-wide">${formatCurrencyIndonesia(channel.target)}</td>
+                        <td class="value-currency col-wide">${formatCurrencyIndonesia(channel.actual)}</td>
+                        <td class="value-currency col-wide ${getGapClass(channel.gap)}">${formatCurrencyIndonesia(channel.gap)}</td>
+                        <td class="value-percentage col-wide ${getAchievementClass(channel.ach)}">${channel.ach}%</td>
+                        <td class="value-currency col-wide">${formatCurrencyIndonesia(channel.ly)}</td>
+                        <td class="value-currency col-wide">${formatCurrencyIndonesia(channel.lm)}</td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+        }
+
+        function updateRankingTable() {
+            const salesmanSummary = calculateSalesmanSummary();
+            const tbody = document.getElementById('rankingTableBody');
+            
+            if (salesmanSummary.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><div class="icon">🏆</div><div>No ranking data available</div></td></tr>';
+                return;
+            }
+
+            // Sort by achievement percentage descending
+            salesmanSummary.sort((a, b) => b.ach - a.ach);
+            
+            // Take top 20
+            const topSalesman = salesmanSummary.slice(0, 20);
+
+            let html = '';
+            topSalesman.forEach((salesman, index) => {
+                const vsLM = salesman.lm > 0 ? salesman.actual - salesman.lm : 0;
+                const vsLMPercentage = salesman.lm > 0 ? Math.round(((salesman.actual - salesman.lm) / salesman.lm) * 100) : 0;
+                
+                html += `
+                    <tr onclick="viewSalesmanDetail('${salesman.name}')" style="cursor: pointer;">
+                        <td class="sticky-col rank-col"><span class="rank-badge">#${index + 1}</span></td>
+                        <td class="sticky-col salesman-name-col">
+                            <strong style="font-size: 11px;">${salesman.name}</strong>
+                        </td>
+                        <td class="value-percentage col-wide ${getAchievementClass(salesman.ach)}">${salesman.ach}%</td>
+                        <td class="value-currency col-wide">${formatCurrencyIndonesia(salesman.actual)}</td>
+                        <td class="value-currency col-wide ${getGapClass(salesman.gap)}">${formatCurrencyIndonesia(salesman.gap)}</td>
+                        <td class="value-currency col-wide ${getGapClass(vsLM)}">${vsLMPercentage >= 0 ? '+' : ''}${vsLMPercentage}%</td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+        }
+
+        function updateProjectTable() {
+            const tbody = document.getElementById('projectTableBody');
+            
+            if (projectData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><div class="icon">🎯</div><div>No project data available</div></td></tr>';
+                return;
+            }
+
+            // Sort by actual value descending
+            const sortedProjects = projectData.sort((a, b) => 
+                parseFloat(b['A.MTD'] || 0) - parseFloat(a['A.MTD'] || 0)
+            ).slice(0, 20); // Top 20 projects
+
+            let html = '';
+            sortedProjects.forEach(project => {
+                const target = parseFloat(project['T.MTD'] || 0);
+                const actual = parseFloat(project['A.MTD'] || 0);
+                const gap = parseFloat(project['Gap MTD'] || 0);
+                const achPercentage = calculateAchievementPercentage(target, actual);
+                
+                html += `
+                    <tr>
+                        <td class="sticky-col salesman-name-col">
+                            <strong style="font-size: 10px;">${(project['CUST NAME'] || '').substring(0, 20)}</strong><br>
+                            <small style="color: #64748b; font-size: 9px;">${project.ITG || ''}</small>
+                        </td>
+                        <td class="value-currency col-wide">${formatCurrencyIndonesia(target)}</td>
+                        <td class="value-currency col-wide">${formatCurrencyIndonesia(actual)}</td>
+                        <td class="value-currency col-wide ${getGapClass(gap)}">${formatCurrencyIndonesia(gap)}</td>
+                        <td class="value-percentage col-wide ${getAchievementClass(achPercentage)}">${achPercentage}%</td>
+                        <td class="col-medium">
+                            <small style="font-size: 9px;">${(project.szname || '').substring(0, 10)}</small>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+        }
+
+        // ===== TAB SWITCHING =====
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(tabName + 'Content').classList.add('active');
+        }
+
+        // ===== NAVIGATION FUNCTIONS =====
+        function viewSalesmanDetail(salesmanName) {
+            // Find salesman ID from data
+            const salesman = jksData.find(item => item.szname === salesmanName) || 
+                           channelData.find(item => item.szname === salesmanName);
+            
+            if (salesman && salesman.szEmployeeId) {
+                window.location.href = `performance.html?id=${salesman.szEmployeeId}`;
+            }
+        }
+
+        function goHome() { window.location.href = 'dashboard.html'; }
+        function showVisitOutlet() { window.location.href = 'visit.html'; }
+        function showIncentive() { window.location.href = 'dashboard_insentif_sales.html'; }
+        function showProfile() { window.location.href = 'profile.html'; }
+
+        // ===== MAIN LOAD FUNCTION =====
+        async function loadPerformanceData() {
+            try {
+                showLoading(true);
+                hideError();
+
+                await loadJSONData();
+                
+                // Update all sections
+                updateMetricsCards();
+                updateSummaryTable();
+                updateChannelTable();
+                updateRankingTable();
+                updateProjectTable();
+                
+                showLoading(false);
+                showMainContent(true);
+
+            } catch (error) {
+                console.error('Error loading performance data:', error);
+                showLoading(false);
+                showError(true, error.message);
+            }
+        }
+
+        // ===== UI CONTROL FUNCTIONS =====
+        function showLoading(show) {
+            document.getElementById('loadingSpinner').style.display = show ? 'flex' : 'none';
+        }
+
+        function showError(show, message = '') {
+            const errorElement = document.getElementById('errorMessage');
+            errorElement.style.display = show ? 'block' : 'none';
+            if (show && message) {
+                errorElement.querySelector('p').textContent = message;
+            }
+        }
+
+        function hideError() { showError(false); }
+
+        function showMainContent(show) {
+            document.getElementById('mainContent').style.display = show ? 'block' : 'none';
+        }
+
+        // ===== LOGIN CHECK =====
+        function checkLoginStatus() {
+            const isLoggedIn = sessionStorage.getItem('isLoggedIn');
+            const currentUser = sessionStorage.getItem('currentUser');
+            
+            if (!isLoggedIn || !currentUser) {
+                window.location.href = 'index.html';
+                return false;
+            }
+            return true;
+        }
+
+        // ===== INITIALIZE =====
+        document.addEventListener('DOMContentLoaded', function() {
+            if (checkLoginStatus()) {
+                loadPerformanceData();
+            }
+        });
+    </script>
+</body>
+</html>
