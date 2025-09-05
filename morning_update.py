@@ -57,7 +57,7 @@ class SalesmanDashboardUpdater:
         if not os.path.exists(self.data_dir):
             os.makedirs(self.data_dir)
         
-        # 🆕 NEW: Clear previous log file for fresh start
+        # NEW: Clear previous log file for fresh start
         self.clear_previous_log()
         
         # Setup logging dengan encoding yang aman
@@ -83,11 +83,11 @@ class SalesmanDashboardUpdater:
         
         # Log session start
         self.safe_log('info', "=" * 80, "=" * 50)
-        self.safe_log('info', f"🚀 MORNING UPDATE SESSION STARTED - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", f"[LAUNCH] MORNING UPDATE SESSION STARTED - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        self.safe_log('info', f"MORNING UPDATE SESSION STARTED - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", f"[LAUNCH] MORNING UPDATE SESSION STARTED - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         self.safe_log('info', "=" * 80, "=" * 50)
 
     def clear_previous_log(self):
-        """🆕 NEW: Clear previous log file untuk fresh start"""
+        """NEW: Clear previous log file untuk fresh start"""
         try:
             if os.path.exists(self.log_file):
                 # Get file info before deletion
@@ -97,14 +97,14 @@ class SalesmanDashboardUpdater:
                 # Delete the old log file
                 os.remove(self.log_file)
                 
-                print(f"🗑️  Cleared previous log file: {self.log_file}")
+                print(f"Cleared previous log file: {self.log_file}")
                 print(f"   Previous size: {file_size:,} bytes")
                 print(f"   Last modified: {mod_time.strftime('%Y-%m-%d %H:%M:%S')}")
                 print(f"   Starting fresh log session...")
             else:
-                print(f"📝 Creating new log file: {self.log_file}")
+                print(f"Creating new log file: {self.log_file}")
         except Exception as e:
-            print(f"⚠️  Warning: Could not clear previous log: {str(e)}")
+            print(f"Warning: Could not clear previous log: {str(e)}")
 
     def safe_log(self, level, message, fallback_message=None):
         """Logging yang aman dengan fallback untuk emoji"""
@@ -122,7 +122,7 @@ class SalesmanDashboardUpdater:
             '📊': '[CHART]',
             '✅': '[OK]',
             '🔍': '[SEARCH]', 
-            '🔄': '[PROCESS]',
+            '📄': '[PROCESS]',
             '📅': '[DATE]',
             '💰': '[MONEY]',
             '📈': '[TREND]',
@@ -158,9 +158,9 @@ class SalesmanDashboardUpdater:
     def read_excel_sheets(self):
         """Read all required sheets from Excel file"""
         try:
-            self.safe_log('info', "📊 Reading Excel sheets...", "Reading Excel sheets...")
+            self.safe_log('info', "Reading Excel sheets...", "Reading Excel sheets...")
             
-            # 🆕 UPDATED: Added d.insentif to required sheets
+            # UPDATED: Added d.insentif to required sheets
             required_sheets = ['d.dashboard', 'd.performance', 'd.salesmanlob', 'd.salesmanproses', 'd.soharian', 'd.insentif']
             
             sheets = {}
@@ -186,12 +186,12 @@ class SalesmanDashboardUpdater:
                     try:
                         df = pd.read_excel(xl_file, sheet_name=sheet_name)
                         sheets[sheet_name] = df
-                        self.safe_log('info', f"✅ Loaded sheet: {sheet_name}", f"[OK] Loaded sheet: {sheet_name}")
+                        self.safe_log('info', f"Loaded sheet: {sheet_name}", f"[OK] Loaded sheet: {sheet_name}")
                         self.safe_log('info', f"   Rows: {len(df)}, Columns: {list(df.columns)}")
                     except Exception as e:
                         self.safe_log('error', f"Failed to read sheet {sheet_name}: {str(e)}")
                 else:
-                    # 🆕 SPECIAL: d.insentif is optional for backward compatibility
+                    # SPECIAL: d.insentif is optional for backward compatibility
                     if sheet_name == 'd.insentif':
                         self.safe_log('warning', f"Sheet {sheet_name} not found - will be skipped (optional)")
                     else:
@@ -206,11 +206,11 @@ class SalesmanDashboardUpdater:
             self.safe_log('error', f"Error reading Excel file: {str(e)}")
             return None
 
-    # 🆕 ENHANCED: Process incentive data with Periode column (Real Data Only)
+    # ENHANCED: Process incentive data with Periode column (Real Data Only)
     def process_insentif_data(self, sheets):
-        """🔧 ENHANCED: Process incentive data with Periode column from d.insentif sheet (Real Data Only)"""
+        """ENHANCED: Process incentive data with Periode column from d.insentif sheet (Real Data Only)"""
         try:
-            self.safe_log('info', "💸 Processing incentive data with Periode column (Real Data Only)...", "[INCENTIVE] Processing incentive data with Periode column (Real Data Only)...")
+            self.safe_log('info', "Processing incentive data with Periode column (Real Data Only)...", "[INCENTIVE] Processing incentive data with Periode column (Real Data Only)...")
             
             # Check if d.insentif sheet exists
             if 'd.insentif' not in sheets:
@@ -220,14 +220,14 @@ class SalesmanDashboardUpdater:
             insentif_df = sheets['d.insentif']
             self.safe_log('info', f"Incentive columns: {list(insentif_df.columns)}")
             
-            # 🆕 NEW: Get current period for adding to records
+            # NEW: Get current period for adding to records
             current_period = self.get_current_period()
             
-            self.safe_log('info', f"📅 Adding Periode column with value: {current_period}", f"[DATE] Adding Periode column with value: {current_period}")
+            self.safe_log('info', f"Adding Periode column with value: {current_period}", f"[DATE] Adding Periode column with value: {current_period}")
             
             incentive_records = []
             
-            # 🔧 MODIFIED: Process real data only, no calculations
+            # MODIFIED: Process real data only, no calculations
             for _, row in insentif_df.iterrows():
                 # Check if this row has valid data (at least szEmployeeId should exist)
                 if pd.notna(row.get('szEmployeeId', '')):
@@ -235,7 +235,7 @@ class SalesmanDashboardUpdater:
                     # Build incentive record following the exact structure from your sample
                     incentive_record = {}
                     
-                    # 🔧 MAIN FIELDS - Handle common fields with proper type conversion
+                    # MAIN FIELDS - Handle common fields with proper type conversion
                     incentive_record['NIK SAC'] = self.safe_int(row.get('NIK SAC', 0))
                     incentive_record['Nama SAC'] = str(row.get('Nama SAC', '')).strip()
                     incentive_record['szEmployeeId'] = self.safe_int(row.get('szEmployeeId', 0))
@@ -243,7 +243,7 @@ class SalesmanDashboardUpdater:
                     incentive_record['Dept'] = str(row.get('Dept', '')).strip()
                     incentive_record['Tipe Salesman'] = str(row.get('Tipe Salesman', '')).strip()
                     
-                    # 🔧 PERFORMANCE METRICS - Handle numeric fields (Real Data)
+                    # PERFORMANCE METRICS - Handle numeric fields (Real Data)
                     incentive_record['GPPJ & GEN'] = self.safe_int(row.get('GPPJ & GEN', 0))
                     incentive_record['GBS & OTHERS'] = self.safe_int(row.get('GBS & OTHERS', 0))
                     incentive_record['GPPJ'] = self.safe_int(row.get('GPPJ', 0))
@@ -254,18 +254,18 @@ class SalesmanDashboardUpdater:
                     incentive_record['Avg SKU'] = self.safe_int(row.get('Avg SKU', 0))
                     incentive_record['GP'] = self.safe_int(row.get('GP', 0))
                     
-                    # 🔧 SPECIAL FIELDS - Handle null values properly (Real Data)
+                    # SPECIAL FIELDS - Handle null values properly (Real Data)
                     pom_value = row.get('POM')
                     incentive_record['POM'] = None if pd.isna(pom_value) else self.safe_int(pom_value)
                     
                     incentive_record['AR Coll'] = self.safe_int(row.get('AR Coll', 0))
                     
-                    # 🔧 INCENTIVE CALCULATIONS - Use Real Data from Excel (No Calculations)
+                    # INCENTIVE CALCULATIONS - Use Real Data from Excel (No Calculations)
                     incentive_record['Insentif_sales'] = self.safe_int(row.get('Insentif_sales', 0))
                     incentive_record['Insentif_Proses'] = self.safe_int(row.get('Insentif_Proses', 0))
                     incentive_record['Total_Insentif'] = self.safe_int(row.get('Total_Insentif', 0))
                     
-                    # 🆕 NEW: Add Periode column (Check if exists in Excel first)
+                    # NEW: Add Periode column (Check if exists in Excel first)
                     excel_periode = row.get('Periode')
                     if pd.notna(excel_periode) and str(excel_periode).strip():
                         # Use periode from Excel if available
@@ -276,18 +276,18 @@ class SalesmanDashboardUpdater:
                     
                     incentive_records.append(incentive_record)
                     
-                    self.safe_log('info', f"✅ Added incentive for szEmployeeId {incentive_record['szEmployeeId']}: {incentive_record['szname']} - Period:{incentive_record['Periode']}, Sales:{incentive_record['Insentif_sales']}, Proses:{incentive_record['Insentif_Proses']}", 
+                    self.safe_log('info', f"Added incentive for szEmployeeId {incentive_record['szEmployeeId']}: {incentive_record['szname']} - Period:{incentive_record['Periode']}, Sales:{incentive_record['Insentif_sales']}, Proses:{incentive_record['Insentif_Proses']}", 
                                 f"[OK] Added incentive for szEmployeeId {incentive_record['szEmployeeId']}: {incentive_record['szname']} - Period:{incentive_record['Periode']}")
             
-            self.safe_log('info', f"✅ Processed {len(incentive_records)} incentive records with Periode column (Real Data Only)", f"[OK] Processed {len(incentive_records)} incentive records with Periode column (Real Data Only)")
+            self.safe_log('info', f"Processed {len(incentive_records)} incentive records with Periode column (Real Data Only)", f"[OK] Processed {len(incentive_records)} incentive records with Periode column (Real Data Only)")
             
-            # 🆕 NEW: Log period distribution
+            # NEW: Log period distribution
             period_counts = {}
             for record in incentive_records:
                 period = record['Periode']
                 period_counts[period] = period_counts.get(period, 0) + 1
             
-            self.safe_log('info', f"📊 Period distribution: {period_counts}", f"[CHART] Period distribution: {period_counts}")
+            self.safe_log('info', f"Period distribution: {period_counts}", f"[CHART] Period distribution: {period_counts}")
             
             return incentive_records
             
@@ -295,7 +295,7 @@ class SalesmanDashboardUpdater:
             self.safe_log('error', f"Error processing incentive data: {str(e)}")
             return []
 
-    # 🆕 NEW: Get current period in Indonesian format
+    # NEW: Get current period in Indonesian format
     def get_current_period(self):
         """Get current period in Indonesian format (e.g., 'Juli 2025')"""
         try:
@@ -316,7 +316,7 @@ class SalesmanDashboardUpdater:
             self.safe_log('error', f"Error getting current period: {str(e)}")
             return "Juli 2025"  # Default fallback
 
-    # 🆕 NEW: Get previous period in Indonesian format  
+    # NEW: Get previous period in Indonesian format  
     def get_previous_period(self, current_period):
         """Get previous period based on current period"""
         try:
@@ -358,7 +358,7 @@ class SalesmanDashboardUpdater:
             self.safe_log('error', f"Error getting previous period: {str(e)}")
             return "Juni 2025"  # Default fallback
 
-    # 🆕 NEW: Helper method for safe integer conversion
+    # NEW: Helper method for safe integer conversion
     def safe_int(self, value):
         """Safely convert value to integer"""
         try:
@@ -375,8 +375,8 @@ class SalesmanDashboardUpdater:
             return 0
 
     def debug_dashboard_data(self, dashboard_df):
-        """🔧 ENHANCED: Debug function to inspect dashboard data structure"""
-        self.safe_log('info', "🔍 DEBUG: Inspecting dashboard data structure...")
+        """ENHANCED: Debug function to inspect dashboard data structure"""
+        self.safe_log('info', "DEBUG: Inspecting dashboard data structure...")
         
         # Print column names with spaces/special chars
         self.safe_log('info', f"Column names: {list(dashboard_df.columns)}")
@@ -402,27 +402,27 @@ class SalesmanDashboardUpdater:
         return True
 
     def process_dashboard_data(self, sheets):
-        """🔧 SUPER FIXED: Process dashboard data with ALL metrics properly + TOTAL card"""
+        """SUPER FIXED: Process dashboard data with ALL metrics properly + TOTAL card"""
         try:
-            self.safe_log('info', "🔄 Processing dashboard data with all metrics + Total...", "Processing dashboard data with all metrics + Total...")
+            self.safe_log('info', "Processing dashboard data with all metrics + Total...", "Processing dashboard data with all metrics + Total...")
             
             dashboard_df = sheets['d.dashboard']
             self.safe_log('info', f"Dashboard columns: {list(dashboard_df.columns)}")
             
-            # 🔍 DEBUG: Inspect data structure
+            # DEBUG: Inspect data structure
             self.debug_dashboard_data(dashboard_df)
             
             # Process LOB cards with all vs metrics
             lob_cards = []
-            total_data = None  # ✅ NEW: Store TOTAL data separately
+            total_data = None  # NEW: Store TOTAL data separately
             
             for index, row in dashboard_df.iterrows():
                 if pd.notna(row.get('LOB', '')) and row.get('LOB', '').strip() != '':
                     lob_name = str(row['LOB']).strip()
                     
-                    self.safe_log('info', f"🎯 Processing LOB: {lob_name}")
+                    self.safe_log('info', f"Processing LOB: {lob_name}")
                     
-                    # 🔧 SUPER FIXED: Get raw values properly
+                    # SUPER FIXED: Get raw values properly
                     actual_raw = row.get('Actual', 0)
                     bp_raw = row.get('BP', 1)
                     gap_raw = row.get('Gap', 0)
@@ -435,19 +435,19 @@ class SalesmanDashboardUpdater:
                     # Achievement calculation
                     achievement = (actual / bp * 100) if bp > 0 else 0
                     
-                    # 🔧 SUPER FIXED: Get vs metrics with comprehensive column checking
+                    # SUPER FIXED: Get vs metrics with comprehensive column checking
                     vs_bp_raw = self.get_comprehensive_vs_metric(row, dashboard_df.columns, ['vs BP', 'vs_BP', 'vsBP', 'VS BP', 'vs bp'])
                     vs_ly_raw = self.get_comprehensive_vs_metric(row, dashboard_df.columns, ['vs LY', 'vs_LY', 'vsLY', 'VS LY', 'vs ly'])
                     vs_3lm_raw = self.get_comprehensive_vs_metric(row, dashboard_df.columns, ['vs 3LM', 'vs_3LM', 'vs3LM', 'VS 3LM', 'vs 3lm'])
                     vs_lm_raw = self.get_comprehensive_vs_metric(row, dashboard_df.columns, ['vs LM', 'vs_LM', 'vsLM', 'VS LM', 'vs lm'])
                     
-                    # 🔧 SUPER FIXED: Parse percentage values properly
+                    # SUPER FIXED: Parse percentage values properly
                     vs_bp = self.parse_percentage_value(vs_bp_raw)
                     vs_ly = self.parse_percentage_value(vs_ly_raw) 
                     vs_3lm = self.parse_percentage_value(vs_3lm_raw)
                     vs_lm = self.parse_percentage_value(vs_lm_raw)
                     
-                    # ✅ NEW: Handle TOTAL row separately
+                    # NEW: Handle TOTAL row separately
                     if lob_name.upper() == 'TOTAL':
                         total_data = {
                             'name': 'TOTAL',
@@ -460,11 +460,11 @@ class SalesmanDashboardUpdater:
                             'vs_3lm': f"{'+' if vs_3lm >= 0 else ''}{vs_3lm}%",
                             'vs_lm': f"{'+' if vs_lm >= 0 else ''}{vs_lm}%"
                         }
-                        self.safe_log('info', f"✅ Stored TOTAL data: {total_data['achievement']}, Actual: {total_data['actual']}, Target: {total_data['target']}, Gap: {total_data['gap']}", 
+                        self.safe_log('info', f"Stored TOTAL data: {total_data['achievement']}, Actual: {total_data['actual']}, Target: {total_data['target']}, Gap: {total_data['gap']}", 
                                     f"[OK] Stored TOTAL data: {total_data['achievement']}, Actual: {total_data['actual']}")
                         continue  # Skip adding TOTAL to individual LOB cards
                     
-                    # 🔧 DEBUGGING: Log found values
+                    # DEBUGGING: Log found values
                     self.safe_log('info', f"DEBUG {lob_name}:")
                     self.safe_log('info', f"  Actual: {actual_raw} -> {actual}")
                     self.safe_log('info', f"  BP: {bp_raw} -> {bp}")
@@ -487,12 +487,12 @@ class SalesmanDashboardUpdater:
                     }
                     
                     lob_cards.append(lob_card)
-                    self.safe_log('info', f"✅ Added LOB: {lob_card['name']} - Ach:{lob_card['achievement']}, vs LM:{lob_card['vs_lm']}, vs 3LM:{lob_card['vs_3lm']}, vs LY:{lob_card['vs_ly']}", 
+                    self.safe_log('info', f"Added LOB: {lob_card['name']} - Ach:{lob_card['achievement']}, vs LM:{lob_card['vs_lm']}, vs 3LM:{lob_card['vs_3lm']}, vs LY:{lob_card['vs_ly']}", 
                                 f"[OK] Added LOB: {lob_card['name']} - Ach:{lob_card['achievement']}, vs LM:{lob_card['vs_lm']}, vs 3LM:{lob_card['vs_3lm']}, vs LY:{lob_card['vs_ly']}")
             
-            self.safe_log('info', f"✅ Processed {len(lob_cards)} LOB cards + TOTAL data with all metrics", f"[OK] Processed {len(lob_cards)} LOB cards + TOTAL data with all metrics")
+            self.safe_log('info', f"Processed {len(lob_cards)} LOB cards + TOTAL data with all metrics", f"[OK] Processed {len(lob_cards)} LOB cards + TOTAL data with all metrics")
             
-            # ✅ NEW: Include total_data in return
+            # NEW: Include total_data in return
             result = {
                 'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 'depo_name': 'Depo Tanjung',
@@ -500,13 +500,13 @@ class SalesmanDashboardUpdater:
                 'lob_cards': lob_cards
             }
             
-            # ✅ NEW: Add total_data if available
+            # NEW: Add total_data if available
             if total_data:
                 result['total_data'] = total_data
-                self.safe_log('info', f"✅ Added TOTAL data to result: {total_data['name']} - {total_data['achievement']}", 
+                self.safe_log('info', f"Added TOTAL data to result: {total_data['name']} - {total_data['achievement']}", 
                             f"[OK] Added TOTAL data to result: {total_data['name']} - {total_data['achievement']}")
             else:
-                self.safe_log('warning', "⚠️ No TOTAL data found in dashboard")
+                self.safe_log('warning', "No TOTAL data found in dashboard")
             
             return result
             
@@ -515,7 +515,7 @@ class SalesmanDashboardUpdater:
             return None
 
     def get_comprehensive_vs_metric(self, row, all_columns, possible_names):
-        """🔧 SUPER FIXED: Comprehensive column name matching"""
+        """SUPER FIXED: Comprehensive column name matching"""
         # First try exact matches
         for col_name in possible_names:
             if col_name in all_columns:
@@ -539,7 +539,7 @@ class SalesmanDashboardUpdater:
         return 0
 
     def parse_percentage_value(self, value):
-        """🔧 SUPER FIXED: Parse percentage values properly"""
+        """SUPER FIXED: Parse percentage values properly"""
         if pd.isna(value) or value == 0:
             return 0
             
@@ -570,7 +570,7 @@ class SalesmanDashboardUpdater:
             return 0
 
     def format_currency_indonesia(self, value):
-        """🔧 FIXED: Format currency dengan format Indonesia yang benar (Rb/Jt/M)"""
+        """FIXED: Format currency dengan format Indonesia yang benar (Rb/Jt/M)"""
         try:
             val = float(value)
             
@@ -589,7 +589,7 @@ class SalesmanDashboardUpdater:
     def process_salesman_data(self, sheets):
         """Process salesman data for ranking and login"""
         try:
-            self.safe_log('info', "🔄 Processing salesman data for ranking and login...", "Processing salesman data for ranking and login...")
+            self.safe_log('info', "Processing salesman data for ranking and login...", "Processing salesman data for ranking and login...")
             
             performance_df = sheets['d.performance']
             self.safe_log('info', f"Performance columns: {list(performance_df.columns)}")
@@ -622,13 +622,13 @@ class SalesmanDashboardUpdater:
                         }
                         
                         salesman_list.append(salesman_data)
-                        self.safe_log('info', f"✅ Added salesman: szEmployeeId {salesman_data['id']} - {salesman_data['name']} - {salesman_data['achievement']}", 
+                        self.safe_log('info', f"Added salesman: szEmployeeId {salesman_data['id']} - {salesman_data['name']} - {salesman_data['achievement']}", 
                                     f"[OK] Added salesman: szEmployeeId {salesman_data['id']} - {salesman_data['name']} - {salesman_data['achievement']}")
             
             # Sort by rank
             salesman_list.sort(key=lambda x: x['rank'] if x['rank'] > 0 else 999)
             
-            self.safe_log('info', f"✅ Processed {len(salesman_list)} salesman with szEmployeeId authentication", f"[OK] Processed {len(salesman_list)} salesman with szEmployeeId authentication")
+            self.safe_log('info', f"Processed {len(salesman_list)} salesman with szEmployeeId authentication", f"[OK] Processed {len(salesman_list)} salesman with szEmployeeId authentication")
             
             return salesman_list
             
@@ -650,7 +650,7 @@ class SalesmanDashboardUpdater:
     def process_salesman_detail(self, sheets):
         """Process detailed salesman data with szEmployeeId mapping + TOTAL & Ranking"""
         try:
-            self.safe_log('info', "🔄 Processing salesman details with szEmployeeId mapping + TOTAL & Ranking...", "Processing salesman details with szEmployeeId mapping + TOTAL & Ranking...")
+            self.safe_log('info', "Processing salesman details with szEmployeeId mapping + TOTAL & Ranking...", "Processing salesman details with szEmployeeId mapping + TOTAL & Ranking...")
             
             lob_df = sheets['d.salesmanlob']
             process_df = sheets['d.salesmanproses'] 
@@ -693,7 +693,7 @@ class SalesmanDashboardUpdater:
                             'gap': gap
                         }
                         
-                        self.safe_log('info', f"✅ Added performance for szEmployeeId {nik}, LOB {lob_name}: {self.safe_percentage(achievement)}%, Gap: {self.format_currency_indonesia(gap)}", 
+                        self.safe_log('info', f"Added performance for szEmployeeId {nik}, LOB {lob_name}: {self.safe_percentage(achievement)}%, Gap: {self.format_currency_indonesia(gap)}", 
                                     f"[OK] Added performance for szEmployeeId {nik}, LOB {lob_name}: {self.safe_percentage(achievement)}%, Gap: {self.format_currency_indonesia(gap)}")
             
             # Process additional metrics
@@ -725,11 +725,11 @@ class SalesmanDashboardUpdater:
                             'GP': int(round((gp_food + gp_others) / 2)) if (gp_food + gp_others) > 0 else 0
                         }
                         
-                        self.safe_log('info', f"✅ Added metrics for szEmployeeId {nik}: CA:{ca}%, GP:{(gp_food + gp_others) / 2:.1f}%", 
+                        self.safe_log('info', f"Added metrics for szEmployeeId {nik}: CA:{ca}%, GP:{(gp_food + gp_others) / 2:.1f}%", 
                                     f"[OK] Added metrics for szEmployeeId {nik}: CA:{ca}%, GP:{(gp_food + gp_others) / 2:.1f}%")
             
-            # 🆕 NEW: Add TOTAL and Ranking from d.performance sheet
-            self.safe_log('info', "🎯 Adding TOTAL and Ranking data from d.performance...", "[TARGET] Adding TOTAL and Ranking data from d.performance...")
+            # NEW: Add TOTAL and Ranking from d.performance sheet
+            self.safe_log('info', "Adding TOTAL and Ranking data from d.performance...", "[TARGET] Adding TOTAL and Ranking data from d.performance...")
             
             # Get total salesman count for ranking context
             total_salesman_count = len([nik for nik in salesman_details.keys() if nik])
@@ -762,13 +762,13 @@ class SalesmanDashboardUpdater:
                             'total_salesman': total_salesman_count
                         }
                         
-                        self.safe_log('info', f"✅ Added TOTAL for szEmployeeId {nik}: Actual={self.format_currency_indonesia(total_actual)}, Target={self.format_currency_indonesia(total_target)}, Achievement={total_achievement:.1f}%, Gap={self.format_currency_indonesia(total_gap)}", 
+                        self.safe_log('info', f"Added TOTAL for szEmployeeId {nik}: Actual={self.format_currency_indonesia(total_actual)}, Target={self.format_currency_indonesia(total_target)}, Achievement={total_achievement:.1f}%, Gap={self.format_currency_indonesia(total_gap)}", 
                                     f"[OK] Added TOTAL for szEmployeeId {nik}: Achievement={total_achievement:.1f}%, Rank={rank}/{total_salesman_count}")
                         
-                        self.safe_log('info', f"✅ Added Ranking for szEmployeeId {nik}: Rank {rank} of {total_salesman_count} salesman", 
+                        self.safe_log('info', f"Added Ranking for szEmployeeId {nik}: Rank {rank} of {total_salesman_count} salesman", 
                                     f"[OK] Added Ranking for szEmployeeId {nik}: Rank {rank} of {total_salesman_count}")
             
-            self.safe_log('info', f"✅ Processed details for {len(salesman_details)} salesman with szEmployeeId keys + Gap field + TOTAL + Ranking", f"[OK] Processed details for {len(salesman_details)} salesman with szEmployeeId keys + Gap field + TOTAL + Ranking")
+            self.safe_log('info', f"Processed details for {len(salesman_details)} salesman with szEmployeeId keys + Gap field + TOTAL + Ranking", f"[OK] Processed details for {len(salesman_details)} salesman with szEmployeeId keys + Gap field + TOTAL + Ranking")
             
             return salesman_details
             
@@ -777,11 +777,11 @@ class SalesmanDashboardUpdater:
             return {}
             
     def generate_chart_data(self, sheets):
-        #"""🔧 FIXED: Generate chart data dengan format Indonesia Rb/Jt/M"""
+        """FIXED: Generate chart data dengan format Indonesia Rb/Jt/M + Average hanya dari hari aktif (> 0)"""
         try:
             # Get period info
             data_period = self.get_period_from_data(sheets)
-            self.safe_log('info', f"📅 Period from data: {data_period}", f"[DATE] Period from data: {data_period}")
+            self.safe_log('info', f"Period from data: {data_period}", f"[DATE] Period from data: {data_period}")
             
             # Process SO data
             so_df = sheets['d.soharian']
@@ -797,8 +797,8 @@ class SalesmanDashboardUpdater:
                 if col in so_df.columns:
                     so_df[col] = pd.to_numeric(so_df[col], errors='coerce').fillna(0)
             
-            self.safe_log('info', f"📊 Processing {len(so_df)} rows for modern chart", f"[CHART] Processing {len(so_df)} rows for modern chart")
-            self.safe_log('info', f"📊 Columns in soharian: {list(so_df.columns)}", f"[CHART] Columns in soharian: {list(so_df.columns)}")
+            self.safe_log('info', f"Processing {len(so_df)} rows for modern chart", f"[CHART] Processing {len(so_df)} rows for modern chart")
+            self.safe_log('info', f"Columns in soharian: {list(so_df.columns)}", f"[CHART] Columns in soharian: {list(so_df.columns)}")
             
             # Generate chart data in format expected by HTML
             so_data = []
@@ -823,15 +823,40 @@ class SalesmanDashboardUpdater:
                     day_label = date_val.strftime('%d') if hasattr(date_val, 'strftime') else str(date_val).split('-')[-1]
                     labels.append(day_label)
             
-            # Calculate statistics
-            total_target = sum(target_data)
-            total_so = sum(so_data)
-            total_do = sum(do_data)
+            # FIXED: Calculate statistics - HANYA dari hari aktif (> 0)
+            self.safe_log('info', f"Total data points: SO={len(so_data)}, DO={len(do_data)}, Target={len(target_data)}")
             
-            # 🔧 FIXED: Format stats dengan format Indonesia yang benar
-            avg_target_formatted = self.format_currency_indonesia(total_target / len(target_data)) if target_data else "0"
-            avg_so_formatted = self.format_currency_indonesia(total_so / len(so_data)) if so_data else "0"
-            avg_do_formatted = self.format_currency_indonesia(total_do / len(do_data)) if do_data else "0"
+            # Filter data yang > 0 untuk perhitungan average yang benar
+            so_data_positive = [x for x in so_data if x > 0]
+            do_data_positive = [x for x in do_data if x > 0]
+            target_data_positive = [x for x in target_data if x > 0]
+            
+            self.safe_log('info', f"Active days (> 0): SO={len(so_data_positive)}, DO={len(do_data_positive)}, Target={len(target_data_positive)}")
+            
+            # Calculate correct averages (only from days with data > 0)
+            if so_data_positive:
+                avg_so = sum(so_data_positive) / len(so_data_positive)
+                avg_so_formatted = self.format_currency_indonesia(avg_so)
+                self.safe_log('info', f"SO Average calculated from {len(so_data_positive)} active days: {avg_so_formatted}")
+            else:
+                avg_so_formatted = "0"
+                self.safe_log('warning', "No active SO days found")
+
+            if do_data_positive:
+                avg_do = sum(do_data_positive) / len(do_data_positive)
+                avg_do_formatted = self.format_currency_indonesia(avg_do)
+                self.safe_log('info', f"DO Average calculated from {len(do_data_positive)} active days: {avg_do_formatted}")
+            else:
+                avg_do_formatted = "0"
+                self.safe_log('warning', "No active DO days found")
+
+            if target_data_positive:
+                avg_target = sum(target_data_positive) / len(target_data_positive)
+                avg_target_formatted = self.format_currency_indonesia(avg_target)
+                self.safe_log('info', f"Target Average calculated from {len(target_data_positive)} active days: {avg_target_formatted}")
+            else:
+                avg_target_formatted = "0"
+                self.safe_log('warning', "No active Target days found")
             
             # Count working days
             total_hk = len(so_data)
@@ -861,9 +886,9 @@ class SalesmanDashboardUpdater:
                 'target_data': target_data,
                 'labels': labels,
                 'stats': {
-                    'avg_target': avg_target_formatted,  # 🔧 FIXED: Format Indonesia
-                    'avg_so': avg_so_formatted,         # 🔧 FIXED: Format Indonesia
-                    'avg_do': avg_do_formatted,         # 🔧 FIXED: Format Indonesia
+                    'avg_target': avg_target_formatted,  # FIXED: Format Indonesia dari hari aktif saja
+                    'avg_so': avg_so_formatted,         # FIXED: Format Indonesia dari hari aktif saja
+                    'avg_do': avg_do_formatted,         # FIXED: Format Indonesia dari hari aktif saja
                     'total_hk': total_hk,
                     'sisa_hk_do': sisa_hk_do
                 }
@@ -872,13 +897,13 @@ class SalesmanDashboardUpdater:
             # Add gap total from dashboard
             chart_data['stats']['gap_total'] = self.get_gap_total_from_dashboard(sheets)
             
-            self.safe_log('info', f"✅ Modern chart data processed: {len(chart_data['so_data'])} days", f"[OK] Modern chart data processed: {len(chart_data['so_data'])} days")
-            self.safe_log('info', f"📊 Period: {data_period}", f"[CHART] Period: {data_period}")
-            self.safe_log('info', f"📈 Stats: SO={chart_data['stats']['avg_so']}, DO={chart_data['stats']['avg_do']}, Target={chart_data['stats']['avg_target']}", 
-                        f"[TREND] Stats: SO={chart_data['stats']['avg_so']}, DO={chart_data['stats']['avg_do']}, Target={chart_data['stats']['avg_target']}")
-            self.safe_log('info', f"📅 HK: Total={chart_data['stats']['total_hk']}, Sisa DO={chart_data['stats']['sisa_hk_do']}", 
+            self.safe_log('info', f"Modern chart data processed: {len(chart_data['so_data'])} days", f"[OK] Modern chart data processed: {len(chart_data['so_data'])} days")
+            self.safe_log('info', f"Period: {data_period}", f"[CHART] Period: {data_period}")
+            self.safe_log('info', f"CORRECTED Stats (Active Days Only): SO={chart_data['stats']['avg_so']} ({len(so_data_positive)} days), DO={chart_data['stats']['avg_do']} ({len(do_data_positive)} days), Target={chart_data['stats']['avg_target']} ({len(target_data_positive)} days)", 
+                        f"[TREND] CORRECTED Stats (Active Days Only): SO={chart_data['stats']['avg_so']}, DO={chart_data['stats']['avg_do']}, Target={chart_data['stats']['avg_target']}")
+            self.safe_log('info', f"HK: Total={chart_data['stats']['total_hk']}, Sisa DO={chart_data['stats']['sisa_hk_do']}", 
                         f"[DATE] HK: Total={chart_data['stats']['total_hk']}, Sisa DO={chart_data['stats']['sisa_hk_do']}")
-            self.safe_log('info', f"💰 Gap Total: {chart_data['stats']['gap_total']}", f"[MONEY] Gap Total: {chart_data['stats']['gap_total']}")
+            self.safe_log('info', f"Gap Total: {chart_data['stats']['gap_total']}", f"[MONEY] Gap Total: {chart_data['stats']['gap_total']}")
             
             return chart_data
             
@@ -910,7 +935,7 @@ class SalesmanDashboardUpdater:
             return 0
     
     def format_currency(self, value):
-        """🔧 LEGACY: Keep for backward compatibility"""
+        """LEGACY: Keep for backward compatibility"""
         return self.format_currency_indonesia(value)
 
     def get_period_from_data(self, sheets):
@@ -934,7 +959,7 @@ class SalesmanDashboardUpdater:
                     }.get(month_name, month_name)
                     
                     period = f"{month_id} {year}"
-                    self.safe_log('info', f"📅 Period from data: {period}", f"[DATE] Period from data: {period}")
+                    self.safe_log('info', f"Period from data: {period}", f"[DATE] Period from data: {period}")
                     return period
         except Exception as e:
             self.safe_log('warning', f"Could not extract period from data: {str(e)}")
@@ -950,7 +975,7 @@ class SalesmanDashboardUpdater:
         try:
             dashboard_df = sheets.get('d.dashboard')
             if dashboard_df is not None:
-                self.safe_log('info', f"🔍 Looking for Gap Total in dashboard with {len(dashboard_df)} rows", f"[SEARCH] Looking for Gap Total in dashboard with {len(dashboard_df)} rows")
+                self.safe_log('info', f"Looking for Gap Total in dashboard with {len(dashboard_df)} rows", f"[SEARCH] Looking for Gap Total in dashboard with {len(dashboard_df)} rows")
                 
                 # Look for TOTAL row
                 for _, row in dashboard_df.iterrows():
@@ -961,7 +986,7 @@ class SalesmanDashboardUpdater:
                         # Format gap value using Indonesian format
                         if gap_value != 0:
                             gap_formatted = self.format_currency_indonesia(abs(gap_value))
-                            self.safe_log('info', f"✅ Found Gap Total: {gap_formatted} for LOB: {lob_name}", f"[OK] Found Gap Total: {gap_formatted} for LOB: {lob_name}")
+                            self.safe_log('info', f"Found Gap Total: {gap_formatted} for LOB: {lob_name}", f"[OK] Found Gap Total: {gap_formatted} for LOB: {lob_name}")
                             return gap_formatted
                 
                 self.safe_log('warning', "Gap Total not found in dashboard")
@@ -974,9 +999,9 @@ class SalesmanDashboardUpdater:
     def validate_data(self, sheets):
         """Validate that all required data is present"""
         try:
-            self.safe_log('info', "🔍 Validating data...", "Validating data...")
+            self.safe_log('info', "Validating data...", "Validating data...")
             
-            # 🆕 UPDATED: d.insentif is optional
+            # UPDATED: d.insentif is optional
             required_sheets = ['d.dashboard', 'd.performance', 'd.salesmanlob', 'd.salesmanproses', 'd.soharian']
             optional_sheets = ['d.insentif']
             
@@ -992,11 +1017,11 @@ class SalesmanDashboardUpdater:
             # Check optional sheets
             for sheet_name in optional_sheets:
                 if sheet_name in sheets:
-                    self.safe_log('info', f"✅ Optional sheet found: {sheet_name}", f"[OK] Optional sheet found: {sheet_name}")
+                    self.safe_log('info', f"Optional sheet found: {sheet_name}", f"[OK] Optional sheet found: {sheet_name}")
                 else:
-                    self.safe_log('info', f"ℹ️ Optional sheet not found: {sheet_name} (will be skipped)", f"[INFO] Optional sheet not found: {sheet_name}")
+                    self.safe_log('info', f"Optional sheet not found: {sheet_name} (will be skipped)", f"[INFO] Optional sheet not found: {sheet_name}")
             
-            self.safe_log('info', "✅ Data validation passed", "[OK] Data validation passed")
+            self.safe_log('info', "Data validation passed", "[OK] Data validation passed")
             return True
             
         except Exception as e:
@@ -1004,9 +1029,9 @@ class SalesmanDashboardUpdater:
             return False
 
     def check_html_files(self):
-        """🆕 NEW: Check if HTML files exist and are ready for deployment"""
+        """NEW: Check if HTML files exist and are ready for deployment"""
         try:
-            self.safe_log('info', "🔍 Checking HTML dashboard files...", "[SEARCH] Checking HTML dashboard files...")
+            self.safe_log('info', "Checking HTML dashboard files...", "[SEARCH] Checking HTML dashboard files...")
             
             # List of HTML files to check
             html_files = [
@@ -1023,15 +1048,15 @@ class SalesmanDashboardUpdater:
                     file_size = os.path.getsize(file)
                     mod_time = datetime.fromtimestamp(os.path.getmtime(file))
                     existing_files.append(file)
-                    self.safe_log('info', f"✅ Found: {file} ({file_size:,} bytes, modified: {mod_time.strftime('%Y-%m-%d %H:%M:%S')})", f"[OK] Found: {file}")
+                    self.safe_log('info', f"Found: {file} ({file_size:,} bytes, modified: {mod_time.strftime('%Y-%m-%d %H:%M:%S')})", f"[OK] Found: {file}")
                 else:
                     missing_files.append(file)
-                    self.safe_log('warning', f"⚠️  Missing: {file}")
+                    self.safe_log('warning', f"Missing: {file}")
             
             if missing_files:
                 self.safe_log('warning', f"Missing HTML files: {missing_files}")
             
-            self.safe_log('info', f"📱 Found {len(existing_files)} HTML files for deployment", f"[MOBILE] Found {len(existing_files)} HTML files for deployment")
+            self.safe_log('info', f"Found {len(existing_files)} HTML files for deployment", f"[MOBILE] Found {len(existing_files)} HTML files for deployment")
             return existing_files
             
         except Exception as e:
@@ -1039,15 +1064,15 @@ class SalesmanDashboardUpdater:
             return []
 
     def generate_json_files(self, sheets):
-        """🆕 ENHANCED: Generate all JSON files with complete data + real incentive data with Periode column"""
+        """ENHANCED: Generate all JSON files with complete data + real incentive data with Periode column"""
         try:
-            self.safe_log('info', "🔄 Processing Excel data to JSON with format Indonesia Rb/Jt/M + Gap field + Real Incentive with Periode...", "Processing Excel data to JSON with format Indonesia + Gap field + Real Incentive with Periode...")
+            self.safe_log('info', "Processing Excel data to JSON with format Indonesia Rb/Jt/M + Gap field + Real Incentive with Periode...", "Processing Excel data to JSON with format Indonesia + Gap field + Real Incentive with Periode...")
             
             # Process all data
             dashboard_data = self.process_dashboard_data(sheets)
             salesman_list = self.process_salesman_data(sheets)
             salesman_details = self.process_salesman_detail(sheets)
-            incentive_data = self.process_insentif_data(sheets)  # 🆕 NEW: Process real incentive data with Periode
+            incentive_data = self.process_insentif_data(sheets)  # NEW: Process real incentive data with Periode
             
             if not dashboard_data or not salesman_list:
                 self.safe_log('error', "Failed to process required data")
@@ -1057,19 +1082,19 @@ class SalesmanDashboardUpdater:
             dashboard_file = os.path.join(self.data_dir, 'dashboard.json')
             with open(dashboard_file, 'w', encoding='utf-8') as f:
                 json.dump(dashboard_data, f, indent=2, ensure_ascii=False)
-            self.safe_log('info', f"✅ Saved: {dashboard_file} with format Indonesia", f"[OK] Saved: {dashboard_file} with format Indonesia")
+            self.safe_log('info', f"Saved: {dashboard_file} with format Indonesia", f"[OK] Saved: {dashboard_file} with format Indonesia")
             
             # Save salesman list
             list_file = os.path.join(self.data_dir, 'salesman_list.json')
             with open(list_file, 'w', encoding='utf-8') as f:
                 json.dump(salesman_list, f, indent=2, ensure_ascii=False)
-            self.safe_log('info', f"✅ Saved: {list_file} with format Indonesia", f"[OK] Saved: {list_file} with format Indonesia")
+            self.safe_log('info', f"Saved: {list_file} with format Indonesia", f"[OK] Saved: {list_file} with format Indonesia")
             
             # Save salesman details 
             details_file = os.path.join(self.data_dir, 'salesman_details.json')
             with open(details_file, 'w', encoding='utf-8') as f:
                 json.dump(salesman_details, f, indent=2, ensure_ascii=False)
-            self.safe_log('info', f"✅ Saved: {details_file} with format Indonesia + Gap field", f"[OK] Saved: {details_file} with format Indonesia + Gap field")
+            self.safe_log('info', f"Saved: {details_file} with format Indonesia + Gap field", f"[OK] Saved: {details_file} with format Indonesia + Gap field")
             
             # Generate and save chart data
             chart_data = self.generate_chart_data(sheets)
@@ -1077,9 +1102,9 @@ class SalesmanDashboardUpdater:
                 chart_file = os.path.join(self.data_dir, 'chart_data.json')
                 with open(chart_file, 'w', encoding='utf-8') as f:
                     json.dump(chart_data, f, indent=2, ensure_ascii=False)
-                self.safe_log('info', f"✅ Saved: {chart_file} with format Indonesia", f"[OK] Saved: {chart_file} with format Indonesia")
+                self.safe_log('info', f"Saved: {chart_file} with format Indonesia", f"[OK] Saved: {chart_file} with format Indonesia")
             
-            # 🆕 ENHANCED: Save real incentive data in JSONL format with Periode column
+            # ENHANCED: Save real incentive data in JSONL format with Periode column
             if incentive_data:
                 incentive_file = os.path.join(self.data_dir, 'd.insentif.json')
                 with open(incentive_file, 'w', encoding='utf-8') as f:
@@ -1088,21 +1113,21 @@ class SalesmanDashboardUpdater:
                         json.dump(record, f, ensure_ascii=False)
                         f.write('\n')
                 
-                # 🆕 NEW: Log period distribution in incentive data
+                # NEW: Log period distribution in incentive data
                 period_counts = {}
                 for record in incentive_data:
                     period = record.get('Periode', 'Unknown')
                     period_counts[period] = period_counts.get(period, 0) + 1
                 
-                self.safe_log('info', f"✅ Saved: {incentive_file} in JSONL format with {len(incentive_data)} records and Periode column (Real Data)", f"[OK] Saved: {incentive_file} in JSONL format with {len(incentive_data)} records and Periode column (Real Data)")
-                self.safe_log('info', f"📊 Real incentive period distribution: {period_counts}", f"[CHART] Real incentive period distribution: {period_counts}")
+                self.safe_log('info', f"Saved: {incentive_file} in JSONL format with {len(incentive_data)} records and Periode column (Real Data)", f"[OK] Saved: {incentive_file} in JSONL format with {len(incentive_data)} records and Periode column (Real Data)")
+                self.safe_log('info', f"Real incentive period distribution: {period_counts}", f"[CHART] Real incentive period distribution: {period_counts}")
             else:
                 self.safe_log('warning', "No incentive data to save - d.insentif.json will not be created")
             
-            # 🆕 UPDATED: Count files generated
+            # UPDATED: Count files generated
             total_files = 4 + (1 if incentive_data else 0)
-            self.safe_log('info', f"🎉 Generated {total_files} JSON files with Indonesia format (Rb/Jt/M) + Gap field + Real Incentive with Periode!", f"[SUCCESS] Generated {total_files} JSON files with Indonesia format + Gap field + Real Incentive with Periode!")
-            self.safe_log('info', "📋 Files updated with Rb/Jt/M format + Gap field + Real Incentive with Periode:", "[LIST] Files updated with Rb/Jt/M format + Gap field + Real Incentive with Periode:")
+            self.safe_log('info', f"Generated {total_files} JSON files with Indonesia format (Rb/Jt/M) + Gap field + Real Incentive with Periode!", f"[SUCCESS] Generated {total_files} JSON files with Indonesia format + Gap field + Real Incentive with Periode!")
+            self.safe_log('info', "Files updated with Rb/Jt/M format + Gap field + Real Incentive with Periode:", "[LIST] Files updated with Rb/Jt/M format + Gap field + Real Incentive with Periode:")
             
             files = ['dashboard.json', 'salesman_list.json', 'salesman_details.json', 'chart_data.json']
             if incentive_data:
@@ -1118,14 +1143,14 @@ class SalesmanDashboardUpdater:
             return False
 
     def git_push_changes(self):
-        """🔧 ENHANCED: FIXED Push changes to GitHub with proper error handling"""
+        """ENHANCED: FIXED Push changes to GitHub with proper error handling"""
         try:
-            self.safe_log('info', "🚀 Pushing to GitHub with improved error handling...", "Pushing to GitHub with improved error handling...")
+            self.safe_log('info', "Pushing to GitHub with improved error handling...", "Pushing to GitHub with improved error handling...")
             
             # Check HTML files first
             html_files = self.check_html_files()
             
-            # 🔧 FIXED: Check git status first
+            # FIXED: Check git status first
             try:
                 status_result = subprocess.run(['git', 'status', '--porcelain'], 
                                               capture_output=True, text=True, cwd='.')
@@ -1144,7 +1169,7 @@ class SalesmanDashboardUpdater:
                 self.safe_log('error', f"Error checking git status: {str(e)}")
                 return False
             
-            # 🔧 FIXED: Add files with better error handling
+            # FIXED: Add files with better error handling
             files_to_add = [
                 'data/',
                 'index.html',
@@ -1179,15 +1204,15 @@ class SalesmanDashboardUpdater:
                         add_result = subprocess.run(['git', 'add', file_pattern], 
                                                   capture_output=True, text=True, cwd='.')
                         if add_result.returncode == 0:
-                            self.safe_log('info', f"✅ Added: {file_pattern}", f"[OK] Added: {file_pattern}")
+                            self.safe_log('info', f"Added: {file_pattern}", f"[OK] Added: {file_pattern}")
                         else:
-                            self.safe_log('warning', f"⚠️ Failed to add {file_pattern}: {add_result.stderr}")
+                            self.safe_log('warning', f"Failed to add {file_pattern}: {add_result.stderr}")
                     else:
-                        self.safe_log('warning', f"⚠️ File not found: {file_pattern}")
+                        self.safe_log('warning', f"File not found: {file_pattern}")
                 except Exception as e:
                     self.safe_log('error', f"Error adding {file_pattern}: {str(e)}")
             
-            # 🔧 FIXED: Check git status after adding
+            # FIXED: Check git status after adding
             try:
                 status_after_add = subprocess.run(['git', 'status', '--porcelain'], 
                                                  capture_output=True, text=True, cwd='.')
@@ -1198,32 +1223,37 @@ class SalesmanDashboardUpdater:
             except Exception as e:
                 self.safe_log('warning', f"Error checking git status after add: {str(e)}")
             
-            # 🔧 FIXED: Commit with better error handling
+            # FIXED: Commit with better error handling
             current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            commit_message = f"""Morning update: {current_time} - ENHANCED Dashboard System + Real Incentive Data with Periode
+            commit_message = f"""Morning update: {current_time} - FIXED Average SO/DO Calculation (Active Days Only)
 
-📱 Mobile Dashboard (dashboard.html) - Optimized for smartphones
-💻 Desktop Dashboard (dashboard-desktop.html) - Optimized for laptops/PC
-🔧 Updated Features:
+FIXED: avg_SO dan avg_DO calculation di chart_data.json
+- Sebelumnya: menghitung average dari SEMUA hari (termasuk yang = 0)
+- Sekarang: HANYA menghitung dari hari-hari yang memiliki data > 0
+- Hasil: Average yang lebih akurat dan realistis
+
+Mobile Dashboard (dashboard.html) - Optimized for smartphones
+Desktop Dashboard (dashboard-desktop.html) - Optimized for laptops/PC
+Updated Features:
    - Indonesian number format (Rb/Jt/M)
    - vs metrics display (vs LM/3LM/LY)
    - Gap field calculation (Actual - Target)
    - Device-specific dashboard selection
    - Enhanced user experience
-💸 ENHANCED: Real Incentive Data Support with Periode Column
+ENHANCED: Real Incentive Data Support with Periode Column
    - JSONL format for application compatibility
    - Real incentive data from Excel (no calculations)
    - Periode column added to support dashboard tabs
    - Multi-period support for historical data
 
-🔐 Login: admin/admin123 or szEmployeeId/sales123"""
+Login: admin/admin123 or szEmployeeId/sales123"""
 
             try:
                 commit_result = subprocess.run(['git', 'commit', '-m', commit_message], 
                                               capture_output=True, text=True, cwd='.')
                 
                 if commit_result.returncode == 0:
-                    self.safe_log('info', "✅ Git commit successful", "[OK] Git commit successful")
+                    self.safe_log('info', "Git commit successful", "[OK] Git commit successful")
                     self.safe_log('info', f"Commit output: {commit_result.stdout}")
                 else:
                     if "nothing to commit" in commit_result.stdout:
@@ -1238,20 +1268,20 @@ class SalesmanDashboardUpdater:
                 self.safe_log('error', f"Error during git commit: {str(e)}")
                 return False
             
-            # 🔧 FIXED: Push with better error handling
+            # FIXED: Push with better error handling
             try:
                 push_result = subprocess.run(['git', 'push', 'origin', 'main'], 
                                            capture_output=True, text=True, cwd='.')
                 
                 if push_result.returncode == 0:
-                    self.safe_log('info', "✅ Successfully pushed to GitHub!", "[OK] Successfully pushed to GitHub!")
+                    self.safe_log('info', "Successfully pushed to GitHub!", "[OK] Successfully pushed to GitHub!")
                     self.safe_log('info', f"Push output: {push_result.stdout}")
                     
                     # Show deployment URLs
-                    self.safe_log('info', "🌐 Deployment URLs:", "[WEB] Deployment URLs:")
-                    self.safe_log('info', "   🏠 Main Login: https://kisman271128.github.io/salesman-dashboard/")
-                    self.safe_log('info', "   📱 Mobile: https://kisman271128.github.io/salesman-dashboard/dashboard.html")
-                    self.safe_log('info', "   💻 Desktop: https://kisman271128.github.io/salesman-dashboard/dashboard-desktop.html")
+                    self.safe_log('info', "Deployment URLs:", "[WEB] Deployment URLs:")
+                    self.safe_log('info', "   Main Login: https://kisman271128.github.io/salesman-dashboard/")
+                    self.safe_log('info', "   Mobile: https://kisman271128.github.io/salesman-dashboard/dashboard.html")
+                    self.safe_log('info', "   Desktop: https://kisman271128.github.io/salesman-dashboard/dashboard-desktop.html")
                     
                     return True
                 else:
@@ -1301,72 +1331,78 @@ class SalesmanDashboardUpdater:
             # Success message
             duration = (datetime.now() - start_time).total_seconds()
             
-            # 🆕 NEW: Log session summary
+            # NEW: Log session summary
             self.safe_log('info', "=" * 80, "=" * 50)
-            self.safe_log('info', f"🎉 MORNING UPDATE COMPLETED SUCCESSFULLY!", f"[SUCCESS] MORNING UPDATE COMPLETED SUCCESSFULLY!")
-            self.safe_log('info', f"⏱️  Processing time: {duration:.2f} seconds", f"[TIMER] Processing time: {duration:.2f} seconds")
-            self.safe_log('info', f"📅 Session completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", f"[DATE] Session completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            self.safe_log('info', f"MORNING UPDATE COMPLETED SUCCESSFULLY!", f"[SUCCESS] MORNING UPDATE COMPLETED SUCCESSFULLY!")
+            self.safe_log('info', f"Processing time: {duration:.2f} seconds", f"[TIMER] Processing time: {duration:.2f} seconds")
+            self.safe_log('info', f"Session completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", f"[DATE] Session completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
             self.safe_log('info', "=" * 80, "=" * 50)
             
             success_message = f"""
 =======================================================
-🎉 MORNING UPDATE COMPLETED SUCCESSFULLY!
-⏱️  Processing time: {duration:.2f} seconds
+MORNING UPDATE COMPLETED SUCCESSFULLY!
+Processing time: {duration:.2f} seconds
 
-🌐 DEPLOYMENT URLS:
-   🏠 Main Login: https://kisman271128.github.io/salesman-dashboard/
-   📱 Mobile Dashboard: https://kisman271128.github.io/salesman-dashboard/dashboard.html
-   💻 Desktop Dashboard: https://kisman271128.github.io/salesman-dashboard/dashboard-desktop.html
+DEPLOYMENT URLS:
+   Main Login: https://kisman271128.github.io/salesman-dashboard/
+   Mobile Dashboard: https://kisman271128.github.io/salesman-dashboard/dashboard.html
+   Desktop Dashboard: https://kisman271128.github.io/salesman-dashboard/dashboard-desktop.html
 
-📊 ENHANCED FEATURES:
-   💰 Indonesian Number Format - FIXED Rb/Jt/M display
-   📈 vs Metrics Display - FIXED vs LM/3LM/LY showing
-   🎯 Chart Stats Format - FIXED proper Rb/Jt/M format
-   📊 Gap Field Added - FIXED Gap calculation (Actual - Target) for each LOB
-   💸 ENHANCED Real Incentive Data Support - NEW d.insentif.json with Periode column
-   🔐 szEmployeeId Login - All salesman + admin access
-   📱💻 Dual Dashboard - Mobile & Desktop optimized versions
-   🎨 Device Selection - Auto-detect with manual override
-   📅 Real Data Support - Actual incentive data from Excel without calculations
+FIXED FEATURES:
+   FIXED avg_SO dan avg_DO calculation di chart_data.json
+   - Sebelumnya: menghitung average dari SEMUA hari (termasuk yang = 0)  
+   - Sekarang: HANYA menghitung dari hari-hari yang memiliki data > 0
+   - Hasil: Average yang lebih akurat dan realistis
 
-🔑 LOGIN CREDENTIALS:
+   Indonesian Number Format - FIXED Rb/Jt/M display
+   vs Metrics Display - FIXED vs LM/3LM/LY showing
+   Chart Stats Format - FIXED proper Rb/Jt/M format
+   Gap Field Added - FIXED Gap calculation (Actual - Target) for each LOB
+   ENHANCED Real Incentive Data Support - NEW d.insentif.json with Periode column
+   szEmployeeId Login - All salesman + admin access
+   Dual Dashboard - Mobile & Desktop optimized versions
+   Device Selection - Auto-detect with manual override
+   Real Data Support - Actual incentive data from Excel without calculations
+
+LOGIN CREDENTIALS:
    Admin: admin / admin123
    Salesman: [szEmployeeId] / sales123
 
-💡 DASHBOARD FEATURES:
-   📱 Mobile Version:
+DASHBOARD FEATURES:
+   Mobile Version:
       • Compact layout optimized for smartphones
       • Bottom navigation for easy thumb access
       • Touch-friendly interface elements
       
-   💻 Desktop Version:
+   Desktop Version:
       • Sidebar navigation for larger screens
       • Multi-column layout utilizing screen space
       • Enhanced charts and tables for detailed viewing
       • Keyboard shortcuts support
 
-🎯 AUTO DEVICE SELECTION:
+AUTO DEVICE SELECTION:
    • < 768px width → Mobile Dashboard
    • ≥ 1024px width → Desktop Dashboard
    • 768-1024px → User choice (tablets)
    • Manual override always available
 
-💸 ENHANCED REAL INCENTIVE DATA:
+ENHANCED REAL INCENTIVE DATA:
    • d.insentif.json in JSONL format with Periode column
    • Real incentive data from Excel (no calculations/estimations)
    • Actual Sales and Process incentives as recorded
    • Application-ready structure for dashboard tabs
    • Period support from Excel data or current period
 
-💡 Format Indonesia + Data Enhancement:
+Format Indonesia + Data Enhancement:
    • < 1K = angka langsung (500)
    • 1K-999K = Rb (500Rb) 
    • 1Jt-999Jt = Jt (50.5Jt)
    • ≥1M = M (1.5M)
    • Gap = Actual - Target (untuk analisis performance)
    • Periode = Real period from Excel or Indonesian month format
+   • FIXED: avg_SO/avg_DO = Average dari hari aktif saja (> 0)
 
-📝 LOG INFO:
+LOG INFO:
    • Fresh log file created for this session
    • Previous log cleared for clarity
    • All operations logged with timestamps
@@ -1384,53 +1420,55 @@ class SalesmanDashboardUpdater:
             return False
 
 def main():
-    """🆕 ENHANCED: Main function - Enhanced with Desktop Dashboard + Real Incentive Data with Periode + Fresh Log"""
-    print("🚀 SALESMAN DASHBOARD UPDATER v3.0 - ENHANCED WITH REAL INCENTIVE DATA + PERIODE COLUMN")
+    """ENHANCED: Main function - Enhanced with Desktop Dashboard + Real Incentive Data with Periode + Fresh Log + FIXED Average Calculation"""
+    print("SALESMAN DASHBOARD UPDATER v3.1 - FIXED AVERAGE SO/DO CALCULATION")
     print("=" * 95)
-    print("Running with ENHANCED FEATURES:")
-    print("✅ NEW: Fresh log session (previous log cleared)")
-    print("✅ NEW: Real incentive data from Excel (no calculations)")
-    print("✅ NEW: Periode column support in d.insentif.json")
-    print("✅ NEW: Smart period detection from Excel or current date")
-    print("✅ FIXED git status checking before operations")
-    print("✅ FIXED git add with detailed logging")
-    print("✅ FIXED git commit with proper error handling")
-    print("✅ FIXED git push with comprehensive error messages")
-    print("✅ FIXED format Rb/Jt/M sesuai standar Indonesia")
-    print("✅ FIXED vs metrics display (vs LM/3LM/LY)")
-    print("✅ FIXED chart stats dengan format yang benar")
-    print("✅ ADDED Gap field (Actual - Target) untuk setiap LOB") 
-    print("✅ Enhanced number formatting untuk semua section")
-    print("✅ ADDED Desktop dashboard untuk laptop/PC")
-    print("✅ ADDED Device auto-detection & selection")
-    print("✅ ENHANCED: Real Incentive Data Support (no calculations)")
-    print("✅ NEW: Clear previous log for fresh session")
+    print("Running with FIXED FEATURES:")
+    print("NEW: FIXED avg_SO dan avg_DO calculation (hanya dari hari aktif > 0)")
+    print("NEW: Fresh log session (previous log cleared)")
+    print("NEW: Real incentive data from Excel (no calculations)")
+    print("NEW: Periode column support in d.insentif.json")
+    print("NEW: Smart period detection from Excel or current date")
+    print("FIXED git status checking before operations")
+    print("FIXED git add with detailed logging")
+    print("FIXED git commit with proper error handling")
+    print("FIXED git push with comprehensive error messages")
+    print("FIXED format Rb/Jt/M sesuai standar Indonesia")
+    print("FIXED vs metrics display (vs LM/3LM/LY)")
+    print("FIXED chart stats dengan format yang benar")
+    print("ADDED Gap field (Actual - Target) untuk setiap LOB") 
+    print("Enhanced number formatting untuk semua section")
+    print("ADDED Desktop dashboard untuk laptop/PC")
+    print("ADDED Device auto-detection & selection")
+    print("ENHANCED: Real Incentive Data Support (no calculations)")
+    print("NEW: Clear previous log for fresh session")
     print("=" * 90)
     
-    print("\n🌅 MORNING BATCH UPDATE v3.0 - REAL INCENTIVE DATA + PERIODE COLUMN")
+    print("\nMORNING BATCH UPDATE v3.1 - FIXED AVERAGE CALCULATION + REAL INCENTIVE DATA + PERIODE COLUMN")
     print("=" * 80)
-    print("🚀 Version 3.0 - REAL DATA + ENHANCED ERROR HANDLING & INCENTIVE SUPPORT:")
-    print("   🗑️  NEW: Clear previous log file untuk fresh start")
-    print("   📝 NEW: Session start/end logging dengan timestamps")
-    print("   📅 NEW: Periode column support dalam d.insentif.json")
-    print("   💸 NEW: Real incentive data from Excel (no calculations)")
-    print("   🎯 NEW: Smart period detection (Excel first, then current date)")
-    print("   🔧 FIXED git status checking before operations")
-    print("   🔧 FIXED git add with individual file logging")
-    print("   🔧 FIXED git commit with detailed error messages")
-    print("   🔧 FIXED git push with network/auth error detection")
-    print("   📱 Mobile Dashboard - Optimized untuk smartphone")
-    print("   💻 Desktop Dashboard - Optimized untuk laptop/PC")
-    print("   🎨 Device Selection - Auto-detect dengan manual override")
-    print("   ✅ FIXED Rb untuk < 1 juta (contoh: 500Rb)")
-    print("   ✅ FIXED Jt untuk 1-999 juta (contoh: 50.5Jt)")
-    print("   ✅ FIXED M untuk ≥ 1 miliar (contoh: 1.5M)")
-    print("   ✅ FIXED vs metrics yang tidak muncul")
-    print("   ✅ FIXED chart stats format Indonesia")
-    print("   ✅ ADDED Gap field untuk setiap LOB performance")
-    print("   💸 ENHANCED: Real d.insentif.json data (no calculations)")
-    print("   💸 ENHANCED: Smart periode detection from Excel")
-    print("   💸 ENHANCED: Application-ready incentive structure untuk dashboard")
+    print("Version 3.1 - FIXED DATA + ENHANCED ERROR HANDLING & INCENTIVE SUPPORT:")
+    print("   FIXED: avg_SO dan avg_DO calculation (hanya dari hari aktif > 0)")
+    print("   NEW: Clear previous log file untuk fresh start")
+    print("   NEW: Session start/end logging dengan timestamps")
+    print("   NEW: Periode column support dalam d.insentif.json")
+    print("   NEW: Real incentive data from Excel (no calculations)")
+    print("   NEW: Smart period detection (Excel first, then current date)")
+    print("   FIXED git status checking before operations")
+    print("   FIXED git add with individual file logging")
+    print("   FIXED git commit with detailed error messages")
+    print("   FIXED git push with network/auth error detection")
+    print("   Mobile Dashboard - Optimized untuk smartphone")
+    print("   Desktop Dashboard - Optimized untuk laptop/PC")
+    print("   Device Selection - Auto-detect dengan manual override")
+    print("   FIXED Rb untuk < 1 juta (contoh: 500Rb)")
+    print("   FIXED Jt untuk 1-999 juta (contoh: 50.5Jt)")
+    print("   FIXED M untuk ≥ 1 miliar (contoh: 1.5M)")
+    print("   FIXED vs metrics yang tidak muncul")
+    print("   FIXED chart stats format Indonesia")
+    print("   ADDED Gap field untuk setiap LOB performance")
+    print("   ENHANCED: Real d.insentif.json data (no calculations)")
+    print("   ENHANCED: Smart periode detection from Excel")
+    print("   ENHANCED: Application-ready incentive structure untuk dashboard")
     print("=" * 75)
     
     # Create updater and run
@@ -1438,17 +1476,18 @@ def main():
     success = updater.run_morning_update()
     
     if success:
-        print("\n✅ ENHANCED DASHBOARD SYSTEM UPDATE WITH REAL INCENTIVE DATA SUCCESSFUL!")
-        print("🌐 Multi-platform dashboard dengan format Rb/Jt/M yang benar")
-        print("💸 Real incentive data support dengan kolom Periode (no calculations)")
-        print("📝 Fresh log session untuk troubleshooting yang lebih mudah")
-        print("📱 Mobile: https://kisman271128.github.io/salesman-dashboard/dashboard.html")
-        print("💻 Desktop: https://kisman271128.github.io/salesman-dashboard/dashboard-desktop.html")
-        print("🏠 Login: https://kisman271128.github.io/salesman-dashboard/")
+        print("\nFIXED DASHBOARD SYSTEM UPDATE WITH CORRECT AVERAGE CALCULATION SUCCESSFUL!")
+        print("Multi-platform dashboard dengan format Rb/Jt/M yang benar")
+        print("Real incentive data support dengan kolom Periode (no calculations)")
+        print("FIXED: avg_SO dan avg_DO calculation (hanya dari hari aktif > 0)")
+        print("Fresh log session untuk troubleshooting yang lebih mudah")
+        print("Mobile: https://kisman271128.github.io/salesman-dashboard/dashboard.html")
+        print("Desktop: https://kisman271128.github.io/salesman-dashboard/dashboard-desktop.html")
+        print("Login: https://kisman271128.github.io/salesman-dashboard/")
         sys.exit(0)
     else:
-        print("\n❌ UPDATE FAILED!")
-        print("❗ Check morning_update.log for details (fresh session)")
+        print("\nUPDATE FAILED!")
+        print("Check morning_update.log for details (fresh session)")
         sys.exit(1)
 
 if __name__ == "__main__":
