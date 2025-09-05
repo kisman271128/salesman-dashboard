@@ -777,7 +777,7 @@ class SalesmanDashboardUpdater:
             return {}
             
     def generate_chart_data(self, sheets):
-        """🔧 FIXED: Generate chart data dengan format Indonesia Rb/Jt/M"""
+        #"""🔧 FIXED: Generate chart data dengan format Indonesia Rb/Jt/M"""
         try:
             # Get period info
             data_period = self.get_period_from_data(sheets)
