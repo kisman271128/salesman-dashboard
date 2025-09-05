@@ -297,6 +297,21 @@
             animation: pulse 2s infinite;
         }
 
+        /* ===== DAY INDICATOR ===== */
+        .day-indicator {
+            position: fixed;
+            top: 50px;
+            right: 10px;
+            background: rgba(102, 126, 234, 0.9);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            z-index: 1001;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
         /* Continue with rest of existing styles... */
         .loading-spinner {
             display: flex;
@@ -713,6 +728,11 @@
             🔥 Connecting Firebase...
         </div>
 
+        <!-- Day Indicator -->
+        <div class="day-indicator" id="dayIndicator">
+            📅 Loading...
+        </div>
+
         <!-- Visit Session Status -->
         <div class="visit-session-status" id="visitSessionStatus">
             <div class="visit-session-customer" id="sessionCustomerName">No Active Visit</div>
@@ -898,6 +918,38 @@
         </div>
     </div>
 
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getDatabase, ref, push, set, onDisconnect, serverTimestamp, onValue } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAoRV3qVAXQ14AEVA8Mo49HXfAyhMMm8Bs",
+            authDomain: "salesman-route-tracker.firebaseapp.com",
+            databaseURL: "https://salesman-route-tracker-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "salesman-route-tracker",
+            storageBucket: "salesman-route-tracker.firebasestorage.app",
+            messagingSenderId: "590789273516",
+            appId: "1:590789273516:web:79abe0c7e4cbccfa44fc09",
+            measurementId: "G-5RYSWKQ063"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+
+        // Make Firebase available globally
+        window.firebaseDB = database;
+        window.firebaseRefs = { ref, push, set, onDisconnect, serverTimestamp, onValue };
+        
+        console.log('🔥 Firebase initialized successfully');
+        
+        // Initialize Firebase connection monitoring
+        initializeFirebaseStatus();
+    </script>
+
     <script>
         // ===== GLOBAL VARIABLES =====
         let currentSalesman = '';
@@ -906,6 +958,316 @@
         let pelangganData = [];
         let detailsData = [];
         let salesmanData = [];
+        
+        // ===== FIREBASE VARIABLES =====
+        let firebaseConnected = false;
+        let currentSessionRef = null;
+        let todayVisitedCustomers = new Set(); // Track visited customers today
+
+        // ===== CUSTOMER VISIT VALIDATION FUNCTIONS =====
+        async function loadTodayVisitedCustomers() {
+            if (!firebaseConnected || !window.firebaseDB || !currentSalesmanId) {
+                console.log('📋 Firebase not available, using local visited customers tracking');
+                return;
+            }
+            
+            try {
+                const { ref, onValue } = window.firebaseRefs;
+                const database = window.firebaseDB;
+                
+                const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+                const dailyVisitsRef = ref(database, `daily_visits/${today}/${currentSalesmanId}`);
+                
+                onValue(dailyVisitsRef, (snapshot) => {
+                    const data = snapshot.val();
+                    todayVisitedCustomers.clear();
+                    
+                    if (data) {
+                        Object.keys(data).forEach(customerKey => {
+                            const customerName = data[customerKey].customer_name;
+                            todayVisitedCustomers.add(customerName.toLowerCase());
+                        });
+                        
+                        console.log(`📋 Loaded ${todayVisitedCustomers.size} visited customers for today:`, Array.from(todayVisitedCustomers));
+                        
+                        // Update UI to reflect visited customers
+                        updateCustomerListVisitStatus();
+                    } else {
+                        console.log('📋 No customers visited today yet');
+                    }
+                });
+                
+            } catch (error) {
+                console.error('❌ Error loading today visited customers:', error);
+            }
+        }
+
+        function isCustomerAlreadyVisited(customerName) {
+            return todayVisitedCustomers.has(customerName.toLowerCase());
+        }
+
+        async function markCustomerAsVisited(customerName, sessionId) {
+            // Add to local tracking
+            todayVisitedCustomers.add(customerName.toLowerCase());
+            
+            // Save to Firebase
+            if (firebaseConnected && window.firebaseDB) {
+                try {
+                    const { ref, set, serverTimestamp } = window.firebaseRefs;
+                    const database = window.firebaseDB;
+                    
+                    const today = new Date().toISOString().split('T')[0];
+                    const customerKey = customerName.replace(/[.#$[\]]/g, '_');
+                    const visitRecord = {
+                        customer_name: customerName,
+                        salesman_id: currentSalesmanId,
+                        salesman_name: currentSalesman,
+                        session_id: sessionId,
+                        visit_date: today,
+                        visit_time: serverTimestamp(),
+                        status: 'visited'
+                    };
+                    
+                    // Save to multiple paths for different query needs
+                    const updates = {};
+                    updates[`daily_visits/${today}/${currentSalesmanId}/${customerKey}`] = visitRecord;
+                    updates[`customer_visit_history/${customerKey}/${today}_${currentSalesmanId}`] = visitRecord;
+                    updates[`salesman_daily_summary/${currentSalesmanId}/${today}/customers/${customerKey}`] = visitRecord;
+                    
+                    await set(ref(database), updates);
+                    console.log(`📋 Customer ${customerName} marked as visited for today`);
+                    
+                } catch (error) {
+                    console.error('❌ Error marking customer as visited:', error);
+                }
+            }
+        }
+
+        function updateCustomerListVisitStatus() {
+            const pelangganSelect = document.getElementById('pelanggan');
+            if (!pelangganSelect) return;
+            
+            Array.from(pelangganSelect.options).forEach(option => {
+                if (option.value && isCustomerAlreadyVisited(option.value)) {
+                    option.textContent = `${option.value} ✅ (Sudah dikunjungi)`;
+                    option.disabled = true;
+                    option.style.color = '#10b981';
+                    option.style.backgroundColor = '#f0fdf4';
+                }
+            });
+        }
+
+        // ===== FIREBASE CONNECTION FUNCTIONS =====
+        function initializeFirebaseStatus() {
+            const { ref, onValue } = window.firebaseRefs;
+            const database = window.firebaseDB;
+            
+            // Monitor Firebase connection status
+            const connectedRef = ref(database, '.info/connected');
+            onValue(connectedRef, (snapshot) => {
+                const connected = snapshot.val();
+                firebaseConnected = connected;
+                updateFirebaseStatus(connected);
+                
+                if (connected) {
+                    console.log('🔥 Firebase connected successfully');
+                    setupPresenceSystem();
+                } else {
+                    console.log('🔥 Firebase disconnected');
+                }
+            });
+        }
+
+        function updateFirebaseStatus(connected) {
+            const statusElement = document.getElementById('firebaseStatus');
+            if (statusElement) {
+                if (connected) {
+                    statusElement.textContent = '🔥 Connected';
+                    statusElement.className = 'firebase-status connected';
+                } else {
+                    statusElement.textContent = '🔥 Disconnected';
+                    statusElement.className = 'firebase-status disconnected';
+                }
+            }
+        }
+
+        function setupPresenceSystem() {
+            if (!currentSalesmanId || !window.firebaseDB) return;
+            
+            const { ref, set, onDisconnect, serverTimestamp } = window.firebaseRefs;
+            const database = window.firebaseDB;
+            
+            // Set user as online
+            const userStatusRef = ref(database, `presence/${currentSalesmanId}`);
+            const userSessionRef = ref(database, `user_sessions/${currentSalesmanId}`);
+            
+            const userStatus = {
+                online: true,
+                last_seen: serverTimestamp(),
+                salesman_name: currentSalesman,
+                session_start: serverTimestamp()
+            };
+            
+            // Set online status
+            set(userStatusRef, userStatus);
+            
+            // Set offline when disconnected
+            onDisconnect(userStatusRef).set({
+                online: false,
+                last_seen: serverTimestamp(),
+                salesman_name: currentSalesman
+            });
+            
+            console.log(`🔥 Presence system setup for salesman: ${currentSalesman}`);
+            
+            // Load today's visited customers after presence is set up
+            loadTodayVisitedCustomers();
+        }
+
+        // ===== FIREBASE DATA TRACKING FUNCTIONS =====
+        async function saveVisitSessionToFirebase(eventType, sessionData) {
+            if (!firebaseConnected || !window.firebaseDB) {
+                console.warn('🔥 Firebase not connected, storing locally');
+                return null;
+            }
+            
+            try {
+                const { ref, push, set, serverTimestamp } = window.firebaseRefs;
+                const database = window.firebaseDB;
+                
+                const sessionRecord = {
+                    event_type: eventType,
+                    salesman_id: currentSalesmanId,
+                    salesman_name: currentSalesman,
+                    customer_name: sessionData.customer_name,
+                    hari_jks: sessionData.hari_jks || null,
+                    session_id: sessionData.session_id,
+                    timestamp: serverTimestamp(),
+                    device_info: {
+                        user_agent: navigator.userAgent,
+                        platform: navigator.platform,
+                        language: navigator.language
+                    },
+                    location: sessionData.location || null,
+                    duration_seconds: sessionData.duration_seconds || null,
+                    metadata: sessionData.metadata || {}
+                };
+                
+                // Save to multiple paths for different query patterns
+                const updates = {};
+                
+                // 1. Main sessions log
+                const sessionLogRef = ref(database, 'visit_sessions');
+                const newSessionRef = push(sessionLogRef);
+                updates[`visit_sessions/${newSessionRef.key}`] = sessionRecord;
+                
+                // 2. Salesman-specific sessions
+                updates[`salesman_sessions/${currentSalesmanId}/${newSessionRef.key}`] = sessionRecord;
+                
+                // 3. Daily sessions for reporting
+                const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+                updates[`daily_sessions/${today}/${currentSalesmanId}/${newSessionRef.key}`] = sessionRecord;
+                
+                // 4. Customer-specific sessions
+                if (sessionData.customer_name) {
+                    const customerKey = sessionData.customer_name.replace(/[.#$[\]]/g, '_');
+                    updates[`customer_sessions/${customerKey}/${newSessionRef.key}`] = sessionRecord;
+                }
+                
+                // 5. Current active sessions (for real-time monitoring)
+                if (eventType === 'session_start') {
+                    updates[`active_sessions/${currentSalesmanId}`] = {
+                        ...sessionRecord,
+                        session_key: newSessionRef.key
+                    };
+                } else if (eventType === 'session_end') {
+                    updates[`active_sessions/${currentSalesmanId}`] = null; // Remove active session
+                }
+                
+                // Perform batch update
+                await set(ref(database), updates);
+                
+                console.log(`🔥 Session ${eventType} saved to Firebase:`, newSessionRef.key);
+                return newSessionRef.key;
+                
+            } catch (error) {
+                console.error('🔥 Error saving to Firebase:', error);
+                return null;
+            }
+        }
+
+        async function trackCustomerInteraction(interactionType, customerData) {
+            if (!firebaseConnected || !window.firebaseDB) return;
+            
+            try {
+                const { ref, push, serverTimestamp } = window.firebaseRefs;
+                const database = window.firebaseDB;
+                
+                const interaction = {
+                    interaction_type: interactionType,
+                    salesman_id: currentSalesmanId,
+                    salesman_name: currentSalesman,
+                    customer_name: customerData.customer_name,
+                    timestamp: serverTimestamp(),
+                    session_id: visitSession.sessionId,
+                    data: customerData
+                };
+                
+                const interactionsRef = ref(database, `customer_interactions/${currentSalesmanId}`);
+                await push(interactionsRef, interaction);
+                
+                console.log(`🔥 Customer interaction tracked: ${interactionType}`);
+            } catch (error) {
+                console.error('🔥 Error tracking interaction:', error);
+            }
+        }
+
+        async function updateVisitProgress(progressData) {
+            if (!firebaseConnected || !visitSession.sessionId) return;
+            
+            try {
+                const { ref, set, serverTimestamp } = window.firebaseRefs;
+                const database = window.firebaseDB;
+                
+                const progressRef = ref(database, `visit_progress/${currentSalesmanId}/${visitSession.sessionId}`);
+                await set(progressRef, {
+                    ...progressData,
+                    last_updated: serverTimestamp(),
+                    duration: visitSession.duration
+                });
+                
+                console.log('🔥 Visit progress updated');
+            } catch (error) {
+                console.error('🔥 Error updating progress:', error);
+            }
+        }
+
+        // ===== NEW: DAY FILTERING FUNCTIONS =====
+        function getCurrentDayInIndonesian() {
+            const days = ['MINGGU', 'SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
+            const today = new Date();
+            return days[today.getDay()];
+        }
+
+        function updateDayIndicator() {
+            const currentDay = getCurrentDayInIndonesian();
+            const dayIndicator = document.getElementById('dayIndicator');
+            if (dayIndicator) {
+                dayIndicator.textContent = `📅 ${currentDay}`;
+            }
+            console.log(`📅 Current day: ${currentDay}`);
+            return currentDay;
+        }
+
+        function filterHariByCurrentDay(hariList, currentDay) {
+            // Filter hari data that contains current day name
+            const filtered = hariList.filter(hari => {
+                return hari && hari.toUpperCase().includes(currentDay);
+            });
+            
+            // Sort alphabetically
+            return filtered.sort((a, b) => a.localeCompare(b));
+        }
 
         // ===== VISIT SESSION MANAGEMENT WITH ENHANCED ANTI-DUPLICATION =====
         let visitSession = {
@@ -1141,6 +1503,129 @@
         // Initialize enhanced anti-duplication system
         const antiDuplication = new EnhancedAntiDuplication();
 
+        // ===== VISIT SESSION PROTECTION FUNCTIONS =====
+        function checkActiveSessionBeforeAction(actionType, targetName = '') {
+            if (visitSession.isActive) {
+                const duration = Math.floor((Date.now() - visitSession.startTime) / 1000);
+                const durationText = formatDuration(duration);
+                
+                let message = `⚠️ KUNJUNGAN SEDANG AKTIF!\n\n`;
+                message += `Customer: ${visitSession.customerName}\n`;
+                message += `Durasi: ${durationText}\n\n`;
+                
+                switch(actionType) {
+                    case 'change_hari':
+                        message += `Anda tidak dapat mengganti Hari JKS saat sedang mengunjungi customer.\n\n`;
+                        break;
+                    case 'change_customer':
+                        message += `Anda tidak dapat mengganti customer saat sedang mengunjungi customer lain.\n\n`;
+                        break;
+                    case 'navigate_menu':
+                        message += `Anda tidak dapat berpindah ke menu "${targetName}" saat sedang mengunjungi customer.\n\n`;
+                        break;
+                    default:
+                        message += `Anda tidak dapat melakukan aksi ini saat sedang mengunjungi customer.\n\n`;
+                }
+                
+                message += `Silakan akhiri kunjungan terlebih dahulu!`;
+                
+                alert(message);
+                return false; // Block the action
+            }
+            return true; // Allow the action
+        }
+
+        function showActiveSessionWarningModal(actionType, callback) {
+            if (!visitSession.isActive) {
+                if (callback) callback();
+                return;
+            }
+            
+            const duration = Math.floor((Date.now() - visitSession.startTime) / 1000);
+            const durationText = formatDuration(duration);
+            
+            // Create modal content dynamically
+            const modal = document.getElementById('visitEndModal');
+            const title = modal.querySelector('.visit-modal-title');
+            const subtitle = modal.querySelector('.visit-modal-subtitle');
+            const customerName = modal.querySelector('#endModalCustomerName');
+            const customerDetails = modal.querySelector('#endModalCustomerDetails');
+            const buttons = modal.querySelector('.visit-modal-buttons');
+            
+            // Update modal content for warning
+            title.textContent = '⚠️ Kunjungan Sedang Aktif!';
+            subtitle.textContent = 'Anda harus mengakhiri kunjungan sebelum melanjutkan:';
+            customerName.textContent = visitSession.customerName;
+            customerDetails.textContent = `Durasi: ${durationText}`;
+            
+            // Update buttons
+            buttons.innerHTML = `
+                <button class="visit-modal-btn visit-modal-btn-secondary" onclick="cancelActionWarning()">
+                    ❌ Batal
+                </button>
+                <button class="visit-modal-btn visit-modal-btn-primary" onclick="forceEndSessionAndContinue('${actionType}')">
+                    ✅ Akhiri Kunjungan & Lanjutkan
+                </button>
+            `;
+            
+            modal.classList.add('show');
+        }
+
+        function cancelActionWarning() {
+            const modal = document.getElementById('visitEndModal');
+            modal.classList.remove('show');
+            
+            // Reset any pending selections
+            resetPendingSelections();
+        }
+
+        function forceEndSessionAndContinue(actionType) {
+            const modal = document.getElementById('visitEndModal');
+            modal.classList.remove('show');
+            
+            // Force end current session
+            endVisitSession();
+            
+            // Continue with the original action after a brief delay
+            setTimeout(() => {
+                executePendingAction(actionType);
+            }, 500);
+        }
+
+        function resetPendingSelections() {
+            // Reset dropdowns to their previous values if user cancels
+            const hariSelect = document.getElementById('hari');
+            const pelangganSelect = document.getElementById('pelanggan');
+            
+            if (visitSession.isActive) {
+                // Keep current selections
+                pelangganSelect.value = visitSession.customerName || '';
+            }
+        }
+
+        function executePendingAction(actionType) {
+            // Execute the action that was blocked by active session
+            switch(actionType) {
+                case 'change_hari':
+                    // Allow hari change to proceed
+                    updatePelangganOptions();
+                    break;
+                case 'change_customer':
+                    // Allow customer change to proceed  
+                    handlePelangganSelection();
+                    break;
+                case 'navigate_home':
+                    window.location.href = 'dashboard.html';
+                    break;
+                case 'navigate_incentive':
+                    alert('💰 Incentive feature coming soon');
+                    break;
+                case 'navigate_profile':
+                    alert('👤 Profile feature coming soon');
+                    break;
+            }
+        }
+
         // ===== UTILITY FUNCTIONS =====
         function parseJSONL(content) {
             const lines = content.trim().split('\n');
@@ -1269,18 +1754,21 @@
             }
         }
 
-        // ===== FIXED: Update Pelanggan Options with Real Data =====
+        // ===== UPDATED: Day Filter Implementation with Session Protection =====
         function updatePelangganOptions() {
+            // PROTECTION: Check if there's an active visit session
+            if (visitSession.isActive) {
+                showActiveSessionWarningModal('change_hari');
+                // Reset hari selection back to current
+                const hariSelect = document.getElementById('hari');
+                hariSelect.value = ''; // Reset selection
+                return;
+            }
+            
             const hariSelect = document.getElementById('hari');
             const pelangganSelect = document.getElementById('pelanggan');
             
             pelangganSelect.innerHTML = '<option value="">🏪 Pilih Pelanggan</option>';
-            
-            // ENHANCED: If session active and hari changed, ask to end session
-            if (visitSession.isActive) {
-                showVisitEndModal();
-                return;
-            }
             
             // Clear table when day changes
             const tableBody = document.getElementById('tableBody');
@@ -1350,10 +1838,23 @@
                     option.disabled = true;
                     pelangganSelect.appendChild(option);
                 }
+                
+                // Update customer visit status after populating
+                updateCustomerListVisitStatus();
             }
         }
 
         function handlePelangganSelection() {
+            // PROTECTION: Check if there's an active visit session for a different customer
+            const selectedCustomer = document.getElementById('pelanggan').value.trim();
+            if (visitSession.isActive && visitSession.customerName !== selectedCustomer && selectedCustomer !== '') {
+                showActiveSessionWarningModal('change_customer');
+                // Reset customer selection back to current
+                const pelangganSelect = document.getElementById('pelanggan');
+                pelangganSelect.value = visitSession.customerName || '';
+                return;
+            }
+            
             const hariSelect = document.getElementById('hari');
             const pelangganSelect = document.getElementById('pelanggan');
             const customerInfo = document.getElementById('customerInfo');
@@ -1361,6 +1862,14 @@
             if (pelangganSelect.value && hariSelect.value) {
                 const selectedPelanggan = pelangganSelect.value.trim();
                 const selectedHari = hariSelect.value.trim().toUpperCase();
+                
+                // Check if customer already visited today
+                if (isCustomerAlreadyVisited(selectedPelanggan)) {
+                    alert(`❌ Customer "${selectedPelanggan}" sudah dikunjungi hari ini!\n\nSetiap customer hanya boleh dikunjungi sekali per hari.`);
+                    pelangganSelect.value = '';
+                    customerInfo.style.display = 'none';
+                    return;
+                }
                 
                 console.log(`👥 Customer selected: ${selectedPelanggan} for ${selectedHari}`);
                 
@@ -1413,7 +1922,8 @@
                     customer: selectedPelanggan,
                     hari: selectedHari,
                     coordinates: masterCoordinates,
-                    type: customerTypeText
+                    type: customerTypeText,
+                    alreadyVisited: false
                 });
                 
             } else {
@@ -1541,7 +2051,7 @@
                     <tr>
                         <td colspan="9">
                             <div class="empty-state">
-                                <div class="empty-state-icon">📭</div>
+                                <div class="empty-state-icon">🔭</div>
                                 <div>Tidak ada data visit untuk ${customerName}</div>
                             </div>
                         </td>
@@ -1729,6 +2239,13 @@
 
             console.log(`🚀 Starting visit confirmation for: ${customerName}`);
 
+            // DOUBLE CHECK: Ensure customer not already visited today
+            if (isCustomerAlreadyVisited(customerName)) {
+                alert(`❌ Error: Customer "${customerName}" sudah dikunjungi hari ini!\n\nSistem mencegah duplikasi kunjungan.`);
+                cancelVisitStart();
+                return;
+            }
+
             // FIXED: Generate sessionId first for anti-duplication validation
             if (!visitSession.sessionId) {
                 visitSession.sessionId = `visit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -1816,21 +2333,63 @@
             visitSession.uniqueId = uniqueId;
             visitSession.confirmed = true;
             
+            // MARK CUSTOMER AS VISITED IMMEDIATELY
+            markCustomerAsVisited(customerName, sessionId);
+            
             // Update UI
             updateVisitSessionStatus();
             startSessionTimer();
             
-            // Track session start
+            // Track session start with Firebase integration
             console.log(`✅ Visit session started: ${customerName} (ID: ${sessionId})`);
             
-            // Log session event (this would be sent to Firebase in real implementation)
-            trackSessionEvent('session_start', {
+            // Get customer coordinates for location tracking
+            const pelangganRecord = pelangganData.find(item => {
+                const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
+                const itemPelanggan = (item.Nama_Pelanggan || '').toString().trim();
+                return itemSalesmanId === currentSalesmanId &&
+                       itemPelanggan.toLowerCase() === customerName.toLowerCase();
+            });
+            
+            let coordinates = null;
+            if (pelangganRecord && pelangganRecord.Kode_Pelanggan) {
+                coordinates = getCustomerCoordinates(customerName, pelangganRecord.Kode_Pelanggan);
+            }
+            
+            // Enhanced session data for Firebase
+            const sessionData = {
                 customer_name: customerName,
                 hari_jks: hariJKS,
                 session_id: sessionId,
                 unique_id: uniqueId,
-                start_time: new Date().toISOString()
-            });
+                start_time: new Date().toISOString(),
+                location: coordinates,
+                visit_status: 'started',
+                metadata: {
+                    kode_pelanggan: pelangganRecord?.Kode_Pelanggan || null,
+                    device_timestamp: Date.now(),
+                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                    daily_visit_number: todayVisitedCustomers.size // Track visit sequence
+                }
+            };
+            
+            // Save to Firebase
+            trackSessionEvent('session_start', sessionData);
+            
+            // Track customer interaction
+            if (firebaseConnected) {
+                trackCustomerInteraction('visit_started', {
+                    customer_name: customerName,
+                    hari_jks: hariJKS,
+                    coordinates: coordinates,
+                    visit_count_today: todayVisitedCustomers.size
+                });
+            }
+            
+            // Update customer list to show this customer as visited
+            updateCustomerListVisitStatus();
+            
+            console.log(`📋 Customer "${customerName}" marked as visited. Total visited today: ${todayVisitedCustomers.size}`);
         }
 
         function endVisitSession() {
@@ -1845,13 +2404,31 @@
             
             console.log(`🏁 Ending visit session: ${endedCustomer} (duration: ${formatDuration(duration)})`);
             
-            // Track session end
-            trackSessionEvent('session_end', {
+            // Enhanced session end data for Firebase
+            const sessionEndData = {
                 customer_name: endedCustomer,
                 session_id: sessionId,
                 duration_seconds: duration,
-                end_time: new Date().toISOString()
-            });
+                end_time: new Date().toISOString(),
+                metadata: {
+                    total_duration: formatDuration(duration),
+                    end_timestamp: Date.now()
+			            }
+            }
+            // Track session end with Firebase integration
+            trackSessionEvent('session_end', sessionEndData);
+            
+            // Track final customer interaction
+            if (firebaseConnected) {
+                trackCustomerInteraction('visit_completed', {
+                    customer_name: endedCustomer,
+                    duration_seconds: duration,
+                    session_summary: {
+                        total_time: formatDuration(duration),
+                        completed_successfully: true
+                    }
+                });
+            }
             
             // ENHANCED: Clear session data from anti-duplication system
             antiDuplication.clearSessionData(endedCustomer);
@@ -1868,6 +2445,9 @@
             visitSession.pendingCustomer = null;
             visitSession.pendingHari = null;
             
+            // Clear Firebase session reference
+            currentSessionRef = null;
+            
             // Update UI
             updateVisitSessionStatus();
             stopSessionTimer();
@@ -1875,21 +2455,59 @@
             console.log(`✅ Visit session ended successfully: ${endedCustomer}, duration: ${formatDuration(duration)}`);
         }
 
-        // ENHANCED: Track session events with anti-duplication
-        function trackSessionEvent(eventType, eventData) {
+        // ENHANCED: Track session events with Firebase integration
+        async function trackSessionEvent(eventType, eventData) {
             const customerName = eventData.customer_name || visitSession.customerName;
             
-            // FIXED: Don't use anti-duplication for internal session tracking
-            // Anti-duplication is for external user actions, not internal session management
-            console.log(`📊 Session Event Tracked: ${eventType}`, {
+            console.log(`📊 Session Event: ${eventType}`, {
                 customer: customerName,
                 session_id: eventData.session_id || visitSession.sessionId,
                 timestamp: new Date().toISOString(),
                 data: eventData
             });
 
-            // In real implementation, this would send to Firebase without anti-duplication:
-            // firebaseTrack(eventType, eventData);
+            // Save to Firebase if connected
+            if (firebaseConnected && window.firebaseDB) {
+                try {
+                    updateFirebaseStatus('syncing');
+                    const firebaseKey = await saveVisitSessionToFirebase(eventType, eventData);
+                    updateFirebaseStatus(true);
+                    
+                    if (firebaseKey) {
+                        console.log(`🔥 Event saved to Firebase with key: ${firebaseKey}`);
+                        
+                        // Update current session reference for real-time updates
+                        if (eventType === 'session_start') {
+                            currentSessionRef = firebaseKey;
+                        }
+                        
+                        return firebaseKey;
+                    }
+                } catch (error) {
+                    console.error('🔥 Firebase save failed:', error);
+                    updateFirebaseStatus(false);
+                }
+            } else {
+                console.warn('🔥 Firebase not available, event logged locally only');
+            }
+            
+            return null;
+        }
+
+        function updateFirebaseStatus(status) {
+            const statusElement = document.getElementById('firebaseStatus');
+            if (!statusElement) return;
+            
+            if (status === 'syncing') {
+                statusElement.textContent = '🔥 Syncing...';
+                statusElement.className = 'firebase-status syncing';
+            } else if (status === true || status === 'connected') {
+                statusElement.textContent = '🔥 Connected';
+                statusElement.className = 'firebase-status connected';
+            } else {
+                statusElement.textContent = '🔥 Disconnected';
+                statusElement.className = 'firebase-status disconnected';
+            }
         }
 
         function startSessionTimer() {
@@ -1901,6 +2519,16 @@
                 if (visitSession.isActive && visitSession.startTime) {
                     visitSession.duration = Math.floor((Date.now() - visitSession.startTime) / 1000);
                     updateSessionTimerDisplay();
+                    
+                    // Update Firebase progress every 30 seconds
+                    if (visitSession.duration % 30 === 0 && firebaseConnected) {
+                        updateVisitProgress({
+                            customer_name: visitSession.customerName,
+                            duration: visitSession.duration,
+                            status: 'active',
+                            last_heartbeat: new Date().toISOString()
+                        });
+                    }
                 }
             }, 1000);
         }
@@ -1989,6 +2617,9 @@
                 
                 console.log('🚀 Starting enhanced data initialization...');
                 
+                // NEW: Initialize day indicator
+                const currentDay = updateDayIndicator();
+                
                 console.log('🔍 Initializing salesman from URL...');
                 initializeSalesmanFromUrl();
                 
@@ -2000,6 +2631,10 @@
                 
                 console.log('📊 Loading details data...');
                 await loadDetailsData();
+                
+                // NOTE: loadTodayVisitedCustomers() will be called automatically 
+                // when Firebase connects via setupPresenceSystem()
+                console.log('📋 Today visited customers will be loaded when Firebase connects...');
                 
                 console.log('✅ All data loaded successfully. Processing hari data...');
                 
@@ -2019,24 +2654,21 @@
                         .filter(hari => hari && hari.trim() !== '')
                     )];
                     
-                    console.log('📅 Unique hari found: ' + uniqueHari.length, uniqueHari);
+                    console.log('📅 All unique hari found: ' + uniqueHari.length, uniqueHari);
                     
-                    if (uniqueHari.length > 0) {
-                        hariData = uniqueHari.map(hari => ({ Hari_Kunjungan: hari }));
+                    // NEW: Filter by current day and sort alphabetically
+                    const filteredByDay = filterHariByCurrentDay(uniqueHari, currentDay);
+                    console.log(`📅 Hari filtered for ${currentDay}: ${filteredByDay.length}`, filteredByDay);
+                    
+                    if (filteredByDay.length > 0) {
+                        hariData = filteredByDay.map(hari => ({ Hari_Kunjungan: hari }));
                     }
                 }
                 
-                // Fallback to hardcoded hari data if no data found
+                // Fallback to current day only if no data found
                 if (hariData.length === 0) {
-                    console.log('⚠️ No hari data found, using fallback...');
-                    hariData = [
-                        { Hari_Kunjungan: 'SENIN' },
-                        { Hari_Kunjungan: 'SELASA' },
-                        { Hari_Kunjungan: 'RABU' },
-                        { Hari_Kunjungan: 'KAMIS' },
-                        { Hari_Kunjungan: 'JUMAT' },
-                        { Hari_Kunjungan: 'SABTU' }
-                    ];
+                    console.log('⚠️ No hari data found, using current day fallback...');
+                    hariData = [{ Hari_Kunjungan: currentDay }];
                 }
                 
                 // Populate hari dropdown
@@ -2053,10 +2685,14 @@
                 showLoading(false);
                 showMainContent(true);
                 
-                console.log('✅ Enhanced visit system with anti-duplication ready');
+                console.log('✅ Enhanced visit system with customer visit validation ready');
+                console.log(`📅 Current day: ${currentDay}`);
+                console.log(`📊 Available hari options: ${hariData.length}`);
+                console.log('🔥 Firebase integration will load visited customers when connected');
                 console.log('🛡️ Anti-duplication system active');
+                console.log('🚫 One visit per customer per day enforced');
                 console.log('📊 Session management with modal confirmations');
-                console.log('🔑 Single customer session tracking');
+                console.log('🔒 Single customer session tracking');
                 
             } catch (error) {
                 console.error('❌ Critical error in initializeData:', error);
@@ -2073,9 +2709,9 @@
             // Initialize session status
             updateVisitSessionStatus();
             
-            // Initialize Firebase status
-            document.getElementById('firebaseStatus').textContent = '🔥 Demo Mode';
-            document.getElementById('firebaseStatus').className = 'firebase-status connected';
+            // Initialize Firebase status (will be updated by initializeFirebaseStatus)
+            document.getElementById('firebaseStatus').textContent = '🔥 Connecting...';
+            document.getElementById('firebaseStatus').className = 'firebase-status syncing';
             
             // Check for debug mode
             const urlParams = new URLSearchParams(window.location.search);
@@ -2084,42 +2720,107 @@
                 console.log('🔧 Debug mode enabled via URL parameter');
             }
             
-            // Initialize data
+            // Initialize data and Firebase
             initializeData();
         });
 
-        // ===== NAVIGATION FUNCTIONS =====
-        function goHome() { 
+        // ===== NAVIGATION FUNCTIONS WITH SESSION PROTECTION =====
+        function goHome() {
+            // PROTECTION: Check if there's an active visit session
+            if (visitSession.isActive) {
+                showActiveSessionWarningModal('navigate_home');
+                return;
+            }
             window.location.href = 'dashboard.html'; 
         }
         
         function showVisitOutlet() { 
+            // Already on visit page, no action needed
             window.location.href = 'visit.html';
         }
         
         function showIncentive() {
+            // PROTECTION: Check if there's an active visit session
+            if (visitSession.isActive) {
+                showActiveSessionWarningModal('navigate_incentive');
+                return;
+            }
             alert('💰 Incentive feature coming soon');
         }
         
         function showProfile() {
+            // PROTECTION: Check if there's an active visit session
+            if (visitSession.isActive) {
+                showActiveSessionWarningModal('navigate_profile');
+                return;
+            }
             alert('👤 Profile feature coming soon');
         }
 
-        console.log('✅ Enhanced Visit System with Fixed Session Management & Anti-Duplication loaded');
-        console.log('🛡️ Key improvements:');
-        console.log('   - Fixed session start validation chicken-and-egg problem');
-        console.log('   - SessionId generated before anti-duplication check');
-        console.log('   - Improved session_start event handling');
-        console.log('   - Real data loading from JSONL files');
-        console.log('   - Enhanced customer selection with coordinates');
-        console.log('   - Robust visit data display with proper formatting');
-        console.log('   - Modal confirmations with better error handling');
-        console.log('🔧 Session Flow:');
-        console.log('   1. Customer selected → Modal shown');
-        console.log('   2. User confirms → SessionId generated');
-        console.log('   3. Anti-duplication check → Session started');
-        console.log('   4. Timer started → Events tracked');
+        // Override browser back button and other navigation attempts
+        window.addEventListener('beforeunload', function (e) {
+            if (visitSession.isActive) {
+                const confirmationMessage = `⚠️ Anda memiliki kunjungan aktif ke ${visitSession.customerName}.\n\nJika Anda meninggalkan halaman, kunjungan akan dianggap tidak selesai.`;
+                
+                e.preventDefault();
+                e.returnValue = confirmationMessage;
+                return confirmationMessage;
+            }
+        });
+
+        // Add page visibility change handler to track when user switches tabs
+        document.addEventListener('visibilitychange', function() {
+            if (visitSession.isActive) {
+                if (document.hidden) {
+                    console.log('📱 User switched away from visit page during active session');
+                    // Track tab switch during visit
+                    if (firebaseConnected) {
+                        trackCustomerInteraction('tab_switched_away', {
+                            customer_name: visitSession.customerName,
+                            duration_so_far: visitSession.duration,
+                            timestamp: new Date().toISOString()
+                        });
+                    }
+                } else {
+                    console.log('📱 User returned to visit page during active session');
+                    if (firebaseConnected) {
+                        trackCustomerInteraction('tab_returned', {
+                            customer_name: visitSession.customerName,
+                            duration_so_far: visitSession.duration,
+                            timestamp: new Date().toISOString()
+                        });
+                    }
+                }
+            }
+        });
+
+        console.log('✅ Enhanced Visit System with Session Protection loaded');
+        console.log('🔄 Key features:');
+        console.log('   - Real-time Firebase database integration');
+        console.log('   - Visit session tracking with cloud sync');
+        console.log('   - Customer interaction logging');
+        console.log('   - Automatic presence detection');
+        console.log('   - Day-based filtering and sorting');
+        console.log('   - Enhanced session management');
+        console.log('   - Anti-duplication system');
+        console.log('🛡️ Session Protection Features:');
+        console.log('   - Prevents changing Hari JKS during active visit');
+        console.log('   - Prevents changing Customer during active visit');
+        console.log('   - Prevents navigation to other menus during visit');
+        console.log('   - Browser back button protection');
+        console.log('   - Tab switching detection');
+        console.log('   - Force end session before continuing actions');
+        console.log('🔥 Firebase Features:');
+        console.log('   - Real-time connection monitoring');
+        console.log('   - Structured data storage for reporting');
+        console.log('   - Automatic offline handling');
+        console.log('   - Multi-path data organization');
+        console.log('🚫 Visit Controls:');
+        console.log('   - One visit per customer per day enforced');
+        console.log('   - Real-time visited customer tracking');
+        console.log('   - Visual indicators for visited customers');
         console.log('💡 Debug: Add ?debug=true to URL for debug panel');
     </script>
 </body>
-</html>
+</html>		
+			
