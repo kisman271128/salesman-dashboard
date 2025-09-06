@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Visit Outlet - Fixed Data Loading & Anti-Duplication</title>
+    <title>Visit Outlet - Enhanced Order Tracking</title>
     
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
@@ -94,30 +94,7 @@
             background: rgba(255, 255, 255, 0.3);
         }
 
-        /* ===== DEBUG PANEL FOR ANTI-DUPLICATION ===== */
-        .debug-panel {
-            position: fixed;
-            bottom: 100px;
-            left: 10px;
-            background: rgba(0, 0, 0, 0.9);
-            color: white;
-            padding: 8px;
-            border-radius: 8px;
-            font-size: 10px;
-            z-index: 2000;
-            max-width: 200px;
-            display: none;
-        }
-
-        .debug-panel.show {
-            display: block;
-        }
-
-        .debug-item {
-            margin: 2px 0;
-        }
-
-        /* ===== VISIT SESSION MODAL STYLES ===== */
+        /* ===== ENHANCED VISIT MODALS ===== */
         .visit-modal {
             position: fixed;
             top: 0;
@@ -191,6 +168,77 @@
             color: #64748b;
         }
 
+        /* ===== ORDER STATUS SELECTION ===== */
+        .order-status-section {
+            margin: 16px 0;
+            text-align: left;
+        }
+
+        .order-status-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .order-status-select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+            color: #2d3748;
+            margin-bottom: 12px;
+        }
+
+        .order-status-select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .so-amount-section {
+            display: none;
+            margin-top: 12px;
+        }
+
+        .so-amount-section.show {
+            display: block;
+            animation: fadeInDown 0.3s ease;
+        }
+
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .so-amount-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #059669;
+            margin-bottom: 6px;
+            display: block;
+        }
+
+        .so-amount-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #10b981;
+            border-radius: 8px;
+            font-size: 14px;
+            background: #f0fdf4;
+            color: #065f46;
+            font-weight: 600;
+        }
+
+        .so-amount-input:focus {
+            outline: none;
+            border-color: #059669;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
         .visit-modal-buttons {
             display: flex;
             gap: 12px;
@@ -208,12 +256,17 @@
             transition: all 0.3s ease;
         }
 
+        .visit-modal-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
         .visit-modal-btn-primary {
             background: linear-gradient(135deg, #667eea, #764ba2);
             color: white;
         }
 
-        .visit-modal-btn-primary:hover {
+        .visit-modal-btn-primary:hover:not(:disabled) {
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
         }
@@ -266,10 +319,36 @@
             50% { opacity: 1; }
         }
 
+        /* ===== LOCATION STATUS ===== */
+        .location-status {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(245, 158, 11, 0.9);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            z-index: 1001;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .location-status.success {
+            background: rgba(16, 185, 129, 0.9);
+        }
+
+        .location-status.error {
+            background: rgba(239, 68, 68, 0.9);
+        }
+
         /* ===== FIREBASE CONNECTION STATUS ===== */
         .firebase-status {
             position: fixed;
-            top: 10px;
+            top: 50px;
             right: 10px;
             background: rgba(16, 185, 129, 0.9);
             color: white;
@@ -300,7 +379,7 @@
         /* ===== DAY INDICATOR ===== */
         .day-indicator {
             position: fixed;
-            top: 50px;
+            top: 90px;
             right: 10px;
             background: rgba(102, 126, 234, 0.9);
             color: white;
@@ -532,7 +611,7 @@
             font-weight: 600;
         }
 
-        /* Add more table styling to match visit.html */
+        /* Table Styles */
         .table-section {
             padding: 0 16px;
             margin-bottom: 30px;
@@ -723,6 +802,11 @@
 </head>
 <body>
     <div class="container">
+        <!-- Location Status -->
+        <div class="location-status" id="locationStatus">
+            📍 Getting location...
+        </div>
+
         <!-- Firebase Connection Status -->
         <div class="firebase-status" id="firebaseStatus">
             🔥 Connecting Firebase...
@@ -739,21 +823,13 @@
             <div class="visit-session-timer" id="sessionTimer">00:00:00</div>
         </div>
 
-        <!-- Debug Panel for Anti-Duplication -->
-        <div class="debug-panel" id="debugPanel">
-            <div class="debug-item">🛡️ <span id="debugTotalPrevented">0</span> duplicates blocked</div>
-            <div class="debug-item">📊 <span id="debugActiveSession">No Session</span></div>
-            <div class="debug-item">🔑 <span id="debugHashCount">0</span> active hashes</div>
-            <div class="debug-item">⏰ <span id="debugLastEvent">No events</span></div>
-        </div>
-
         <div class="detail-header">
             <a href="dashboard.html" class="back-btn">←</a>
             <div class="detail-title-container">
-                <div class="detail-title">Visit Outlet (Fixed)</div>
+                <div class="detail-title">Visit Outlet Enhanced</div>
                 <div class="salesman-name" id="salesmanName">Loading...</div>
             </div>
-            <button class="user-btn" onclick="toggleDebugPanel()">🛡️</button>
+            <button class="user-btn" onclick="getCurrentLocation()">📍</button>
         </div>
 
         <!-- Loading State -->
@@ -787,13 +863,13 @@
                             
                             <div class="filter-item">
                                 <select id="pelanggan">
-                                    <option value="">🏪 Pilih Pelanggan</option>
+                                    <option value="">🏪 Pilih Outlet</option>
                                 </select>
                             </div>
                             
                             <!-- Customer Info Display -->
                             <div id="customerInfo" class="customer-info">
-                                <div class="customer-info-label">Customer Type:</div>
+                                <div class="customer-info-label">Outlet Type:</div>
                                 <div id="customerType" class="customer-info-value"></div>
                             </div>
                         </div>
@@ -863,7 +939,7 @@
                 <div class="visit-modal-title">🏪 Mulai Kunjungan?</div>
                 <div class="visit-modal-subtitle">Anda akan memulai kunjungan ke outlet berikut:</div>
                 <div class="visit-modal-customer">
-                    <div class="visit-modal-customer-name" id="startModalCustomerName">Customer Name</div>
+                    <div class="visit-modal-customer-name" id="startModalCustomerName">Outlet Name</div>
                     <div class="visit-modal-customer-details" id="startModalCustomerDetails">Details</div>
                 </div>
                 <div class="visit-modal-buttons">
@@ -877,20 +953,39 @@
             </div>
         </div>
 
-        <!-- Visit End Confirmation Modal -->
+        <!-- Enhanced Visit End Modal with Order Status -->
         <div class="visit-modal" id="visitEndModal">
             <div class="visit-modal-content">
                 <div class="visit-modal-title">🏁 Akhiri Kunjungan?</div>
                 <div class="visit-modal-subtitle">Anda sedang mengunjungi outlet:</div>
                 <div class="visit-modal-customer">
-                    <div class="visit-modal-customer-name" id="endModalCustomerName">Current Customer</div>
+                    <div class="visit-modal-customer-name" id="endModalCustomerName">Current Outlet</div>
                     <div class="visit-modal-customer-details" id="endModalCustomerDetails">Duration: 00:00:00</div>
                 </div>
+                
+                <!-- Order Status Selection -->
+                <div class="order-status-section">
+                    <label class="order-status-label">Status Kunjungan:</label>
+                    <select class="order-status-select" id="orderStatusSelect" onchange="toggleSOAmountInput()">
+                        <option value="">Pilih status kunjungan...</option>
+                        <option value="ada_so">Ada SO (Sales Order)</option>
+                        <option value="toko_tidak_order">Toko Tidak Order</option>
+                        <option value="toko_tutup">Toko Tutup</option>
+                    </select>
+                    
+                    <!-- SO Amount Input (shown only when "Ada SO" is selected) -->
+                    <div class="so-amount-section" id="soAmountSection">
+                        <label class="so-amount-label">Nominal Sales Order (Rp):</label>
+                        <input type="number" class="so-amount-input" id="soAmountInput" 
+                               placeholder="Masukkan nominal SO..." min="0" step="1000">
+                    </div>
+                </div>
+                
                 <div class="visit-modal-buttons">
                     <button class="visit-modal-btn visit-modal-btn-secondary" onclick="cancelVisitEnd()">
                         ❌ Lanjutkan
                     </button>
-                    <button class="visit-modal-btn visit-modal-btn-primary" onclick="confirmVisitEnd()">
+                    <button class="visit-modal-btn visit-modal-btn-primary" id="endVisitBtn" onclick="confirmVisitEnd()" disabled>
                         ✅ Ya, Akhiri
                     </button>
                 </div>
@@ -962,99 +1057,127 @@
         // ===== FIREBASE VARIABLES =====
         let firebaseConnected = false;
         let currentSessionRef = null;
-        let todayVisitedCustomers = new Set(); // Track visited customers today
+        let todayVisitedCustomers = new Set();
 
-        // ===== CUSTOMER VISIT VALIDATION FUNCTIONS =====
-        async function loadTodayVisitedCustomers() {
-            if (!firebaseConnected || !window.firebaseDB || !currentSalesmanId) {
-                console.log('📋 Firebase not available, using local visited customers tracking');
-                return;
-            }
-            
-            try {
-                const { ref, onValue } = window.firebaseRefs;
-                const database = window.firebaseDB;
-                
-                const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-                const dailyVisitsRef = ref(database, `daily_visits/${today}/${currentSalesmanId}`);
-                
-                onValue(dailyVisitsRef, (snapshot) => {
-                    const data = snapshot.val();
-                    todayVisitedCustomers.clear();
-                    
-                    if (data) {
-                        Object.keys(data).forEach(customerKey => {
-                            const customerName = data[customerKey].customer_name;
-                            todayVisitedCustomers.add(customerName.toLowerCase());
-                        });
-                        
-                        console.log(`📋 Loaded ${todayVisitedCustomers.size} visited customers for today:`, Array.from(todayVisitedCustomers));
-                        
-                        // Update UI to reflect visited customers
-                        updateCustomerListVisitStatus();
-                    } else {
-                        console.log('📋 No customers visited today yet');
-                    }
-                });
-                
-            } catch (error) {
-                console.error('❌ Error loading today visited customers:', error);
+        // ===== LOCATION TRACKING VARIABLES =====
+        let currentLocation = {
+            latitude: null,
+            longitude: null,
+            accuracy: null,
+            timestamp: null
+        };
+
+        let watchId = null;
+
+        // ===== ENHANCED VISIT SESSION WITH ORDER TRACKING =====
+        let visitSession = {
+            isActive: false,
+            outletId: null,
+            outletName: null,
+            startTime: null,
+            endTime: null,
+            duration: 0,
+            sessionId: null,
+            startLocation: {
+                latitude: null,
+                longitude: null,
+                accuracy: null,
+                timestamp: null
+            },
+            endLocation: {
+                latitude: null,
+                longitude: null,
+                accuracy: null,
+                timestamp: null
+            },
+            masterLocation: {
+                latitude: null,
+                longitude: null,
+                source: null
+            },
+            orderStatus: null,
+            soAmount: null,
+            pendingOutlet: null,
+            pendingHari: null
+        };
+
+        let sessionTimer = null;
+
+        // ===== GEOLOCATION FUNCTIONS =====
+        function initializeGeolocation() {
+            if ("geolocation" in navigator) {
+                console.log('📍 Geolocation is available');
+                getCurrentLocation();
+                startLocationTracking();
+            } else {
+                console.warn('📍 Geolocation is not available');
+                updateLocationStatus('error', '❌ Location not supported');
             }
         }
 
-        function isCustomerAlreadyVisited(customerName) {
-            return todayVisitedCustomers.has(customerName.toLowerCase());
-        }
-
-        async function markCustomerAsVisited(customerName, sessionId) {
-            // Add to local tracking
-            todayVisitedCustomers.add(customerName.toLowerCase());
+        function getCurrentLocation() {
+            updateLocationStatus('loading', '📍 Getting location...');
             
-            // Save to Firebase
-            if (firebaseConnected && window.firebaseDB) {
-                try {
-                    const { ref, set, serverTimestamp } = window.firebaseRefs;
-                    const database = window.firebaseDB;
-                    
-                    const today = new Date().toISOString().split('T')[0];
-                    const customerKey = customerName.replace(/[.#$[\]]/g, '_');
-                    const visitRecord = {
-                        customer_name: customerName,
-                        salesman_id: currentSalesmanId,
-                        salesman_name: currentSalesman,
-                        session_id: sessionId,
-                        visit_date: today,
-                        visit_time: serverTimestamp(),
-                        status: 'visited'
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    currentLocation = {
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude,
+                        accuracy: position.coords.accuracy,
+                        timestamp: new Date().toISOString()
                     };
                     
-                    // Save to multiple paths for different query needs
-                    const updates = {};
-                    updates[`daily_visits/${today}/${currentSalesmanId}/${customerKey}`] = visitRecord;
-                    updates[`customer_visit_history/${customerKey}/${today}_${currentSalesmanId}`] = visitRecord;
-                    updates[`salesman_daily_summary/${currentSalesmanId}/${today}/customers/${customerKey}`] = visitRecord;
-                    
-                    await set(ref(database), updates);
-                    console.log(`📋 Customer ${customerName} marked as visited for today`);
-                    
-                } catch (error) {
-                    console.error('❌ Error marking customer as visited:', error);
+                    console.log('📍 Location obtained:', currentLocation);
+                    updateLocationStatus('success', '📍 Location ready');
+                },
+                (error) => {
+                    console.error('📍 Location error:', error);
+                    updateLocationStatus('error', '❌ Location failed');
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 300000 // 5 minutes
                 }
-            }
+            );
         }
 
-        function updateCustomerListVisitStatus() {
-            const pelangganSelect = document.getElementById('pelanggan');
-            if (!pelangganSelect) return;
+        function startLocationTracking() {
+            if (watchId) {
+                navigator.geolocation.clearWatch(watchId);
+            }
             
-            Array.from(pelangganSelect.options).forEach(option => {
-                if (option.value && isCustomerAlreadyVisited(option.value)) {
-                    option.textContent = `${option.value} ✅ (Sudah dikunjungi)`;
-                    option.disabled = true;
-                    option.style.color = '#10b981';
-                    option.style.backgroundColor = '#f0fdf4';
+            watchId = navigator.geolocation.watchPosition(
+                (position) => {
+                    currentLocation = {
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude,
+                        accuracy: position.coords.accuracy,
+                        timestamp: new Date().toISOString()
+                    };
+                    
+                    // Update location status if visit is active
+                    if (visitSession.isActive) {
+                        updateLocationStatus('success', '📍 Tracking active');
+                    }
+                },
+                (error) => {
+                    console.warn('📍 Location tracking error:', error);
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 15000,
+                    maximumAge: 60000 // 1 minute
                 }
-            });
+            );
+        }
+
+        function updateLocationStatus(status, message) {
+            const statusElement = document.getElementById('locationStatus');
+            if (statusElement) {
+                statusElement.textContent = message;
+                statusElement.className = `location-status ${status}`;
+            }
         }
 
         // ===== FIREBASE CONNECTION FUNCTIONS =====
@@ -1099,7 +1222,6 @@
             
             // Set user as online
             const userStatusRef = ref(database, `presence/${currentSalesmanId}`);
-            const userSessionRef = ref(database, `user_sessions/${currentSalesmanId}`);
             
             const userStatus = {
                 online: true,
@@ -1120,11 +1242,354 @@
             
             console.log(`🔥 Presence system setup for salesman: ${currentSalesman}`);
             
-            // Load today's visited customers after presence is set up
+            // Load today's visited customers
             loadTodayVisitedCustomers();
         }
 
-        // ===== FIREBASE DATA TRACKING FUNCTIONS =====
+        // ===== CUSTOMER VISIT VALIDATION FUNCTIONS =====
+        async function loadTodayVisitedCustomers() {
+            if (!firebaseConnected || !window.firebaseDB || !currentSalesmanId) {
+                console.log('📋 Firebase not available, using local visited customers tracking');
+                return;
+            }
+            
+            try {
+                const { ref, onValue } = window.firebaseRefs;
+                const database = window.firebaseDB;
+                
+                const today = new Date().toISOString().split('T')[0];
+                const dailyVisitsRef = ref(database, `daily_visits/${today}/${currentSalesmanId}`);
+                
+                onValue(dailyVisitsRef, (snapshot) => {
+                    const data = snapshot.val();
+                    todayVisitedCustomers.clear();
+                    
+                    if (data) {
+                        Object.keys(data).forEach(customerKey => {
+                            const customerName = data[customerKey].outlet_name;
+                            todayVisitedCustomers.add(customerName.toLowerCase());
+                        });
+                        
+                        console.log(`📋 Loaded ${todayVisitedCustomers.size} visited outlets for today:`, Array.from(todayVisitedCustomers));
+                        updateCustomerListVisitStatus();
+                    } else {
+                        console.log('📋 No outlets visited today yet');
+                    }
+                });
+                
+            } catch (error) {
+                console.error('❌ Error loading today visited customers:', error);
+            }
+        }
+
+        function isCustomerAlreadyVisited(customerName) {
+            return todayVisitedCustomers.has(customerName.toLowerCase());
+        }
+
+        function updateCustomerListVisitStatus() {
+            const pelangganSelect = document.getElementById('pelanggan');
+            if (!pelangganSelect) return;
+            
+            Array.from(pelangganSelect.options).forEach(option => {
+                if (option.value && isCustomerAlreadyVisited(option.value)) {
+                    option.textContent = `${option.value} ✅ (Sudah dikunjungi)`;
+                    option.disabled = true;
+                    option.style.color = '#10b981';
+                    option.style.backgroundColor = '#f0fdf4';
+                }
+            });
+        }
+
+        // ===== ENHANCED VISIT SESSION FUNCTIONS WITH ORDER STATUS =====
+        function showVisitStartModal(outletName, hariJKS) {
+            visitSession.pendingOutlet = outletName;
+            visitSession.pendingHari = hariJKS;
+            
+            document.getElementById('startModalCustomerName').textContent = outletName;
+            document.getElementById('startModalCustomerDetails').textContent = `Hari JKS: ${hariJKS}`;
+            document.getElementById('visitStartModal').classList.add('show');
+            
+            console.log(`🏪 Showing start modal for: ${outletName}`);
+        }
+
+        function cancelVisitStart() {
+            document.getElementById('visitStartModal').classList.remove('show');
+            
+            // Reset outlet selection
+            const pelangganSelect = document.getElementById('pelanggan');
+            if (pelangganSelect) {
+                pelangganSelect.value = '';
+                handlePelangganSelection();
+            }
+            
+            // Clear pending data
+            visitSession.pendingOutlet = null;
+            visitSession.pendingHari = null;
+            
+            console.log(`❌ Visit start cancelled`);
+        }
+
+        function confirmVisitStart() {
+            const outletName = visitSession.pendingOutlet;
+            const hariJKS = visitSession.pendingHari;
+
+            console.log(`🚀 Starting visit confirmation for: ${outletName}`);
+
+            // Check if customer already visited today
+            if (isCustomerAlreadyVisited(outletName)) {
+                alert(`❌ Error: Outlet "${outletName}" sudah dikunjungi hari ini!\n\nSistem mencegah duplikasi kunjungan.`);
+                cancelVisitStart();
+                return;
+            }
+
+            document.getElementById('visitStartModal').classList.remove('show');
+            startVisitSession(outletName, hariJKS);
+            
+            // Clear pending data
+            visitSession.pendingOutlet = null;
+            visitSession.pendingHari = null;
+        }
+
+        function showVisitEndModal() {
+            if (!visitSession.isActive) {
+                console.warn('🚫 End modal blocked - no active session');
+                return;
+            }
+            
+            const duration = Math.floor((Date.now() - visitSession.startTime) / 1000);
+            const durationText = formatDuration(duration);
+            
+            document.getElementById('endModalCustomerName').textContent = visitSession.outletName;
+            document.getElementById('endModalCustomerDetails').textContent = `Durasi: ${durationText}`;
+            
+            // Reset order status form
+            document.getElementById('orderStatusSelect').value = '';
+            document.getElementById('soAmountInput').value = '';
+            document.getElementById('soAmountSection').classList.remove('show');
+            document.getElementById('endVisitBtn').disabled = true;
+            
+            document.getElementById('visitEndModal').classList.add('show');
+            
+            console.log(`🏁 Showing end modal for: ${visitSession.outletName}`);
+        }
+
+        function toggleSOAmountInput() {
+            const orderStatus = document.getElementById('orderStatusSelect').value;
+            const soAmountSection = document.getElementById('soAmountSection');
+            const endVisitBtn = document.getElementById('endVisitBtn');
+            
+            if (orderStatus === 'ada_so') {
+                soAmountSection.classList.add('show');
+                endVisitBtn.disabled = false; // Will validate amount when confirming
+            } else if (orderStatus === 'toko_tidak_order' || orderStatus === 'toko_tutup') {
+                soAmountSection.classList.remove('show');
+                endVisitBtn.disabled = false;
+            } else {
+                soAmountSection.classList.remove('show');
+                endVisitBtn.disabled = true;
+            }
+        }
+
+        function cancelVisitEnd() {
+            document.getElementById('visitEndModal').classList.remove('show');
+            console.log(`❌ Visit end cancelled, continuing visit`);
+        }
+
+        function confirmVisitEnd() {
+            const orderStatus = document.getElementById('orderStatusSelect').value;
+            const soAmount = document.getElementById('soAmountInput').value;
+            
+            // Validate input
+            if (!orderStatus) {
+                alert('❌ Pilih status kunjungan terlebih dahulu!');
+                return;
+            }
+            
+            if (orderStatus === 'ada_so' && (!soAmount || parseFloat(soAmount) <= 0)) {
+                alert('❌ Masukkan nominal Sales Order yang valid!');
+                return;
+            }
+            
+            // Store order information
+            visitSession.orderStatus = orderStatus;
+            visitSession.soAmount = orderStatus === 'ada_so' ? parseFloat(soAmount) : 0;
+            
+            document.getElementById('visitEndModal').classList.remove('show');
+            endVisitSession();
+        }
+
+        function startVisitSession(outletName, hariJKS) {
+            // End any existing session first
+            if (visitSession.isActive) {
+                endVisitSession();
+            }
+            
+            // Get outlet ID from pelanggan data
+            const outletRecord = pelangganData.find(item => {
+                const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
+                const itemPelanggan = (item.Nama_Pelanggan || '').toString().trim();
+                return itemSalesmanId === currentSalesmanId &&
+                       itemPelanggan.toLowerCase() === outletName.toLowerCase();
+            });
+            
+            const outletId = outletRecord ? outletRecord.Kode_Pelanggan : `OUTLET_${Date.now()}`;
+            const sessionId = `visit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            
+            // Get master coordinates from d.details.json
+            const masterCoordinates = getCustomerCoordinates(outletName, outletId);
+            
+            // Capture current location as start location
+            const startLocation = {
+                latitude: currentLocation.latitude,
+                longitude: currentLocation.longitude,
+                accuracy: currentLocation.accuracy,
+                timestamp: new Date().toISOString()
+            };
+            
+            visitSession.isActive = true;
+            visitSession.outletId = outletId;
+            visitSession.outletName = outletName;
+            visitSession.startTime = Date.now();
+            visitSession.endTime = null;
+            visitSession.duration = 0;
+            visitSession.sessionId = sessionId;
+            visitSession.startLocation = startLocation;
+            visitSession.endLocation = null;
+            visitSession.masterLocation = masterCoordinates;
+            visitSession.orderStatus = null;
+            visitSession.soAmount = null;
+            
+            // Mark customer as visited
+            markCustomerAsVisited(outletName, sessionId);
+            
+            // Update UI
+            updateVisitSessionStatus();
+            startSessionTimer();
+            
+            console.log(`✅ Visit session started: ${outletName} (ID: ${sessionId})`);
+            
+            // Save to Firebase
+            const sessionData = {
+                outlet_id: outletId,
+                outlet_name: outletName,
+                hari_jks: hariJKS,
+                session_id: sessionId,
+                start_time: new Date().toISOString(),
+                start_location: startLocation,
+                master_location: masterCoordinates,
+                visit_status: 'started',
+                salesman_id: currentSalesmanId,
+                salesman_name: currentSalesman
+            };
+            
+            saveVisitSessionToFirebase('session_start', sessionData);
+        }
+
+        function endVisitSession() {
+            if (!visitSession.isActive) {
+                console.warn('🚫 Cannot end session - not active');
+                return;
+            }
+            
+            // Capture current location as end location
+            const endLocation = {
+                latitude: currentLocation.latitude,
+                longitude: currentLocation.longitude,
+                accuracy: currentLocation.accuracy,
+                timestamp: new Date().toISOString()
+            };
+            
+            const endTime = Date.now();
+            const duration = Math.floor((endTime - visitSession.startTime) / 1000);
+            
+            visitSession.endTime = endTime;
+            visitSession.duration = duration;
+            visitSession.endLocation = endLocation;
+            
+            console.log(`🏁 Ending visit session: ${visitSession.outletName} (duration: ${formatDuration(duration)})`);
+            
+            // Prepare session end data with all required fields
+            const sessionEndData = {
+                outlet_id: visitSession.outletId,
+                outlet_name: visitSession.outletName,
+                session_id: visitSession.sessionId,
+                start_time: new Date(visitSession.startTime).toISOString(),
+                end_time: new Date(endTime).toISOString(),
+                duration_seconds: duration,
+                start_location: visitSession.startLocation,
+                end_location: endLocation,
+                master_location: visitSession.masterLocation,
+                order_status: visitSession.orderStatus,
+                so_amount: visitSession.soAmount,
+                visit_status: 'completed',
+                salesman_id: currentSalesmanId,
+                salesman_name: currentSalesman
+            };
+            
+            // Save to Firebase
+            saveVisitSessionToFirebase('session_end', sessionEndData);
+            
+            // Reset session
+            const endedOutlet = visitSession.outletName;
+            visitSession.isActive = false;
+            visitSession.outletId = null;
+            visitSession.outletName = null;
+            visitSession.startTime = null;
+            visitSession.endTime = null;
+            visitSession.duration = 0;
+            visitSession.sessionId = null;
+            visitSession.startLocation = null;
+            visitSession.endLocation = null;
+            visitSession.masterLocation = null;
+            visitSession.orderStatus = null;
+            visitSession.soAmount = null;
+            
+            // Update UI
+            updateVisitSessionStatus();
+            stopSessionTimer();
+            
+            console.log(`✅ Visit session ended successfully: ${endedOutlet}, duration: ${formatDuration(duration)}`);
+        }
+
+        async function markCustomerAsVisited(outletName, sessionId) {
+            // Add to local tracking
+            todayVisitedCustomers.add(outletName.toLowerCase());
+            
+            // Save to Firebase
+            if (firebaseConnected && window.firebaseDB) {
+                try {
+                    const { ref, set, serverTimestamp } = window.firebaseRefs;
+                    const database = window.firebaseDB;
+                    
+                    const today = new Date().toISOString().split('T')[0];
+                    const outletKey = outletName.replace(/[.#$[\]]/g, '_');
+                    const visitRecord = {
+                        outlet_id: visitSession.outletId,
+                        outlet_name: outletName,
+                        salesman_id: currentSalesmanId,
+                        salesman_name: currentSalesman,
+                        session_id: sessionId,
+                        visit_date: today,
+                        visit_time: serverTimestamp(),
+                        status: 'visited'
+                    };
+                    
+                    // Save to multiple paths for different query needs
+                    const updates = {};
+                    updates[`daily_visits/${today}/${currentSalesmanId}/${outletKey}`] = visitRecord;
+                    updates[`outlet_visit_history/${outletKey}/${today}_${currentSalesmanId}`] = visitRecord;
+                    updates[`salesman_daily_summary/${currentSalesmanId}/${today}/outlets/${outletKey}`] = visitRecord;
+                    
+                    await set(ref(database), updates);
+                    console.log(`📋 Outlet ${outletName} marked as visited for today`);
+                    
+                } catch (error) {
+                    console.error('❌ Error marking customer as visited:', error);
+                }
+            }
+        }
+
+        // ===== ENHANCED FIREBASE DATA TRACKING =====
         async function saveVisitSessionToFirebase(eventType, sessionData) {
             if (!firebaseConnected || !window.firebaseDB) {
                 console.warn('🔥 Firebase not connected, storing locally');
@@ -1137,57 +1602,50 @@
                 
                 const sessionRecord = {
                     event_type: eventType,
-                    salesman_id: currentSalesmanId,
-                    salesman_name: currentSalesman,
-                    customer_name: sessionData.customer_name,
-                    hari_jks: sessionData.hari_jks || null,
-                    session_id: sessionData.session_id,
+                    ...sessionData,
                     timestamp: serverTimestamp(),
                     device_info: {
                         user_agent: navigator.userAgent,
                         platform: navigator.platform,
                         language: navigator.language
-                    },
-                    location: sessionData.location || null,
-                    duration_seconds: sessionData.duration_seconds || null,
-                    metadata: sessionData.metadata || {}
+                    }
                 };
                 
-                // Save to multiple paths for different query patterns
+                // Save to multiple paths
                 const updates = {};
                 
                 // 1. Main sessions log
-                const sessionLogRef = ref(database, 'visit_sessions');
+                const sessionLogRef = ref(database, 'enhanced_visit_sessions');
                 const newSessionRef = push(sessionLogRef);
-                updates[`visit_sessions/${newSessionRef.key}`] = sessionRecord;
+                updates[`enhanced_visit_sessions/${newSessionRef.key}`] = sessionRecord;
                 
                 // 2. Salesman-specific sessions
-                updates[`salesman_sessions/${currentSalesmanId}/${newSessionRef.key}`] = sessionRecord;
+                updates[`salesman_visit_sessions/${currentSalesmanId}/${newSessionRef.key}`] = sessionRecord;
                 
                 // 3. Daily sessions for reporting
-                const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-                updates[`daily_sessions/${today}/${currentSalesmanId}/${newSessionRef.key}`] = sessionRecord;
+                const today = new Date().toISOString().split('T')[0];
+                updates[`daily_visit_sessions/${today}/${currentSalesmanId}/${newSessionRef.key}`] = sessionRecord;
                 
-                // 4. Customer-specific sessions
-                if (sessionData.customer_name) {
-                    const customerKey = sessionData.customer_name.replace(/[.#$[\]]/g, '_');
-                    updates[`customer_sessions/${customerKey}/${newSessionRef.key}`] = sessionRecord;
+                // 4. Outlet-specific sessions
+                if (sessionData.outlet_id) {
+                    const outletKey = sessionData.outlet_id.replace(/[.#$[\]]/g, '_');
+                    updates[`outlet_visit_sessions/${outletKey}/${newSessionRef.key}`] = sessionRecord;
                 }
                 
                 // 5. Current active sessions (for real-time monitoring)
                 if (eventType === 'session_start') {
-                    updates[`active_sessions/${currentSalesmanId}`] = {
+                    updates[`active_visit_sessions/${currentSalesmanId}`] = {
                         ...sessionRecord,
                         session_key: newSessionRef.key
                     };
                 } else if (eventType === 'session_end') {
-                    updates[`active_sessions/${currentSalesmanId}`] = null; // Remove active session
+                    updates[`active_visit_sessions/${currentSalesmanId}`] = null;
                 }
                 
                 // Perform batch update
                 await set(ref(database), updates);
                 
-                console.log(`🔥 Session ${eventType} saved to Firebase:`, newSessionRef.key);
+                console.log(`🔥 Enhanced session ${eventType} saved to Firebase:`, newSessionRef.key);
                 return newSessionRef.key;
                 
             } catch (error) {
@@ -1196,434 +1654,56 @@
             }
         }
 
-        async function trackCustomerInteraction(interactionType, customerData) {
-            if (!firebaseConnected || !window.firebaseDB) return;
+        // ===== SESSION TIMER FUNCTIONS =====
+        function startSessionTimer() {
+            if (sessionTimer) {
+                clearInterval(sessionTimer);
+            }
             
-            try {
-                const { ref, push, serverTimestamp } = window.firebaseRefs;
-                const database = window.firebaseDB;
-                
-                const interaction = {
-                    interaction_type: interactionType,
-                    salesman_id: currentSalesmanId,
-                    salesman_name: currentSalesman,
-                    customer_name: customerData.customer_name,
-                    timestamp: serverTimestamp(),
-                    session_id: visitSession.sessionId,
-                    data: customerData
-                };
-                
-                const interactionsRef = ref(database, `customer_interactions/${currentSalesmanId}`);
-                await push(interactionsRef, interaction);
-                
-                console.log(`🔥 Customer interaction tracked: ${interactionType}`);
-            } catch (error) {
-                console.error('🔥 Error tracking interaction:', error);
+            sessionTimer = setInterval(() => {
+                if (visitSession.isActive && visitSession.startTime) {
+                    visitSession.duration = Math.floor((Date.now() - visitSession.startTime) / 1000);
+                    updateSessionTimerDisplay();
+                }
+            }, 1000);
+        }
+
+        function stopSessionTimer() {
+            if (sessionTimer) {
+                clearInterval(sessionTimer);
+                sessionTimer = null;
             }
         }
 
-        async function updateVisitProgress(progressData) {
-            if (!firebaseConnected || !visitSession.sessionId) return;
-            
-            try {
-                const { ref, set, serverTimestamp } = window.firebaseRefs;
-                const database = window.firebaseDB;
-                
-                const progressRef = ref(database, `visit_progress/${currentSalesmanId}/${visitSession.sessionId}`);
-                await set(progressRef, {
-                    ...progressData,
-                    last_updated: serverTimestamp(),
-                    duration: visitSession.duration
-                });
-                
-                console.log('🔥 Visit progress updated');
-            } catch (error) {
-                console.error('🔥 Error updating progress:', error);
+        function updateSessionTimerDisplay() {
+            const timerElement = document.getElementById('sessionTimer');
+            if (timerElement) {
+                timerElement.textContent = formatDuration(visitSession.duration);
             }
         }
 
-        // ===== NEW: DAY FILTERING FUNCTIONS =====
-        function getCurrentDayInIndonesian() {
-            const days = ['MINGGU', 'SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
-            const today = new Date();
-            return days[today.getDay()];
-        }
-
-        function updateDayIndicator() {
-            const currentDay = getCurrentDayInIndonesian();
-            const dayIndicator = document.getElementById('dayIndicator');
-            if (dayIndicator) {
-                dayIndicator.textContent = `📅 ${currentDay}`;
-            }
-            console.log(`📅 Current day: ${currentDay}`);
-            return currentDay;
-        }
-
-        function filterHariByCurrentDay(hariList, currentDay) {
-            // Filter hari data that contains current day name
-            const filtered = hariList.filter(hari => {
-                return hari && hari.toUpperCase().includes(currentDay);
-            });
-            
-            // Sort alphabetically
-            return filtered.sort((a, b) => a.localeCompare(b));
-        }
-
-        // ===== VISIT SESSION MANAGEMENT WITH ENHANCED ANTI-DUPLICATION =====
-        let visitSession = {
-            isActive: false,
-            customerName: null,
-            startTime: null,
-            duration: 0,
-            pendingCustomer: null,
-            pendingHari: null,
-            sessionId: null,
-            // ENHANCED: More precise session tracking
-            uniqueId: null,
-            confirmed: false,
-            preventMultipleStarts: false
-        };
-
-        let sessionTimer = null;
-
-        // ===== ENHANCED ANTI-DUPLICATION SYSTEM =====
-        class EnhancedAntiDuplication {
-            constructor() {
-                this.sessionEventKeys = new Set(); // Track unique session events
-                this.customerSessionMap = new Map(); // Track customer sessions
-                this.eventSequence = 0; // Sequential event counter
-                this.lastProcessedEvents = new Map(); // Cache of last processed events
-                this.preventionStats = {
-                    totalPrevented: 0,
-                    lastPreventedTime: null,
-                    eventTypes: {}
-                };
-                this.debugMode = false;
-                
-                console.log('🛡️ Enhanced Anti-Duplication System initialized');
-            }
-
-            // ENHANCED: Generate more unique keys for session events
-            generateSessionEventKey(eventType, customerName) {
-                if (!customerName) {
-                    return null;
-                }
-
-                // For session_start events, use a temporary session key if sessionId doesn't exist yet
-                let sessionId = visitSession.sessionId;
-                if (!sessionId && eventType === 'session_start') {
-                    // Use a temporary key based on customer and timestamp for session_start validation
-                    sessionId = `temp_${Date.now()}_${customerName.replace(/\s+/g, '_')}`;
-                } else if (!sessionId) {
-                    // For other events, sessionId is required
-                    return null;
-                }
-
-                // Create unique key based on session, customer, and event type
-                const baseKey = `${sessionId}_${customerName}_${eventType}`;
-                
-                // For session start/end events, ensure they can only happen once per session
-                if (eventType === 'session_start' || eventType === 'session_end') {
-                    return `${baseKey}_once`;
-                }
-                
-                // For other events, allow but with sequence
-                return `${baseKey}_${this.eventSequence++}`;
-            }
-
-            // ENHANCED: Check if event should be allowed
-            shouldAllowEvent(eventType, customerName, additionalData = {}) {
-                // Special handling for session_start events
-                if (eventType === 'session_start') {
-                    // Allow session start if no active session or different customer
-                    if (!visitSession.isActive || visitSession.customerName !== customerName) {
-                        // Generate session event key for session_start
-                        const eventKey = this.generateSessionEventKey(eventType, customerName);
-                        if (!eventKey) {
-                            this.logPrevention('INVALID_SESSION_START', eventType, customerName);
-                            return false;
-                        }
-                        
-                        // Check for duplicate session starts for same customer
-                        if (this.sessionEventKeys.has(eventKey) || visitSession.preventMultipleStarts) {
-                            this.logPrevention('DUPLICATE_SESSION_START', eventType, customerName);
-                            return false;
-                        }
-                        
-                        // Mark event as processed
-                        this.sessionEventKeys.add(eventKey);
-                        this.updateCustomerSessionTracking(customerName, eventType, eventKey);
-                        return true;
-                    } else {
-                        // Session already active for same customer
-                        this.logPrevention('SESSION_ALREADY_ACTIVE', eventType, customerName);
-                        return false;
-                    }
-                }
-
-                // For non-session-start events, check if there's an active session
-                if (!visitSession.isActive && eventType !== 'session_start') {
-                    this.logPrevention('NO_ACTIVE_SESSION', eventType, customerName);
-                    return false;
-                }
-
-                // If session exists but different customer, block
-                if (visitSession.isActive && visitSession.customerName !== customerName && eventType !== 'session_end') {
-                    this.logPrevention('DIFFERENT_CUSTOMER', eventType, customerName);
-                    return false;
-                }
-
-                // Generate session event key
-                const eventKey = this.generateSessionEventKey(eventType, customerName);
-                if (!eventKey) {
-                    this.logPrevention('INVALID_SESSION', eventType, customerName);
-                    return false;
-                }
-
-                // Check for session_end events
-                if (eventType === 'session_end') {
-                    // Session end should only happen if session is active
-                    if (!visitSession.isActive) {
-                        this.logPrevention('NO_SESSION_TO_END', eventType, customerName);
-                        return false;
-                    }
-                }
-
-                // Mark event as processed
-                this.sessionEventKeys.add(eventKey);
-                this.updateCustomerSessionTracking(customerName, eventType, eventKey);
-                return true;
-            }
-
-            // Helper method to update customer session tracking
-            updateCustomerSessionTracking(customerName, eventType, eventKey) {
-                // Update customer session mapping
-                if (!this.customerSessionMap.has(customerName)) {
-                    this.customerSessionMap.set(customerName, {
-                        sessionId: visitSession.sessionId,
-                        startTime: Date.now(),
-                        events: []
-                    });
-                }
-                
-                this.customerSessionMap.get(customerName).events.push({
-                    type: eventType,
-                    timestamp: Date.now(),
-                    key: eventKey
-                });
-
-                this.updateDebugInfo();
-            }
-
-            // ENHANCED: Log prevention with details
-            logPrevention(reason, eventType, customerName) {
-                this.preventionStats.totalPrevented++;
-                this.preventionStats.lastPreventedTime = new Date();
-                
-                if (!this.preventionStats.eventTypes[eventType]) {
-                    this.preventionStats.eventTypes[eventType] = 0;
-                }
-                this.preventionStats.eventTypes[eventType]++;
-
-                console.warn(`🚫 Event blocked: ${eventType} for ${customerName} - Reason: ${reason}`);
-                console.warn(`🔍 Debug info:`, {
-                    visitSession: {
-                        isActive: visitSession.isActive,
-                        customerName: visitSession.customerName,
-                        sessionId: visitSession.sessionId,
-                        preventMultipleStarts: visitSession.preventMultipleStarts
-                    },
-                    antiDuplication: {
-                        activeKeys: this.sessionEventKeys.size,
-                        customerSessions: this.customerSessionMap.size
-                    }
-                });
-                
-                this.updateDebugInfo();
-            }
-
-            // ENHANCED: Clear session data when session ends
-            clearSessionData(customerName) {
-                if (customerName && this.customerSessionMap.has(customerName)) {
-                    const sessionData = this.customerSessionMap.get(customerName);
-                    console.log(`🧹 Clearing session data for ${customerName}:`, sessionData);
-                    
-                    // Remove session-specific keys
-                    sessionData.events.forEach(event => {
-                        this.sessionEventKeys.delete(event.key);
-                    });
-                    
-                    this.customerSessionMap.delete(customerName);
-                }
-                
-                // Reset session tracking
-                visitSession.preventMultipleStarts = false;
-                this.updateDebugInfo();
-            }
-
-            // ENHANCED: Update debug information
-            updateDebugInfo() {
-                if (this.debugMode) {
-                    const debugPanel = document.getElementById('debugPanel');
-                    if (debugPanel) {
-                        document.getElementById('debugTotalPrevented').textContent = this.preventionStats.totalPrevented;
-                        document.getElementById('debugActiveSession').textContent = 
-                            visitSession.isActive ? visitSession.customerName : 'No Session';
-                        document.getElementById('debugHashCount').textContent = this.sessionEventKeys.size;
-                        document.getElementById('debugLastEvent').textContent = 
-                            this.preventionStats.lastPreventedTime ? 
-                            this.preventionStats.lastPreventedTime.toLocaleTimeString() : 'No events';
-                    }
-                }
-            }
-
-            toggleDebug() {
-                this.debugMode = !this.debugMode;
-                const debugPanel = document.getElementById('debugPanel');
-                if (debugPanel) {
-                    if (this.debugMode) {
-                        debugPanel.classList.add('show');
-                        this.updateDebugInfo();
-                    } else {
-                        debugPanel.classList.remove('show');
-                    }
-                }
-            }
-
-            // ENHANCED: Get prevention statistics
-            getStats() {
-                return {
-                    ...this.preventionStats,
-                    activeSessions: this.customerSessionMap.size,
-                    activeKeys: this.sessionEventKeys.size
-                };
-            }
-        }
-
-        // Initialize enhanced anti-duplication system
-        const antiDuplication = new EnhancedAntiDuplication();
-
-        // ===== VISIT SESSION PROTECTION FUNCTIONS =====
-        function checkActiveSessionBeforeAction(actionType, targetName = '') {
-            if (visitSession.isActive) {
-                const duration = Math.floor((Date.now() - visitSession.startTime) / 1000);
-                const durationText = formatDuration(duration);
-                
-                let message = `⚠️ KUNJUNGAN SEDANG AKTIF!\n\n`;
-                message += `Customer: ${visitSession.customerName}\n`;
-                message += `Durasi: ${durationText}\n\n`;
-                
-                switch(actionType) {
-                    case 'change_hari':
-                        message += `Anda tidak dapat mengganti Hari JKS saat sedang mengunjungi customer.\n\n`;
-                        break;
-                    case 'change_customer':
-                        message += `Anda tidak dapat mengganti customer saat sedang mengunjungi customer lain.\n\n`;
-                        break;
-                    case 'navigate_menu':
-                        message += `Anda tidak dapat berpindah ke menu "${targetName}" saat sedang mengunjungi customer.\n\n`;
-                        break;
-                    default:
-                        message += `Anda tidak dapat melakukan aksi ini saat sedang mengunjungi customer.\n\n`;
-                }
-                
-                message += `Silakan akhiri kunjungan terlebih dahulu!`;
-                
-                alert(message);
-                return false; // Block the action
-            }
-            return true; // Allow the action
-        }
-
-        function showActiveSessionWarningModal(actionType, callback) {
-            if (!visitSession.isActive) {
-                if (callback) callback();
-                return;
-            }
-            
-            const duration = Math.floor((Date.now() - visitSession.startTime) / 1000);
-            const durationText = formatDuration(duration);
-            
-            // Create modal content dynamically
-            const modal = document.getElementById('visitEndModal');
-            const title = modal.querySelector('.visit-modal-title');
-            const subtitle = modal.querySelector('.visit-modal-subtitle');
-            const customerName = modal.querySelector('#endModalCustomerName');
-            const customerDetails = modal.querySelector('#endModalCustomerDetails');
-            const buttons = modal.querySelector('.visit-modal-buttons');
-            
-            // Update modal content for warning
-            title.textContent = '⚠️ Kunjungan Sedang Aktif!';
-            subtitle.textContent = 'Anda harus mengakhiri kunjungan sebelum melanjutkan:';
-            customerName.textContent = visitSession.customerName;
-            customerDetails.textContent = `Durasi: ${durationText}`;
-            
-            // Update buttons
-            buttons.innerHTML = `
-                <button class="visit-modal-btn visit-modal-btn-secondary" onclick="cancelActionWarning()">
-                    ❌ Batal
-                </button>
-                <button class="visit-modal-btn visit-modal-btn-primary" onclick="forceEndSessionAndContinue('${actionType}')">
-                    ✅ Akhiri Kunjungan & Lanjutkan
-                </button>
-            `;
-            
-            modal.classList.add('show');
-        }
-
-        function cancelActionWarning() {
-            const modal = document.getElementById('visitEndModal');
-            modal.classList.remove('show');
-            
-            // Reset any pending selections
-            resetPendingSelections();
-        }
-
-        function forceEndSessionAndContinue(actionType) {
-            const modal = document.getElementById('visitEndModal');
-            modal.classList.remove('show');
-            
-            // Force end current session
-            endVisitSession();
-            
-            // Continue with the original action after a brief delay
-            setTimeout(() => {
-                executePendingAction(actionType);
-            }, 500);
-        }
-
-        function resetPendingSelections() {
-            // Reset dropdowns to their previous values if user cancels
-            const hariSelect = document.getElementById('hari');
-            const pelangganSelect = document.getElementById('pelanggan');
+        function updateVisitSessionStatus() {
+            const statusElement = document.getElementById('visitSessionStatus');
+            const customerElement = document.getElementById('sessionCustomerName');
+            const timerElement = document.getElementById('sessionTimer');
             
             if (visitSession.isActive) {
-                // Keep current selections
-                pelangganSelect.value = visitSession.customerName || '';
+                statusElement.classList.add('active');
+                customerElement.textContent = `🏪 ${visitSession.outletName}`;
+                timerElement.textContent = formatDuration(visitSession.duration);
+            } else {
+                statusElement.classList.remove('active');
+                customerElement.textContent = 'No Active Visit';
+                timerElement.textContent = '00:00:00';
             }
         }
 
-        function executePendingAction(actionType) {
-            // Execute the action that was blocked by active session
-            switch(actionType) {
-                case 'change_hari':
-                    // Allow hari change to proceed
-                    updatePelangganOptions();
-                    break;
-                case 'change_customer':
-                    // Allow customer change to proceed  
-                    handlePelangganSelection();
-                    break;
-                case 'navigate_home':
-                    window.location.href = 'dashboard.html';
-                    break;
-                case 'navigate_incentive':
-                    alert('💰 Incentive feature coming soon');
-                    break;
-                case 'navigate_profile':
-                    alert('👤 Profile feature coming soon');
-                    break;
-            }
+        function formatDuration(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            
+            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
         }
 
         // ===== UTILITY FUNCTIONS =====
@@ -1658,6 +1738,54 @@
             // Remove bracketed numbers like [6] and clean up
             const cleanHari = hariString.toString().replace(/^\[\d+\]/, '').trim().toUpperCase();
             return cleanHari;
+        }
+
+        function getCurrentDayInIndonesian() {
+            const days = ['MINGGU', 'SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
+            const today = new Date();
+            return days[today.getDay()];
+        }
+
+        function updateDayIndicator() {
+            const currentDay = getCurrentDayInIndonesian();
+            const dayIndicator = document.getElementById('dayIndicator');
+            if (dayIndicator) {
+                dayIndicator.textContent = `📅 ${currentDay}`;
+            }
+            console.log(`📅 Current day: ${currentDay}`);
+            return currentDay;
+        }
+
+        function filterHariByCurrentDay(hariList, currentDay) {
+            // Filter hari data that contains current day name
+            const filtered = hariList.filter(hari => {
+                return hari && hari.toUpperCase().includes(currentDay);
+            });
+            
+            // Sort alphabetically
+            return filtered.sort((a, b) => a.localeCompare(b));
+        }
+
+        function getCustomerCoordinates(customerName, kodePelanggan) {
+            // Find customer in details data by Kode_Pelanggan
+            const customerDetail = detailsData.find(item => {
+                return item.Kode_Pelanggan === kodePelanggan;
+            });
+            
+            if (customerDetail && customerDetail.Latitude && customerDetail.Longitude) {
+                return {
+                    latitude: parseFloat(customerDetail.Latitude),
+                    longitude: parseFloat(customerDetail.Longitude),
+                    source: 'master_data'
+                };
+            }
+            
+            // Fallback: Generate demo coordinates near Jakarta
+            return {
+                latitude: -6.2000 + (Math.random() - 0.5) * 0.1,
+                longitude: 106.8000 + (Math.random() - 0.5) * 0.1,
+                source: 'demo_data'
+            };
         }
 
         // ===== DATA LOADING FUNCTIONS =====
@@ -1705,30 +1833,6 @@
             }
         }
 
-        // ===== CUSTOMER COORDINATE HELPER =====
-        function getCustomerCoordinates(customerName, kodePelanggan) {
-            // Find customer in details data by Kode_Pelanggan
-            const customerDetail = detailsData.find(item => {
-                return item.Kode_Pelanggan === kodePelanggan;
-            });
-            
-            if (customerDetail && customerDetail.Latitude && customerDetail.Longitude) {
-                return {
-                    latitude: parseFloat(customerDetail.Latitude),
-                    longitude: parseFloat(customerDetail.Longitude),
-                    source: 'master_data'
-                };
-            }
-            
-            // Fallback: Generate demo coordinates near Jakarta
-            return {
-                latitude: -6.2000 + (Math.random() - 0.5) * 0.1,
-                longitude: 106.8000 + (Math.random() - 0.5) * 0.1,
-                source: 'demo_data'
-            };
-        }
-
-        // ===== SALESMAN INITIALIZATION =====
         function initializeSalesmanFromUrl() {
             currentSalesmanId = getUrlParameter('id') || getUrlParameter('user');
             
@@ -1754,12 +1858,33 @@
             }
         }
 
-        // ===== UPDATED: Day Filter Implementation with Session Protection =====
-        function updatePelangganOptions() {
-            // PROTECTION: Check if there's an active visit session
+        // ===== SESSION PROTECTION FUNCTIONS =====
+        function checkActiveSessionBeforeAction(actionType, targetName = '') {
             if (visitSession.isActive) {
-                showActiveSessionWarningModal('change_hari');
-                // Reset hari selection back to current
+                const duration = Math.floor((Date.now() - visitSession.startTime) / 1000);
+                const durationText = formatDuration(duration);
+                
+                if (actionType === 'change_customer') {
+                    // Show end modal instead of blocking
+                    showVisitEndModal();
+                    return false;
+                }
+                
+                let message = `⚠️ KUNJUNGAN SEDANG AKTIF!\n\n`;
+                message += `Outlet: ${visitSession.outletName}\n`;
+                message += `Durasi: ${durationText}\n\n`;
+                message += `Silakan akhiri kunjungan terlebih dahulu!`;
+                
+                alert(message);
+                return false;
+            }
+            return true;
+        }
+
+        // ===== FILTER AND DATA DISPLAY FUNCTIONS =====
+        function updatePelangganOptions() {
+            if (visitSession.isActive) {
+                checkActiveSessionBeforeAction('change_hari');
                 const hariSelect = document.getElementById('hari');
                 hariSelect.value = ''; // Reset selection
                 return;
@@ -1768,9 +1893,133 @@
             const hariSelect = document.getElementById('hari');
             const pelangganSelect = document.getElementById('pelanggan');
             
-            pelangganSelect.innerHTML = '<option value="">🏪 Pilih Pelanggan</option>';
+            pelangganSelect.innerHTML = '<option value="">🏪 Pilih Outlet</option>';
             
-            // Clear table when day changes
+            // Clear table and summary
+            clearDataDisplay();
+            
+            if (pelangganData.length > 0 && currentSalesmanId && hariSelect.value) {
+                const selectedHari = hariSelect.value.trim().toUpperCase();
+                
+                console.log(`🔍 Filtering outlets for Salesman: ${currentSalesmanId}, Hari: ${selectedHari}`);
+                
+                const filteredPelanggan = [...new Set(pelangganData
+                    .filter(item => {
+                        const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
+                        const itemHari = normalizeHariFormat(item.Hari_Kunjungan);
+                        
+                        const salesmanMatch = itemSalesmanId === currentSalesmanId;
+                        const hariMatch = itemHari === selectedHari;
+                        
+                        return salesmanMatch && hariMatch;
+                    })
+                    .map(item => item.Nama_Pelanggan)
+                    .filter(pelanggan => pelanggan && pelanggan.toString().trim() !== '')
+                )];
+
+                console.log(`📊 Found ${filteredPelanggan.length} outlets:`, filteredPelanggan);
+
+                filteredPelanggan.forEach(pelanggan => {
+                    const option = document.createElement('option');
+                    option.value = pelanggan;
+                    option.textContent = pelanggan;
+                    pelangganSelect.appendChild(option);
+                });
+
+                if (filteredPelanggan.length === 0) {
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = 'Tidak ada outlet untuk hari ini';
+                    option.disabled = true;
+                    pelangganSelect.appendChild(option);
+                }
+                
+                // Update customer visit status
+                updateCustomerListVisitStatus();
+            }
+        }
+
+        function handlePelangganSelection() {
+            const selectedCustomer = document.getElementById('pelanggan').value.trim();
+            
+            if (visitSession.isActive && visitSession.outletName !== selectedCustomer && selectedCustomer !== '') {
+                // Show end modal for current visit
+                showVisitEndModal();
+                // Reset selection
+                const pelangganSelect = document.getElementById('pelanggan');
+                pelangganSelect.value = visitSession.outletName || '';
+                return;
+            }
+            
+            const hariSelect = document.getElementById('hari');
+            const pelangganSelect = document.getElementById('pelanggan');
+            const customerInfo = document.getElementById('customerInfo');
+            
+            if (pelangganSelect.value && hariSelect.value) {
+                const selectedPelanggan = pelangganSelect.value.trim();
+                const selectedHari = hariSelect.value.trim().toUpperCase();
+                
+                // Check if customer already visited today
+                if (isCustomerAlreadyVisited(selectedPelanggan)) {
+                    alert(`❌ Outlet "${selectedPelanggan}" sudah dikunjungi hari ini!\n\nSetiap outlet hanya boleh dikunjungi sekali per hari.`);
+                    pelangganSelect.value = '';
+                    customerInfo.style.display = 'none';
+                    return;
+                }
+                
+                console.log(`👥 Outlet selected: ${selectedPelanggan} for ${selectedHari}`);
+                
+                // Find customer record to get details
+                const pelangganRecord = pelangganData.find(item => {
+                    const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
+                    const itemHari = (item.Hari_Kunjungan || '').toString().trim().toUpperCase();
+                    const itemPelanggan = (item.Nama_Pelanggan || '').toString().trim();
+                    
+                    return itemSalesmanId === currentSalesmanId &&
+                           itemHari === selectedHari &&
+                           itemPelanggan.toLowerCase() === selectedPelanggan.toLowerCase();
+                });
+
+                // Get customer type
+                let customerTypeText = `${selectedHari} Outlet`;
+                if (pelangganRecord && pelangganRecord.Kode_Pelanggan) {
+                    const detailRecord = detailsData.find(item => 
+                        item.Kode_Pelanggan === pelangganRecord.Kode_Pelanggan
+                    );
+                    
+                    if (detailRecord) {
+                        const channelGroup = detailRecord['Channel Group'] || 'Unknown';
+                        const project = detailRecord.Project || 'Unknown';
+                        customerTypeText = `${channelGroup} - ${project}`;
+                    }
+                }
+                
+                // Show customer info
+                customerInfo.style.display = 'block';
+                document.getElementById('customerType').textContent = customerTypeText;
+                
+                // Update summary and table
+                updateSummaryFromCustomer(selectedPelanggan);
+                showVisitData(selectedPelanggan, selectedHari);
+                
+                // Ask if user wants to start visit session
+                showVisitStartModal(selectedPelanggan, selectedHari);
+                
+                console.log('✅ Outlet setup complete:', {
+                    outlet: selectedPelanggan,
+                    hari: selectedHari,
+                    type: customerTypeText,
+                    alreadyVisited: false
+                });
+                
+            } else {
+                customerInfo.style.display = 'none';
+                clearDataDisplay();
+            }
+        }
+
+        function clearDataDisplay() {
+            // Clear table
             const tableBody = document.getElementById('tableBody');
             if (tableBody) {
                 tableBody.innerHTML = `
@@ -1778,7 +2027,7 @@
                         <td colspan="9">
                             <div class="empty-state">
                                 <div class="empty-state-icon">📊</div>
-                                <div>Pilih pelanggan untuk melihat data</div>
+                                <div>Pilih filter untuk melihat data</div>
                             </div>
                         </td>
                     </tr>
@@ -1797,166 +2046,10 @@
                 customerInfo.style.display = 'none';
             }
             
-            // FIXED: Load real pelanggan data instead of mock data
-            if (pelangganData.length > 0 && currentSalesmanId && hariSelect.value) {
-                const selectedHari = hariSelect.value.trim().toUpperCase();
-                
-                console.log(`🔍 Filtering customers for Salesman: ${currentSalesmanId}, Hari: ${selectedHari}`);
-                
-                const filteredPelanggan = [...new Set(pelangganData
-                    .filter(item => {
-                        const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
-                        const itemHari = normalizeHariFormat(item.Hari_Kunjungan);
-                        
-                        const salesmanMatch = itemSalesmanId === currentSalesmanId;
-                        const hariMatch = itemHari === selectedHari;
-                        
-                        if (salesmanMatch && hariMatch) {
-                            console.log(`✅ Found customer: ${item.Nama_Pelanggan} for ${selectedHari}`);
-                        }
-                        
-                        return salesmanMatch && hariMatch;
-                    })
-                    .map(item => item.Nama_Pelanggan)
-                    .filter(pelanggan => pelanggan && pelanggan.toString().trim() !== '')
-                )];
-
-                console.log(`📊 Found ${filteredPelanggan.length} customers:`, filteredPelanggan);
-
-                filteredPelanggan.forEach(pelanggan => {
-                    const option = document.createElement('option');
-                    option.value = pelanggan;
-                    option.textContent = pelanggan;
-                    pelangganSelect.appendChild(option);
-                });
-
-                if (filteredPelanggan.length === 0) {
-                    console.log('⚠️ No customers found for the selected criteria');
-                    const option = document.createElement('option');
-                    option.value = '';
-                    option.textContent = 'Tidak ada pelanggan untuk hari ini';
-                    option.disabled = true;
-                    pelangganSelect.appendChild(option);
-                }
-                
-                // Update customer visit status after populating
-                updateCustomerListVisitStatus();
-            }
+            // Clear stored data
+            window.currentFilteredData = [];
         }
 
-        function handlePelangganSelection() {
-            // PROTECTION: Check if there's an active visit session for a different customer
-            const selectedCustomer = document.getElementById('pelanggan').value.trim();
-            if (visitSession.isActive && visitSession.customerName !== selectedCustomer && selectedCustomer !== '') {
-                showActiveSessionWarningModal('change_customer');
-                // Reset customer selection back to current
-                const pelangganSelect = document.getElementById('pelanggan');
-                pelangganSelect.value = visitSession.customerName || '';
-                return;
-            }
-            
-            const hariSelect = document.getElementById('hari');
-            const pelangganSelect = document.getElementById('pelanggan');
-            const customerInfo = document.getElementById('customerInfo');
-            
-            if (pelangganSelect.value && hariSelect.value) {
-                const selectedPelanggan = pelangganSelect.value.trim();
-                const selectedHari = hariSelect.value.trim().toUpperCase();
-                
-                // Check if customer already visited today
-                if (isCustomerAlreadyVisited(selectedPelanggan)) {
-                    alert(`❌ Customer "${selectedPelanggan}" sudah dikunjungi hari ini!\n\nSetiap customer hanya boleh dikunjungi sekali per hari.`);
-                    pelangganSelect.value = '';
-                    customerInfo.style.display = 'none';
-                    return;
-                }
-                
-                console.log(`👥 Customer selected: ${selectedPelanggan} for ${selectedHari}`);
-                
-                // Find customer record to get details
-                const pelangganRecord = pelangganData.find(item => {
-                    const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
-                    const itemHari = (item.Hari_Kunjungan || '').toString().trim().toUpperCase();
-                    const itemPelanggan = (item.Nama_Pelanggan || '').toString().trim();
-                    
-                    return itemSalesmanId === currentSalesmanId &&
-                           itemHari === selectedHari &&
-                           itemPelanggan.toLowerCase() === selectedPelanggan.toLowerCase();
-                });
-
-                // Get customer type from d.details.json using Kode_Pelanggan
-                let customerTypeText = `${selectedHari} Customer`;
-                if (pelangganRecord && pelangganRecord.Kode_Pelanggan) {
-                    const detailRecord = detailsData.find(item => 
-                        item.Kode_Pelanggan === pelangganRecord.Kode_Pelanggan
-                    );
-                    
-                    if (detailRecord) {
-                        const channelGroup = detailRecord['Channel Group'] || 'Unknown';
-                        const project = detailRecord.Project || 'Unknown';
-                        customerTypeText = `${channelGroup} - ${project}`;
-                    }
-                }
-                
-                // Show customer info
-                customerInfo.style.display = 'block';
-                document.getElementById('customerType').textContent = customerTypeText;
-                
-                // Get coordinates
-                let masterCoordinates = null;
-                if (pelangganRecord && pelangganRecord.Kode_Pelanggan) {
-                    masterCoordinates = getCustomerCoordinates(selectedPelanggan, pelangganRecord.Kode_Pelanggan);
-                } else {
-                    // Generate demo coordinates
-                    masterCoordinates = getCustomerCoordinates(selectedPelanggan, null);
-                }
-                
-                // Update summary and table
-                updateSummaryFromCustomer(selectedPelanggan);
-                showVisitData(selectedPelanggan, selectedHari);
-                
-                // Ask if user wants to start visit session
-                showVisitStartModal(selectedPelanggan, selectedHari);
-                
-                console.log('✅ Customer setup complete:', {
-                    customer: selectedPelanggan,
-                    hari: selectedHari,
-                    coordinates: masterCoordinates,
-                    type: customerTypeText,
-                    alreadyVisited: false
-                });
-                
-            } else {
-                // Hide customer info and clear content
-                customerInfo.style.display = 'none';
-                
-                // Clear table properly
-                const tableBody = document.getElementById('tableBody');
-                if (tableBody) {
-                    tableBody.innerHTML = `
-                        <tr>
-                            <td colspan="9">
-                                <div class="empty-state">
-                                    <div class="empty-state-icon">📊</div>
-                                    <div>Pilih filter untuk melihat data</div>
-                                </div>
-                            </td>
-                        </tr>
-                    `;
-                }
-                
-                // Clear summary
-                document.getElementById('summaryTarget').textContent = '-';
-                document.getElementById('summaryActual').textContent = '-';
-                document.getElementById('summaryGap').textContent = '-';
-                document.getElementById('summaryGap').className = 'summary-value';
-                
-                // Clear stored data
-                window.currentFilteredData = [];
-            }
-        }
-
-        // ===== SUMMARY UPDATE FUNCTION =====
         function updateSummaryFromCustomer(selectedPelanggan) {
             const targetElement = document.getElementById('summaryTarget');
             const actualElement = document.getElementById('summaryActual');
@@ -1970,7 +2063,7 @@
                 return;
             }
             
-            // Filter data dari d.details.json berdasarkan Nama Salesman dan Nama Pelanggan
+            // Filter data from d.details.json
             const detailsSummaryData = detailsData.filter(item => {
                 const itemSalesman = (item['szname'] || '').toString().trim();
                 const itemPelanggan = (item['Nama Pelanggan'] || '').toString().trim();
@@ -1979,7 +2072,7 @@
                        itemPelanggan.toLowerCase() === selectedPelanggan.toLowerCase();
             });
             
-            console.log(`📊 Summary data from d.details.json: ${detailsSummaryData.length} records for ${selectedPelanggan}`);
+            console.log(`📊 Summary data: ${detailsSummaryData.length} records for ${selectedPelanggan}`);
             
             if (detailsSummaryData.length === 0) {
                 targetElement.textContent = '0';
@@ -1993,7 +2086,6 @@
             let totalActual = 0;
             let totalGap = 0;
             
-            // Hitung total dari kolom T.MTD, A.MTD, Gap MTD di d.details.json
             detailsSummaryData.forEach(item => {
                 totalTarget += Number(item['T.MTD']) || 0;
                 totalActual += Number(item['A.MTD']) || 0;
@@ -2014,7 +2106,6 @@
             actualElement.textContent = formatNumber(totalActual);
             gapElement.textContent = (totalGap > 0 ? '+' : '') + formatNumber(totalGap);
             
-            // Update styling berdasarkan nilai gap
             if (totalGap > 0) {
                 gapElement.className = 'summary-value positive';
             } else if (totalGap < 0) {
@@ -2024,7 +2115,6 @@
             }
         }
 
-        // ===== VISIT DATA DISPLAY (SAME FORMAT AS VISIT.HTML) =====
         function showVisitData(customerName, hariJKS) {
             const tableBody = document.getElementById('tableBody');
             
@@ -2063,11 +2153,11 @@
             // Store for sorting
             window.currentFilteredData = [...visitData];
             
-            // Render table with same format as visit.html
+            // Render table
             renderTableData(visitData);
         }
 
-        // ===== TABLE RENDERING (SAME AS VISIT.HTML) =====
+        // ===== TABLE RENDERING FUNCTIONS =====
         let currentFilteredData = [];
         let sortState = { column: null, direction: 'asc' };
 
@@ -2156,7 +2246,7 @@
                         <td>${no}</td>
                         <td><span class="promo-tag ${promoClass}">${promo}</span></td>
                         <td><span class="sku-code">${sku}</span></td>
-						<td><span class="gap-badge ${gapBadgeClass}">${gap > 0 ? '+' : ''}${gap.toFixed(2)}</span></td>
+                        <td><span class="gap-badge ${gapBadgeClass}">${gap > 0 ? '+' : ''}${gap.toFixed(2)}</span></td>
                         <td class="metric-value">${plan.toFixed(2)}</td>
                         <td class="metric-value">${mtd.toFixed(2)}</td>
                         <td>${threeLM.toFixed(2)}</td>
@@ -2174,11 +2264,11 @@
                     <td></td>
                     <td><strong>TOTAL</strong></td>
                     <td></td>
-                    <td></td>
-                    <td></td>
+                    <td><span class="gap-badge ${totalGapBadgeClass}"><strong>${totalGap > 0 ? '+' : ''}${totalGap.toFixed(2)}</strong></span></td>
                     <td><strong>${totalPlan.toFixed(2)}</strong></td>
                     <td><strong>${totalMTD.toFixed(2)}</strong></td>
-                    <td><span class="gap-badge ${totalGapBadgeClass}"><strong>${totalGap > 0 ? '+' : ''}${totalGap.toFixed(2)}</strong></span></td>
+                    <td></td>
+                    <td></td>
                     <td>-</td>
                 </tr>
             `;
@@ -2199,378 +2289,6 @@
             return "Belum Aktif";
         }
 
-        // ===== FIXED VISIT SESSION MANAGEMENT FUNCTIONS =====
-        function showVisitStartModal(customerName, hariJKS) {
-            // ENHANCED: Prevent showing modal if already processing
-            if (visitSession.preventMultipleStarts) {
-                console.warn('🚫 Start modal blocked - already processing start');
-                return;
-            }
-
-            visitSession.pendingCustomer = customerName;
-            visitSession.pendingHari = hariJKS;
-            
-            document.getElementById('startModalCustomerName').textContent = customerName;
-            document.getElementById('startModalCustomerDetails').textContent = `Hari JKS: ${hariJKS}`;
-            document.getElementById('visitStartModal').classList.add('show');
-            
-            console.log(`🏪 Showing start modal for: ${customerName}`);
-        }
-
-        function showVisitEndModal() {
-            if (!visitSession.isActive) {
-                console.warn('🚫 End modal blocked - no active session');
-                return;
-            }
-            
-            const duration = Math.floor((Date.now() - visitSession.startTime) / 1000);
-            const durationText = formatDuration(duration);
-            
-            document.getElementById('endModalCustomerName').textContent = visitSession.customerName;
-            document.getElementById('endModalCustomerDetails').textContent = `Durasi: ${durationText}`;
-            document.getElementById('visitEndModal').classList.add('show');
-            
-            console.log(`🏁 Showing end modal for: ${visitSession.customerName}`);
-        }
-
-        function confirmVisitStart() {
-            const customerName = visitSession.pendingCustomer;
-            const hariJKS = visitSession.pendingHari;
-
-            console.log(`🚀 Starting visit confirmation for: ${customerName}`);
-
-            // DOUBLE CHECK: Ensure customer not already visited today
-            if (isCustomerAlreadyVisited(customerName)) {
-                alert(`❌ Error: Customer "${customerName}" sudah dikunjungi hari ini!\n\nSistem mencegah duplikasi kunjungan.`);
-                cancelVisitStart();
-                return;
-            }
-
-            // FIXED: Generate sessionId first for anti-duplication validation
-            if (!visitSession.sessionId) {
-                visitSession.sessionId = `visit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-                console.log(`🆔 Generated sessionId: ${visitSession.sessionId}`);
-            }
-
-            console.log(`🔍 Checking anti-duplication for: ${customerName} (sessionId: ${visitSession.sessionId})`);
-
-            // ENHANCED: Check anti-duplication before starting
-            if (!antiDuplication.shouldAllowEvent('session_start', customerName)) {
-                console.error('🚫 Session start blocked by anti-duplication system');
-                // Clear the generated sessionId since we're canceling
-                visitSession.sessionId = null;
-                cancelVisitStart();
-                return;
-            }
-
-            console.log(`✅ Anti-duplication check passed for: ${customerName}`);
-
-            // Prevent multiple starts
-            visitSession.preventMultipleStarts = true;
-            
-            document.getElementById('visitStartModal').classList.remove('show');
-            
-            startVisitSession(customerName, hariJKS);
-            
-            // Clear pending data
-            visitSession.pendingCustomer = null;
-            visitSession.pendingHari = null;
-        }
-
-        function cancelVisitStart() {
-            document.getElementById('visitStartModal').classList.remove('show');
-            
-            // Reset pelanggan selection
-            const pelangganSelect = document.getElementById('pelanggan');
-            if (pelangganSelect) {
-                pelangganSelect.value = '';
-                handlePelangganSelection(); // This will clear the display
-            }
-            
-            // Clear pending data and reset session
-            visitSession.pendingCustomer = null;
-            visitSession.pendingHari = null;
-            visitSession.preventMultipleStarts = false;
-            visitSession.sessionId = null; // FIXED: Clear sessionId when canceling
-            
-            console.log(`❌ Visit start cancelled`);
-        }
-
-        function confirmVisitEnd() {
-            const customerName = visitSession.customerName;
-
-            // ENHANCED: Check anti-duplication before ending
-            if (!antiDuplication.shouldAllowEvent('session_end', customerName)) {
-                console.error('🚫 Session end blocked by anti-duplication system');
-                cancelVisitEnd();
-                return;
-            }
-
-            document.getElementById('visitEndModal').classList.remove('show');
-            endVisitSession();
-        }
-
-        function cancelVisitEnd() {
-            document.getElementById('visitEndModal').classList.remove('show');
-            console.log(`❌ Visit end cancelled, continuing visit`);
-        }
-
-        function startVisitSession(customerName, hariJKS) {
-            // FIXED: Use existing sessionId instead of generating new one
-            const sessionId = visitSession.sessionId || `visit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-            const uniqueId = `${sessionId}_${customerName.replace(/\s+/g, '_')}`;
-            
-            // End any existing session first (with anti-duplication check)
-            if (visitSession.isActive && visitSession.customerName !== customerName) {
-                endVisitSession();
-            }
-            
-            visitSession.isActive = true;
-            visitSession.customerName = customerName;
-            visitSession.startTime = Date.now();
-            visitSession.duration = 0;
-            visitSession.sessionId = sessionId; // Keep existing or set new one
-            visitSession.uniqueId = uniqueId;
-            visitSession.confirmed = true;
-            
-            // MARK CUSTOMER AS VISITED IMMEDIATELY
-            markCustomerAsVisited(customerName, sessionId);
-            
-            // Update UI
-            updateVisitSessionStatus();
-            startSessionTimer();
-            
-            // Track session start with Firebase integration
-            console.log(`✅ Visit session started: ${customerName} (ID: ${sessionId})`);
-            
-            // Get customer coordinates for location tracking
-            const pelangganRecord = pelangganData.find(item => {
-                const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
-                const itemPelanggan = (item.Nama_Pelanggan || '').toString().trim();
-                return itemSalesmanId === currentSalesmanId &&
-                       itemPelanggan.toLowerCase() === customerName.toLowerCase();
-            });
-            
-            let coordinates = null;
-            if (pelangganRecord && pelangganRecord.Kode_Pelanggan) {
-                coordinates = getCustomerCoordinates(customerName, pelangganRecord.Kode_Pelanggan);
-            }
-            
-            // Enhanced session data for Firebase
-            const sessionData = {
-                customer_name: customerName,
-                hari_jks: hariJKS,
-                session_id: sessionId,
-                unique_id: uniqueId,
-                start_time: new Date().toISOString(),
-                location: coordinates,
-                visit_status: 'started',
-                metadata: {
-                    kode_pelanggan: pelangganRecord?.Kode_Pelanggan || null,
-                    device_timestamp: Date.now(),
-                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                    daily_visit_number: todayVisitedCustomers.size // Track visit sequence
-                }
-            };
-            
-            // Save to Firebase
-            trackSessionEvent('session_start', sessionData);
-            
-            // Track customer interaction
-            if (firebaseConnected) {
-                trackCustomerInteraction('visit_started', {
-                    customer_name: customerName,
-                    hari_jks: hariJKS,
-                    coordinates: coordinates,
-                    visit_count_today: todayVisitedCustomers.size
-                });
-            }
-            
-            // Update customer list to show this customer as visited
-            updateCustomerListVisitStatus();
-            
-            console.log(`📋 Customer "${customerName}" marked as visited. Total visited today: ${todayVisitedCustomers.size}`);
-        }
-
-        function endVisitSession() {
-            if (!visitSession.isActive || !visitSession.confirmed) {
-                console.warn('🚫 Cannot end session - not active or not confirmed');
-                return;
-            }
-            
-            const duration = Math.floor((Date.now() - visitSession.startTime) / 1000);
-            const endedCustomer = visitSession.customerName;
-            const sessionId = visitSession.sessionId;
-            
-            console.log(`🏁 Ending visit session: ${endedCustomer} (duration: ${formatDuration(duration)})`);
-            
-            // Enhanced session end data for Firebase
-            const sessionEndData = {
-                customer_name: endedCustomer,
-                session_id: sessionId,
-                duration_seconds: duration,
-                end_time: new Date().toISOString(),
-                metadata: {
-                    total_duration: formatDuration(duration),
-                    end_timestamp: Date.now()
-			            }
-            }
-            // Track session end with Firebase integration
-            trackSessionEvent('session_end', sessionEndData);
-            
-            // Track final customer interaction
-            if (firebaseConnected) {
-                trackCustomerInteraction('visit_completed', {
-                    customer_name: endedCustomer,
-                    duration_seconds: duration,
-                    session_summary: {
-                        total_time: formatDuration(duration),
-                        completed_successfully: true
-                    }
-                });
-            }
-            
-            // ENHANCED: Clear session data from anti-duplication system
-            antiDuplication.clearSessionData(endedCustomer);
-            
-            // Reset session completely
-            visitSession.isActive = false;
-            visitSession.customerName = null;
-            visitSession.startTime = null;
-            visitSession.duration = 0;
-            visitSession.sessionId = null;
-            visitSession.uniqueId = null;
-            visitSession.confirmed = false;
-            visitSession.preventMultipleStarts = false;
-            visitSession.pendingCustomer = null;
-            visitSession.pendingHari = null;
-            
-            // Clear Firebase session reference
-            currentSessionRef = null;
-            
-            // Update UI
-            updateVisitSessionStatus();
-            stopSessionTimer();
-            
-            console.log(`✅ Visit session ended successfully: ${endedCustomer}, duration: ${formatDuration(duration)}`);
-        }
-
-        // ENHANCED: Track session events with Firebase integration
-        async function trackSessionEvent(eventType, eventData) {
-            const customerName = eventData.customer_name || visitSession.customerName;
-            
-            console.log(`📊 Session Event: ${eventType}`, {
-                customer: customerName,
-                session_id: eventData.session_id || visitSession.sessionId,
-                timestamp: new Date().toISOString(),
-                data: eventData
-            });
-
-            // Save to Firebase if connected
-            if (firebaseConnected && window.firebaseDB) {
-                try {
-                    updateFirebaseStatus('syncing');
-                    const firebaseKey = await saveVisitSessionToFirebase(eventType, eventData);
-                    updateFirebaseStatus(true);
-                    
-                    if (firebaseKey) {
-                        console.log(`🔥 Event saved to Firebase with key: ${firebaseKey}`);
-                        
-                        // Update current session reference for real-time updates
-                        if (eventType === 'session_start') {
-                            currentSessionRef = firebaseKey;
-                        }
-                        
-                        return firebaseKey;
-                    }
-                } catch (error) {
-                    console.error('🔥 Firebase save failed:', error);
-                    updateFirebaseStatus(false);
-                }
-            } else {
-                console.warn('🔥 Firebase not available, event logged locally only');
-            }
-            
-            return null;
-        }
-
-        function updateFirebaseStatus(status) {
-            const statusElement = document.getElementById('firebaseStatus');
-            if (!statusElement) return;
-            
-            if (status === 'syncing') {
-                statusElement.textContent = '🔥 Syncing...';
-                statusElement.className = 'firebase-status syncing';
-            } else if (status === true || status === 'connected') {
-                statusElement.textContent = '🔥 Connected';
-                statusElement.className = 'firebase-status connected';
-            } else {
-                statusElement.textContent = '🔥 Disconnected';
-                statusElement.className = 'firebase-status disconnected';
-            }
-        }
-
-        function startSessionTimer() {
-            if (sessionTimer) {
-                clearInterval(sessionTimer);
-            }
-            
-            sessionTimer = setInterval(() => {
-                if (visitSession.isActive && visitSession.startTime) {
-                    visitSession.duration = Math.floor((Date.now() - visitSession.startTime) / 1000);
-                    updateSessionTimerDisplay();
-                    
-                    // Update Firebase progress every 30 seconds
-                    if (visitSession.duration % 30 === 0 && firebaseConnected) {
-                        updateVisitProgress({
-                            customer_name: visitSession.customerName,
-                            duration: visitSession.duration,
-                            status: 'active',
-                            last_heartbeat: new Date().toISOString()
-                        });
-                    }
-                }
-            }, 1000);
-        }
-
-        function stopSessionTimer() {
-            if (sessionTimer) {
-                clearInterval(sessionTimer);
-                sessionTimer = null;
-            }
-        }
-
-        function updateSessionTimerDisplay() {
-            const timerElement = document.getElementById('sessionTimer');
-            if (timerElement) {
-                timerElement.textContent = formatDuration(visitSession.duration);
-            }
-        }
-
-        function updateVisitSessionStatus() {
-            const statusElement = document.getElementById('visitSessionStatus');
-            const customerElement = document.getElementById('sessionCustomerName');
-            const timerElement = document.getElementById('sessionTimer');
-            
-            if (visitSession.isActive) {
-                statusElement.classList.add('active');
-                customerElement.textContent = `🏪 ${visitSession.customerName}`;
-                timerElement.textContent = formatDuration(visitSession.duration);
-            } else {
-                statusElement.classList.remove('active');
-                customerElement.textContent = 'No Active Visit';
-                timerElement.textContent = '00:00:00';
-            }
-        }
-
-        function formatDuration(seconds) {
-            const hours = Math.floor(seconds / 3600);
-            const minutes = Math.floor((seconds % 3600) / 60);
-            const secs = seconds % 60;
-            
-            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-        }
-
         // ===== UI FUNCTIONS =====
         function showLoading(show) {
             document.getElementById('loadingSpinner').style.display = show ? 'flex' : 'none';
@@ -2580,36 +2298,6 @@
             document.getElementById('mainContent').style.display = show ? 'block' : 'none';
         }
 
-        function toggleDebugPanel() {
-            antiDuplication.toggleDebug();
-        }
-
-        function debugSessionStatus() {
-            console.log('🔍 SESSION DEBUG STATUS:');
-            console.log('visitSession:', {
-                isActive: visitSession.isActive,
-                customerName: visitSession.customerName,
-                sessionId: visitSession.sessionId,
-                uniqueId: visitSession.uniqueId,
-                confirmed: visitSession.confirmed,
-                preventMultipleStarts: visitSession.preventMultipleStarts,
-                pendingCustomer: visitSession.pendingCustomer,
-                pendingHari: visitSession.pendingHari,
-                startTime: visitSession.startTime ? new Date(visitSession.startTime).toLocaleTimeString() : null,
-                duration: visitSession.duration
-            });
-            
-            console.log('antiDuplication stats:', antiDuplication.getStats());
-            
-            return {
-                visitSession,
-                antiDuplicationStats: antiDuplication.getStats()
-            };
-        }
-
-        // Make debug function available globally
-        window.debugSessionStatus = debugSessionStatus;
-
         // ===== INITIALIZATION =====
         async function initializeData() {
             try {
@@ -2617,7 +2305,7 @@
                 
                 console.log('🚀 Starting enhanced data initialization...');
                 
-                // NEW: Initialize day indicator
+                // Initialize day indicator
                 const currentDay = updateDayIndicator();
                 
                 console.log('🔍 Initializing salesman from URL...');
@@ -2632,13 +2320,9 @@
                 console.log('📊 Loading details data...');
                 await loadDetailsData();
                 
-                // NOTE: loadTodayVisitedCustomers() will be called automatically 
-                // when Firebase connects via setupPresenceSystem()
-                console.log('📋 Today visited customers will be loaded when Firebase connects...');
-                
                 console.log('✅ All data loaded successfully. Processing hari data...');
                 
-                // Create hari data from pelanggan data or use hardcoded fallback
+                // Create hari data from pelanggan data
                 if (pelangganData.length > 0 && currentSalesmanId) {
                     console.log('🔍 Filtering hari data for salesman...');
                     
@@ -2647,16 +2331,11 @@
                         return itemSalesmanId === currentSalesmanId;
                     });
                     
-                    console.log('📦 Filtered data count: ' + filteredData.length);
-                    
                     const uniqueHari = [...new Set(filteredData
                         .map(item => normalizeHariFormat(item.Hari_Kunjungan))
                         .filter(hari => hari && hari.trim() !== '')
                     )];
                     
-                    console.log('📅 All unique hari found: ' + uniqueHari.length, uniqueHari);
-                    
-                    // NEW: Filter by current day and sort alphabetically
                     const filteredByDay = filterHariByCurrentDay(uniqueHari, currentDay);
                     console.log(`📅 Hari filtered for ${currentDay}: ${filteredByDay.length}`, filteredByDay);
                     
@@ -2665,7 +2344,7 @@
                     }
                 }
                 
-                // Fallback to current day only if no data found
+                // Fallback to current day
                 if (hariData.length === 0) {
                     console.log('⚠️ No hari data found, using current day fallback...');
                     hariData = [{ Hari_Kunjungan: currentDay }];
@@ -2685,14 +2364,13 @@
                 showLoading(false);
                 showMainContent(true);
                 
-                console.log('✅ Enhanced visit system with customer visit validation ready');
+                console.log('✅ Enhanced visit system ready');
                 console.log(`📅 Current day: ${currentDay}`);
                 console.log(`📊 Available hari options: ${hariData.length}`);
-                console.log('🔥 Firebase integration will load visited customers when connected');
-                console.log('🛡️ Anti-duplication system active');
-                console.log('🚫 One visit per customer per day enforced');
-                console.log('📊 Session management with modal confirmations');
-                console.log('🔒 Single customer session tracking');
+                console.log('🔥 Firebase integration active');
+                console.log('📍 Geolocation tracking enabled');
+                console.log('🏪 Order status tracking enabled');
+                console.log('📋 Session management with coordinates');
                 
             } catch (error) {
                 console.error('❌ Critical error in initializeData:', error);
@@ -2709,58 +2387,41 @@
             // Initialize session status
             updateVisitSessionStatus();
             
-            // Initialize Firebase status (will be updated by initializeFirebaseStatus)
+            // Initialize Firebase status
             document.getElementById('firebaseStatus').textContent = '🔥 Connecting...';
             document.getElementById('firebaseStatus').className = 'firebase-status syncing';
             
-            // Check for debug mode
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.get('debug') === 'true') {
-                antiDuplication.toggleDebug();
-                console.log('🔧 Debug mode enabled via URL parameter');
-            }
+            // Initialize geolocation
+            initializeGeolocation();
             
-            // Initialize data and Firebase
+            // Initialize data
             initializeData();
         });
 
         // ===== NAVIGATION FUNCTIONS WITH SESSION PROTECTION =====
         function goHome() {
-            // PROTECTION: Check if there's an active visit session
-            if (visitSession.isActive) {
-                showActiveSessionWarningModal('navigate_home');
-                return;
-            }
+            if (!checkActiveSessionBeforeAction('navigate_home')) return;
             window.location.href = 'dashboard.html'; 
         }
         
         function showVisitOutlet() { 
-            // Already on visit page, no action needed
             window.location.href = 'visit.html';
         }
         
         function showIncentive() {
-            // PROTECTION: Check if there's an active visit session
-            if (visitSession.isActive) {
-                showActiveSessionWarningModal('navigate_incentive');
-                return;
-            }
+            if (!checkActiveSessionBeforeAction('navigate_incentive')) return;
             alert('💰 Incentive feature coming soon');
         }
         
         function showProfile() {
-            // PROTECTION: Check if there's an active visit session
-            if (visitSession.isActive) {
-                showActiveSessionWarningModal('navigate_profile');
-                return;
-            }
+            if (!checkActiveSessionBeforeAction('navigate_profile')) return;
             alert('👤 Profile feature coming soon');
         }
 
-        // Override browser back button and other navigation attempts
+        // Override browser back button protection
         window.addEventListener('beforeunload', function (e) {
             if (visitSession.isActive) {
-                const confirmationMessage = `⚠️ Anda memiliki kunjungan aktif ke ${visitSession.customerName}.\n\nJika Anda meninggalkan halaman, kunjungan akan dianggap tidak selesai.`;
+                const confirmationMessage = `⚠️ Anda memiliki kunjungan aktif ke ${visitSession.outletName}.\n\nJika Anda meninggalkan halaman, kunjungan akan dianggap tidak selesai.`;
                 
                 e.preventDefault();
                 e.returnValue = confirmationMessage;
@@ -2768,59 +2429,15 @@
             }
         });
 
-        // Add page visibility change handler to track when user switches tabs
-        document.addEventListener('visibilitychange', function() {
-            if (visitSession.isActive) {
-                if (document.hidden) {
-                    console.log('📱 User switched away from visit page during active session');
-                    // Track tab switch during visit
-                    if (firebaseConnected) {
-                        trackCustomerInteraction('tab_switched_away', {
-                            customer_name: visitSession.customerName,
-                            duration_so_far: visitSession.duration,
-                            timestamp: new Date().toISOString()
-                        });
-                    }
-                } else {
-                    console.log('📱 User returned to visit page during active session');
-                    if (firebaseConnected) {
-                        trackCustomerInteraction('tab_returned', {
-                            customer_name: visitSession.customerName,
-                            duration_so_far: visitSession.duration,
-                            timestamp: new Date().toISOString()
-                        });
-                    }
-                }
-            }
-        });
-
-        console.log('✅ Enhanced Visit System with Session Protection loaded');
-        console.log('🔄 Key features:');
-        console.log('   - Real-time Firebase database integration');
-        console.log('   - Visit session tracking with cloud sync');
-        console.log('   - Customer interaction logging');
-        console.log('   - Automatic presence detection');
-        console.log('   - Day-based filtering and sorting');
-        console.log('   - Enhanced session management');
-        console.log('   - Anti-duplication system');
-        console.log('🛡️ Session Protection Features:');
-        console.log('   - Prevents changing Hari JKS during active visit');
-        console.log('   - Prevents changing Customer during active visit');
-        console.log('   - Prevents navigation to other menus during visit');
-        console.log('   - Browser back button protection');
-        console.log('   - Tab switching detection');
-        console.log('   - Force end session before continuing actions');
-        console.log('🔥 Firebase Features:');
-        console.log('   - Real-time connection monitoring');
-        console.log('   - Structured data storage for reporting');
-        console.log('   - Automatic offline handling');
-        console.log('   - Multi-path data organization');
-        console.log('🚫 Visit Controls:');
-        console.log('   - One visit per customer per day enforced');
-        console.log('   - Real-time visited customer tracking');
-        console.log('   - Visual indicators for visited customers');
-        console.log('💡 Debug: Add ?debug=true to URL for debug panel');
+        console.log('✅ Enhanced Visit System with Order Tracking loaded');
+        console.log('🔄 Key enhancements:');
+        console.log('   - Real-time geolocation tracking');
+        console.log('   - Enhanced Firebase with outlet data structure');
+        console.log('   - Order status tracking (Ada SO/Toko Tidak Order/Toko Tutup)');
+        console.log('   - Sales Order amount capture');
+        console.log('   - Complete coordinate logging (start/end/master)');
+        console.log('   - Session protection with smart end modal');
+        console.log('   - Comprehensive visit analytics');
     </script>
 </body>
-</html>		
-			
+</html>
