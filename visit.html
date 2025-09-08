@@ -5,9 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Visit Outlet - Enhanced Order Tracking</title>
     
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
-    
     <style>
         * {
             margin: 0;
@@ -345,41 +342,10 @@
             background: rgba(239, 68, 68, 0.9);
         }
 
-        /* ===== FIREBASE CONNECTION STATUS ===== */
-        .firebase-status {
-            position: fixed;
-            top: 50px;
-            right: 10px;
-            background: rgba(16, 185, 129, 0.9);
-            color: white;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: 600;
-            z-index: 1001;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-        }
-
-        .firebase-status.connected {
-            background: rgba(16, 185, 129, 0.9);
-        }
-
-        .firebase-status.disconnected {
-            background: rgba(239, 68, 68, 0.9);
-        }
-
-        .firebase-status.syncing {
-            background: rgba(245, 158, 11, 0.9);
-            animation: pulse 2s infinite;
-        }
-
         /* ===== DAY INDICATOR ===== */
         .day-indicator {
             position: fixed;
-            top: 90px;
+            top: 50px;
             right: 10px;
             background: rgba(102, 126, 234, 0.9);
             color: white;
@@ -807,11 +773,6 @@
             📍 Getting location...
         </div>
 
-        <!-- Firebase Connection Status -->
-        <div class="firebase-status" id="firebaseStatus">
-            🔥 Connecting Firebase...
-        </div>
-
         <!-- Day Indicator -->
         <div class="day-indicator" id="dayIndicator">
             📅 Loading...
@@ -1013,38 +974,6 @@
         </div>
     </div>
 
-    <!-- Firebase SDK -->
-    <script type="module">
-        // Import Firebase modules
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getDatabase, ref, push, set, onDisconnect, serverTimestamp, onValue } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
-
-        // Firebase configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyAoRV3qVAXQ14AEVA8Mo49HXfAyhMMm8Bs",
-            authDomain: "salesman-route-tracker.firebaseapp.com",
-            databaseURL: "https://salesman-route-tracker-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "salesman-route-tracker",
-            storageBucket: "salesman-route-tracker.firebasestorage.app",
-            messagingSenderId: "590789273516",
-            appId: "1:590789273516:web:79abe0c7e4cbccfa44fc09",
-            measurementId: "G-5RYSWKQ063"
-        };
-
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const database = getDatabase(app);
-
-        // Make Firebase available globally
-        window.firebaseDB = database;
-        window.firebaseRefs = { ref, push, set, onDisconnect, serverTimestamp, onValue };
-        
-        console.log('🔥 Firebase initialized successfully');
-        
-        // Initialize Firebase connection monitoring
-        initializeFirebaseStatus();
-    </script>
-
     <script>
         // ===== GLOBAL VARIABLES =====
         let currentSalesman = '';
@@ -1054,9 +983,7 @@
         let detailsData = [];
         let salesmanData = [];
         
-        // ===== FIREBASE VARIABLES =====
-        let firebaseConnected = false;
-        let currentSessionRef = null;
+        // ===== LOCAL STORAGE FOR VISITS =====
         let todayVisitedCustomers = new Set();
 
         // ===== LOCATION TRACKING VARIABLES =====
@@ -1069,7 +996,7 @@
 
         let watchId = null;
 
-        // ===== ENHANCED VISIT SESSION WITH ORDER TRACKING =====
+        // ===== SIMPLIFIED VISIT SESSION =====
         let visitSession = {
             isActive: false,
             outletId: null,
@@ -1078,23 +1005,8 @@
             endTime: null,
             duration: 0,
             sessionId: null,
-            startLocation: {
-                latitude: null,
-                longitude: null,
-                accuracy: null,
-                timestamp: null
-            },
-            endLocation: {
-                latitude: null,
-                longitude: null,
-                accuracy: null,
-                timestamp: null
-            },
-            masterLocation: {
-                latitude: null,
-                longitude: null,
-                source: null
-            },
+            startLocation: null,
+            endLocation: null,
             orderStatus: null,
             soAmount: null,
             pendingOutlet: null,
@@ -1156,7 +1068,6 @@
                         timestamp: new Date().toISOString()
                     };
                     
-                    // Update location status if visit is active
                     if (visitSession.isActive) {
                         updateLocationStatus('success', '📍 Tracking active');
                     }
@@ -1180,106 +1091,42 @@
             }
         }
 
-        // ===== FIREBASE CONNECTION FUNCTIONS =====
-        function initializeFirebaseStatus() {
-            const { ref, onValue } = window.firebaseRefs;
-            const database = window.firebaseDB;
+        // ===== LOCAL STORAGE VISIT TRACKING =====
+        function loadTodayVisitedCustomers() {
+            const today = new Date().toISOString().split('T')[0];
+            const visitKey = `visited_${currentSalesmanId}_${today}`;
+            const storedVisits = localStorage.getItem(visitKey);
             
-            // Monitor Firebase connection status
-            const connectedRef = ref(database, '.info/connected');
-            onValue(connectedRef, (snapshot) => {
-                const connected = snapshot.val();
-                firebaseConnected = connected;
-                updateFirebaseStatus(connected);
-                
-                if (connected) {
-                    console.log('🔥 Firebase connected successfully');
-                    setupPresenceSystem();
-                } else {
-                    console.log('🔥 Firebase disconnected');
-                }
-            });
-        }
-
-        function updateFirebaseStatus(connected) {
-            const statusElement = document.getElementById('firebaseStatus');
-            if (statusElement) {
-                if (connected) {
-                    statusElement.textContent = '🔥 Connected';
-                    statusElement.className = 'firebase-status connected';
-                } else {
-                    statusElement.textContent = '🔥 Disconnected';
-                    statusElement.className = 'firebase-status disconnected';
-                }
+            if (storedVisits) {
+                const visits = JSON.parse(storedVisits);
+                todayVisitedCustomers = new Set(visits.map(v => v.toLowerCase()));
+                console.log(`📋 Loaded ${todayVisitedCustomers.size} visited outlets from local storage`);
+                updateCustomerListVisitStatus();
+            } else {
+                console.log('📋 No outlets visited today yet');
             }
         }
 
-        function setupPresenceSystem() {
-            if (!currentSalesmanId || !window.firebaseDB) return;
+        function markCustomerAsVisited(outletName, sessionId) {
+            // Add to local tracking
+            todayVisitedCustomers.add(outletName.toLowerCase());
             
-            const { ref, set, onDisconnect, serverTimestamp } = window.firebaseRefs;
-            const database = window.firebaseDB;
+            // Save to localStorage
+            const today = new Date().toISOString().split('T')[0];
+            const visitKey = `visited_${currentSalesmanId}_${today}`;
+            const existingVisits = JSON.parse(localStorage.getItem(visitKey) || '[]');
             
-            // Set user as online
-            const userStatusRef = ref(database, `presence/${currentSalesmanId}`);
-            
-            const userStatus = {
-                online: true,
-                last_seen: serverTimestamp(),
-                salesman_name: currentSalesman,
-                session_start: serverTimestamp()
-            };
-            
-            // Set online status
-            set(userStatusRef, userStatus);
-            
-            // Set offline when disconnected
-            onDisconnect(userStatusRef).set({
-                online: false,
-                last_seen: serverTimestamp(),
+            existingVisits.push({
+                outlet_name: outletName,
+                outlet_id: visitSession.outletId,
+                session_id: sessionId,
+                visit_time: new Date().toISOString(),
+                salesman_id: currentSalesmanId,
                 salesman_name: currentSalesman
             });
             
-            console.log(`🔥 Presence system setup for salesman: ${currentSalesman}`);
-            
-            // Load today's visited customers
-            loadTodayVisitedCustomers();
-        }
-
-        // ===== CUSTOMER VISIT VALIDATION FUNCTIONS =====
-        async function loadTodayVisitedCustomers() {
-            if (!firebaseConnected || !window.firebaseDB || !currentSalesmanId) {
-                console.log('📋 Firebase not available, using local visited customers tracking');
-                return;
-            }
-            
-            try {
-                const { ref, onValue } = window.firebaseRefs;
-                const database = window.firebaseDB;
-                
-                const today = new Date().toISOString().split('T')[0];
-                const dailyVisitsRef = ref(database, `daily_visits/${today}/${currentSalesmanId}`);
-                
-                onValue(dailyVisitsRef, (snapshot) => {
-                    const data = snapshot.val();
-                    todayVisitedCustomers.clear();
-                    
-                    if (data) {
-                        Object.keys(data).forEach(customerKey => {
-                            const customerName = data[customerKey].outlet_name;
-                            todayVisitedCustomers.add(customerName.toLowerCase());
-                        });
-                        
-                        console.log(`📋 Loaded ${todayVisitedCustomers.size} visited outlets for today:`, Array.from(todayVisitedCustomers));
-                        updateCustomerListVisitStatus();
-                    } else {
-                        console.log('📋 No outlets visited today yet');
-                    }
-                });
-                
-            } catch (error) {
-                console.error('❌ Error loading today visited customers:', error);
-            }
+            localStorage.setItem(visitKey, JSON.stringify(existingVisits));
+            console.log(`📋 Outlet ${outletName} marked as visited locally`);
         }
 
         function isCustomerAlreadyVisited(customerName) {
@@ -1300,7 +1147,7 @@
             });
         }
 
-        // ===== ENHANCED VISIT SESSION FUNCTIONS WITH ORDER STATUS =====
+        // ===== SIMPLIFIED VISIT SESSION FUNCTIONS =====
         function showVisitStartModal(outletName, hariJKS) {
             visitSession.pendingOutlet = outletName;
             visitSession.pendingHari = hariJKS;
@@ -1380,7 +1227,7 @@
             
             if (orderStatus === 'ada_so') {
                 soAmountSection.classList.add('show');
-                endVisitBtn.disabled = false; // Will validate amount when confirming
+                endVisitBtn.disabled = false;
             } else if (orderStatus === 'toko_tidak_order' || orderStatus === 'toko_tutup') {
                 soAmountSection.classList.remove('show');
                 endVisitBtn.disabled = false;
@@ -1424,19 +1271,14 @@
                 endVisitSession();
             }
             
-            // Get outlet ID from pelanggan data
-            const outletRecord = pelangganData.find(item => {
-                const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
-                const itemPelanggan = (item.Nama_Pelanggan || '').toString().trim();
-                return itemSalesmanId === currentSalesmanId &&
-                       itemPelanggan.toLowerCase() === outletName.toLowerCase();
+            // Get outlet ID from d.details.json
+            const outletRecord = detailsData.find(item => {
+                const itemPelanggan = (item['Nama Pelanggan'] || '').toString().trim();
+                return itemPelanggan.toLowerCase() === outletName.toLowerCase();
             });
             
-            const outletId = outletRecord ? outletRecord.Kode_Pelanggan : `OUTLET_${Date.now()}`;
+            const outletId = outletRecord ? outletRecord['Id Pelanggan'] : `OUTLET_${Date.now()}`;
             const sessionId = `visit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-            
-            // Get master coordinates from d.details.json
-            const masterCoordinates = getCustomerCoordinates(outletName, outletId);
             
             // Capture current location as start location
             const startLocation = {
@@ -1455,7 +1297,6 @@
             visitSession.sessionId = sessionId;
             visitSession.startLocation = startLocation;
             visitSession.endLocation = null;
-            visitSession.masterLocation = masterCoordinates;
             visitSession.orderStatus = null;
             visitSession.soAmount = null;
             
@@ -1466,23 +1307,20 @@
             updateVisitSessionStatus();
             startSessionTimer();
             
-            console.log(`✅ Visit session started: ${outletName} (ID: ${sessionId})`);
+            console.log(`✅ Visit session started: ${outletName} (ID: ${outletId})`);
             
-            // Save to Firebase
-            const sessionData = {
+            // Save visit data to localStorage
+            saveVisitSessionToLocal('session_start', {
                 outlet_id: outletId,
                 outlet_name: outletName,
                 hari_jks: hariJKS,
                 session_id: sessionId,
                 start_time: new Date().toISOString(),
                 start_location: startLocation,
-                master_location: masterCoordinates,
                 visit_status: 'started',
                 salesman_id: currentSalesmanId,
                 salesman_name: currentSalesman
-            };
-            
-            saveVisitSessionToFirebase('session_start', sessionData);
+            });
         }
 
         function endVisitSession() {
@@ -1508,8 +1346,8 @@
             
             console.log(`🏁 Ending visit session: ${visitSession.outletName} (duration: ${formatDuration(duration)})`);
             
-            // Prepare session end data with all required fields
-            const sessionEndData = {
+            // Save visit completion to localStorage
+            saveVisitSessionToLocal('session_end', {
                 outlet_id: visitSession.outletId,
                 outlet_name: visitSession.outletName,
                 session_id: visitSession.sessionId,
@@ -1518,16 +1356,12 @@
                 duration_seconds: duration,
                 start_location: visitSession.startLocation,
                 end_location: endLocation,
-                master_location: visitSession.masterLocation,
                 order_status: visitSession.orderStatus,
                 so_amount: visitSession.soAmount,
                 visit_status: 'completed',
                 salesman_id: currentSalesmanId,
                 salesman_name: currentSalesman
-            };
-            
-            // Save to Firebase
-            saveVisitSessionToFirebase('session_end', sessionEndData);
+            });
             
             // Reset session
             const endedOutlet = visitSession.outletName;
@@ -1540,7 +1374,6 @@
             visitSession.sessionId = null;
             visitSession.startLocation = null;
             visitSession.endLocation = null;
-            visitSession.masterLocation = null;
             visitSession.orderStatus = null;
             visitSession.soAmount = null;
             
@@ -1551,105 +1384,33 @@
             console.log(`✅ Visit session ended successfully: ${endedOutlet}, duration: ${formatDuration(duration)}`);
         }
 
-        async function markCustomerAsVisited(outletName, sessionId) {
-            // Add to local tracking
-            todayVisitedCustomers.add(outletName.toLowerCase());
-            
-            // Save to Firebase
-            if (firebaseConnected && window.firebaseDB) {
-                try {
-                    const { ref, set, serverTimestamp } = window.firebaseRefs;
-                    const database = window.firebaseDB;
-                    
-                    const today = new Date().toISOString().split('T')[0];
-                    const outletKey = outletName.replace(/[.#$[\]]/g, '_');
-                    const visitRecord = {
-                        outlet_id: visitSession.outletId,
-                        outlet_name: outletName,
-                        salesman_id: currentSalesmanId,
-                        salesman_name: currentSalesman,
-                        session_id: sessionId,
-                        visit_date: today,
-                        visit_time: serverTimestamp(),
-                        status: 'visited'
-                    };
-                    
-                    // Save to multiple paths for different query needs
-                    const updates = {};
-                    updates[`daily_visits/${today}/${currentSalesmanId}/${outletKey}`] = visitRecord;
-                    updates[`outlet_visit_history/${outletKey}/${today}_${currentSalesmanId}`] = visitRecord;
-                    updates[`salesman_daily_summary/${currentSalesmanId}/${today}/outlets/${outletKey}`] = visitRecord;
-                    
-                    await set(ref(database), updates);
-                    console.log(`📋 Outlet ${outletName} marked as visited for today`);
-                    
-                } catch (error) {
-                    console.error('❌ Error marking customer as visited:', error);
-                }
-            }
-        }
-
-        // ===== ENHANCED FIREBASE DATA TRACKING =====
-        async function saveVisitSessionToFirebase(eventType, sessionData) {
-            if (!firebaseConnected || !window.firebaseDB) {
-                console.warn('🔥 Firebase not connected, storing locally');
-                return null;
-            }
-            
+        function saveVisitSessionToLocal(eventType, sessionData) {
             try {
-                const { ref, push, set, serverTimestamp } = window.firebaseRefs;
-                const database = window.firebaseDB;
-                
+                const sessionKey = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
                 const sessionRecord = {
                     event_type: eventType,
-                    ...sessionData,
-                    timestamp: serverTimestamp(),
-                    device_info: {
-                        user_agent: navigator.userAgent,
-                        platform: navigator.platform,
-                        language: navigator.language
-                    }
+                    session_key: sessionKey,
+                    timestamp: new Date().toISOString(),
+                    ...sessionData
                 };
                 
-                // Save to multiple paths
-                const updates = {};
+                // Save to multiple localStorage keys for different purposes
+                const keys = [
+                    `visit_sessions_${currentSalesmanId}`,
+                    `daily_sessions_${currentSalesmanId}_${new Date().toISOString().split('T')[0]}`
+                ];
                 
-                // 1. Main sessions log
-                const sessionLogRef = ref(database, 'enhanced_visit_sessions');
-                const newSessionRef = push(sessionLogRef);
-                updates[`enhanced_visit_sessions/${newSessionRef.key}`] = sessionRecord;
+                keys.forEach(key => {
+                    const existingSessions = JSON.parse(localStorage.getItem(key) || '[]');
+                    existingSessions.push(sessionRecord);
+                    localStorage.setItem(key, JSON.stringify(existingSessions));
+                });
                 
-                // 2. Salesman-specific sessions
-                updates[`salesman_visit_sessions/${currentSalesmanId}/${newSessionRef.key}`] = sessionRecord;
-                
-                // 3. Daily sessions for reporting
-                const today = new Date().toISOString().split('T')[0];
-                updates[`daily_visit_sessions/${today}/${currentSalesmanId}/${newSessionRef.key}`] = sessionRecord;
-                
-                // 4. Outlet-specific sessions
-                if (sessionData.outlet_id) {
-                    const outletKey = sessionData.outlet_id.replace(/[.#$[\]]/g, '_');
-                    updates[`outlet_visit_sessions/${outletKey}/${newSessionRef.key}`] = sessionRecord;
-                }
-                
-                // 5. Current active sessions (for real-time monitoring)
-                if (eventType === 'session_start') {
-                    updates[`active_visit_sessions/${currentSalesmanId}`] = {
-                        ...sessionRecord,
-                        session_key: newSessionRef.key
-                    };
-                } else if (eventType === 'session_end') {
-                    updates[`active_visit_sessions/${currentSalesmanId}`] = null;
-                }
-                
-                // Perform batch update
-                await set(ref(database), updates);
-                
-                console.log(`🔥 Enhanced session ${eventType} saved to Firebase:`, newSessionRef.key);
-                return newSessionRef.key;
+                console.log(`💾 Session ${eventType} saved to localStorage: ${sessionKey}`);
+                return sessionKey;
                 
             } catch (error) {
-                console.error('🔥 Error saving to Firebase:', error);
+                console.error('💾 Error saving to localStorage:', error);
                 return null;
             }
         }
@@ -1764,28 +1525,6 @@
             
             // Sort alphabetically
             return filtered.sort((a, b) => a.localeCompare(b));
-        }
-
-        function getCustomerCoordinates(customerName, kodePelanggan) {
-            // Find customer in details data by Kode_Pelanggan
-            const customerDetail = detailsData.find(item => {
-                return item.Kode_Pelanggan === kodePelanggan;
-            });
-            
-            if (customerDetail && customerDetail.Latitude && customerDetail.Longitude) {
-                return {
-                    latitude: parseFloat(customerDetail.Latitude),
-                    longitude: parseFloat(customerDetail.Longitude),
-                    source: 'master_data'
-                };
-            }
-            
-            // Fallback: Generate demo coordinates near Jakarta
-            return {
-                latitude: -6.2000 + (Math.random() - 0.5) * 0.1,
-                longitude: 106.8000 + (Math.random() - 0.5) * 0.1,
-                source: 'demo_data'
-            };
         }
 
         // ===== DATA LOADING FUNCTIONS =====
@@ -1969,29 +1708,19 @@
                 
                 console.log(`👥 Outlet selected: ${selectedPelanggan} for ${selectedHari}`);
                 
-                // Find customer record to get details
-                const pelangganRecord = pelangganData.find(item => {
-                    const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
-                    const itemHari = (item.Hari_Kunjungan || '').toString().trim().toUpperCase();
-                    const itemPelanggan = (item.Nama_Pelanggan || '').toString().trim();
-                    
-                    return itemSalesmanId === currentSalesmanId &&
-                           itemHari === selectedHari &&
-                           itemPelanggan.toLowerCase() === selectedPelanggan.toLowerCase();
+                // Get customer details from d.details.json directly
+                const detailRecord = detailsData.find(item => {
+                    const itemPelanggan = (item['Nama Pelanggan'] || '').toString().trim();
+                    return itemPelanggan.toLowerCase() === selectedPelanggan.toLowerCase();
                 });
 
-                // Get customer type
+                // Get customer type from d.details.json
                 let customerTypeText = `${selectedHari} Outlet`;
-                if (pelangganRecord && pelangganRecord.Kode_Pelanggan) {
-                    const detailRecord = detailsData.find(item => 
-                        item.Kode_Pelanggan === pelangganRecord.Kode_Pelanggan
-                    );
-                    
-                    if (detailRecord) {
-                        const channelGroup = detailRecord['Channel Group'] || 'Unknown';
-                        const project = detailRecord.Project || 'Unknown';
-                        customerTypeText = `${channelGroup} - ${project}`;
-                    }
+                if (detailRecord) {
+                    const channelGroup = detailRecord['Channel Group'] || 'Unknown';
+                    const project = detailRecord.Project || 'Unknown';
+                    customerTypeText = `${channelGroup} - ${project}`;
+                    console.log(`📋 Found outlet details: ID=${detailRecord['Id Pelanggan']}, Type=${customerTypeText}`);
                 }
                 
                 // Show customer info
@@ -2009,6 +1738,7 @@
                     outlet: selectedPelanggan,
                     hari: selectedHari,
                     type: customerTypeText,
+                    id_pelanggan: detailRecord ? detailRecord['Id Pelanggan'] : 'Not found',
                     alreadyVisited: false
                 });
                 
@@ -2303,7 +2033,7 @@
             try {
                 showLoading(true);
                 
-                console.log('🚀 Starting enhanced data initialization...');
+                console.log('🚀 Starting simplified data initialization...');
                 
                 // Initialize day indicator
                 const currentDay = updateDayIndicator();
@@ -2361,16 +2091,18 @@
                     hariSelect.appendChild(option);
                 });
                 
+                // Load today's visited customers from localStorage
+                loadTodayVisitedCustomers();
+                
                 showLoading(false);
                 showMainContent(true);
                 
-                console.log('✅ Enhanced visit system ready');
+                console.log('✅ Simplified visit system ready');
                 console.log(`📅 Current day: ${currentDay}`);
                 console.log(`📊 Available hari options: ${hariData.length}`);
-                console.log('🔥 Firebase integration active');
                 console.log('📍 Geolocation tracking enabled');
                 console.log('🏪 Order status tracking enabled');
-                console.log('📋 Session management with coordinates');
+                console.log('💾 Local storage session management active');
                 
             } catch (error) {
                 console.error('❌ Critical error in initializeData:', error);
@@ -2386,10 +2118,6 @@
 
             // Initialize session status
             updateVisitSessionStatus();
-            
-            // Initialize Firebase status
-            document.getElementById('firebaseStatus').textContent = '🔥 Connecting...';
-            document.getElementById('firebaseStatus').className = 'firebase-status syncing';
             
             // Initialize geolocation
             initializeGeolocation();
@@ -2429,15 +2157,11 @@
             }
         });
 
-        console.log('✅ Enhanced Visit System with Order Tracking loaded');
-        console.log('🔄 Key enhancements:');
-        console.log('   - Real-time geolocation tracking');
-        console.log('   - Enhanced Firebase with outlet data structure');
-        console.log('   - Order status tracking (Ada SO/Toko Tidak Order/Toko Tutup)');
-        console.log('   - Sales Order amount capture');
-        console.log('   - Complete coordinate logging (start/end/master)');
-        console.log('   - Session protection with smart end modal');
-        console.log('   - Comprehensive visit analytics');
+        console.log('✅ Simplified Visit System with Local Storage loaded');
+        console.log('🧹 All problematic Firebase operations removed');
+        console.log('💾 Using localStorage for visit tracking');
+        console.log('📍 Geolocation tracking active');
+        console.log('🏪 Full visit session management working');
     </script>
 </body>
 </html>
