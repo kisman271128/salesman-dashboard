@@ -1091,17 +1091,35 @@
             }
         }
 
-        // ===== LOCAL STORAGE VISIT TRACKING =====
+        // ===== FIXED LOCAL STORAGE VISIT TRACKING =====
         function loadTodayVisitedCustomers() {
             const today = new Date().toISOString().split('T')[0];
             const visitKey = `visited_${currentSalesmanId}_${today}`;
             const storedVisits = localStorage.getItem(visitKey);
             
             if (storedVisits) {
-                const visits = JSON.parse(storedVisits);
-                todayVisitedCustomers = new Set(visits.map(v => v.toLowerCase()));
-                console.log(`📋 Loaded ${todayVisitedCustomers.size} visited outlets from local storage`);
-                updateCustomerListVisitStatus();
+                try {
+                    const visits = JSON.parse(storedVisits);
+                    todayVisitedCustomers = new Set();
+                    
+                    // PERBAIKAN: Handle both string dan object formats
+                    visits.forEach(visit => {
+                        if (typeof visit === 'string') {
+                            // Format lama: array of strings
+                            todayVisitedCustomers.add(visit.toLowerCase());
+                        } else if (visit && visit.outlet_name) {
+                            // Format baru: array of objects
+                            todayVisitedCustomers.add(visit.outlet_name.toLowerCase());
+                        }
+                    });
+                    
+                    console.log(`📋 Loaded ${todayVisitedCustomers.size} visited outlets from local storage`);
+                    updateCustomerListVisitStatus();
+                } catch (error) {
+                    console.error('❌ Error parsing localStorage visits:', error);
+                    localStorage.removeItem(visitKey);
+                    todayVisitedCustomers = new Set();
+                }
             } else {
                 console.log('📋 No outlets visited today yet');
             }
@@ -1114,19 +1132,76 @@
             // Save to localStorage
             const today = new Date().toISOString().split('T')[0];
             const visitKey = `visited_${currentSalesmanId}_${today}`;
-            const existingVisits = JSON.parse(localStorage.getItem(visitKey) || '[]');
             
-            existingVisits.push({
-                outlet_name: outletName,
-                outlet_id: visitSession.outletId,
-                session_id: sessionId,
-                visit_time: new Date().toISOString(),
-                salesman_id: currentSalesmanId,
-                salesman_name: currentSalesman
+            try {
+                const existingVisits = JSON.parse(localStorage.getItem(visitKey) || '[]');
+                
+                const visitRecord = {
+                    outlet_name: outletName,
+                    outlet_id: visitSession.outletId,
+                    session_id: sessionId,
+                    visit_time: new Date().toISOString(),
+                    salesman_id: currentSalesmanId,
+                    salesman_name: currentSalesman
+                };
+                
+                existingVisits.push(visitRecord);
+                localStorage.setItem(visitKey, JSON.stringify(existingVisits));
+                console.log(`📋 Outlet ${outletName} marked as visited locally`);
+                
+            } catch (error) {
+                console.error('❌ Error saving to localStorage:', error);
+                // Fallback: reset localStorage
+                const visitRecord = [{
+                    outlet_name: outletName,
+                    outlet_id: visitSession.outletId,
+                    session_id: sessionId,
+                    visit_time: new Date().toISOString(),
+                    salesman_id: currentSalesmanId,
+                    salesman_name: currentSalesman
+                }];
+                localStorage.setItem(visitKey, JSON.stringify(visitRecord));
+            }
+        }
+
+        function cleanupCorruptedLocalStorage() {
+            if (!currentSalesmanId) return;
+            
+            const keyPrefix = `visited_${currentSalesmanId}`;
+            const keysToCheck = [];
+            
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith(keyPrefix)) {
+                    keysToCheck.push(key);
+                }
+            }
+            
+            keysToCheck.forEach(key => {
+                try {
+                    const data = localStorage.getItem(key);
+                    const parsed = JSON.parse(data);
+                    
+                    if (!Array.isArray(parsed)) {
+                        console.warn(`⚠️ Removing invalid localStorage key: ${key}`);
+                        localStorage.removeItem(key);
+                        return;
+                    }
+                    
+                    const isValid = parsed.every(item => {
+                        return typeof item === 'object' && item.outlet_name;
+                    });
+                    
+                    if (!isValid) {
+                        console.warn(`⚠️ Removing corrupted localStorage key: ${key}`);
+                        localStorage.removeItem(key);
+                    }
+                    
+                } catch (error) {
+                    console.warn(`⚠️ Removing unparseable localStorage key: ${key}`);
+                    localStorage.removeItem(key);
+                }
             });
-            
-            localStorage.setItem(visitKey, JSON.stringify(existingVisits));
-            console.log(`📋 Outlet ${outletName} marked as visited locally`);
         }
 
         function isCustomerAlreadyVisited(customerName) {
@@ -2041,6 +2116,11 @@
                 console.log('🔍 Initializing salesman from URL...');
                 initializeSalesmanFromUrl();
                 
+                // TAMBAHAN: Cleanup localStorage yang corrupt
+                if (currentSalesmanId) {
+                    cleanupCorruptedLocalStorage();
+                }
+                
                 console.log('👤 Loading salesman data...');
                 await loadSalesmanData();
                 
@@ -2091,7 +2171,7 @@
                     hariSelect.appendChild(option);
                 });
                 
-                // Load today's visited customers from localStorage
+                // Load today's visited customers from localStorage (DENGAN ERROR HANDLING)
                 loadTodayVisitedCustomers();
                 
                 showLoading(false);
@@ -2157,9 +2237,9 @@
             }
         });
 
-        console.log('✅ Simplified Visit System with Local Storage loaded');
-        console.log('🧹 All problematic Firebase operations removed');
-        console.log('💾 Using localStorage for visit tracking');
+        console.log('✅ Fixed Visit System with Local Storage loaded');
+        console.log('🧹 All localStorage errors resolved');
+        console.log('💾 Using robust localStorage for visit tracking');
         console.log('📍 Geolocation tracking active');
         console.log('🏪 Full visit session management working');
     </script>
