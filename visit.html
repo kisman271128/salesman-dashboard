@@ -278,6 +278,37 @@
             background: #e2e8f0;
         }
 
+        /* ===== FIREBASE SYNC STATUS ===== */
+        .firebase-status {
+            position: fixed;
+            top: 80px;
+            right: 10px;
+            background: rgba(59, 130, 246, 0.9);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            z-index: 1001;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            display: none;
+        }
+
+        .firebase-status.syncing {
+            background: rgba(245, 158, 11, 0.9);
+            display: block;
+        }
+
+        .firebase-status.success {
+            background: rgba(16, 185, 129, 0.9);
+            display: block;
+        }
+
+        .firebase-status.error {
+            background: rgba(239, 68, 68, 0.9);
+            display: block;
+        }
+
         /* ===== VISIT SESSION STATUS ===== */
         .visit-session-status {
             position: fixed;
@@ -778,6 +809,11 @@
             📅 Loading...
         </div>
 
+        <!-- Firebase Sync Status -->
+        <div class="firebase-status" id="firebaseStatus">
+            🔄 Syncing...
+        </div>
+
         <!-- Visit Session Status -->
         <div class="visit-session-status" id="visitSessionStatus">
             <div class="visit-session-customer" id="sessionCustomerName">No Active Visit</div>
@@ -974,6 +1010,41 @@
         </div>
     </div>
 
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, push, set, get, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAoRV3qVAXQ14AEVA8Mo49HXfAyhMMm8Bs",
+            authDomain: "salesman-route-tracker.firebaseapp.com",
+            databaseURL: "https://salesman-route-tracker-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "salesman-route-tracker",
+            storageBucket: "salesman-route-tracker.firebasestorage.app",
+            messagingSenderId: "590789273516",
+            appId: "1:590789273516:web:79abe0c7e4cbccfa44fc09",
+            measurementId: "G-5RYSWKQ063"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+        const analytics = getAnalytics(app);
+
+        // Make Firebase functions available globally
+        window.firebaseDB = database;
+        window.firebaseRef = ref;
+        window.firebasePush = push;
+        window.firebaseSet = set;
+        window.firebaseGet = get;
+        window.firebaseServerTimestamp = serverTimestamp;
+
+        console.log('🔥 Firebase initialized successfully');
+    </script>
+
     <script>
         // ===== GLOBAL VARIABLES =====
         let currentSalesman = '';
@@ -1014,6 +1085,522 @@
         };
 
         let sessionTimer = null;
+
+        // ===== SYNC MODAL STATE =====
+        let syncModalStats = {
+            totalVisits: 0,
+            pendingSync: 0,
+            syncedToday: 0,
+            storageUsed: 0
+        };
+
+        // ===== SYNC MODAL FUNCTIONS =====
+        function showSyncModal() {
+            document.getElementById('syncModal').classList.add('show');
+            updateSyncModalStats();
+            logSyncMessage('🔥 Firebase Sync Manager opened');
+        }
+
+        function closeSyncModal() {
+            document.getElementById('syncModal').classList.remove('show');
+        }
+
+        function logSyncMessage(message) {
+            const logElement = document.getElementById('syncLog');
+            const timestamp = new Date().toLocaleTimeString();
+            logElement.textContent += `\n[${timestamp}] ${message}`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function updateSyncProgress(percent, text) {
+            const progressBar = document.getElementById('syncProgressBar');
+            const progressText = document.getElementById('syncProgressText');
+            const progressContainer = document.getElementById('syncProgress');
+            
+            if (percent >= 0) {
+                progressContainer.style.display = 'block';
+                progressBar.style.width = `${Math.min(100, Math.max(0, percent))}%`;
+                progressText.textContent = text || `${Math.round(percent)}% complete`;
+            } else {
+                progressContainer.style.display = 'none';
+            }
+        }
+
+        function updateSyncModalStats() {
+            if (!currentSalesmanId) {
+                logSyncMessage('❌ No salesman ID found');
+                return;
+            }
+
+            let totalVisits = 0;
+            let pendingSync = 0;
+            let storageUsed = 0;
+
+            try {
+                // Count all localStorage items for this salesman
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && key.includes(currentSalesmanId)) {
+                        const data = localStorage.getItem(key);
+                        storageUsed += data.length;
+
+                        if (key.startsWith(`visited_${currentSalesmanId}`)) {
+                            try {
+                                const visits = JSON.parse(data);
+                                if (Array.isArray(visits)) {
+                                    totalVisits += visits.length;
+                                }
+                            } catch (e) {
+                                console.warn('Error parsing visits data:', e);
+                            }
+                        } else if (key.startsWith(`pending_firebase_visits_${currentSalesmanId}`)) {
+                            try {
+                                const pending = JSON.parse(data);
+                                if (Array.isArray(pending)) {
+                                    pendingSync = pending.length;
+                                }
+                            } catch (e) {
+                                console.warn('Error parsing pending data:', e);
+                            }
+                        }
+                    }
+                }
+
+                // Update stats display
+                document.getElementById('totalVisitsCount').textContent = totalVisits;
+                document.getElementById('pendingSyncCount').textContent = pendingSync;
+                document.getElementById('storageUsed').textContent = `${(storageUsed / 1024).toFixed(1)} KB`;
+
+                syncModalStats = {
+                    totalVisits,
+                    pendingSync,
+                    storageUsed
+                };
+
+                logSyncMessage(`📊 Stats updated: ${totalVisits} visits, ${pendingSync} pending, ${(storageUsed/1024).toFixed(1)} KB used`);
+
+            } catch (error) {
+                console.error('Error updating sync stats:', error);
+                logSyncMessage(`❌ Error updating stats: ${error.message}`);
+            }
+        }
+
+        async function syncAllLocalStorageData() {
+            if (!window.firebaseDB || !currentSalesmanId) {
+                logSyncMessage('❌ Firebase not available or no salesman ID');
+                return;
+            }
+
+            const syncBtn = document.getElementById('syncAllBtn');
+            syncBtn.disabled = true;
+            syncBtn.textContent = '🔄 Syncing...';
+
+            try {
+                logSyncMessage('🚀 Starting full localStorage sync...');
+                updateSyncProgress(0, 'Analyzing data...');
+
+                // Get all localStorage data for this salesman
+                const allVisitData = [];
+                const keysToProcess = [];
+
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && key.includes(currentSalesmanId) && 
+                        (key.startsWith(`visited_${currentSalesmanId}`) || 
+                         key.startsWith(`visit_sessions_${currentSalesmanId}`) ||
+                         key.startsWith(`daily_sessions_${currentSalesmanId}`))) {
+                        keysToProcess.push(key);
+                    }
+                }
+
+                updateSyncProgress(10, 'Processing visit data...');
+
+                // Process each key
+                for (let i = 0; i < keysToProcess.length; i++) {
+                    const key = keysToProcess[i];
+                    try {
+                        const data = JSON.parse(localStorage.getItem(key));
+                        if (Array.isArray(data)) {
+                            data.forEach(item => {
+                                if (item && item.outlet_name) {
+                                    allVisitData.push({
+                                        ...item,
+                                        source_key: key,
+                                        upload_timestamp: new Date().toISOString()
+                                    });
+                                }
+                            });
+                        }
+                    } catch (error) {
+                        logSyncMessage(`⚠️ Error processing ${key}: ${error.message}`);
+                    }
+
+                    const progress = 10 + (i / keysToProcess.length) * 30;
+                    updateSyncProgress(progress, `Processing ${i + 1}/${keysToProcess.length} keys...`);
+                }
+
+                logSyncMessage(`📦 Found ${allVisitData.length} visit records to sync`);
+
+                if (allVisitData.length === 0) {
+                    updateSyncProgress(-1);
+                    logSyncMessage('ℹ️ No data found to sync');
+                    return;
+                }
+
+                updateSyncProgress(40, 'Uploading to Firebase...');
+
+                // Upload to Firebase
+                let successCount = 0;
+                let errorCount = 0;
+
+                for (let i = 0; i < allVisitData.length; i++) {
+                    try {
+                        const visitData = allVisitData[i];
+                        const visitsRef = window.firebaseRef(window.firebaseDB, `manual_uploads/${currentSalesmanId}`);
+                        
+                        const uploadData = {
+                            ...visitData,
+                            manual_upload: true,
+                            firebase_synced_at: window.firebaseServerTimestamp()
+                        };
+
+                        await window.firebasePush(visitsRef, uploadData);
+                        successCount++;
+
+                    } catch (error) {
+                        console.error('Error uploading visit:', error);
+                        errorCount++;
+                    }
+
+                    const progress = 40 + (i / allVisitData.length) * 50;
+                    updateSyncProgress(progress, `Uploading ${i + 1}/${allVisitData.length} records...`);
+                }
+
+                // Create summary record
+                try {
+                    const summaryRef = window.firebaseRef(window.firebaseDB, `manual_upload_summary/${currentSalesmanId}`);
+                    await window.firebasePush(summaryRef, {
+                        upload_date: new Date().toISOString(),
+                        total_records: allVisitData.length,
+                        success_count: successCount,
+                        error_count: errorCount,
+                        salesman_name: currentSalesman,
+                        upload_timestamp: window.firebaseServerTimestamp()
+                    });
+                } catch (error) {
+                    console.error('Error creating summary:', error);
+                }
+
+                updateSyncProgress(100, 'Upload complete!');
+                logSyncMessage(`✅ Upload complete: ${successCount} success, ${errorCount} errors`);
+
+                setTimeout(() => {
+                    updateSyncProgress(-1);
+                    updateSyncModalStats();
+                }, 2000);
+
+            } catch (error) {
+                console.error('Error in full sync:', error);
+                logSyncMessage(`❌ Sync error: ${error.message}`);
+                updateSyncProgress(-1);
+            } finally {
+                syncBtn.disabled = false;
+                syncBtn.textContent = '📤 Upload All LocalStorage Data';
+            }
+        }
+
+        async function syncPendingVisitsManual() {
+            logSyncMessage('🔄 Starting manual pending sync...');
+            await syncPendingVisitsToFirebase();
+            updateSyncModalStats();
+        }
+
+        function analyzeLocalStorageData() {
+            if (!currentSalesmanId) {
+                logSyncMessage('❌ No salesman ID available');
+                return;
+            }
+
+            logSyncMessage('🔍 Analyzing localStorage data...');
+            
+            const analysis = {
+                visitKeys: [],
+                sessionKeys: [],
+                pendingKeys: [],
+                otherKeys: [],
+                totalSize: 0
+            };
+
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.includes(currentSalesmanId)) {
+                    const data = localStorage.getItem(key);
+                    const size = data.length;
+                    analysis.totalSize += size;
+
+                    const keyInfo = {
+                        key: key,
+                        size: size,
+                        records: 0
+                    };
+
+                    try {
+                        const parsed = JSON.parse(data);
+                        if (Array.isArray(parsed)) {
+                            keyInfo.records = parsed.length;
+                        }
+                    } catch (e) {
+                        keyInfo.records = 'Invalid JSON';
+                    }
+
+                    if (key.startsWith(`visited_${currentSalesmanId}`)) {
+                        analysis.visitKeys.push(keyInfo);
+                    } else if (key.startsWith(`visit_sessions_${currentSalesmanId}`) || 
+                              key.startsWith(`daily_sessions_${currentSalesmanId}`)) {
+                        analysis.sessionKeys.push(keyInfo);
+                    } else if (key.startsWith(`pending_firebase_visits_${currentSalesmanId}`)) {
+                        analysis.pendingKeys.push(keyInfo);
+                    } else {
+                        analysis.otherKeys.push(keyInfo);
+                    }
+                }
+            }
+
+            // Log analysis results
+            logSyncMessage('📋 Analysis Results:');
+            logSyncMessage(`📁 Visit Keys: ${analysis.visitKeys.length}`);
+            analysis.visitKeys.forEach(item => {
+                logSyncMessage(`  - ${item.key}: ${item.records} records, ${(item.size/1024).toFixed(1)} KB`);
+            });
+
+            logSyncMessage(`🗂️ Session Keys: ${analysis.sessionKeys.length}`);
+            analysis.sessionKeys.forEach(item => {
+                logSyncMessage(`  - ${item.key}: ${item.records} records, ${(item.size/1024).toFixed(1)} KB`);
+            });
+
+            if (analysis.pendingKeys.length > 0) {
+                logSyncMessage(`⏳ Pending Keys: ${analysis.pendingKeys.length}`);
+                analysis.pendingKeys.forEach(item => {
+                    logSyncMessage(`  - ${item.key}: ${item.records} records, ${(item.size/1024).toFixed(1)} KB`);
+                });
+            }
+
+            if (analysis.otherKeys.length > 0) {
+                logSyncMessage(`📦 Other Keys: ${analysis.otherKeys.length}`);
+                analysis.otherKeys.forEach(item => {
+                    logSyncMessage(`  - ${item.key}: ${item.records} records, ${(item.size/1024).toFixed(1)} KB`);
+                });
+            }
+
+            logSyncMessage(`💾 Total Storage: ${(analysis.totalSize/1024).toFixed(1)} KB`);
+        }
+
+        function downloadLocalStorageBackup() {
+            if (!currentSalesmanId) {
+                logSyncMessage('❌ No salesman ID available');
+                return;
+            }
+
+            try {
+                logSyncMessage('💾 Creating backup...');
+
+                const backup = {
+                    salesman_id: currentSalesmanId,
+                    salesman_name: currentSalesman,
+                    backup_timestamp: new Date().toISOString(),
+                    data: {}
+                };
+
+                // Collect all data for this salesman
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && key.includes(currentSalesmanId)) {
+                        backup.data[key] = localStorage.getItem(key);
+                    }
+                }
+
+                const backupJSON = JSON.stringify(backup, null, 2);
+                const blob = new Blob([backupJSON], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `localStorage_backup_${currentSalesmanId}_${new Date().toISOString().split('T')[0]}.json`;
+                a.click();
+                
+                URL.revokeObjectURL(url);
+                
+                logSyncMessage(`✅ Backup downloaded: ${Object.keys(backup.data).length} keys, ${(backupJSON.length/1024).toFixed(1)} KB`);
+
+            } catch (error) {
+                console.error('Error creating backup:', error);
+                logSyncMessage(`❌ Backup error: ${error.message}`);
+            }
+        }
+
+        function clearAllLocalStorageData() {
+            if (!currentSalesmanId) {
+                logSyncMessage('❌ No salesman ID available');
+                return;
+            }
+
+            const confirmed = confirm(`⚠️ WARNING: This will permanently delete ALL localStorage data for salesman ${currentSalesmanId}!\n\nThis action cannot be undone. Are you sure?`);
+            
+            if (!confirmed) {
+                logSyncMessage('❌ Clear operation cancelled');
+                return;
+            }
+
+            try {
+                logSyncMessage('🗑️ Clearing localStorage data...');
+                
+                const keysToDelete = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && key.includes(currentSalesmanId)) {
+                        keysToDelete.push(key);
+                    }
+                }
+
+                keysToDelete.forEach(key => {
+                    localStorage.removeItem(key);
+                });
+
+                // Reset today's visited customers
+                todayVisitedCustomers.clear();
+                
+                logSyncMessage(`✅ Cleared ${keysToDelete.length} localStorage keys`);
+                updateSyncModalStats();
+
+            } catch (error) {
+                console.error('Error clearing localStorage:', error);
+                logSyncMessage(`❌ Clear error: ${error.message}`);
+            }
+        }
+
+        // ===== FIREBASE FUNCTIONS =====
+        function updateFirebaseStatus(status, message) {
+            const statusElement = document.getElementById('firebaseStatus');
+            if (statusElement) {
+                statusElement.textContent = message;
+                statusElement.className = `firebase-status ${status}`;
+                
+                // Auto-hide success/error messages after 3 seconds
+                if (status === 'success' || status === 'error') {
+                    setTimeout(() => {
+                        statusElement.classList.remove('success', 'error', 'syncing');
+                    }, 3000);
+                }
+            }
+        }
+
+        async function syncVisitToFirebase(visitData) {
+            if (!window.firebaseDB || !currentSalesmanId) {
+                console.warn('🔥 Firebase not initialized or no salesman ID');
+                return false;
+            }
+
+            try {
+                updateFirebaseStatus('syncing', '🔄 Syncing to Firebase...');
+                
+                // Create a reference to store the visit data
+                const visitsRef = window.firebaseRef(window.firebaseDB, `visits/${currentSalesmanId}`);
+                
+                // Add server timestamp
+                const visitDataWithTimestamp = {
+                    ...visitData,
+                    firebase_synced_at: window.firebaseServerTimestamp(),
+                    firebase_sync_version: '1.0'
+                };
+                
+                // Push visit data to Firebase
+                const newVisitRef = await window.firebasePush(visitsRef, visitDataWithTimestamp);
+                
+                console.log('🔥 Visit data synced to Firebase:', newVisitRef.key);
+                updateFirebaseStatus('success', '✅ Synced to Firebase');
+                
+                // Also store daily summary
+                await syncDailySummaryToFirebase(visitData);
+                
+                return newVisitRef.key;
+                
+            } catch (error) {
+                console.error('🔥 Firebase sync error:', error);
+                updateFirebaseStatus('error', '❌ Firebase sync failed');
+                return false;
+            }
+        }
+
+        async function syncDailySummaryToFirebase(visitData) {
+            try {
+                const today = new Date().toISOString().split('T')[0];
+                const summaryRef = window.firebaseRef(window.firebaseDB, `daily_summary/${currentSalesmanId}/${today}`);
+                
+                // Get existing summary
+                const snapshot = await window.firebaseGet(summaryRef);
+                const existingSummary = snapshot.exists() ? snapshot.val() : {};
+                
+                // Update summary
+                const updatedSummary = {
+                    salesman_id: currentSalesmanId,
+                    salesman_name: currentSalesman,
+                    date: today,
+                    total_visits: (existingSummary.total_visits || 0) + 1,
+                    total_duration_seconds: (existingSummary.total_duration_seconds || 0) + visitData.duration_seconds,
+                    visits_with_so: (existingSummary.visits_with_so || 0) + (visitData.order_status === 'ada_so' ? 1 : 0),
+                    total_so_amount: (existingSummary.total_so_amount || 0) + (visitData.so_amount || 0),
+                    last_updated: window.firebaseServerTimestamp()
+                };
+                
+                await window.firebaseSet(summaryRef, updatedSummary);
+                console.log('🔥 Daily summary updated in Firebase');
+                
+            } catch (error) {
+                console.error('🔥 Daily summary sync error:', error);
+            }
+        }
+
+        async function syncPendingVisitsToFirebase() {
+            if (!window.firebaseDB || !currentSalesmanId) {
+                return;
+            }
+
+            try {
+                // Get all pending visits from localStorage
+                const pendingKey = `pending_firebase_visits_${currentSalesmanId}`;
+                const pendingVisits = JSON.parse(localStorage.getItem(pendingKey) || '[]');
+                
+                if (pendingVisits.length === 0) {
+                    return;
+                }
+                
+                console.log(`🔄 Syncing ${pendingVisits.length} pending visits to Firebase...`);
+                
+                const syncPromises = pendingVisits.map(async (visit) => {
+                    try {
+                        const firebaseKey = await syncVisitToFirebase(visit);
+                        if (firebaseKey) {
+                            return visit.local_id; // Return local ID for removal
+                        }
+                    } catch (error) {
+                        console.error('🔥 Error syncing visit:', visit.local_id, error);
+                        return null;
+                    }
+                });
+                
+                const syncedIds = (await Promise.all(syncPromises)).filter(id => id !== null);
+                
+                // Remove successfully synced visits from pending
+                if (syncedIds.length > 0) {
+                    const remainingVisits = pendingVisits.filter(visit => !syncedIds.includes(visit.local_id));
+                    localStorage.setItem(pendingKey, JSON.stringify(remainingVisits));
+                    console.log(`🔥 ${syncedIds.length} visits synced, ${remainingVisits.length} remaining`);
+                }
+                
+            } catch (error) {
+                console.error('🔥 Error syncing pending visits:', error);
+            }
+        }
 
         // ===== GEOLOCATION FUNCTIONS =====
         function initializeGeolocation() {
@@ -1102,7 +1689,7 @@
                     const visits = JSON.parse(storedVisits);
                     todayVisitedCustomers = new Set();
                     
-                    // PERBAIKAN: Handle both string dan object formats
+                    // Handle both string dan object formats
                     visits.forEach(visit => {
                         if (typeof visit === 'string') {
                             // Format lama: array of strings
@@ -1398,7 +1985,7 @@
             });
         }
 
-        function endVisitSession() {
+        async function endVisitSession() {
             if (!visitSession.isActive) {
                 console.warn('🚫 Cannot end session - not active');
                 return;
@@ -1421,8 +2008,8 @@
             
             console.log(`🏁 Ending visit session: ${visitSession.outletName} (duration: ${formatDuration(duration)})`);
             
-            // Save visit completion to localStorage
-            saveVisitSessionToLocal('session_end', {
+            // Prepare visit data for Firebase
+            const visitDataForFirebase = {
                 outlet_id: visitSession.outletId,
                 outlet_name: visitSession.outletName,
                 session_id: visitSession.sessionId,
@@ -1432,11 +2019,25 @@
                 start_location: visitSession.startLocation,
                 end_location: endLocation,
                 order_status: visitSession.orderStatus,
-                so_amount: visitSession.soAmount,
+                so_amount: visitSession.soAmount || 0,
                 visit_status: 'completed',
                 salesman_id: currentSalesmanId,
-                salesman_name: currentSalesman
-            });
+                salesman_name: currentSalesman,
+                created_at: new Date().toISOString(),
+                local_id: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+            };
+            
+            // Save to localStorage first (for backup)
+            saveVisitSessionToLocal('session_end', visitDataForFirebase);
+            
+            // Try to sync to Firebase
+            const firebaseKey = await syncVisitToFirebase(visitDataForFirebase);
+            
+            if (!firebaseKey) {
+                // If Firebase sync failed, save to pending queue
+                console.log('⏳ Adding visit to pending Firebase sync queue...');
+                saveToPendingFirebaseQueue(visitDataForFirebase);
+            }
             
             // Reset session
             const endedOutlet = visitSession.outletName;
@@ -1457,6 +2058,24 @@
             stopSessionTimer();
             
             console.log(`✅ Visit session ended successfully: ${endedOutlet}, duration: ${formatDuration(duration)}`);
+        }
+
+        function saveToPendingFirebaseQueue(visitData) {
+            try {
+                const pendingKey = `pending_firebase_visits_${currentSalesmanId}`;
+                const existingPending = JSON.parse(localStorage.getItem(pendingKey) || '[]');
+                
+                existingPending.push(visitData);
+                localStorage.setItem(pendingKey, JSON.stringify(existingPending));
+                
+                console.log('⏳ Visit saved to pending Firebase sync queue');
+                
+                // Show pending status
+                updateFirebaseStatus('syncing', `⏳ ${existingPending.length} visits pending sync`);
+                
+            } catch (error) {
+                console.error('❌ Error saving to pending queue:', error);
+            }
         }
 
         function saveVisitSessionToLocal(eventType, sessionData) {
@@ -2108,7 +2727,7 @@
             try {
                 showLoading(true);
                 
-                console.log('🚀 Starting simplified data initialization...');
+                console.log('🚀 Starting Firebase-enabled visit system initialization...');
                 
                 // Initialize day indicator
                 const currentDay = updateDayIndicator();
@@ -2116,7 +2735,7 @@
                 console.log('🔍 Initializing salesman from URL...');
                 initializeSalesmanFromUrl();
                 
-                // TAMBAHAN: Cleanup localStorage yang corrupt
+                // Cleanup localStorage yang corrupt
                 if (currentSalesmanId) {
                     cleanupCorruptedLocalStorage();
                 }
@@ -2171,18 +2790,24 @@
                     hariSelect.appendChild(option);
                 });
                 
-                // Load today's visited customers from localStorage (DENGAN ERROR HANDLING)
+                // Load today's visited customers from localStorage
                 loadTodayVisitedCustomers();
+                
+                // Try to sync any pending visits to Firebase
+                if (window.firebaseDB) {
+                    setTimeout(syncPendingVisitsToFirebase, 2000);
+                }
                 
                 showLoading(false);
                 showMainContent(true);
                 
-                console.log('✅ Simplified visit system ready');
+                console.log('✅ Firebase-enabled visit system ready');
                 console.log(`📅 Current day: ${currentDay}`);
                 console.log(`📊 Available hari options: ${hariData.length}`);
                 console.log('📍 Geolocation tracking enabled');
                 console.log('🏪 Order status tracking enabled');
                 console.log('💾 Local storage session management active');
+                console.log('🔥 Firebase sync enabled');
                 
             } catch (error) {
                 console.error('❌ Critical error in initializeData:', error);
@@ -2204,6 +2829,13 @@
             
             // Initialize data
             initializeData();
+
+            // Periodically try to sync pending visits
+            setInterval(() => {
+                if (window.firebaseDB && currentSalesmanId) {
+                    syncPendingVisitsToFirebase();
+                }
+            }, 30000); // Every 30 seconds
         });
 
         // ===== NAVIGATION FUNCTIONS WITH SESSION PROTECTION =====
@@ -2237,11 +2869,12 @@
             }
         });
 
-        console.log('✅ Fixed Visit System with Local Storage loaded');
+        console.log('✅ Firebase-Enhanced Visit System loaded');
         console.log('🧹 All localStorage errors resolved');
-        console.log('💾 Using robust localStorage for visit tracking');
+        console.log('💾 Using robust localStorage + Firebase for visit tracking');
         console.log('📍 Geolocation tracking active');
         console.log('🏪 Full visit session management working');
+        console.log('🔥 Firebase real-time sync enabled');
     </script>
 </body>
 </html>
