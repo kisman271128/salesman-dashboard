@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Salesman Route Tracking - Firebase Fixed</title>
+    <title>Salesman Route Tracking - Complete Analytics</title>
     
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
@@ -351,93 +351,6 @@
             overflow-y: auto;
         }
 
-        .location-item {
-            padding: 16px;
-            border-bottom: 1px solid #f1f5f9;
-            cursor: pointer;
-            transition: background 0.2s ease;
-        }
-
-        .location-item:hover {
-            background: #f8fafc;
-        }
-
-        .location-item:last-child {
-            border-bottom: none;
-        }
-
-        .location-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 12px;
-        }
-
-        .customer-name {
-            font-weight: 600;
-            color: #1e293b;
-            margin-bottom: 4px;
-        }
-
-        .visit-time {
-            font-size: 12px;
-            color: #64748b;
-        }
-
-        .compliance-badge {
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 10px;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-
-        .compliance-perfect {
-            background: #ecfdf5;
-            color: #10b981;
-        }
-
-        .compliance-good {
-            background: #dbeafe;
-            color: #3b82f6;
-        }
-
-        .compliance-warning {
-            background: #fef3c7;
-            color: #f59e0b;
-        }
-
-        .compliance-error {
-            background: #fef2f2;
-            color: #ef4444;
-        }
-
-        .location-details {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 8px;
-            margin-top: 8px;
-        }
-
-        .detail-item {
-            background: #f8fafc;
-            padding: 8px;
-            border-radius: 6px;
-            text-align: center;
-        }
-
-        .detail-label {
-            font-size: 10px;
-            color: #64748b;
-            margin-bottom: 2px;
-        }
-
-        .detail-value {
-            font-size: 12px;
-            font-weight: 600;
-            color: #1e293b;
-        }
-
         .empty-state {
             text-align: center;
             padding: 40px 20px;
@@ -460,10 +373,6 @@
                 grid-template-columns: 1fr;
             }
 
-            .location-details {
-                grid-template-columns: 1fr;
-            }
-
             #visitMap {
                 height: 400px;
             }
@@ -474,8 +383,8 @@
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <h1>Route Tracking Analytics - Firebase Fixed</h1>
-            <div class="header-subtitle">Firebase v9 Modular + Enhanced Error Handling</div>
+            <h1>Route Tracking Analytics - Complete</h1>
+            <div class="header-subtitle">Firebase v9 + Table Performance + Color Status Markers</div>
         </div>
 
         <!-- Enhanced Controls -->
@@ -610,16 +519,16 @@
             </div>
         </div>
 
-        <!-- Location List -->
+        <!-- Salesman Performance Table -->
         <div class="location-list-section">
             <div class="location-list">
                 <div class="location-list-header">
-                    Visit Analytics
+                    Salesman Performance Analytics
                 </div>
                 <div class="location-list-content" id="locationListContent">
                     <div class="empty-state">
                         <div class="empty-icon">📊</div>
-                        <div>Load analytics data to see visit information</div>
+                        <div>Load analytics data to see salesman performance</div>
                     </div>
                 </div>
             </div>
@@ -1072,6 +981,8 @@
                                             location: latestSession.start_location,
                                             timestamp: latestSession.start,
                                             duration_seconds: latestSession.duration || 0,
+                                            order_status: 'N/A',
+                                            so_amount: 0,
                                             source: 'localStorage',
                                             accuracy: latestSession.start_location.accuracy || 0
                                         });
@@ -1119,17 +1030,41 @@
                 return;
             }
             
-            // Color coding by source
-            const colors = {
-                firebase: '#10b981',
-                localStorage: '#3b82f6'
-            };
+            // Color coding by order status
+            function getMarkerColor(orderStatus) {
+                switch(orderStatus) {
+                    case 'ada_so':
+                        return '#10b981'; // Green - has order with SO
+                    case 'toko_tidak_order':
+                        return '#ef4444'; // Red - no order
+                    case 'toko_tutup':
+                        return '#1f2937'; // Black - closed
+                    default:
+                        return '#64748b'; // Gray - unknown/localStorage
+                }
+            }
+            
+            function getStatusText(orderStatus) {
+                switch(orderStatus) {
+                    case 'ada_so':
+                        return 'Ada SO';
+                    case 'toko_tidak_order':
+                        return 'Tidak Order';
+                    case 'toko_tutup':
+                        return 'Toko Tutup';
+                    default:
+                        return 'N/A';
+                }
+            }
             
             allVisitData.forEach((visit, index) => {
                 if (visit.location && visit.location.latitude && visit.location.longitude) {
+                    const markerColor = getMarkerColor(visit.order_status);
+                    const statusText = getStatusText(visit.order_status);
+                    
                     const marker = L.circleMarker([visit.location.latitude, visit.location.longitude], {
                         radius: 8,
-                        fillColor: colors[visit.source] || '#64748b',
+                        fillColor: markerColor,
                         color: 'white',
                         weight: 2,
                         opacity: 1,
@@ -1142,9 +1077,10 @@
                             <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Salesman:</strong> ${visit.salesman_name}</p>
                             <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Time:</strong> ${new Date(visit.timestamp).toLocaleString()}</p>
                             <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Duration:</strong> ${Math.floor((visit.duration_seconds || 0) / 60)}m ${(visit.duration_seconds || 0) % 60}s</p>
+                            <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Status:</strong> <span style="color: ${markerColor}; font-weight: bold;">${statusText}</span></p>
                             <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Source:</strong> ${visit.source}</p>
-                            ${visit.order_status ? `<p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Order:</strong> ${visit.order_status}</p>` : ''}
-                            ${visit.so_amount ? `<p style="margin: 0 0 4px 0; font-size: 12px;"><strong>SO Amount:</strong> Rp ${visit.so_amount.toLocaleString()}</p>` : ''}
+                            ${visit.so_amount > 0 ? `<p style="margin: 0 0 4px 0; font-size: 12px;"><strong>SO Amount:</strong> Rp ${visit.so_amount.toLocaleString()}</p>` : ''}
+                            <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Accuracy:</strong> ±${Math.round(visit.accuracy || 0)}m</p>
                         </div>
                     `);
                     
@@ -1192,68 +1128,140 @@
             if (allVisitData.length === 0) {
                 content.innerHTML = `
                     <div class="empty-state">
-                        <div class="empty-icon">📍</div>
+                        <div class="empty-icon">📊</div>
                         <div>No visit data available</div>
                     </div>
                 `;
                 return;
             }
             
-            let html = '';
+            // Group data by salesman and calculate metrics
+            const salesmanMetrics = {};
             
-            // Group by salesman and sort
-            const groupedData = allVisitData.reduce((acc, visit) => {
-                if (!acc[visit.salesman_id]) {
-                    acc[visit.salesman_id] = [];
+            allVisitData.forEach(visit => {
+                const salesmanId = visit.salesman_id;
+                if (!salesmanMetrics[salesmanId]) {
+                    salesmanMetrics[salesmanId] = {
+                        name: visit.salesman_name,
+                        visits: [],
+                        totalSO: 0,
+                        effectiveCalls: 0,
+                        totalDuration: 0,
+                        totalAccuracy: 0
+                    };
                 }
-                acc[visit.salesman_id].push(visit);
-                return acc;
-            }, {});
-            
-            Object.entries(groupedData).forEach(([salesmanId, visits]) => {
-                const salesmanName = visits[0].salesman_name;
-                visits.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
                 
-                html += `
-                    <div style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 12px 16px; font-weight: 600; font-size: 14px;">
-                        ${salesmanName} (${salesmanId}) • ${visits.length} visits
-                    </div>
-                `;
+                salesmanMetrics[salesmanId].visits.push(visit);
                 
-                visits.forEach((visit, index) => {
-                    const sourceColor = visit.source === 'firebase' ? '#10b981' : '#3b82f6';
-                    
-                    html += `
-                        <div class="location-item" onclick="focusMapOnLocation('${visit.id}')">
-                            <div class="location-header">
-                                <div>
-                                    <div class="customer-name">${visit.outlet_name}</div>
-                                    <div class="visit-time">${new Date(visit.timestamp).toLocaleString()}</div>
-                                </div>
-                                <div style="background: ${sourceColor}; color: white; padding: 4px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">
-                                    ${visit.source}
-                                </div>
-                            </div>
-                            <div class="location-details">
-                                <div class="detail-item">
-                                    <div class="detail-label">Duration</div>
-                                    <div class="detail-value">${Math.floor((visit.duration_seconds || 0) / 60)}m ${(visit.duration_seconds || 0) % 60}s</div>
-                                </div>
-                                <div class="detail-item">
-                                    <div class="detail-label">Accuracy</div>
-                                    <div class="detail-value">±${Math.round(visit.accuracy || 0)}m</div>
-                                </div>
-                                <div class="detail-item">
-                                    <div class="detail-label">Status</div>
-                                    <div class="detail-value">${visit.order_status || 'N/A'}</div>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                });
+                if (visit.order_status === 'ada_so' && visit.so_amount > 0) {
+                    salesmanMetrics[salesmanId].effectiveCalls++;
+                    salesmanMetrics[salesmanId].totalSO += visit.so_amount;
+                }
+                
+                salesmanMetrics[salesmanId].totalDuration += visit.duration_seconds || 0;
+                salesmanMetrics[salesmanId].totalAccuracy += visit.accuracy || 0;
             });
             
+            // Calculate final metrics and create table rows
+            let tableRows = '';
+            let totalPC = 0, totalAC = 0, totalEC = 0, totalSO = 0, totalDuration = 0, totalAccuracy = 0;
+            
+            Object.entries(salesmanMetrics).forEach(([salesmanId, metrics]) => {
+                const ac = metrics.visits.length; // Actual Calls
+                const ec = metrics.effectiveCalls; // Effective Calls
+                const pc = ac; // Using AC as PC since we don't have planned data
+                const achievement = ac > 0 ? Math.round((ec / ac) * 100) : 0;
+                const avgDuration = ac > 0 ? Math.round(metrics.totalDuration / ac) : 0;
+                const avgAccuracy = ac > 0 ? Math.round(metrics.totalAccuracy / ac) : 0;
+                
+                // Format duration
+                const durationMinutes = Math.floor(avgDuration / 60);
+                const durationSeconds = avgDuration % 60;
+                const durationText = `${durationMinutes}m ${durationSeconds}s`;
+                
+                // Add to totals
+                totalPC += pc;
+                totalAC += ac;
+                totalEC += ec;
+                totalSO += metrics.totalSO;
+                totalDuration += metrics.totalDuration;
+                totalAccuracy += metrics.totalAccuracy;
+                
+                tableRows += `
+                    <tr>
+                        <td style="font-weight: 600; color: #1e293b; padding: 8px;">${metrics.name}</td>
+                        <td style="text-align: center; padding: 8px;">${pc}</td>
+                        <td style="text-align: center; padding: 8px;">${ac}</td>
+                        <td style="text-align: center; padding: 8px;">${ec}</td>
+                        <td style="text-align: center; font-weight: 600; padding: 8px; color: ${achievement >= 67 ? '#10b981' : achievement >= 50 ? '#f59e0b' : '#ef4444'};">${achievement}%</td>
+                        <td style="text-align: center; padding: 8px;">${durationText}</td>
+                        <td style="text-align: center; padding: 8px;">±${avgAccuracy}m</td>
+                        <td style="text-align: right; font-weight: 600; padding: 8px;">${metrics.totalSO.toLocaleString()}</td>
+                    </tr>
+                `;
+            });
+            
+            // Calculate grand totals
+            const grandAchievement = totalAC > 0 ? Math.round((totalEC / totalAC) * 100) : 0;
+            const grandAvgDuration = totalAC > 0 ? Math.round(totalDuration / totalAC) : 0;
+            const grandAvgAccuracy = totalAC > 0 ? Math.round(totalAccuracy / totalAC) : 0;
+            const grandDurationMinutes = Math.floor(grandAvgDuration / 60);
+            const grandDurationSeconds = grandAvgDuration % 60;
+            const grandDurationText = `${grandDurationMinutes}m ${grandDurationSeconds}s`;
+            
+            const html = `
+                <div style="overflow-x: auto; padding: 16px;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 12px; border: 1px solid #e2e8f0;">
+                        <thead>
+                            <tr style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;">
+                                <th style="padding: 12px 8px; text-align: left; font-weight: 600; border: 1px solid rgba(255,255,255,0.2);">Nama Salesman</th>
+                                <th style="padding: 12px 8px; text-align: center; font-weight: 600; border: 1px solid rgba(255,255,255,0.2);">PC</th>
+                                <th style="padding: 12px 8px; text-align: center; font-weight: 600; border: 1px solid rgba(255,255,255,0.2);">AC</th>
+                                <th style="padding: 12px 8px; text-align: center; font-weight: 600; border: 1px solid rgba(255,255,255,0.2);">EC</th>
+                                <th style="padding: 12px 8px; text-align: center; font-weight: 600; border: 1px solid rgba(255,255,255,0.2);">Ach</th>
+                                <th style="padding: 12px 8px; text-align: center; font-weight: 600; border: 1px solid rgba(255,255,255,0.2);">Avg Durasi</th>
+                                <th style="padding: 12px 8px; text-align: center; font-weight: 600; border: 1px solid rgba(255,255,255,0.2);">Accuracy</th>
+                                <th style="padding: 12px 8px; text-align: center; font-weight: 600; border: 1px solid rgba(255,255,255,0.2);">SO</th>
+                            </tr>
+                        </thead>
+                        <tbody style="background: white;">
+                            ${tableRows}
+                            <tr style="background: #f8fafc; border-top: 3px solid #667eea; font-weight: 600;">
+                                <td style="padding: 12px 8px; color: #1e293b; border: 1px solid #e2e8f0;">Total Depo</td>
+                                <td style="padding: 12px 8px; text-align: center; border: 1px solid #e2e8f0;">${totalPC}</td>
+                                <td style="padding: 12px 8px; text-align: center; border: 1px solid #e2e8f0;">${totalAC}</td>
+                                <td style="padding: 12px 8px; text-align: center; border: 1px solid #e2e8f0;">${totalEC}</td>
+                                <td style="padding: 12px 8px; text-align: center; border: 1px solid #e2e8f0; color: ${grandAchievement >= 67 ? '#10b981' : grandAchievement >= 50 ? '#f59e0b' : '#ef4444'};">${grandAchievement}%</td>
+                                <td style="padding: 12px 8px; text-align: center; border: 1px solid #e2e8f0;">${grandDurationText}</td>
+                                <td style="padding: 12px 8px; text-align: center; border: 1px solid #e2e8f0;">±${grandAvgAccuracy}m</td>
+                                <td style="padding: 12px 8px; text-align: right; border: 1px solid #e2e8f0;">${totalSO.toLocaleString()}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div style="margin: 16px; padding: 12px; background: #f8fafc; border-radius: 8px; font-size: 11px; color: #64748b;">
+                    <strong>Keterangan:</strong><br>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px;">
+                        <div>• PC = Planned Calls (target kunjungan)</div>
+                        <div>• AC = Actual Calls (kunjungan aktual)</div>
+                        <div>• EC = Effective Calls (kunjungan dengan SO)</div>
+                        <div>• Ach = Achievement Rate (EC/AC)</div>
+                        <div>• Avg Durasi = Rata-rata durasi kunjungan</div>
+                        <div>• Accuracy = Rata-rata akurasi lokasi</div>
+                        <div>• SO = Total Sales Order</div>
+                        <div style="margin-top: 8px;">
+                            <strong>Status Marker:</strong> 
+                            <span style="color: #10b981;">● Ada SO</span> | 
+                            <span style="color: #ef4444;">● Tidak Order</span> | 
+                            <span style="color: #1f2937;">● Toko Tutup</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
             content.innerHTML = html;
+            addDebugMessage(`✓ Salesman table rendered with ${Object.keys(salesmanMetrics).length} salesman`);
         }
 
         // ===== UTILITY FUNCTIONS =====
@@ -1363,7 +1371,7 @@
 
         // ===== INITIALIZATION =====
         document.addEventListener('DOMContentLoaded', function() {
-            addDebugMessage('Starting Route Tracking Analytics with Firebase v9...');
+            addDebugMessage('Starting Complete Route Tracking Analytics...');
             
             // Set today's date
             const today = new Date().toISOString().split('T')[0];
@@ -1374,10 +1382,10 @@
             initializeMap();
             
             // Firebase will be initialized by the module script
-            addDebugMessage('✓ System ready - waiting for Firebase modules...');
+            addDebugMessage('✓ System ready - Firebase v9 + Table + Color Markers');
         });
 
-        addDebugMessage('Route Tracking Analytics loaded with Firebase v9 fixes');
+        addDebugMessage('Complete Route Tracking Analytics loaded successfully');
     </script>
 </body>
 </html>
