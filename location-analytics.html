@@ -3,15 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Salesman Route Tracking - Correct Firebase Structure</title>
+    <title>Salesman Route Tracking - Firebase Fixed</title>
     
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
     
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-database-compat.js"></script>
+    <!-- Firebase SDK v9 Modular -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js';
+        import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js';
+        import { getDatabase, ref, get, child, onValue, off } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js';
+        
+        // Make Firebase modules available globally
+        window.firebaseModules = {
+            initializeApp,
+            getAuth,
+            signInAnonymously,
+            onAuthStateChanged,
+            getDatabase,
+            ref,
+            get,
+            child,
+            onValue,
+            off
+        };
+        
+        // Initialize when modules are loaded
+        window.initializeFirebaseApp();
+    </script>
     
     <style>
         * {
@@ -455,20 +474,20 @@
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <h1>Route Tracking Analytics - Firebase Structure Fixed</h1>
-            <div class="header-subtitle">Correct Firebase Path: visits/{salesmanId}/{visitId}</div>
+            <h1>Route Tracking Analytics - Firebase Fixed</h1>
+            <div class="header-subtitle">Firebase v9 Modular + Enhanced Error Handling</div>
         </div>
 
         <!-- Enhanced Controls -->
         <div class="enhanced-controls">
             <!-- Firebase Status -->
             <div class="firebase-status" id="firebaseStatus">
-                Connecting to Firebase...
+                Initializing Firebase v9...
             </div>
             
             <!-- Database Info -->
             <div style="background: #f0f9ff; border: 1px solid #0ea5e9; color: #0369a1; padding: 8px; border-radius: 6px; margin-bottom: 12px; font-size: 11px;">
-                <strong>Firebase Structure:</strong> visits/{salesmanId}/{visitId} | Authentication: Anonymous | Fallback: localStorage
+                <strong>Configuration:</strong> Firebase v9 Modular | Auth: Anonymous | Database: Asia-Southeast1
             </div>
 
             <div class="control-section">
@@ -502,7 +521,7 @@
                     <button class="btn btn-primary" onclick="loadAnalytics()">
                         Load Analytics
                     </button>
-                    <button class="btn btn-secondary" onclick="testFirebase()">
+                    <button class="btn btn-secondary" onclick="testFirebaseConnection()">
                         Test Firebase
                     </button>
                     <button class="btn btn-secondary" onclick="debugStorage()">
@@ -614,6 +633,8 @@
         // ===== GLOBAL VARIABLES =====
         let visitMap = null;
         let mapMarkers = [];
+        let firebaseApp = null;
+        let firebaseAuth = null;
         let firebaseDatabase = null;
         let isFirebaseConnected = false;
         let debugMessages = [];
@@ -633,11 +654,13 @@
 
         // ===== DEBUG FUNCTIONS =====
         function addDebugMessage(message) {
-            debugMessages.push(`[${new Date().toLocaleTimeString()}] ${message}`);
+            const timestamp = new Date().toLocaleTimeString();
+            debugMessages.push(`[${timestamp}] ${message}`);
             if (debugMessages.length > 100) {
                 debugMessages = debugMessages.slice(-50);
             }
             updateDebugOutput();
+            console.log(`[Firebase Debug] ${message}`);
         }
 
         function updateDebugOutput() {
@@ -653,82 +676,133 @@
             debugOutput.classList.toggle('show');
         }
 
-        // ===== FIREBASE FUNCTIONS =====
-        async function initializeFirebase() {
+        // ===== FIREBASE INITIALIZATION =====
+        window.initializeFirebaseApp = async function() {
             try {
-                addDebugMessage('Initializing Firebase with correct structure...');
-                updateFirebaseStatus('Connecting to Firebase...', 'connecting');
+                addDebugMessage('Starting Firebase v9 initialization...');
+                updateFirebaseStatus('Initializing Firebase v9...', 'connecting');
                 
-                // Initialize Firebase
-                if (!firebase.apps.length) {
-                    firebase.initializeApp(firebaseConfig);
-                    addDebugMessage('Firebase app initialized');
+                // Check if Firebase modules are loaded
+                if (!window.firebaseModules) {
+                    throw new Error('Firebase modules not loaded');
                 }
+
+                const { 
+                    initializeApp, 
+                    getAuth, 
+                    signInAnonymously, 
+                    onAuthStateChanged,
+                    getDatabase,
+                    ref,
+                    get
+                } = window.firebaseModules;
+
+                // Initialize Firebase App
+                firebaseApp = initializeApp(firebaseConfig);
+                addDebugMessage('✓ Firebase app initialized');
+
+                // Initialize Auth
+                firebaseAuth = getAuth(firebaseApp);
+                addDebugMessage('✓ Firebase Auth initialized');
+
+                // Initialize Database
+                firebaseDatabase = getDatabase(firebaseApp);
+                addDebugMessage('✓ Firebase Database initialized');
+
+                // Set up auth state listener
+                onAuthStateChanged(firebaseAuth, (user) => {
+                    if (user) {
+                        addDebugMessage(`✓ User authenticated: ${user.uid.substring(0, 8)}...`);
+                        testDatabaseAccess();
+                    } else {
+                        addDebugMessage('❌ User not authenticated');
+                        updateFirebaseStatus('Authentication failed', 'error');
+                    }
+                });
+
+                // Sign in anonymously
+                addDebugMessage('Attempting anonymous authentication...');
+                updateFirebaseStatus('Authenticating...', 'connecting');
                 
-                firebaseDatabase = firebase.database();
+                const userCredential = await signInAnonymously(firebaseAuth);
+                addDebugMessage(`✓ Anonymous authentication successful: ${userCredential.user.uid.substring(0, 8)}...`);
+
+            } catch (error) {
+                addDebugMessage(`❌ Firebase initialization failed: ${error.message}`);
+                updateFirebaseStatus(`Firebase initialization failed: ${error.message}`, 'error');
+                isFirebaseConnected = false;
                 
-                // Try anonymous authentication
-                try {
-                    addDebugMessage('Attempting anonymous authentication...');
-                    await firebase.auth().signInAnonymously();
-                    addDebugMessage('Anonymous authentication successful');
-                } catch (authError) {
-                    addDebugMessage('Authentication failed: ' + authError.message);
-                    throw authError;
-                }
+                // Still load localStorage salesman
+                loadAvailableSalesman();
+            }
+        };
+
+        async function testDatabaseAccess() {
+            try {
+                addDebugMessage('Testing database access...');
+                updateFirebaseStatus('Testing database access...', 'connecting');
+
+                const { ref, get } = window.firebaseModules;
                 
-                // Test access to the correct path structure
-                try {
-                    addDebugMessage('Testing access to visits path...');
+                // Test basic database access
+                const dbRef = ref(firebaseDatabase);
+                const rootSnapshot = await get(dbRef);
+                
+                if (rootSnapshot.exists()) {
+                    const rootData = rootSnapshot.val();
+                    addDebugMessage(`✓ Database accessible, found keys: ${Object.keys(rootData).join(', ')}`);
                     
-                    // Test basic read on visits root
-                    const visitsSnapshot = await firebaseDatabase.ref('visits').limitToFirst(1).once('value');
+                    // Test visits path specifically
+                    const visitsRef = ref(firebaseDatabase, 'visits');
+                    const visitsSnapshot = await get(visitsRef);
                     
                     if (visitsSnapshot.exists()) {
-                        const data = visitsSnapshot.val();
-                        const salesmanIds = Object.keys(data);
-                        addDebugMessage(`Found ${salesmanIds.length} salesman IDs in Firebase: ${salesmanIds.join(', ')}`);
+                        const visitsData = visitsSnapshot.val();
+                        const salesmanIds = Object.keys(visitsData);
+                        addDebugMessage(`✓ Found ${salesmanIds.length} salesman in visits: ${salesmanIds.join(', ')}`);
                         
-                        // Test reading one salesman's data
+                        // Test one salesman's data
                         if (salesmanIds.length > 0) {
                             const testSalesmanId = salesmanIds[0];
-                            const salesmanSnapshot = await firebaseDatabase.ref(`visits/${testSalesmanId}`).limitToFirst(1).once('value');
+                            const salesmanRef = ref(firebaseDatabase, `visits/${testSalesmanId}`);
+                            const salesmanSnapshot = await get(salesmanRef);
                             
                             if (salesmanSnapshot.exists()) {
                                 const salesmanData = salesmanSnapshot.val();
-                                const visitIds = Object.keys(salesmanData);
-                                addDebugMessage(`Test salesman ${testSalesmanId} has ${visitIds.length} visits`);
+                                const visitCount = Object.keys(salesmanData).length;
+                                addDebugMessage(`✓ Test salesman ${testSalesmanId} has ${visitCount} visits`);
                                 
-                                // Show sample visit structure
-                                if (visitIds.length > 0) {
-                                    const sampleVisit = salesmanData[visitIds[0]];
-                                    addDebugMessage(`Sample visit structure: ${Object.keys(sampleVisit).join(', ')}`);
-                                }
+                                // Show sample visit
+                                const sampleVisitId = Object.keys(salesmanData)[0];
+                                const sampleVisit = salesmanData[sampleVisitId];
+                                addDebugMessage(`✓ Sample visit structure: ${Object.keys(sampleVisit).join(', ')}`);
                             }
                         }
                         
                         isFirebaseConnected = true;
-                        updateFirebaseStatus('Firebase connected - Structure: visits/{salesmanId}/{visitId}', 'connected');
+                        updateFirebaseStatus('✓ Firebase connected successfully!', 'connected');
                         
                     } else {
-                        addDebugMessage('No data found in visits path');
+                        addDebugMessage('⚠️ No visits data found');
                         isFirebaseConnected = false;
-                        updateFirebaseStatus('Firebase connected but no visit data found', 'warning');
+                        updateFirebaseStatus('Firebase connected but no visits data found', 'warning');
                     }
-                    
-                } catch (accessError) {
-                    addDebugMessage('Access test failed: ' + accessError.message);
+                } else {
+                    addDebugMessage('❌ Database root is empty');
                     isFirebaseConnected = false;
-                    updateFirebaseStatus('Firebase access denied - using localStorage only', 'error');
+                    updateFirebaseStatus('Database is empty', 'warning');
                 }
-                
+
                 // Load available salesman
                 await loadAvailableSalesman();
-                
+
             } catch (error) {
-                addDebugMessage('Firebase initialization failed: ' + error.message);
+                addDebugMessage(`❌ Database access failed: ${error.message}`);
+                addDebugMessage(`Error code: ${error.code}`);
+                addDebugMessage(`Error details: ${JSON.stringify(error, null, 2)}`);
+                
                 isFirebaseConnected = false;
-                updateFirebaseStatus('Firebase unavailable - using localStorage only', 'error');
+                updateFirebaseStatus(`Database access denied: ${error.code || error.message}`, 'error');
                 
                 // Still try to load localStorage salesman
                 await loadAvailableSalesman();
@@ -741,17 +815,20 @@
                 statusElement.textContent = message;
                 statusElement.className = `firebase-status ${status}`;
             }
-            addDebugMessage('Firebase status: ' + message);
+            addDebugMessage(`Status: ${message}`);
         }
 
         async function loadAvailableSalesman() {
             const salesmanSet = new Set();
             
             // Try Firebase first if connected
-            if (isFirebaseConnected) {
+            if (isFirebaseConnected && firebaseDatabase) {
                 try {
-                    addDebugMessage('Loading salesman from Firebase visits path...');
-                    const visitsSnapshot = await firebaseDatabase.ref('visits').once('value');
+                    addDebugMessage('Loading salesman from Firebase...');
+                    const { ref, get } = window.firebaseModules;
+                    
+                    const visitsRef = ref(firebaseDatabase, 'visits');
+                    const visitsSnapshot = await get(visitsRef);
                     
                     if (visitsSnapshot.exists()) {
                         const visitsData = visitsSnapshot.val();
@@ -763,7 +840,7 @@
                         });
                     }
                 } catch (error) {
-                    addDebugMessage('Error loading Firebase salesman: ' + error.message);
+                    addDebugMessage(`Error loading Firebase salesman: ${error.message}`);
                 }
             }
             
@@ -840,9 +917,9 @@
             addDebugMessage(`Analytics complete: ${totalVisits} total visits (Firebase: ${firebaseCount}, localStorage: ${localStorageCount})`);
             
             if (totalVisits > 0) {
-                alert(`Analytics loaded successfully!\n\nTotal visits: ${totalVisits}\nFirebase: ${firebaseCount}\nlocalStorage: ${localStorageCount}\n\nData source: ${dataSource}`);
+                alert(`✅ Analytics loaded successfully!\n\nTotal visits: ${totalVisits}\nFirebase: ${firebaseCount}\nlocalStorage: ${localStorageCount}\n\nData source: ${dataSource}`);
             } else {
-                alert(`No visit data found for the selected criteria.\n\nTry:\n- Different date range\n- Different salesman\n- Check "Debug Storage" for available data`);
+                alert(`❌ No visit data found for the selected criteria.\n\nTry:\n- Different date range\n- Different salesman\n- Check "Debug Storage" for available data`);
             }
         }
 
@@ -850,12 +927,14 @@
             let firebaseCount = 0;
             
             try {
-                addDebugMessage('Loading from Firebase with correct structure...');
+                addDebugMessage('Loading from Firebase...');
+                const { ref, get } = window.firebaseModules;
                 
                 if (salesmanFilter) {
                     // Load specific salesman
                     addDebugMessage(`Loading Firebase data for salesman: ${salesmanFilter}`);
-                    const salesmanSnapshot = await firebaseDatabase.ref(`visits/${salesmanFilter}`).once('value');
+                    const salesmanRef = ref(firebaseDatabase, `visits/${salesmanFilter}`);
+                    const salesmanSnapshot = await get(salesmanRef);
                     
                     if (salesmanSnapshot.exists()) {
                         const salesmanData = salesmanSnapshot.val();
@@ -872,7 +951,8 @@
                 } else {
                     // Load all salesman
                     addDebugMessage('Loading Firebase data for all salesman...');
-                    const visitsSnapshot = await firebaseDatabase.ref('visits').once('value');
+                    const visitsRef = ref(firebaseDatabase, 'visits');
+                    const visitsSnapshot = await get(visitsRef);
                     
                     if (visitsSnapshot.exists()) {
                         const allVisitsData = visitsSnapshot.val();
@@ -890,10 +970,10 @@
                     }
                 }
                 
-                addDebugMessage(`Firebase loading complete: ${firebaseCount} visits`);
+                addDebugMessage(`✓ Firebase loading complete: ${firebaseCount} visits`);
                 
             } catch (error) {
-                addDebugMessage('Firebase loading error: ' + error.message);
+                addDebugMessage(`❌ Firebase loading error: ${error.message}`);
             }
             
             return firebaseCount;
@@ -955,7 +1035,7 @@
                 localCount += dailyCount;
             }
             
-            addDebugMessage(`localStorage loading complete: ${localCount} visits`);
+            addDebugMessage(`✓ localStorage loading complete: ${localCount} visits`);
             return localCount;
         }
 
@@ -1027,7 +1107,7 @@
                     maxZoom: 18
                 }).addTo(visitMap);
                 
-                addDebugMessage('Map initialized');
+                addDebugMessage('✓ Map initialized');
             }
         }
 
@@ -1077,7 +1157,7 @@
             if (mapMarkers.length > 0) {
                 const group = new L.featureGroup(mapMarkers);
                 visitMap.fitBounds(group.getBounds().pad(0.1));
-                addDebugMessage(`Map rendered with ${mapMarkers.length} markers`);
+                addDebugMessage(`✓ Map rendered with ${mapMarkers.length} markers`);
             }
         }
 
@@ -1177,42 +1257,69 @@
         }
 
         // ===== UTILITY FUNCTIONS =====
-        async function testFirebase() {
-            addDebugMessage('Running comprehensive Firebase test...');
+        async function testFirebaseConnection() {
+            addDebugMessage('Running comprehensive Firebase connection test...');
             
             try {
-                await initializeFirebase();
+                let testResult = `Firebase Connection Test Results:\n\n`;
                 
-                let testResult = `Firebase Test Results:\n\n`;
-                testResult += `Connection: ${isFirebaseConnected ? 'SUCCESS' : 'FAILED'}\n`;
-                testResult += `Authentication: ${firebase.auth().currentUser ? 'Authenticated' : 'Not authenticated'}\n`;
+                // Test 1: App initialization
+                testResult += `1. App Initialization: ${firebaseApp ? '✅ SUCCESS' : '❌ FAILED'}\n`;
                 
+                // Test 2: Auth initialization
+                testResult += `2. Auth Initialization: ${firebaseAuth ? '✅ SUCCESS' : '❌ FAILED'}\n`;
+                
+                // Test 3: Database initialization
+                testResult += `3. Database Initialization: ${firebaseDatabase ? '✅ SUCCESS' : '❌ FAILED'}\n`;
+                
+                // Test 4: Authentication status
+                const currentUser = firebaseAuth ? firebaseAuth.currentUser : null;
+                testResult += `4. Authentication: ${currentUser ? '✅ AUTHENTICATED' : '❌ NOT AUTHENTICATED'}\n`;
+                if (currentUser) {
+                    testResult += `   User ID: ${currentUser.uid.substring(0, 8)}...\n`;
+                }
+                
+                // Test 5: Database connectivity
                 if (isFirebaseConnected) {
-                    // Test data access
-                    const visitsSnapshot = await firebaseDatabase.ref('visits').limitToFirst(3).once('value');
+                    const { ref, get } = window.firebaseModules;
+                    
+                    const visitsRef = ref(firebaseDatabase, 'visits');
+                    const visitsSnapshot = await get(visitsRef);
+                    
                     if (visitsSnapshot.exists()) {
                         const data = visitsSnapshot.val();
                         const salesmanIds = Object.keys(data);
-                        testResult += `\nFound ${salesmanIds.length} salesman in Firebase:\n`;
+                        testResult += `5. Database Access: ✅ SUCCESS\n`;
+                        testResult += `   Found ${salesmanIds.length} salesman:\n`;
                         
-                        for (const salesmanId of salesmanIds) {
+                        for (const salesmanId of salesmanIds.slice(0, 3)) {
                             const salesmanData = data[salesmanId];
                             const visitCount = Object.keys(salesmanData).length;
-                            testResult += `- ${salesmanId}: ${visitCount} visits\n`;
+                            testResult += `   - ${salesmanId}: ${visitCount} visits\n`;
                         }
                         
-                        testResult += `\nFirebase is working correctly!`;
+                        if (salesmanIds.length > 3) {
+                            testResult += `   ... and ${salesmanIds.length - 3} more\n`;
+                        }
+                        
                     } else {
-                        testResult += `\nNo visit data found in Firebase.`;
+                        testResult += `5. Database Access: ⚠️ NO DATA\n`;
                     }
                 } else {
-                    testResult += `\nCannot access Firebase data.`;
+                    testResult += `5. Database Access: ❌ FAILED\n`;
                 }
+                
+                // Test 6: Configuration
+                testResult += `\n6. Configuration:\n`;
+                testResult += `   Database URL: ${firebaseConfig.databaseURL}\n`;
+                testResult += `   Project ID: ${firebaseConfig.projectId}\n`;
+                testResult += `   Auth Domain: ${firebaseConfig.authDomain}\n`;
                 
                 alert(testResult);
                 
             } catch (error) {
-                alert(`Firebase Test Failed!\n\n${error.message}`);
+                alert(`❌ Firebase Test Failed!\n\nError: ${error.message}\nCode: ${error.code || 'Unknown'}\n\nCheck the debug panel for more details.`);
+                addDebugMessage(`Test failed: ${error.message}`);
             }
         }
 
@@ -1256,7 +1363,7 @@
 
         // ===== INITIALIZATION =====
         document.addEventListener('DOMContentLoaded', function() {
-            addDebugMessage('Starting Route Tracking Analytics with correct Firebase structure...');
+            addDebugMessage('Starting Route Tracking Analytics with Firebase v9...');
             
             // Set today's date
             const today = new Date().toISOString().split('T')[0];
@@ -1266,13 +1373,11 @@
             // Initialize map
             initializeMap();
             
-            // Initialize Firebase
-            setTimeout(initializeFirebase, 1000);
-            
-            addDebugMessage('System ready - Firebase structure: visits/{salesmanId}/{visitId}');
+            // Firebase will be initialized by the module script
+            addDebugMessage('✓ System ready - waiting for Firebase modules...');
         });
 
-        addDebugMessage('Route Tracking Analytics loaded - Correct Firebase structure implemented');
+        addDebugMessage('Route Tracking Analytics loaded with Firebase v9 fixes');
     </script>
 </body>
 </html>
