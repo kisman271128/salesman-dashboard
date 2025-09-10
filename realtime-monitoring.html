@@ -520,25 +520,25 @@
         <!-- Sidebar -->
         <div class="sidebar">
             <div class="sidebar-header">
-                <div class="sidebar-title">🎛️ Control Center</div>
+                <div class="sidebar-title">Control Center</div>
                 <div class="sidebar-subtitle">Real-time Monitoring + Firebase</div>
             </div>
             
             <div class="sidebar-content">
                 <!-- Firebase Status -->
                 <div class="firebase-status" id="firebaseStatus">
-                    🔄 Connecting to Firebase...
+                    Connecting to Firebase...
                 </div>
                 
                 <!-- Debug Output -->
                 <div class="debug-output" id="debugOutput">
-                    <strong>🔍 Debug Information:</strong><br>
+                    <strong>Debug Information:</strong><br>
                     <div id="debugContent">Initializing...</div>
                 </div>
 
                 <!-- Control Panel -->
                 <div class="control-panel">
-                    <div class="control-title">🔧 Settings</div>
+                    <div class="control-title">Settings</div>
                     
                     <div class="control-toggle">
                         <div class="toggle-switch active" id="autoRefreshToggle" onclick="toggleAutoRefresh()">
@@ -557,9 +557,9 @@
                     <div class="control-item">
                         <label>Data Source</label>
                         <select id="dataSourceFilter" onchange="updateDataSource()">
-                            <option value="localStorage">Local Storage (Primary)</option>
-                            <option value="both">Both Sources (localStorage + Firebase)</option>
-                            <option value="firebase">Firebase Database Only</option>
+                            <option value="firebase">Firebase Database</option>
+                            <option value="localStorage">Local Storage</option>
+                            <option value="both">Both Sources</option>
                         </select>
                     </div>
                     
@@ -580,17 +580,17 @@
 
                     <div style="display: flex; gap: 4px; margin-top: 8px;">
                         <button class="map-btn map-btn-secondary" onclick="refreshFirebaseConnection()" style="flex: 1; font-size: 10px;">
-                            🔄 Firebase
+                            Refresh Firebase
                         </button>
                         <button class="map-btn map-btn-secondary" onclick="toggleDebugOutput()" style="flex: 1; font-size: 10px;">
-                            🔍 Debug
+                            Debug
                         </button>
                     </div>
                 </div>
 
                 <!-- Active Salesman List -->
                 <div class="salesman-list">
-                    <div class="control-title">👥 Active Salesman</div>
+                    <div class="control-title">Active Salesman</div>
                     <div id="salesmanList">
                         <div class="salesman-item">
                             <div class="salesman-header">
@@ -604,7 +604,7 @@
 
                 <!-- Statistics -->
                 <div class="control-panel">
-                    <div class="control-title">📊 Live Stats</div>
+                    <div class="control-title">Live Stats</div>
                     <div class="stats-panel">
                         <div class="stats-grid">
                             <div class="stat-item">
@@ -616,12 +616,12 @@
                                 <div class="stat-label">Visits</div>
                             </div>
                             <div class="stat-item">
-                                <div class="stat-value" id="activeCustomers">-</div>
-                                <div class="stat-label">Customers</div>
+                                <div class="stat-value" id="activeOutlets">-</div>
+                                <div class="stat-label">Outlets</div>
                             </div>
                             <div class="stat-item">
-                                <div class="stat-value" id="locationAlerts">-</div>
-                                <div class="stat-label">Alerts</div>
+                                <div class="stat-value" id="totalSoAmount">-</div>
+                                <div class="stat-label">SO Amount</div>
                             </div>
                         </div>
                     </div>
@@ -633,7 +633,7 @@
         <div class="main-content">
             <div class="main-header">
                 <div class="main-title">
-                    🗺️ Real-time Location Tracking + Firebase
+                    Real-time Location Tracking + Firebase
                 </div>
                 <div class="live-indicator">
                     <div class="live-dot"></div>
@@ -648,22 +648,22 @@
                 <div class="map-controls">
                     <div class="map-control-item">
                         <button class="map-btn map-btn-primary" onclick="refreshMapData()">
-                            🔄 Refresh Now
+                            Refresh Now
                         </button>
                     </div>
                     <div class="map-control-item">
                         <button class="map-btn map-btn-secondary" onclick="centerMapView()">
-                            🎯 Center View
+                            Center View
                         </button>
                     </div>
                     <div class="map-control-item">
                         <button class="map-btn map-btn-secondary" onclick="toggleHeatmap()">
-                            🔥 Heatmap
+                            Heatmap
                         </button>
                     </div>
                     <div class="map-control-item">
                         <button class="map-btn map-btn-secondary" onclick="exportLiveData()">
-                            📤 Export Live
+                            Export Live
                         </button>
                     </div>
                 </div>
@@ -671,7 +671,7 @@
                 <!-- Notification Panel -->
                 <div class="notification-panel" id="notificationPanel">
                     <div class="notification-header">
-                        🔔 Live Alerts
+                        Live Alerts
                     </div>
                     <div id="notificationList">
                         <div class="notification-item">Monitoring system started</div>
@@ -697,7 +697,7 @@
         let firebaseDatabase = null;
         let isFirebaseConnected = false;
         let debugMessages = [];
-        let currentDataSource = 'localStorage';
+        let currentDataSource = 'firebase';
 
         // ===== FIREBASE CONFIGURATION =====
         const firebaseConfig = {
@@ -732,75 +732,61 @@
             const statusElement = document.getElementById('firebaseStatus');
             statusElement.textContent = message;
             statusElement.className = `firebase-status ${status}`;
-            addDebugMessage('🔔 Firebase status: ' + message);
+            addDebugMessage('Firebase status: ' + message);
         }
 
         // ===== FIREBASE INITIALIZATION =====
         async function initializeFirebase() {
             try {
-                addDebugMessage('🔗 Initializing Firebase with Authentication...');
-                updateFirebaseStatus('🔄 Initializing Firebase...', 'connecting');
+                addDebugMessage('Initializing Firebase...');
+                updateFirebaseStatus('Initializing Firebase...', 'connecting');
                 
                 // Initialize Firebase
                 if (!firebase.apps.length) {
                     firebase.initializeApp(firebaseConfig);
-                    addDebugMessage('✅ Firebase app initialized');
+                    addDebugMessage('Firebase app initialized');
                 }
                 
                 firebaseDatabase = firebase.database();
                 
                 // Try Anonymous Authentication
                 try {
-                    addDebugMessage('🔐 Attempting anonymous authentication...');
+                    addDebugMessage('Attempting authentication...');
                     await firebase.auth().signInAnonymously();
-                    addDebugMessage('✅ Anonymous authentication successful');
+                    addDebugMessage('Authentication successful');
                     
-                    // Test database access
+                    // Test database access with actual paths
                     try {
-                        addDebugMessage('🔍 Testing database access...');
-                        const testPaths = [
-                            { path: 'visit_events', description: 'visit events' },
-                            { path: 'daily_visits', description: 'daily visits' }
-                        ];
+                        addDebugMessage('Testing database access...');
                         
-                        let hasAccess = false;
-                        for (const testPath of testPaths) {
-                            try {
-                                const snapshot = await firebaseDatabase.ref(testPath.path).limitToFirst(1).once('value');
-                                addDebugMessage(`✅ Successfully accessed ${testPath.description} path`);
-                                hasAccess = true;
-                                break;
-                            } catch (pathError) {
-                                addDebugMessage(`⚠️ Cannot access ${testPath.description}: ${pathError.message}`);
-                            }
-                        }
+                        // Test daily_summary path
+                        const summarySnapshot = await firebaseDatabase.ref('daily_summary').limitToFirst(1).once('value');
+                        addDebugMessage('Successfully accessed daily_summary path');
                         
-                        if (hasAccess) {
-                            isFirebaseConnected = true;
-                            updateFirebaseStatus('✅ Firebase connected with database access', 'connected');
-                            addDebugMessage('✅ Firebase authentication and database access confirmed');
-                        } else {
-                            isFirebaseConnected = false;
-                            updateFirebaseStatus('⚠️ Firebase auth OK but limited data access', 'error');
-                            addDebugMessage('⚠️ Firebase authenticated but cannot access data paths');
-                        }
+                        // Test visits path
+                        const visitsSnapshot = await firebaseDatabase.ref('visits').limitToFirst(1).once('value');
+                        addDebugMessage('Successfully accessed visits path');
+                        
+                        isFirebaseConnected = true;
+                        updateFirebaseStatus('Firebase connected successfully', 'connected');
+                        addDebugMessage('Firebase ready for real-time monitoring');
                         
                     } catch (dbError) {
                         isFirebaseConnected = false;
-                        updateFirebaseStatus('⚠️ Firebase auth OK but database access failed', 'error');
-                        addDebugMessage('⚠️ Database access test failed: ' + dbError.message);
+                        updateFirebaseStatus('Database access failed', 'error');
+                        addDebugMessage('Database access test failed: ' + dbError.message);
                     }
                     
                 } catch (authError) {
-                    addDebugMessage('⚠️ Firebase authentication failed: ' + authError.message);
+                    addDebugMessage('Authentication failed: ' + authError.message);
                     isFirebaseConnected = false;
-                    updateFirebaseStatus('⚠️ Firebase authentication failed', 'error');
+                    updateFirebaseStatus('Authentication failed', 'error');
                 }
                 
             } catch (error) {
-                addDebugMessage('❌ Firebase initialization error: ' + error.message);
+                addDebugMessage('Firebase initialization error: ' + error.message);
                 isFirebaseConnected = false;
-                updateFirebaseStatus('❌ Firebase initialization failed', 'error');
+                updateFirebaseStatus('Firebase initialization failed', 'error');
             }
         }
 
@@ -809,7 +795,6 @@
             constructor() {
                 this.salesmanData = {};
                 this.lastUpdateTime = null;
-                this.alertThreshold = 500; // meters
                 this.notifications = [];
                 this.isInitialized = false;
                 
@@ -818,7 +803,7 @@
             
             async init() {
                 if (this.isInitialized) return;
-                addDebugMessage('🔴 Real-time Location Monitor with Firebase initializing...');
+                addDebugMessage('Real-time Location Monitor initializing...');
                 this.isInitialized = true;
                 
                 await initializeFirebase();
@@ -827,8 +812,8 @@
             }
             
             initializeMap() {
-                // Initialize map centered on Jakarta
-                realtimeMap = L.map('realtimeMap').setView([-6.2088, 106.8456], 11);
+                // Initialize map centered on Kalimantan (based on your GPS coordinates)
+                realtimeMap = L.map('realtimeMap').setView([-2.2088, 115.4456], 10);
                 
                 // Add map tiles
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -836,7 +821,7 @@
                     maxZoom: 18
                 }).addTo(realtimeMap);
                 
-                addDebugMessage('🗺️ Real-time map initialized');
+                addDebugMessage('Real-time map initialized');
             }
             
             startMonitoring() {
@@ -846,7 +831,7 @@
                 // Set up auto-refresh
                 this.setupAutoRefresh();
                 
-                addDebugMessage('👁️ Real-time monitoring started');
+                addDebugMessage('Real-time monitoring started');
             }
             
             setupAutoRefresh() {
@@ -858,20 +843,19 @@
                     this.refreshData();
                 }, refreshIntervalMs);
                 
-                addDebugMessage(`⏰ Auto-refresh set to ${refreshIntervalMs/1000} seconds`);
+                addDebugMessage(`Auto-refresh set to ${refreshIntervalMs/1000} seconds`);
             }
             
             async refreshData() {
                 const monitoringDate = document.getElementById('monitoringDate').value || 
                     new Date().toISOString().split('T')[0];
                 
-                addDebugMessage(`🔄 Refreshing real-time data for ${monitoringDate} from ${currentDataSource}`);
+                addDebugMessage(`Refreshing data for ${monitoringDate} from ${currentDataSource}`);
                 
                 await this.loadSalesmanData(monitoringDate);
                 this.updateSalesmanList();
                 this.updateMapMarkers();
                 this.updateStatistics();
-                this.checkLocationAlerts();
                 
                 this.lastUpdateTime = new Date();
             }
@@ -880,12 +864,11 @@
                 this.salesmanData = {};
                 
                 try {
-                    // Load from both sources if needed
                     if (currentDataSource === 'firebase' || currentDataSource === 'both') {
                         if (isFirebaseConnected) {
                             await this.loadFromFirebase(dateStr);
                         } else {
-                            addDebugMessage('⚠️ Firebase not connected, will use localStorage');
+                            addDebugMessage('Firebase not connected, using localStorage fallback');
                         }
                     }
                     
@@ -894,11 +877,10 @@
                         this.loadFromLocalStorage(dateStr);
                     }
                     
-                    addDebugMessage(`📊 Loaded data for ${Object.keys(this.salesmanData).length} salesman from ${currentDataSource}`);
+                    addDebugMessage(`Loaded data for ${Object.keys(this.salesmanData).length} salesman`);
                     
                 } catch (error) {
-                    addDebugMessage('❌ Error loading salesman data: ' + error.message);
-                    // Fallback to localStorage
+                    addDebugMessage('Error loading data: ' + error.message);
                     this.loadFromLocalStorage(dateStr);
                 }
             }
@@ -906,131 +888,138 @@
             async loadFromFirebase(dateStr) {
                 if (!isFirebaseConnected) return;
                 
-                addDebugMessage(`🔥 Loading Firebase data for ${dateStr}...`);
+                addDebugMessage(`Loading Firebase data for ${dateStr}...`);
                 
                 try {
-                    // Load from visit_events
-                    const eventsSnapshot = await firebaseDatabase.ref('visit_events')
-                        .orderByChild('timestamp')
-                        .startAt(`${dateStr}T00:00:00`)
-                        .endAt(`${dateStr}T23:59:59`)
-                        .limitToLast(100)
-                        .once('value');
+                    // Load daily summary data
+                    const summarySnapshot = await firebaseDatabase.ref('daily_summary').once('value');
+                    const summaryData = summarySnapshot.val();
                     
-                    const eventsData = eventsSnapshot.val();
-                    if (eventsData) {
-                        Object.entries(eventsData).forEach(([eventId, eventData]) => {
-                            if (eventData && eventData.location && eventData.salesman_id) {
-                                this.processFirebaseEvent(eventData, dateStr);
+                    if (summaryData) {
+                        Object.entries(summaryData).forEach(([salesmanId, salesmanSummary]) => {
+                            if (salesmanSummary && salesmanSummary[dateStr]) {
+                                const dailyData = salesmanSummary[dateStr];
+                                this.processFirebaseSummary(salesmanId, dailyData);
                             }
                         });
-                        addDebugMessage(`🔥 Processed ${Object.keys(eventsData).length} Firebase events`);
+                        addDebugMessage(`Processed ${Object.keys(summaryData).length} salesman summaries`);
                     }
                     
-                    // Load from daily_visits
-                    const dailySnapshot = await firebaseDatabase.ref('daily_visits')
-                        .orderByChild('date')
-                        .equalTo(dateStr)
-                        .once('value');
+                    // Load visits data for location information
+                    const visitsSnapshot = await firebaseDatabase.ref('visits').once('value');
+                    const visitsData = visitsSnapshot.val();
                     
-                    const dailyData = dailySnapshot.val();
-                    if (dailyData) {
-                        Object.entries(dailyData).forEach(([salesmanId, salesmanDaily]) => {
-                            if (salesmanDaily && typeof salesmanDaily === 'object') {
-                                this.processFirebaseDailyData(salesmanId, salesmanDaily, dateStr);
+                    if (visitsData) {
+                        Object.entries(visitsData).forEach(([salesmanId, salesmanVisits]) => {
+                            if (salesmanVisits && typeof salesmanVisits === 'object') {
+                                this.processFirebaseVisits(salesmanId, salesmanVisits, dateStr);
                             }
                         });
-                        addDebugMessage(`🔥 Processed ${Object.keys(dailyData).length} Firebase daily records`);
+                        addDebugMessage(`Processed visits for ${Object.keys(visitsData).length} salesman`);
                     }
                     
                 } catch (error) {
-                    addDebugMessage('❌ Firebase loading error: ' + error.message);
+                    addDebugMessage('Firebase loading error: ' + error.message);
                 }
             }
             
-            processFirebaseEvent(eventData, dateStr) {
-                const salesmanId = eventData.salesman_id;
-                const salesmanName = eventData.salesman_name || `Salesman ${salesmanId}`;
-                
+            processFirebaseSummary(salesmanId, dailyData) {
                 if (!this.salesmanData[salesmanId]) {
                     this.salesmanData[salesmanId] = {
                         salesman_id: salesmanId,
-                        salesman_name: salesmanName,
+                        salesman_name: dailyData.salesman_name || `Salesman ${salesmanId}`,
                         last_location: null,
                         last_update: null,
-                        current_customer: null,
+                        current_outlet: null,
                         status: 'inactive',
                         total_visits: 0,
-                        location_alerts: 0,
-                        source: 'firebase-events'
+                        visits_with_so: 0,
+                        total_so_amount: 0,
+                        total_duration: 0,
+                        source: 'firebase'
                     };
                 }
                 
                 const salesman = this.salesmanData[salesmanId];
                 
-                // Update latest location
-                if (eventData.location && eventData.timestamp) {
-                    const eventTime = new Date(eventData.timestamp);
-                    const lastUpdateTime = salesman.last_update ? new Date(salesman.last_update) : new Date(0);
-                    
-                    if (eventTime > lastUpdateTime) {
-                        salesman.last_location = eventData.location;
-                        salesman.last_update = eventData.timestamp;
-                        salesman.status = this.determineSalesmanStatus({ timestamp: eventData.timestamp });
+                // Update summary statistics
+                salesman.total_visits = dailyData.total_visits || 0;
+                salesman.visits_with_so = dailyData.visits_with_so || 0;
+                salesman.total_so_amount = dailyData.total_so_amount || 0;
+                salesman.total_duration = dailyData.total_duration_seconds || 0;
+                salesman.last_update = dailyData.last_updated ? new Date(dailyData.last_updated).toISOString() : null;
+                
+                // Determine status based on last update
+                salesman.status = this.determineSalesmanStatus(salesman.last_update);
+            }
+            
+            processFirebaseVisits(salesmanId, salesmanVisits, dateStr) {
+                if (!this.salesmanData[salesmanId]) {
+                    this.salesmanData[salesmanId] = {
+                        salesman_id: salesmanId,
+                        salesman_name: `Salesman ${salesmanId}`,
+                        last_location: null,
+                        last_update: null,
+                        current_outlet: null,
+                        status: 'inactive',
+                        total_visits: 0,
+                        visits_with_so: 0,
+                        total_so_amount: 0,
+                        total_duration: 0,
+                        source: 'firebase'
+                    };
+                }
+                
+                const salesman = this.salesmanData[salesmanId];
+                
+                // Find visits for the specified date and get the most recent location
+                let latestVisit = null;
+                let todayVisits = [];
+                
+                Object.entries(salesmanVisits).forEach(([visitId, visitData]) => {
+                    if (visitData && visitData.created_at) {
+                        const visitDate = visitData.created_at.split('T')[0];
+                        
+                        if (visitDate === dateStr) {
+                            todayVisits.push(visitData);
+                            
+                            // Check if this is the latest visit
+                            if (!latestVisit || new Date(visitData.created_at) > new Date(latestVisit.created_at)) {
+                                latestVisit = visitData;
+                            }
+                        }
                     }
+                });
+                
+                // Update salesman with latest visit information
+                if (latestVisit) {
+                    salesman.salesman_name = latestVisit.salesman_name || salesman.salesman_name;
+                    salesman.current_outlet = latestVisit.outlet_name || null;
+                    salesman.last_update = latestVisit.end_time || latestVisit.created_at;
+                    
+                    // Use end_location if available, otherwise start_location
+                    if (latestVisit.end_location) {
+                        salesman.last_location = latestVisit.end_location;
+                    } else if (latestVisit.start_location) {
+                        salesman.last_location = latestVisit.start_location;
+                    }
+                    
+                    salesman.status = this.determineSalesmanStatus(salesman.last_update);
                 }
                 
-                // Update customer info
-                if (eventData.customer_name || (eventData.event_data && eventData.event_data.customer_name)) {
-                    salesman.current_customer = eventData.customer_name || eventData.event_data.customer_name;
-                    salesman.total_visits++;
+                // Update visit counts if not already set by summary
+                if (salesman.total_visits === 0) {
+                    salesman.total_visits = todayVisits.length;
+                    salesman.visits_with_so = todayVisits.filter(v => v.order_status === 'ada_so').length;
+                    salesman.total_so_amount = todayVisits.reduce((sum, v) => sum + (v.so_amount || 0), 0);
+                    salesman.total_duration = todayVisits.reduce((sum, v) => sum + (v.duration_seconds || 0), 0);
                 }
-                
-                // Check distance alerts
-                if (eventData.distance_meters && eventData.distance_meters > this.alertThreshold) {
-                    salesman.location_alerts++;
-                }
-            }
-            
-            processFirebaseDailyData(salesmanId, dailyData, dateStr) {
-                const salesmanName = dailyData.salesman_name || `Salesman ${salesmanId}`;
-                
-                if (!this.salesmanData[salesmanId]) {
-                    this.salesmanData[salesmanId] = {
-                        salesman_id: salesmanId,
-                        salesman_name: salesmanName,
-                        last_location: null,
-                        last_update: null,
-                        current_customer: null,
-                        status: 'inactive',
-                        total_visits: 0,
-                        location_alerts: 0,
-                        source: 'firebase-daily'
-                    };
-                }
-                
-                const salesman = this.salesmanData[salesmanId];
-                
-                // Extract location from daily data
-                if (dailyData.location || dailyData.latest_location) {
-                    salesman.last_location = dailyData.location || dailyData.latest_location;
-                    salesman.last_update = dailyData.last_update || `${dateStr}T12:00:00Z`;
-                    salesman.status = this.determineSalesmanStatus({ timestamp: salesman.last_update });
-                }
-                
-                // Extract visit statistics
-                if (dailyData.total_visits) salesman.total_visits = dailyData.total_visits;
-                if (dailyData.total_customers) salesman.current_customer = `${dailyData.total_customers} customers`;
-                if (dailyData.location_alerts) salesman.location_alerts = dailyData.location_alerts;
             }
             
             loadFromLocalStorage(dateStr) {
-                addDebugMessage(`💾 Loading localStorage data for ${dateStr}...`);
+                addDebugMessage(`Loading localStorage data for ${dateStr}...`);
                 
-                // Scan localStorage for geolocation data
                 const geoAnalyticsPattern = `visit_analytics_geo_${dateStr}_`;
-                const geoDailyPattern = `visit_daily_geo_${dateStr}_`;
-                
                 let localStorageCount = 0;
                 
                 for (let i = 0; i < localStorage.length; i++) {
@@ -1044,7 +1033,6 @@
                             const dailyKey = `visit_daily_geo_${dateStr}_${salesmanId}`;
                             const dailyData = JSON.parse(localStorage.getItem(dailyKey) || '{}');
                             
-                            // Find latest location and customer data
                             const latestLocationEvent = analyticsData
                                 .filter(event => event.location)
                                 .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0];
@@ -1058,43 +1046,36 @@
                                 salesman_name: latestLocationEvent ? latestLocationEvent.salesman_name : `Salesman ${salesmanId}`,
                                 last_location: latestLocationEvent ? latestLocationEvent.location : null,
                                 last_update: latestLocationEvent ? latestLocationEvent.timestamp : null,
-                                current_customer: customerEvents.length > 0 ? customerEvents[0].event_data.customer_name : null,
-                                daily_data: dailyData,
-                                status: this.determineSalesmanStatus(latestLocationEvent),
+                                current_outlet: customerEvents.length > 0 ? customerEvents[0].event_data.customer_name : null,
+                                status: this.determineSalesmanStatus(latestLocationEvent ? latestLocationEvent.timestamp : null),
                                 total_visits: customerEvents.length,
-                                location_alerts: this.calculateLocationAlerts(analyticsData),
+                                visits_with_so: 0, // Can't determine from localStorage data
+                                total_so_amount: 0,
+                                total_duration: 0,
                                 source: 'localStorage'
                             };
                             
                             localStorageCount++;
                             
                         } catch (error) {
-                            addDebugMessage(`❌ Error loading localStorage data for salesman ${salesmanId}: ${error.message}`);
+                            addDebugMessage(`Error loading localStorage data for salesman ${salesmanId}: ${error.message}`);
                         }
                     }
                 }
                 
-                addDebugMessage(`💾 LocalStorage: found ${localStorageCount} salesman records`);
+                addDebugMessage(`LocalStorage: found ${localStorageCount} records`);
             }
             
-            determineSalesmanStatus(latestEvent) {
-                if (!latestEvent) return 'inactive';
+            determineSalesmanStatus(lastUpdateStr) {
+                if (!lastUpdateStr) return 'inactive';
                 
-                const lastUpdate = new Date(latestEvent.timestamp);
+                const lastUpdate = new Date(lastUpdateStr);
                 const now = new Date();
                 const minutesAgo = (now - lastUpdate) / (1000 * 60);
                 
                 if (minutesAgo <= 5) return 'online';
                 if (minutesAgo <= 30) return 'recent';
                 return 'offline';
-            }
-            
-            calculateLocationAlerts(analyticsData) {
-                return analyticsData
-                    .filter(event => 
-                        event.event_name === 'visit_location_verification' && 
-                        event.event_data.distance_meters > this.alertThreshold
-                    ).length;
             }
             
             updateSalesmanList() {
@@ -1107,7 +1088,7 @@
                                 <div class="salesman-name">No Active Data</div>
                                 <div class="salesman-status status-inactive">Inactive</div>
                             </div>
-                            <div class="salesman-details">No salesman activity detected for selected date and source</div>
+                            <div class="salesman-details">No salesman activity detected</div>
                         </div>
                     `;
                     return;
@@ -1129,6 +1110,9 @@
                             `${salesman.last_location.latitude.toFixed(4)}, ${salesman.last_location.longitude.toFixed(4)}` :
                             'No location data';
                         
+                        const soAmountFormatted = salesman.total_so_amount ? 
+                            new Intl.NumberFormat('id-ID').format(salesman.total_so_amount) : '0';
+                        
                         html += `
                             <div class="salesman-item" onclick="focusOnSalesman('${salesman.salesman_id}')">
                                 <div class="salesman-header">
@@ -1136,10 +1120,11 @@
                                     <div class="salesman-status ${statusClass}">${salesman.status}</div>
                                 </div>
                                 <div class="salesman-details">
-                                    📍 ${salesman.current_customer || 'No active customer'}<br>
-                                    🕐 Last: ${lastUpdate}<br>
-                                    📊 Visits: ${salesman.total_visits} | Alerts: ${salesman.location_alerts}<br>
-                                    🔗 Source: ${salesman.source}
+                                    Current: ${salesman.current_outlet || 'No active outlet'}<br>
+                                    Last: ${lastUpdate}<br>
+                                    Visits: ${salesman.total_visits} | SO: ${salesman.visits_with_so}<br>
+                                    Amount: Rp ${soAmountFormatted}<br>
+                                    Source: ${salesman.source}
                                 </div>
                                 <div class="salesman-location">${locationText}</div>
                             </div>
@@ -1159,7 +1144,7 @@
                     }
                 });
                 
-                addDebugMessage(`🗺️ Updated ${Object.keys(salesmanMarkers).length} salesman markers`);
+                addDebugMessage(`Updated ${Object.keys(salesmanMarkers).length} map markers`);
             }
             
             addSalesmanMarker(salesman) {
@@ -1172,7 +1157,6 @@
                 
                 const color = statusColors[salesman.status] || statusColors.inactive;
                 
-                // Create pulsing marker for online salesman
                 const markerOptions = {
                     radius: salesman.status === 'online' ? 10 : 8,
                     fillColor: color,
@@ -1197,28 +1181,34 @@
                     });
                 }
                 
+                const soAmountFormatted = salesman.total_so_amount ? 
+                    new Intl.NumberFormat('id-ID').format(salesman.total_so_amount) : '0';
+                
+                const durationFormatted = salesman.total_duration ? 
+                    Math.round(salesman.total_duration / 60) + ' min' : '0 min';
+                
                 const popupContent = `
                     <div style="font-family: 'Segoe UI', sans-serif; min-width: 200px;">
                         <h4 style="margin: 0 0 8px 0; color: #1e293b; font-size: 14px;">
-                            👤 ${salesman.salesman_name}
+                            ${salesman.salesman_name}
                         </h4>
                         <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Status:</strong> 
                             <span style="color: ${color}; font-weight: 600;">${salesman.status.toUpperCase()}</span>
                         </p>
-                        <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Current Customer:</strong> 
-                            ${salesman.current_customer || 'None'}
+                        <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Current Outlet:</strong> 
+                            ${salesman.current_outlet || 'None'}
                         </p>
                         <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Location:</strong> 
                             ${salesman.last_location.latitude.toFixed(6)}, ${salesman.last_location.longitude.toFixed(6)}
                         </p>
-                        <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Accuracy:</strong> 
-                            ±${Math.round(salesman.last_location.accuracy || 0)}m
+                        <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Visits Today:</strong> 
+                            ${salesman.total_visits} (${salesman.visits_with_so} with SO)
                         </p>
-                        <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Today's Visits:</strong> 
-                            ${salesman.total_visits}
+                        <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>SO Amount:</strong> 
+                            Rp ${soAmountFormatted}
                         </p>
-                        <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Data Source:</strong> 
-                            ${salesman.source}
+                        <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Duration:</strong> 
+                            ${durationFormatted}
                         </p>
                         <p style="margin: 0; font-size: 11px; color: #64748b;">
                             Last update: ${new Date(salesman.last_update).toLocaleString()}
@@ -1246,30 +1236,41 @@
                 
                 document.getElementById('totalOnline').textContent = stats.totalOnline;
                 document.getElementById('totalVisits').textContent = stats.totalVisits;
-                document.getElementById('activeCustomers').textContent = stats.activeCustomers;
-                document.getElementById('locationAlerts').textContent = stats.locationAlerts;
+                document.getElementById('activeOutlets').textContent = stats.activeOutlets;
+                document.getElementById('totalSoAmount').textContent = stats.totalSoAmount;
             }
             
             calculateStatistics() {
                 const salesmanList = Object.values(this.salesmanData);
                 
+                const totalSoAmount = salesmanList.reduce((sum, s) => sum + (s.total_so_amount || 0), 0);
+                const soAmountFormatted = totalSoAmount > 1000000 ? 
+                    (totalSoAmount / 1000000).toFixed(1) + 'M' : 
+                    (totalSoAmount / 1000).toFixed(0) + 'K';
+                
                 return {
                     totalOnline: salesmanList.filter(s => s.status === 'online').length,
-                    totalVisits: salesmanList.reduce((sum, s) => sum + s.total_visits, 0),
-                    activeCustomers: salesmanList.filter(s => s.current_customer).length,
-                    locationAlerts: salesmanList.reduce((sum, s) => sum + s.location_alerts, 0)
+                    totalVisits: salesmanList.reduce((sum, s) => sum + (s.total_visits || 0), 0),
+                    activeOutlets: salesmanList.filter(s => s.current_outlet).length,
+                    totalSoAmount: 'Rp ' + soAmountFormatted
                 };
             }
             
-            checkLocationAlerts() {
-                Object.values(this.salesmanData).forEach(salesman => {
-                    if (salesman.location_alerts > 0 && notificationsEnabled) {
-                        this.addNotification(
-                            `⚠️ ${salesman.salesman_name} has ${salesman.location_alerts} location alerts`,
-                            'warning'
-                        );
+            focusOnSalesman(salesmanId) {
+                const salesman = this.salesmanData[salesmanId];
+                if (salesman && salesman.last_location) {
+                    realtimeMap.setView([
+                        salesman.last_location.latitude,
+                        salesman.last_location.longitude
+                    ], 15);
+                    
+                    // Open popup
+                    if (salesmanMarkers[salesmanId]) {
+                        salesmanMarkers[salesmanId].openPopup();
                     }
-                });
+                    
+                    addDebugMessage(`Focused on ${salesman.salesman_name}`);
+                }
             }
             
             addNotification(message, type = 'info') {
@@ -1281,8 +1282,6 @@
                 };
                 
                 this.notifications.unshift(notification);
-                
-                // Keep only last 10 notifications
                 if (this.notifications.length > 10) {
                     this.notifications = this.notifications.slice(0, 10);
                 }
@@ -1293,7 +1292,7 @@
                     this.showNotificationPanel();
                 }
                 
-                addDebugMessage(`🔔 Notification: ${message}`);
+                addDebugMessage(`Notification: ${message}`);
             }
             
             updateNotificationPanel() {
@@ -1318,27 +1317,9 @@
                 const panel = document.getElementById('notificationPanel');
                 panel.style.display = 'block';
                 
-                // Auto-hide after 5 seconds
                 setTimeout(() => {
                     panel.style.display = 'none';
                 }, 5000);
-            }
-            
-            focusOnSalesman(salesmanId) {
-                const salesman = this.salesmanData[salesmanId];
-                if (salesman && salesman.last_location) {
-                    realtimeMap.setView([
-                        salesman.last_location.latitude,
-                        salesman.last_location.longitude
-                    ], 15);
-                    
-                    // Open popup
-                    if (salesmanMarkers[salesmanId]) {
-                        salesmanMarkers[salesmanId].openPopup();
-                    }
-                    
-                    addDebugMessage(`🎯 Focused on ${salesman.salesman_name}`);
-                }
             }
             
             exportLiveData() {
@@ -1346,11 +1327,12 @@
                     salesman_id: salesman.salesman_id,
                     salesman_name: salesman.salesman_name,
                     status: salesman.status,
-                    current_customer: salesman.current_customer,
+                    current_outlet: salesman.current_outlet,
                     last_location: salesman.last_location,
                     last_update: salesman.last_update,
                     total_visits: salesman.total_visits,
-                    location_alerts: salesman.location_alerts,
+                    visits_with_so: salesman.visits_with_so,
+                    total_so_amount: salesman.total_so_amount,
                     source: salesman.source
                 }));
                 
@@ -1363,27 +1345,28 @@
                 a.click();
                 window.URL.revokeObjectURL(url);
                 
-                this.addNotification('📤 Live data exported successfully', 'success');
+                this.addNotification('Live data exported successfully', 'success');
             }
             
             convertToCSV(data) {
                 const headers = [
-                    'Salesman_ID', 'Salesman_Name', 'Status', 'Current_Customer',
+                    'Salesman_ID', 'Salesman_Name', 'Status', 'Current_Outlet',
                     'Latitude', 'Longitude', 'Location_Accuracy', 'Last_Update',
-                    'Total_Visits', 'Location_Alerts', 'Data_Source'
+                    'Total_Visits', 'Visits_With_SO', 'Total_SO_Amount', 'Data_Source'
                 ];
                 
                 const rows = data.map(item => [
                     item.salesman_id,
                     item.salesman_name,
                     item.status,
-                    item.current_customer || '',
+                    item.current_outlet || '',
                     item.last_location ? item.last_location.latitude : '',
                     item.last_location ? item.last_location.longitude : '',
                     item.last_location ? item.last_location.accuracy : '',
                     item.last_update || '',
                     item.total_visits,
-                    item.location_alerts,
+                    item.visits_with_so,
+                    item.total_so_amount,
                     item.source
                 ]);
                 
@@ -1405,13 +1388,13 @@
                 if (locationMonitor) {
                     locationMonitor.setupAutoRefresh();
                 }
-                addDebugMessage('✅ Auto-refresh enabled');
+                addDebugMessage('Auto-refresh enabled');
             } else {
                 if (autoRefreshInterval) {
                     clearInterval(autoRefreshInterval);
                     autoRefreshInterval = null;
                 }
-                addDebugMessage('⏸️ Auto-refresh disabled');
+                addDebugMessage('Auto-refresh disabled');
             }
         }
 
@@ -1422,22 +1405,22 @@
             
             if (notificationsEnabled) {
                 if (locationMonitor) {
-                    locationMonitor.addNotification('🔔 Live notifications enabled', 'info');
+                    locationMonitor.addNotification('Live notifications enabled', 'info');
                 }
-                addDebugMessage('🔔 Notifications enabled');
+                addDebugMessage('Notifications enabled');
             } else {
                 document.getElementById('notificationPanel').style.display = 'none';
-                addDebugMessage('🔕 Notifications disabled');
+                addDebugMessage('Notifications disabled');
             }
         }
 
         function updateDataSource() {
             const select = document.getElementById('dataSourceFilter');
             currentDataSource = select.value;
-            addDebugMessage(`🔄 Data source changed to: ${currentDataSource}`);
+            addDebugMessage(`Data source changed to: ${currentDataSource}`);
             
             if (locationMonitor) {
-                locationMonitor.addNotification(`🔄 Data source: ${currentDataSource}`, 'info');
+                locationMonitor.addNotification(`Data source: ${currentDataSource}`, 'info');
             }
         }
 
@@ -1449,13 +1432,13 @@
                 locationMonitor.setupAutoRefresh();
             }
             
-            addDebugMessage(`⏰ Refresh interval updated to ${refreshIntervalMs/1000} seconds`);
+            addDebugMessage(`Refresh interval updated to ${refreshIntervalMs/1000} seconds`);
         }
 
         function refreshMapData() {
             if (locationMonitor) {
                 locationMonitor.refreshData();
-                locationMonitor.addNotification('🔄 Data refreshed manually', 'info');
+                locationMonitor.addNotification('Data refreshed manually', 'info');
             }
         }
 
@@ -1465,7 +1448,7 @@
                 realtimeMap.fitBounds(group.getBounds().pad(0.1));
                 
                 if (locationMonitor) {
-                    locationMonitor.addNotification('🎯 Map view centered', 'info');
+                    locationMonitor.addNotification('Map view centered', 'info');
                 }
             }
         }
@@ -1475,12 +1458,12 @@
             
             if (locationMonitor) {
                 locationMonitor.addNotification(
-                    `🔥 Heatmap ${heatmapEnabled ? 'enabled' : 'disabled'}`, 
+                    `Heatmap ${heatmapEnabled ? 'enabled' : 'disabled'}`, 
                     'info'
                 );
             }
             
-            addDebugMessage(`🔥 Heatmap ${heatmapEnabled ? 'enabled' : 'disabled'}`);
+            addDebugMessage(`Heatmap ${heatmapEnabled ? 'enabled' : 'disabled'}`);
         }
 
         function exportLiveData() {
@@ -1496,35 +1479,35 @@
         }
 
         async function refreshFirebaseConnection() {
-            addDebugMessage('🔄 Refreshing Firebase connection...');
+            addDebugMessage('Refreshing Firebase connection...');
             
             try {
                 if (firebase.auth().currentUser) {
-                    addDebugMessage('🔓 Signing out current user...');
+                    addDebugMessage('Signing out current user...');
                     await firebase.auth().signOut();
                 }
                 
                 await initializeFirebase();
                 
                 if (isFirebaseConnected) {
-                    alert('✅ Firebase connection successful!\n\n🔐 Authentication: OK\n📊 Database access: Confirmed\n🔥 You can now use Firebase data source');
+                    alert('Firebase connection successful!\n\nAuthentication: OK\nDatabase access: Confirmed\nYou can now use Firebase data source');
                 } else {
-                    alert('⚠️ Firebase connection partial!\n\n🔐 Authentication may have limitations\n💾 localStorage remains available\n💡 Recommend using localStorage data source');
+                    alert('Firebase connection partial!\n\nAuthentication may have limitations\nlocalStorage remains available\nRecommend using localStorage data source');
                 }
                 
                 if (locationMonitor) {
-                    locationMonitor.addNotification('🔄 Firebase connection refreshed', 'info');
+                    locationMonitor.addNotification('Firebase connection refreshed', 'info');
                 }
                 
             } catch (error) {
-                addDebugMessage('❌ Firebase refresh error: ' + error.message);
-                alert('❌ Firebase refresh failed!\n\n' + error.message + '\n\n💾 Continue using localStorage data source');
+                addDebugMessage('Firebase refresh error: ' + error.message);
+                alert('Firebase refresh failed!\n\n' + error.message + '\n\nContinue using localStorage data source');
             }
         }
 
         // ===== INITIALIZATION =====
         async function initializeRealtimeMonitoring() {
-            addDebugMessage('🚀 Initializing Real-time Location Monitoring with Firebase...');
+            addDebugMessage('Initializing Real-time Location Monitoring...');
             
             // Set today's date
             const today = new Date().toISOString().split('T')[0];
@@ -1540,14 +1523,12 @@
                 }
             });
             
-            addDebugMessage('✅ Real-time monitoring system with Firebase ready');
+            addDebugMessage('Real-time monitoring system ready');
         }
 
         // ===== PAGE LOAD =====
         window.onload = function() {
-            addDebugMessage('🔴 Starting Real-time Location Monitoring Dashboard with Firebase...');
-            addDebugMessage('📊 Features: Live tracking, Firebase integration, auto-refresh, notifications');
-            
+            addDebugMessage('Starting Real-time Location Monitoring Dashboard...');
             initializeRealtimeMonitoring();
         };
 
@@ -1570,9 +1551,6 @@
             }
         `;
         document.head.appendChild(style);
-
-        addDebugMessage('✅ Real-time Location Monitoring Dashboard with Firebase loaded');
-        addDebugMessage('🎛️ Control Center ready with Firebase and localStorage integration');
     </script>
 </body>
 </html>
