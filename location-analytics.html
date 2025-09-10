@@ -1224,12 +1224,21 @@
                 
                 salesmanMetrics[salesmanId].visits.push(visit);
                 
-                if (visit.order_status === 'ada_so' && visit.so_amount > 0) {
-                    salesmanMetrics[salesmanId].effectiveCalls++;
-                    salesmanMetrics[salesmanId].totalSO += visit.so_amount;
+                // Handle summary data differently
+                if (visit.is_summary) {
+                    // For summary data, use the aggregated values
+                    salesmanMetrics[salesmanId].effectiveCalls += visit.visits_with_so || 0;
+                    salesmanMetrics[salesmanId].totalSO += visit.so_amount || 0;
+                    salesmanMetrics[salesmanId].totalDuration += (visit.duration_seconds || 0) * (visit.total_visits || 1);
+                } else {
+                    // For individual visits
+                    if (visit.order_status === 'ada_so' && visit.so_amount > 0) {
+                        salesmanMetrics[salesmanId].effectiveCalls++;
+                        salesmanMetrics[salesmanId].totalSO += visit.so_amount;
+                    }
+                    salesmanMetrics[salesmanId].totalDuration += visit.duration_seconds || 0;
                 }
                 
-                salesmanMetrics[salesmanId].totalDuration += visit.duration_seconds || 0;
                 salesmanMetrics[salesmanId].totalAccuracy += visit.accuracy || 0;
             });
             
@@ -1238,7 +1247,16 @@
             let totalPC = 0, totalAC = 0, totalEC = 0, totalSO = 0, totalDuration = 0, totalAccuracy = 0;
             
             Object.entries(salesmanMetrics).forEach(([salesmanId, metrics]) => {
-                const ac = metrics.visits.length; // Actual Calls
+                // Calculate actual calls - for summary data, use total_visits from summary
+                let ac = 0;
+                metrics.visits.forEach(visit => {
+                    if (visit.is_summary) {
+                        ac += visit.total_visits || 1;
+                    } else {
+                        ac += 1;
+                    }
+                });
+                
                 const ec = metrics.effectiveCalls; // Effective Calls
                 const pc = ac; // Using AC as PC since we don't have planned data
                 const achievement = ac > 0 ? Math.round((ec / ac) * 100) : 0;
@@ -1258,9 +1276,13 @@
                 totalDuration += metrics.totalDuration;
                 totalAccuracy += metrics.totalAccuracy;
                 
+                // Add data source indicator
+                const hasFirebaseSummary = metrics.visits.some(v => v.source === 'firebase_summary');
+                const dataSourceIndicator = hasFirebaseSummary ? ' 📋' : '';
+                
                 tableRows += `
                     <tr>
-                        <td style="font-weight: 600; color: #1e293b; padding: 8px;">${metrics.name}</td>
+                        <td style="font-weight: 600; color: #1e293b; padding: 8px;">${metrics.name}${dataSourceIndicator}</td>
                         <td style="text-align: center; padding: 8px;">${pc}</td>
                         <td style="text-align: center; padding: 8px;">${ac}</td>
                         <td style="text-align: center; padding: 8px;">${ec}</td>
@@ -1321,6 +1343,9 @@
                         <div>• Avg Durasi = Rata-rata durasi kunjungan</div>
                         <div>• Accuracy = Rata-rata akurasi lokasi</div>
                         <div>• SO = Total Sales Order</div>
+                        <div style="margin-top: 8px;">
+                            <strong>Indikator:</strong> 📋 = Data dari Daily Summary
+                        </div>
                     </div>
                 </div>
             `;
