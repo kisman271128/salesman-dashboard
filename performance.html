@@ -414,7 +414,7 @@
 
         /* Column width classes */
         .col-narrow { min-width: 60px; max-width: 80px; }
-        .col-medium { min-width: 80px; max-width: 120px; }
+        .col-medium { min-width: 60px; max-width: 100px; }
         .col-wide { min-width: 40px; max-width: 60px; }
         .col-text { min-width: 120px; max-width: 200px; }
 
@@ -782,7 +782,7 @@
                             <thead>
                                 <tr>
                                     <th class="sticky-col jks-hari-col col-wide">Hari JKS</th>
-                                    <th class="col-narrow">CR</th>
+                                    <th class="col-narrow">CR Pasif</th>
 									<th class="col-wide value-currency">Gap</th>
                                     <th class="col-wide value-currency">Target</th>
                                     <th class="col-wide value-currency">Actual</th>
@@ -916,16 +916,17 @@
     </div>
 
     <script>
-        // ===== GLOBAL VARIABLES =====
+        // ===== VARIABEL GLOBAL =====
         let jksData = [];
         let channelData = [];
+        let channelProjData = [];
         let projectData = [];
         let paretoData = [];
         let pomData = [];
         let currentSalesmanId = null;
         let currentSalesmanName = null;
 
-        // ===== UTILITY FUNCTIONS =====
+        // ===== FUNGSI UTILITAS =====
         function formatCurrencyIndonesia(value) {
             const val = Math.abs(parseFloat(value) || 0);
             if (val >= 1000000000) return `${(val/1000000000).toFixed(1)}M`;
@@ -958,7 +959,7 @@
             return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
         }
 
-        // ===== DATA LOADING =====
+        // ===== PEMUATAN DATA =====
         async function loadJSONData() {
             const possiblePaths = [
                 'data/',
@@ -983,7 +984,7 @@
                         continue;
                     }
                 }
-                throw new Error(`Cannot load ${filename}`);
+                throw new Error(`Tidak dapat memuat ${filename}`);
             }
 
             function parseJSONLines(text) {
@@ -999,143 +1000,134 @@
                     .filter(item => item !== null);
             }
 
-            // Load all data files
+            // Muat semua file data
             try {
                 const jksText = await loadFile('d.jks.json');
                 jksData = parseJSONLines(jksText);
+                console.log('Data JKS dimuat:', jksData.length, 'records');
             } catch (error) {
-                console.error('JKS data loading failed:', error.message);
+                console.error('Gagal memuat data JKS:', error.message);
             }
 
             try {
                 const channelText = await loadFile('d.channel.json');
                 channelData = parseJSONLines(channelText);
+                console.log('Data Channel dimuat:', channelData.length, 'records');
             } catch (error) {
-                console.error('Channel data loading failed:', error.message);
-                try {
-                    const altChannelText = await loadFile('d.channelproj.json');
-                    channelData = parseJSONLines(altChannelText);
-                } catch (altError) {
-                    console.error('Alternative channel file also failed');
-                }
+                console.error('Gagal memuat data Channel:', error.message);
+            }
+
+            try {
+                const channelProjText = await loadFile('d.channelproj.json');
+                channelProjData = parseJSONLines(channelProjText);
+                console.log('Data Channel Project dimuat:', channelProjData.length, 'records');
+            } catch (error) {
+                console.error('Gagal memuat data Channel Project:', error.message);
             }
 
             try {
                 const projectText = await loadFile('d.project.json');
                 projectData = parseJSONLines(projectText);
+                console.log('Data Project dimuat:', projectData.length, 'records');
             } catch (error) {
-                console.error('Project data loading failed:', error.message);
+                console.error('Gagal memuat data Project:', error.message);
             }
 
             try {
                 const paretoText = await loadFile('d.30pareto.json');
                 paretoData = parseJSONLines(paretoText);
+                console.log('Data Pareto dimuat:', paretoData.length, 'records');
             } catch (error) {
-                console.error('Pareto data loading failed:', error.message);
+                console.error('Gagal memuat data Pareto:', error.message);
             }
 
             try {
                 const pomText = await loadFile('d.tpom.json');
                 pomData = parseJSONLines(pomText);
+                console.log('Data POM dimuat:', pomData.length, 'records');
             } catch (error) {
-                console.error('POM data loading failed:', error.message);
-                const alternativeNames = ['d.pom.json', 'pom.json', 'd.tpom.jsonl'];
-                for (const altName of alternativeNames) {
-                    try {
-                        const altText = await loadFile(altName);
-                        pomData = parseJSONLines(altText);
-                        break;
-                    } catch (altError) {
-                        continue;
-                    }
-                }
+                console.error('Gagal memuat data POM:', error.message);
             }
         }
 
-        // ===== UI UPDATE FUNCTIONS =====
-        function updateMetricsCards(salesmanName) {
-            const salesmanChannelData = channelData.filter(item => item.szname === salesmanName);
+		// ===== FUNGSI UPDATE UI =====
+		function updateMetricsCards(salesmanName) {
+			// Hanya gunakan channelData untuk metrics cards
+			const salesmanChannelData = channelData.filter(item => item.szname === salesmanName);
+			
+			if (salesmanChannelData.length === 0) {
+				// Jika tidak ada data channel, tampilkan semua sebagai 0
+				document.getElementById('totalValue').textContent = '0';
+				document.getElementById('totalTarget').textContent = '0';
+				document.getElementById('totalAch').textContent = '0%';
+				document.getElementById('totalAch').className = 'achievement low';
+				
+				['Wholesaler', 'Retail', 'MTI'].forEach(channel => {
+					document.getElementById(`${channel}Value`).textContent = '0';
+					document.getElementById(`${channel}Target`).textContent = '0';
+					document.getElementById(`${channel}Ach`).textContent = '0%';
+					document.getElementById(`${channel}Ach`).className = 'achievement low';
+				});
+				return;
+			}
 
-            if (salesmanChannelData.length === 0) {
-                const salesmanJKSData = jksData.filter(item => item.szname === salesmanName);
-                let totalTarget = 0, totalActual = 0;
-                
-                salesmanJKSData.forEach(item => {
-                    totalTarget += parseFloat(item[' T.MTD'] || 0);
-                    totalActual += parseFloat(item[' A.MTD'] || 0);
-                });
+			// Kelompokkan data berdasarkan Channel Group
+			const channelMap = {};
+			salesmanChannelData.forEach(item => {
+				const channel = item['Channel Group'];
+				const target = parseFloat(item[' T.MTD'] || 0);
+				const actual = parseFloat(item[' A.MTD'] || 0);
+				
+				if (!channelMap[channel]) {
+					channelMap[channel] = { target: 0, actual: 0 };
+				}
+				channelMap[channel].target += target;
+				channelMap[channel].actual += actual;
+			});
 
-                document.getElementById('totalValue').textContent = formatCurrencyIndonesia(totalActual);
-                document.getElementById('totalTarget').textContent = formatCurrencyIndonesia(totalTarget);
-                
-                const totalAchPercentage = calculateAchievementPercentage(totalTarget, totalActual);
-                const totalAchElement = document.getElementById('totalAch');
-                totalAchElement.textContent = `${totalAchPercentage}%`;
-                totalAchElement.className = `achievement ${getAchievementClass(totalAchPercentage).replace('ach-', '')}`;
-                
-                ['wholesaler', 'retail', 'mti'].forEach(channel => {
-                    document.getElementById(`${channel}Value`).textContent = '0';
-                    document.getElementById(`${channel}Target`).textContent = '0';
-                    document.getElementById(`${channel}Ach`).textContent = '0%';
-                    document.getElementById(`${channel}Ach`).className = 'achievement low';
-                });
-                return;
-            }
+			let totalTarget = 0, totalActual = 0;
 
-            const channelMap = {};
-            salesmanChannelData.forEach(item => {
-                const channel = item['Channel Group'];
-                const target = parseFloat(item[' T.MTD'] || 0);
-                const actual = parseFloat(item[' A.MTD'] || 0);
-                
-                if (!channelMap[channel]) {
-                    channelMap[channel] = { target: 0, actual: 0 };
-                }
-                channelMap[channel].target += target;
-                channelMap[channel].actual += actual;
-            });
+			// Update metrics untuk setiap channel
+			['Wholesaler', 'Retail', 'MTI'].forEach(channel => {
+				const data = channelMap[channel] || { target: 0, actual: 0 };
+				totalTarget += data.target;
+				totalActual += data.actual;
 
-            let totalTarget = 0, totalActual = 0;
+				const channelKey = channel.toLowerCase();
+				document.getElementById(`${channelKey}Value`).textContent = formatCurrencyIndonesia(data.actual);
+				document.getElementById(`${channelKey}Target`).textContent = formatCurrencyIndonesia(data.target);
+				
+				const achPercentage = calculateAchievementPercentage(data.target, data.actual);
+				const achElement = document.getElementById(`${channelKey}Ach`);
+				achElement.textContent = `${achPercentage}%`;
+				achElement.className = `achievement ${getAchievementClass(achPercentage).replace('ach-', '')}`;
+			});
 
-            ['WHOLESALER', 'RETAIL', 'MTI'].forEach(channel => {
-                const data = channelMap[channel] || { target: 0, actual: 0 };
-                totalTarget += data.target;
-                totalActual += data.actual;
-
-                const channelKey = channel.toLowerCase();
-                document.getElementById(`${channelKey}Value`).textContent = formatCurrencyIndonesia(data.actual);
-                document.getElementById(`${channelKey}Target`).textContent = formatCurrencyIndonesia(data.target);
-                
-                const achPercentage = calculateAchievementPercentage(data.target, data.actual);
-                const achElement = document.getElementById(`${channelKey}Ach`);
-                achElement.textContent = `${achPercentage}%`;
-                achElement.className = `achievement ${getAchievementClass(achPercentage).replace('ach-', '')}`;
-            });
-
-            document.getElementById('totalValue').textContent = formatCurrencyIndonesia(totalActual);
-            document.getElementById('totalTarget').textContent = formatCurrencyIndonesia(totalTarget);
-            
-            const totalAchPercentage = calculateAchievementPercentage(totalTarget, totalActual);
-            const totalAchElement = document.getElementById('totalAch');
-            totalAchElement.textContent = `${totalAchPercentage}%`;
-            totalAchElement.className = `achievement ${getAchievementClass(totalAchPercentage).replace('ach-', '')}`;
-        }
+			// Update total metrics
+			document.getElementById('totalValue').textContent = formatCurrencyIndonesia(totalActual);
+			document.getElementById('totalTarget').textContent = formatCurrencyIndonesia(totalTarget);
+			
+			const totalAchPercentage = calculateAchievementPercentage(totalTarget, totalActual);
+			const totalAchElement = document.getElementById('totalAch');
+			totalAchElement.textContent = `${totalAchPercentage}%`;
+			totalAchElement.className = `achievement ${getAchievementClass(totalAchPercentage).replace('ach-', '')}`;
+		}
 
         function updateJKSTable(salesmanName) {
             const salesmanJKSData = jksData.filter(item => item.szname === salesmanName);
             const tbody = document.getElementById('jksTableBody');
             
             if (salesmanJKSData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">📅</div><div>No JKS data available</div></td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">📅</div><div>Data JKS tidak tersedia</div></td></tr>';
                 return;
             }
 
-            // Calculate totals
+            // Hitung total
             let totalCR = 0, totalTarget = 0, totalActual = 0, totalGap = 0;
             let totalVsLM = 0;
 
             salesmanJKSData.forEach(item => {
-                totalCR += parseFloat(item['CR on JKS'] || 0);
+                totalCR += parseInt(item[' CR Pasif'] || 0);
                 totalTarget += parseFloat(item[' T.MTD'] || 0);
                 totalActual += parseFloat(item[' A.MTD'] || 0);
                 totalGap += parseFloat(item[' Gap MTD'] || 0);
@@ -1149,7 +1141,7 @@
                 <tr class="total-row">
                     <td class="sticky-col jks-hari-col"><strong>TOTAL</strong></td>
                     <td class="col-narrow"><strong>${totalCR}</strong></td>
-					<td class="value-currency col-wide ${getGapClass(totalGap)}"><strong>${totalGap >= 0 ? '+' : ''}${formatCurrencyIndonesia(totalGap)}</strong></td>
+                    <td class="value-currency col-wide ${getGapClass(totalGap)}"><strong>${totalGap >= 0 ? '+' : ''}${formatCurrencyIndonesia(totalGap)}</strong></td>
                     <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(totalTarget)}</strong></td>
                     <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(totalActual)}</strong></td>
                     <td class="value-percentage col-medium ${getAchievementClass(totalAchPercentage)}"><strong>${totalAchPercentage}%</strong></td>                 
@@ -1160,17 +1152,17 @@
             salesmanJKSData.forEach(item => {
                 const achPercentage = Math.round((item[' Ach'] || 0) * 100);
                 const gap = parseFloat(item[' Gap MTD'] || 0);
-                const vsLY = Math.round((item[' vs LY'] || 0) * 100);
+                const vsLM = Math.round((item[' vs LM'] || 0) * 100);
                 
                 html += `
                     <tr>
                         <td class="sticky-col jks-hari-col"><strong>${item['Hari JKS'] || ''}</strong></td>
-                        <td class="col-narrow">${item['CR on JKS'] || 0}</td>
-						<td class="value-currency col-wide ${getGapClass(gap)}">${gap >= 0 ? '+' : ''}${formatCurrencyIndonesia(gap)}</td>
+                        <td class="col-narrow">${item[' CR Pasif'] || 0}</td>
+                        <td class="value-currency col-wide ${getGapClass(gap)}">${gap >= 0 ? '+' : ''}${formatCurrencyIndonesia(gap)}</td>
                         <td class="value-currency col-wide">${formatCurrencyIndonesia(item[' T.MTD'])}</td>
                         <td class="value-currency col-wide">${formatCurrencyIndonesia(item[' A.MTD'])}</td>
                         <td class="value-percentage col-medium ${getAchievementClass(achPercentage)}">${achPercentage}%</td>  
-                        <td class="value-percentage col-medium ${gap >= 0 ? 'gap-positive' : 'gap-negative'}">${vsLY >= 0 ? '+' : ''}${vsLY}%</td>
+                        <td class="value-percentage col-medium ${gap >= 0 ? 'gap-positive' : 'gap-negative'}">${vsLM >= 0 ? '+' : ''}${vsLM}%</td>
                     </tr>
                 `;
             });
@@ -1180,19 +1172,23 @@
         }
 
         function updateChannelTable(salesmanName) {
+            // Gabungkan data dari channelData dan channelProjData
             const salesmanChannelData = channelData.filter(item => item.szname === salesmanName);
+            const salesmanChannelProjData = channelProjData.filter(item => item.szname === salesmanName);
+            const allChannelData = [...salesmanChannelData, ...salesmanChannelProjData];
+            
             const tbody = document.getElementById('channelTableBody');
             
-            if (salesmanChannelData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><div class="icon">📈</div><div>No channel data available</div></td></tr>';
+            if (allChannelData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><div class="icon">📈</div><div>Data channel tidak tersedia</div></td></tr>';
                 return;
             }
 
-            // Calculate totals
+            // Hitung total
             let totalTarget = 0, totalActual = 0, totalGap = 0;
             let totalLY = 0, total3LM = 0, totalLM = 0;
 
-            salesmanChannelData.forEach(item => {
+            allChannelData.forEach(item => {
                 totalTarget += parseFloat(item[' T.MTD'] || 0);
                 totalActual += parseFloat(item[' A.MTD'] || 0);
                 totalGap += parseFloat(item[' Gap MTD'] || 0);
@@ -1216,16 +1212,19 @@
                 </tr>
             `;
 
-            salesmanChannelData.forEach(item => {
+            allChannelData.forEach(item => {
                 const target = parseFloat(item[' T.MTD'] || 0);
                 const actual = parseFloat(item[' A.MTD'] || 0);
                 const gap = parseFloat(item[' Gap MTD'] || 0);
                 const ach = parseFloat(item[' Ach'] || 0);
                 const achPercentage = Math.round(ach * 100);
                 
+                // Tambahkan info project jika ada
+                const channelInfo = item['Channel Group'] + (item['Project'] ? ` (${item['Project']})` : '');
+                
                 html += `
                     <tr>
-                        <td class="sticky-col channel-group-col col-text"><strong>${item['Channel Group'] || ''}</strong></td>
+                        <td class="sticky-col channel-group-col col-text"><strong>${channelInfo}</strong></td>
                         <td class="value-currency col-wide">${formatCurrencyIndonesia(target)}</td>
                         <td class="value-currency col-wide">${formatCurrencyIndonesia(actual)}</td>
                         <td class="value-currency col-wide ${getGapClass(gap)}">${gap >= 0 ? '+' : ''}${formatCurrencyIndonesia(gap)}</td>
@@ -1246,11 +1245,11 @@
             const tbody = document.getElementById('projectTableBody');
             
             if (salesmanProjectData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">🎯</div><div>No project data available</div></td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">🎯</div><div>Data project tidak tersedia</div></td></tr>';
                 return;
             }
 
-            // Calculate totals
+            // Hitung total
             let totalTMTD = 0, totalAMTD = 0, totalGapMTD = 0, totalGapQ3 = 0;
 
             salesmanProjectData.forEach(item => {
@@ -1303,16 +1302,16 @@
 
         function updateParetoTable(salesmanName) {
             const salesmanParetoData = paretoData.filter(item => 
-                item.szname === salesmanName && item.Ranking !== null
+                item.szname === salesmanName && (item.Ranking !== null || item['Rank Outlet'] !== null)
             );
             const tbody = document.getElementById('paretoTableBody');
             
             if (salesmanParetoData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="9" class="empty-state"><div class="icon">🏆</div><div>No pareto data available</div></td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9" class="empty-state"><div class="icon">🏆</div><div>Data pareto tidak tersedia</div></td></tr>';
                 return;
             }
 
-            // Calculate totals
+            // Hitung total
             let totalGapMTD = 0, totalTarget = 0, totalActMTD = 0;
             let totalLM = 0, totalLY = 0, total3LM = 0, totalMax = 0;
 
@@ -1342,10 +1341,11 @@
 
             salesmanParetoData.forEach(item => {
                 const gap = parseFloat(item[' Gap MTD'] || 0);
+                const rank = item.Ranking || item['Rank Outlet'] || '-';
                 
                 html += `
                     <tr>
-                        <td class="sticky-col pareto-rank-col col-narrow"><span class="status-badge">#${item.Ranking}</span></td>
+                        <td class="sticky-col pareto-rank-col col-narrow"><span class="status-badge">#${rank}</span></td>
                         <td class="sticky-col pareto-customer-col col-text">
                             <strong style="font-size: 10px;">${(item['Nama Pelanggan'] || '').substring(0, 25)}</strong><br>
                             <small style="color: #64748b; font-size: 9px;">${item['Hari JKS'] || ''}</small>
@@ -1368,27 +1368,12 @@
         function updatePOMTable(salesmanName) {
             const tbody = document.getElementById('pomTableBody');
             
-            let salesmanPOMData = [];
-            
-            // Try multiple filtering approaches
-            salesmanPOMData = pomData.filter(item => item['Nama Salesman'] === salesmanName);
-            
-            if (salesmanPOMData.length === 0) {
-                salesmanPOMData = pomData.filter(item => 
-                    (item['Nama Salesman'] || '').toLowerCase() === (salesmanName || '').toLowerCase()
-                );
-            }
+            // Filter berdasarkan szname dan szEmployeeId
+            let salesmanPOMData = pomData.filter(item => item.szname === salesmanName);
             
             if (salesmanPOMData.length === 0 && currentSalesmanId) {
                 salesmanPOMData = pomData.filter(item => 
-                    item.NIK && item.NIK.toString() === currentSalesmanId.toString()
-                );
-            }
-            
-            if (salesmanPOMData.length === 0 && salesmanName) {
-                salesmanPOMData = pomData.filter(item => 
-                    (item['Nama Salesman'] || '').includes(salesmanName) || 
-                    (salesmanName || '').includes(item['Nama Salesman'] || '')
+                    item.szEmployeeId && item.szEmployeeId.toString() === currentSalesmanId.toString()
                 );
             }
             
@@ -1397,14 +1382,14 @@
                     <tr>
                         <td colspan="6" class="empty-state">
                             <div class="icon">📋</div>
-                            <div>No POM data found for ${salesmanName}</div>
+                            <div>Data POM tidak ditemukan untuk ${salesmanName}</div>
                         </td>
                     </tr>
                 `;
                 return;
             }
 
-            // Calculate totals
+            // Hitung total
             let totalCR = 0, totalTarget = 0, totalActual = 0, totalGap = 0;
             let totalAchSum = 0;
 
@@ -1453,7 +1438,7 @@
             tbody.innerHTML = html;
         }
 
-        // ===== STICKY COLUMN ADJUSTMENT =====
+        // ===== PENYESUAIAN KOLOM STICKY =====
         function adjustColumns() {
             setTimeout(() => {
                 const channelGroupCol = document.querySelector('.channel-group-col');
@@ -1470,7 +1455,7 @@
             }, 100);
         }
 
-        // ===== TAB SWITCHING =====
+        // ===== BERALIH TAB =====
         function switchTab(tabName) {
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
@@ -1481,7 +1466,7 @@
             adjustColumns();
         }
 
-        // ===== MAIN LOAD FUNCTION =====
+        // ===== FUNGSI UTAMA LOAD DATA =====
         async function loadPerformanceData() {
             try {
                 showLoading(true);
@@ -1489,37 +1474,58 @@
 
                 currentSalesmanId = getUrlParameter('id');
                 if (!currentSalesmanId) {
-                    throw new Error('No salesman ID specified');
+                    throw new Error('ID salesman tidak ditemukan');
                 }
 
                 await loadJSONData();
                 
-                let salesmanJKSData = jksData.find(item => 
-                    item.szEmployeeId.toString() === currentSalesmanId.toString() ||
-                    Number(item.szEmployeeId) === Number(currentSalesmanId) ||
-                    item.szEmployeeId == currentSalesmanId
+                // Cari data salesman berdasarkan szEmployeeId di semua sumber data
+                let salesmanData = jksData.find(item => 
+                    item.szEmployeeId && item.szEmployeeId.toString() === currentSalesmanId.toString()
                 );
 
-                if (!salesmanJKSData) {
-                    salesmanJKSData = channelData.find(item => 
-                        item.szEmployeeId.toString() === currentSalesmanId.toString() ||
-                        Number(item.szEmployeeId) === Number(currentSalesmanId) ||
-                        item.szEmployeeId == currentSalesmanId
+                if (!salesmanData) {
+                    salesmanData = channelData.find(item => 
+                        item.szEmployeeId && item.szEmployeeId.toString() === currentSalesmanId.toString()
                     );
                 }
 
-                if (!salesmanJKSData) {
-                    throw new Error(`Salesman with ID ${currentSalesmanId} not found in any data source`);
+                if (!salesmanData) {
+                    salesmanData = channelProjData.find(item => 
+                        item.szEmployeeId && item.szEmployeeId.toString() === currentSalesmanId.toString()
+                    );
                 }
 
-                currentSalesmanName = salesmanJKSData.szname;
+                if (!salesmanData) {
+                    salesmanData = projectData.find(item => 
+                        item.szEmployeeId && item.szEmployeeId.toString() === currentSalesmanId.toString()
+                    );
+                }
+
+                if (!salesmanData) {
+                    salesmanData = paretoData.find(item => 
+                        item.szEmployeeId && item.szEmployeeId.toString() === currentSalesmanId.toString()
+                    );
+                }
+
+                if (!salesmanData) {
+                    salesmanData = pomData.find(item => 
+                        item.szEmployeeId && item.szEmployeeId.toString() === currentSalesmanId.toString()
+                    );
+                }
+
+                if (!salesmanData) {
+                    throw new Error(`Salesman dengan ID ${currentSalesmanId} tidak ditemukan dalam data`);
+                }
+
+                currentSalesmanName = salesmanData.szname;
                 
                 document.getElementById('salesmanName').textContent = currentSalesmanName;
                 document.getElementById('backBtn').href = `salesman-detail.html?id=${currentSalesmanId}`;
 
-                // Show/hide tabs based on data availability
+                // Tampilkan/sembunyikan tab berdasarkan ketersediaan data
                 const tabAvailability = {
-                    'channel': channelData.length > 0,
+                    'channel': (channelData.length > 0 || channelProjData.length > 0),
                     'project': projectData.length > 0,
                     'pareto': paretoData.length > 0,
                     'pom': pomData.length > 0
@@ -1532,7 +1538,7 @@
                     }
                 });
 
-                // Update all sections
+                // Update semua bagian
                 updateMetricsCards(currentSalesmanName);
                 updateJKSTable(currentSalesmanName);
                 updateChannelTable(currentSalesmanName);
@@ -1544,13 +1550,13 @@
                 showMainContent(true);
 
             } catch (error) {
-                console.error('Error loading performance data:', error);
+                console.error('Error saat memuat data performa:', error);
                 showLoading(false);
                 showError(true, error.message);
             }
         }
 
-        // ===== NAVIGATION FUNCTIONS =====
+        // ===== FUNGSI NAVIGASI =====
         function goHome() { window.location.href = 'dashboard.html'; }
         function showVisitOutlet() { window.location.href = 'visit.html'; }
         function showIncentive() {
@@ -1564,16 +1570,20 @@
             }
         }
 
-        // ===== UI CONTROL FUNCTIONS =====
+        // ===== FUNGSI KONTROL UI =====
         function showLoading(show) {
             document.getElementById('loadingSpinner').style.display = show ? 'flex' : 'none';
+            if (show) {
+                document.querySelector('#loadingSpinner div:last-child').textContent = 'Memuat data performa...';
+            }
         }
 
         function showError(show, message = '') {
             const errorElement = document.getElementById('errorMessage');
             errorElement.style.display = show ? 'block' : 'none';
             if (show && message) {
-                errorElement.querySelector('p').textContent = message;
+                errorElement.querySelector('h3').textContent = '🚨 Error Memuat Data';
+                errorElement.querySelector('p').textContent = message || 'Tidak dapat memuat data performa. Silakan periksa koneksi Anda.';
             }
         }
 
@@ -1583,7 +1593,7 @@
             document.getElementById('mainContent').style.display = show ? 'block' : 'none';
         }
 
-        // ===== LOGIN CHECK =====
+        // ===== PENGECEKAN LOGIN =====
         function checkLoginStatus() {
             const isLoggedIn = sessionStorage.getItem('isLoggedIn');
             const currentUser = sessionStorage.getItem('currentUser');
@@ -1595,7 +1605,7 @@
             return true;
         }
 
-        // ===== INITIALIZE =====
+        // ===== INISIALISASI =====
         document.addEventListener('DOMContentLoaded', function() {
             if (checkLoginStatus()) {
                 loadPerformanceData();
