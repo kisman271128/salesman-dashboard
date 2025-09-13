@@ -1445,6 +1445,10 @@
             pausedVisits.set(visitSession.outletName.toLowerCase(), pausedVisitData);
             savePausedVisitsToLocal();
             
+            // IMPORTANT: Remove from visited customers since visit is not completed
+            todayVisitedCustomers.delete(visitSession.outletName.toLowerCase());
+            removeFromLocalVisitedStorage(visitSession.outletName);
+            
             // Stop timer and update UI
             stopSessionTimer();
             visitSession.isActive = false; // Mark as inactive but keep data
@@ -1632,7 +1636,7 @@
             return pausedVisits.has(customerName.toLowerCase());
         }
 
-        // ===== VISIT SESSION MANAGEMENT =====
+        // ===== VISIT SESSION MANAGEMENT - FIXED =====
         function loadTodayVisitedCustomers() {
             const today = new Date().toISOString().split('T')[0];
             const visitKey = `visited_${currentSalesmanId}_${today}`;
@@ -1645,51 +1649,96 @@
                     
                     visits.forEach(visit => {
                         if (typeof visit === 'string') {
+                            // Legacy format: treat as completed visit
                             todayVisitedCustomers.add(visit.toLowerCase());
                         } else if (visit && visit.outlet_name) {
-                            todayVisitedCustomers.add(visit.outlet_name.toLowerCase());
+                            // New format: only add if visit is completed
+                            if (visit.visit_completed === true) {
+                                todayVisitedCustomers.add(visit.outlet_name.toLowerCase());
+                            }
                         }
                     });
                     
-                    console.log(`📋 Loaded ${todayVisitedCustomers.size} visited outlets from local storage`);
+                    console.log(`📋 Loaded ${todayVisitedCustomers.size} completed visits from local storage`);
                     updateCustomerListVisitStatus();
                 } catch (error) {
                     console.error('❌ Error parsing localStorage visits:', error);
                     localStorage.removeItem(visitKey);
                     todayVisitedCustomers = new Set();
                 }
+            } else {
+                console.log('📋 No completed visits today yet');
             }
         }
 
-        function markCustomerAsVisited(outletName, sessionId) {
-            todayVisitedCustomers.add(outletName.toLowerCase());
+        function markCustomerAsVisited(outletName, sessionId, isCompleted = false) {
+            // Only mark as visited if the visit is completed, not just started
+            if (isCompleted) {
+                todayVisitedCustomers.add(outletName.toLowerCase());
+                
+                const today = new Date().toISOString().split('T')[0];
+                const visitKey = `visited_${currentSalesmanId}_${today}`;
+                
+                try {
+                    const existingVisits = JSON.parse(localStorage.getItem(visitKey) || '[]');
+                    
+                    const visitRecord = {
+                        outlet_name: outletName,
+                        outlet_id: visitSession.outletId,
+                        session_id: sessionId,
+                        visit_time: new Date().toISOString(),
+                        visit_completed: true,
+                        salesman_id: currentSalesmanId,
+                        salesman_name: currentSalesman
+                    };
+                    
+                    existingVisits.push(visitRecord);
+                    localStorage.setItem(visitKey, JSON.stringify(existingVisits));
+                    console.log(`📋 Outlet ${outletName} marked as completed visit locally`);
+                    
+                } catch (error) {
+                    console.error('❌ Error saving to localStorage:', error);
+                }
+            } else {
+                console.log(`📋 Outlet ${outletName} visit started but not marked as completed yet`);
+            }
+        }
+
+        function isCustomerAlreadyVisited(customerName) {
+            // Check if customer has a completed visit today
+            const hasCompletedVisit = todayVisitedCustomers.has(customerName.toLowerCase());
             
+            // Check if customer has a paused visit (paused visits should be resumable)
+            const hasPausedVisit = isPausedVisit(customerName);
+            
+            // Allow access if it's a paused visit, block if it's a completed visit
+            if (hasPausedVisit) {
+                console.log(`📋 ${customerName} has paused visit - allowing access`);
+                return false; // Allow access to paused visits
+            }
+            
+            return hasCompletedVisit;
+        }
+
+        function removeFromLocalVisitedStorage(outletName) {
             const today = new Date().toISOString().split('T')[0];
             const visitKey = `visited_${currentSalesmanId}_${today}`;
             
             try {
                 const existingVisits = JSON.parse(localStorage.getItem(visitKey) || '[]');
                 
-                const visitRecord = {
-                    outlet_name: outletName,
-                    outlet_id: visitSession.outletId,
-                    session_id: sessionId,
-                    visit_time: new Date().toISOString(),
-                    salesman_id: currentSalesmanId,
-                    salesman_name: currentSalesman
-                };
+                // Remove any incomplete visits for this outlet
+                const filteredVisits = existingVisits.filter(visit => {
+                    const visitOutlet = typeof visit === 'string' ? visit : visit.outlet_name;
+                    return visitOutlet && visitOutlet.toLowerCase() !== outletName.toLowerCase() || visit.visit_completed === true;
+                });
                 
-                existingVisits.push(visitRecord);
-                localStorage.setItem(visitKey, JSON.stringify(existingVisits));
-                console.log(`📋 Outlet ${outletName} marked as visited locally`);
+                localStorage.setItem(visitKey, JSON.stringify(filteredVisits));
+                console.log(`📋 Removed incomplete visit for ${outletName} from localStorage`);
                 
             } catch (error) {
-                console.error('❌ Error saving to localStorage:', error);
+                console.error('❌ Error removing from localStorage:', error);
             }
-        }
-
-        function isCustomerAlreadyVisited(customerName) {
-            return todayVisitedCustomers.has(customerName.toLowerCase());
         }
 
         function updateCustomerListVisitStatus() {
@@ -1697,11 +1746,33 @@
             if (!pelangganSelect) return;
             
             Array.from(pelangganSelect.options).forEach(option => {
-                if (option.value && isCustomerAlreadyVisited(option.value)) {
-                    option.textContent = `${option.value} ✅ (Sudah dikunjungi)`;
-                    option.disabled = true;
-                    option.style.color = '#10b981';
-                    option.style.backgroundColor = '#f0fdf4';
+                // Reset option styling first
+                option.disabled = false;
+                option.classList.remove('customer-paused');
+                option.style.color = '';
+                option.style.backgroundColor = '';
+                
+                if (option.value) {
+                    const outletName = option.value;
+                    const isCompleted = isCustomerAlreadyVisited(outletName);
+                    const isPaused = isPausedVisit(outletName);
+                    
+                    if (isCompleted) {
+                        // Completed visit - block access
+                        option.textContent = `${outletName} ✅ (Sudah dikunjungi)`;
+                        option.disabled = true;
+                        option.style.color = '#10b981';
+                        option.style.backgroundColor = '#f0fdf4';
+                    } else if (isPaused) {
+                        // Paused visit - allow access with indicator
+                        option.textContent = `${outletName} ⏸️ (Kunjungan tertunda)`;
+                        option.classList.add('customer-paused');
+                        option.style.color = '#f59e0b';
+                        option.style.backgroundColor = '#fef3c7';
+                    } else {
+                        // Reset to original name if no special status
+                        option.textContent = outletName;
+                    }
                 }
             });
         }
@@ -1862,7 +1933,8 @@
             visitSession.soAmount = null;
             visitSession.pauseHistory = [];
             
-            markCustomerAsVisited(outletName, sessionId);
+            // Mark as started but NOT completed yet
+            markCustomerAsVisited(outletName, sessionId, false);
             
             updateVisitSessionStatus();
             startSessionTimer();
@@ -1922,6 +1994,9 @@
             
             console.log(`🏁 Ending visit session: ${visitSession.outletName} (total duration: ${formatDuration(totalDuration)})`);
             
+            // NOW mark as completed visit
+            markCustomerAsVisited(visitSession.outletName, visitSession.sessionId, true);
+            
             const visitDataForFirebase = {
                 outlet_id: visitSession.outletId,
                 outlet_name: visitSession.outletName,
@@ -1978,6 +2053,7 @@
             stopSessionTimer();
             updateFloatingButtons();
             updateCustomerListPauseStatus();
+            updateCustomerListVisitStatus();
             
             console.log(`✅ Visit session ended successfully: ${endedOutlet}, total duration: ${formatDuration(totalDuration)}`);
         }
@@ -2717,7 +2793,7 @@
                 console.log(`📅 Current day: ${currentDay}`);
                 console.log(`📊 Available hari options: ${hariData.length}`);
                 console.log(`⏸️ Paused visits loaded: ${pausedVisits.size}`);
-                console.log('🔍 Geolocation tracking enabled');
+                console.log('📍 Geolocation tracking enabled');
                 console.log('🏪 Order status tracking enabled');
                 console.log('💾 Local storage session management active');
                 console.log('🔥 Firebase sync enabled');
@@ -2866,6 +2942,7 @@
         console.log('💾 Local storage + Firebase for comprehensive tracking');
         console.log('🗺️ Location tracking for pause/resume events');
         console.log('📊 Enhanced visit analytics with pause data');
+        console.log('🐛 Bug Fixed: Paused visits can now be resumed properly');
     </script>
 </body>
 </html>
