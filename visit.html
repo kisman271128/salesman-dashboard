@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Visit Outlet - Enhanced Order Tracking</title>
+    <title>Visit Outlet - Enhanced with Pause/Resume</title>
     
     <style>
         * {
@@ -165,6 +165,55 @@
             color: #64748b;
         }
 
+        /* ===== PAUSE/RESUME SPECIFIC STYLES ===== */
+        .visit-modal-pause {
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            border: 1px solid #f59e0b;
+        }
+
+        .visit-modal-resume {
+            background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+            border: 1px solid #10b981;
+        }
+
+        .pause-info {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid #f59e0b;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 12px 0;
+            text-align: left;
+        }
+
+        .pause-info-item {
+            font-size: 12px;
+            color: #92400e;
+            margin: 4px 0;
+        }
+
+        .pause-info-item strong {
+            color: #78350f;
+        }
+
+        .resume-info {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid #10b981;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 12px 0;
+            text-align: left;
+        }
+
+        .resume-info-item {
+            font-size: 12px;
+            color: #065f46;
+            margin: 4px 0;
+        }
+
+        .resume-info-item strong {
+            color: #047857;
+        }
+
         /* ===== ORDER STATUS SELECTION ===== */
         .order-status-section {
             margin: 16px 0;
@@ -278,6 +327,26 @@
             background: #e2e8f0;
         }
 
+        .visit-modal-btn-pause {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+        }
+
+        .visit-modal-btn-pause:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+        }
+
+        .visit-modal-btn-resume {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+        }
+
+        .visit-modal-btn-resume:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+        }
+
         /* ===== FIREBASE SYNC STATUS ===== */
         .firebase-status {
             position: fixed;
@@ -309,7 +378,7 @@
             display: block;
         }
 
-        /* ===== VISIT SESSION STATUS ===== */
+        /* ===== ENHANCED VISIT SESSION STATUS ===== */
         .visit-session-status {
             position: fixed;
             top: 10px;
@@ -323,12 +392,18 @@
             z-index: 1000;
             display: none;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-            min-width: 120px;
+            min-width: 140px;
         }
 
         .visit-session-status.active {
             display: block;
             animation: pulse 2s infinite;
+        }
+
+        .visit-session-status.paused {
+            background: rgba(245, 158, 11, 0.95);
+            display: block;
+            animation: pausePulse 3s infinite;
         }
 
         .visit-session-customer {
@@ -342,8 +417,19 @@
             font-weight: 700;
         }
 
+        .visit-session-status-text {
+            font-size: 9px;
+            opacity: 0.8;
+            margin-top: 2px;
+        }
+
         @keyframes pulse {
             0%, 100% { opacity: 0.95; }
+            50% { opacity: 1; }
+        }
+
+        @keyframes pausePulse {
+            0%, 100% { opacity: 0.8; }
             50% { opacity: 1; }
         }
 
@@ -608,7 +694,78 @@
             font-weight: 600;
         }
 
-        /* Table Styles */
+        /* ===== FLOATING ACTION BUTTONS ===== */
+        .floating-actions {
+            position: fixed;
+            bottom: 90px;
+            right: 15px;
+            z-index: 999;
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .floating-actions.show {
+            display: flex;
+            animation: fadeInUp 0.3s ease;
+        }
+
+        @keyframes fadeInUp {
+            from { 
+                opacity: 0; 
+                transform: translateY(30px); 
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0); 
+            }
+        }
+
+        .floating-btn {
+            border: none;
+            padding: 12px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+            white-space: nowrap;
+            transition: all 0.3s ease;
+            min-width: 120px;
+        }
+
+        .floating-btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-pause-visit {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .btn-pause-visit:hover {
+            background: #d97706;
+            box-shadow: 0 5px 15px rgba(245, 158, 11, 0.4);
+        }
+
+        .btn-end-visit {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-end-visit:hover {
+            background: #dc2626;
+            box-shadow: 0 5px 15px rgba(239, 68, 68, 0.4);
+        }
+
+        /* Pause indicator for customer list */
+        .customer-paused {
+            color: #f59e0b !important;
+            background: #fef3c7 !important;
+            font-style: italic;
+        }
+
+        /* Table styles - keeping existing styles */
         .table-section {
             padding: 0 16px;
             margin-bottom: 30px;
@@ -710,80 +867,6 @@
             color: #374151;
         }
 
-        .promo-tag {
-            font-weight: 600;
-            font-size: 10px;
-            padding: 2px 4px;
-            border-radius: 4px;
-            color: white;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-        }
-
-        .promo-biscuit, .promo-bisc { 
-            background: linear-gradient(135deg, #dc2626, #ef4444);
-        }
-        .promo-snack, .promo-snackfood { 
-            background: linear-gradient(135deg, #7c3aed, #8b5cf6);
-        }
-        .promo-bev { 
-            background: linear-gradient(135deg, #059669, #10b981);
-        }
-        .promo-others, .promo-sf, .promo-gen, .promo-go { 
-            background: linear-gradient(135deg, #0369a1, #0284c7);
-        }
-        .promo-gbs { 
-            background: linear-gradient(135deg, #7c2d12, #ea580c);
-        }
-        .promo-solmed { 
-            background: linear-gradient(135deg, #d97706, #f59e0b);
-        }
-        .promo-rans, .promo-gbev, .promo-mbr { 
-            background: linear-gradient(135deg, #23A0AD, #CBE030);
-        }
-
-        .gap-badge {
-            padding: 2px 4px;
-            border-radius: 8px;
-            font-size: 9px;
-            font-weight: 600;
-            color: white;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-        }
-
-        .gap-positive {
-            background: linear-gradient(135deg, #10b981, #059669);
-        }
-
-        .gap-negative {
-            background: linear-gradient(135deg, #ef4444, #dc2626);
-        }
-
-        .gap-neutral {
-            background: linear-gradient(135deg, #64748b, #475569);
-        }
-
-        .summary-row {
-            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-            border-top: 2px solid #667eea;
-        }
-
-        .summary-row td {
-            font-weight: 700;
-            color: #1e293b;
-            padding: 12px 6px;
-            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-        }
-
-        tr:hover {
-            background-color: #f8fafc;
-        }
-
-        .metric-value {
-            font-weight: 600;
-            font-size: 12px;
-        }
-
-        /* Empty state styling */
         .empty-state {
             text-align: center;
             padding: 40px 20px;
@@ -795,50 +878,6 @@
             margin-bottom: 16px;
             opacity: 0.5;
         }
-		
-		/* ===== TAMBAHAN UNTUK TOMBOL END VISIT ===== */
-		.end-visit-floating {
-			position: fixed;
-			bottom: 90px;
-			right: 15px;
-			z-index: 999;
-			display: none;
-		}
-
-		.end-visit-floating.show {
-			display: block;
-			animation: fadeInUp 0.3s ease;
-		}
-
-		@keyframes fadeInUp {
-			from { 
-				opacity: 0; 
-				transform: translateY(30px); 
-			}
-			to { 
-				opacity: 1; 
-				transform: translateY(0); 
-			}
-		}
-
-		.btn-end-visit {
-			background: #ef4444;
-			color: white;
-			border: none;
-			padding: 12px 16px;
-			border-radius: 20px;
-			font-size: 12px;
-			font-weight: 600;
-			cursor: pointer;
-			box-shadow: 0 3px 10px rgba(239, 68, 68, 0.3);
-			white-space: nowrap;
-		}
-
-		.btn-end-visit:hover {
-			background: #dc2626;
-			transform: translateY(-1px);
-			box-shadow: 0 5px 15px rgba(239, 68, 68, 0.4);
-		}
     </style>
 </head>
 <body>
@@ -858,10 +897,11 @@
             🔄 Syncing...
         </div>
 
-        <!-- Visit Session Status -->
+        <!-- Enhanced Visit Session Status -->
         <div class="visit-session-status" id="visitSessionStatus">
             <div class="visit-session-customer" id="sessionCustomerName">No Active Visit</div>
             <div class="visit-session-timer" id="sessionTimer">00:00:00</div>
+            <div class="visit-session-status-text" id="sessionStatusText"></div>
         </div>
 
         <div class="detail-header">
@@ -994,6 +1034,56 @@
             </div>
         </div>
 
+        <!-- Resume Visit Modal -->
+        <div class="visit-modal" id="visitResumeModal">
+            <div class="visit-modal-content">
+                <div class="visit-modal-title">🔄 Lanjutkan Kunjungan?</div>
+                <div class="visit-modal-subtitle">Outlet ini memiliki kunjungan yang tertunda:</div>
+                <div class="visit-modal-customer visit-modal-resume">
+                    <div class="visit-modal-customer-name" id="resumeModalCustomerName">Outlet Name</div>
+                    <div class="visit-modal-customer-details" id="resumeModalCustomerDetails">Details</div>
+                </div>
+                <div class="resume-info" id="resumeInfo">
+                    <div class="resume-info-item"><strong>Waktu Mulai:</strong> <span id="resumeStartTime">-</span></div>
+                    <div class="resume-info-item"><strong>Waktu Tunda:</strong> <span id="resumePauseTime">-</span></div>
+                    <div class="resume-info-item"><strong>Durasi Sebelumnya:</strong> <span id="resumePrevDuration">-</span></div>
+                </div>
+                <div class="visit-modal-buttons">
+                    <button class="visit-modal-btn visit-modal-btn-secondary" onclick="startNewVisit()">
+                        🆕 Mulai Baru
+                    </button>
+                    <button class="visit-modal-btn visit-modal-btn-resume" onclick="confirmResumeVisit()">
+                        ▶️ Lanjutkan
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pause Visit Modal -->
+        <div class="visit-modal" id="visitPauseModal">
+            <div class="visit-modal-content">
+                <div class="visit-modal-title">⏸️ Tunda Kunjungan?</div>
+                <div class="visit-modal-subtitle">Anda akan menunda kunjungan ke:</div>
+                <div class="visit-modal-customer visit-modal-pause">
+                    <div class="visit-modal-customer-name" id="pauseModalCustomerName">Current Outlet</div>
+                    <div class="visit-modal-customer-details" id="pauseModalCustomerDetails">Duration: 00:00:00</div>
+                </div>
+                <div class="pause-info">
+                    <div class="pause-info-item"><strong>Alasan:</strong> Pemilik toko tidak ada / sibuk</div>
+                    <div class="pause-info-item"><strong>Durasi saat ini:</strong> <span id="pauseCurrentDuration">0 menit</span></div>
+                    <div class="pause-info-item"><strong>Status:</strong> Kunjungan akan disimpan dan dapat dilanjutkan nanti</div>
+                </div>
+                <div class="visit-modal-buttons">
+                    <button class="visit-modal-btn visit-modal-btn-secondary" onclick="cancelPauseVisit()">
+                        ❌ Lanjutkan
+                    </button>
+                    <button class="visit-modal-btn visit-modal-btn-pause" onclick="confirmPauseVisit()">
+                        ⏸️ Ya, Tunda
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Enhanced Visit End Modal with Order Status -->
         <div class="visit-modal" id="visitEndModal">
             <div class="visit-modal-content">
@@ -1033,6 +1123,16 @@
             </div>
         </div>
 
+        <!-- Floating Action Buttons -->
+        <div class="floating-actions" id="floatingActions">
+            <button class="floating-btn btn-pause-visit" onclick="showPauseVisitModal()">
+                ⏸️ Tunda Kunjungan
+            </button>
+            <button class="floating-btn btn-end-visit" onclick="showVisitEndModal()">
+                🏁 Akhiri Kunjungan
+            </button>
+        </div>
+
         <!-- Bottom Navigation -->
         <div class="bottom-nav">
             <div class="nav-item" onclick="goHome()">
@@ -1056,12 +1156,11 @@
 
     <!-- Firebase SDK -->
     <script type="module">
-        // Import the functions you need from the SDKs you need
+        // Firebase configuration and initialization (same as original)
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, push, set, get, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
         import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
 
-        // Your web app's Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyAoRV3qVAXQ14AEVA8Mo49HXfAyhMMm8Bs",
             authDomain: "salesman-route-tracker.firebaseapp.com",
@@ -1073,12 +1172,10 @@
             measurementId: "G-5RYSWKQ063"
         };
 
-        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const database = getDatabase(app);
         const analytics = getAnalytics(app);
 
-        // Make Firebase functions available globally
         window.firebaseDB = database;
         window.firebaseRef = ref;
         window.firebasePush = push;
@@ -1111,24 +1208,32 @@
 
         let watchId = null;
 
-        // ===== SIMPLIFIED VISIT SESSION =====
+        // ===== ENHANCED VISIT SESSION WITH PAUSE/RESUME =====
         let visitSession = {
             isActive: false,
+            isPaused: false,
             outletId: null,
             outletName: null,
             startTime: null,
             endTime: null,
             duration: 0,
+            accumulatedDuration: 0, // Total time spent in store
+            pauseTime: null,
+            resumeTime: null,
             sessionId: null,
             startLocation: null,
             endLocation: null,
             orderStatus: null,
             soAmount: null,
             pendingOutlet: null,
-            pendingHari: null
+            pendingHari: null,
+            pauseHistory: [] // Track all pause/resume events
         };
 
         let sessionTimer = null;
+
+        // ===== PAUSE/RESUME MANAGEMENT =====
+        let pausedVisits = new Map(); // Store paused visits by outlet name
 
         // ===== FIREBASE FUNCTIONS =====
         function updateFirebaseStatus(status, message) {
@@ -1137,7 +1242,6 @@
                 statusElement.textContent = message;
                 statusElement.className = `firebase-status ${status}`;
                 
-                // Auto-hide success/error messages after 3 seconds
                 if (status === 'success' || status === 'error') {
                     setTimeout(() => {
                         statusElement.classList.remove('success', 'error', 'syncing');
@@ -1155,23 +1259,19 @@
             try {
                 updateFirebaseStatus('syncing', '🔄 Syncing to Firebase...');
                 
-                // Create a reference to store the visit data
                 const visitsRef = window.firebaseRef(window.firebaseDB, `visits/${currentSalesmanId}`);
                 
-                // Add server timestamp
                 const visitDataWithTimestamp = {
                     ...visitData,
                     firebase_synced_at: window.firebaseServerTimestamp(),
-                    firebase_sync_version: '1.0'
+                    firebase_sync_version: '1.1'
                 };
                 
-                // Push visit data to Firebase
                 const newVisitRef = await window.firebasePush(visitsRef, visitDataWithTimestamp);
                 
                 console.log('🔥 Visit data synced to Firebase:', newVisitRef.key);
                 updateFirebaseStatus('success', '✅ Synced to Firebase');
                 
-                // Also store daily summary
                 await syncDailySummaryToFirebase(visitData);
                 
                 return newVisitRef.key;
@@ -1188,19 +1288,19 @@
                 const today = new Date().toISOString().split('T')[0];
                 const summaryRef = window.firebaseRef(window.firebaseDB, `daily_summary/${currentSalesmanId}/${today}`);
                 
-                // Get existing summary
                 const snapshot = await window.firebaseGet(summaryRef);
                 const existingSummary = snapshot.exists() ? snapshot.val() : {};
                 
-                // Update summary
                 const updatedSummary = {
                     salesman_id: currentSalesmanId,
                     salesman_name: currentSalesman,
                     date: today,
                     total_visits: (existingSummary.total_visits || 0) + 1,
-                    total_duration_seconds: (existingSummary.total_duration_seconds || 0) + visitData.duration_seconds,
+                    total_duration_seconds: (existingSummary.total_duration_seconds || 0) + visitData.total_duration_seconds,
                     visits_with_so: (existingSummary.visits_with_so || 0) + (visitData.order_status === 'ada_so' ? 1 : 0),
                     total_so_amount: (existingSummary.total_so_amount || 0) + (visitData.so_amount || 0),
+                    visits_with_pauses: (existingSummary.visits_with_pauses || 0) + (visitData.pause_count > 0 ? 1 : 0),
+                    total_pause_time: (existingSummary.total_pause_time || 0) + (visitData.total_pause_duration || 0),
                     last_updated: window.firebaseServerTimestamp()
                 };
                 
@@ -1209,48 +1309,6 @@
                 
             } catch (error) {
                 console.error('🔥 Daily summary sync error:', error);
-            }
-        }
-
-        async function syncPendingVisitsToFirebase() {
-            if (!window.firebaseDB || !currentSalesmanId) {
-                return;
-            }
-
-            try {
-                // Get all pending visits from localStorage
-                const pendingKey = `pending_firebase_visits_${currentSalesmanId}`;
-                const pendingVisits = JSON.parse(localStorage.getItem(pendingKey) || '[]');
-                
-                if (pendingVisits.length === 0) {
-                    return;
-                }
-                
-                console.log(`🔄 Syncing ${pendingVisits.length} pending visits to Firebase...`);
-                
-                const syncPromises = pendingVisits.map(async (visit) => {
-                    try {
-                        const firebaseKey = await syncVisitToFirebase(visit);
-                        if (firebaseKey) {
-                            return visit.local_id; // Return local ID for removal
-                        }
-                    } catch (error) {
-                        console.error('🔥 Error syncing visit:', visit.local_id, error);
-                        return null;
-                    }
-                });
-                
-                const syncedIds = (await Promise.all(syncPromises)).filter(id => id !== null);
-                
-                // Remove successfully synced visits from pending
-                if (syncedIds.length > 0) {
-                    const remainingVisits = pendingVisits.filter(visit => !syncedIds.includes(visit.local_id));
-                    localStorage.setItem(pendingKey, JSON.stringify(remainingVisits));
-                    console.log(`🔥 ${syncedIds.length} visits synced, ${remainingVisits.length} remaining`);
-                }
-                
-            } catch (error) {
-                console.error('🔥 Error syncing pending visits:', error);
             }
         }
 
@@ -1288,7 +1346,7 @@
                 {
                     enableHighAccuracy: true,
                     timeout: 10000,
-                    maximumAge: 300000 // 5 minutes
+                    maximumAge: 300000
                 }
             );
         }
@@ -1307,7 +1365,7 @@
                         timestamp: new Date().toISOString()
                     };
                     
-                    if (visitSession.isActive) {
+                    if (visitSession.isActive && !visitSession.isPaused) {
                         updateLocationStatus('success', '📍 Tracking active');
                     }
                 },
@@ -1317,7 +1375,7 @@
                 {
                     enableHighAccuracy: true,
                     timeout: 15000,
-                    maximumAge: 60000 // 1 minute
+                    maximumAge: 60000
                 }
             );
         }
@@ -1330,7 +1388,251 @@
             }
         }
 
-        // ===== FIXED LOCAL STORAGE VISIT TRACKING =====
+        // ===== PAUSE/RESUME VISIT FUNCTIONS =====
+        function showPauseVisitModal() {
+            if (!visitSession.isActive || visitSession.isPaused) {
+                console.warn('🚫 Cannot pause - no active session or already paused');
+                return;
+            }
+            
+            const duration = Math.floor(visitSession.accumulatedDuration + (Date.now() - visitSession.startTime) / 1000);
+            const durationText = formatDuration(duration);
+            
+            document.getElementById('pauseModalCustomerName').textContent = visitSession.outletName;
+            document.getElementById('pauseModalCustomerDetails').textContent = `Durasi saat ini: ${durationText}`;
+            document.getElementById('pauseCurrentDuration').textContent = `${Math.floor(duration / 60)} menit`;
+            
+            document.getElementById('visitPauseModal').classList.add('show');
+            
+            console.log(`⏸️ Showing pause modal for: ${visitSession.outletName}`);
+        }
+
+        function cancelPauseVisit() {
+            document.getElementById('visitPauseModal').classList.remove('show');
+            console.log('❌ Pause cancelled, continuing visit');
+        }
+
+        function confirmPauseVisit() {
+            if (!visitSession.isActive || visitSession.isPaused) {
+                console.warn('🚫 Cannot pause - invalid session state');
+                return;
+            }
+            
+            console.log(`⏸️ Pausing visit to: ${visitSession.outletName}`);
+            
+            // Calculate current session duration
+            const currentSessionDuration = Math.floor((Date.now() - visitSession.startTime) / 1000);
+            visitSession.accumulatedDuration += currentSessionDuration;
+            visitSession.isPaused = true;
+            visitSession.pauseTime = Date.now();
+            
+            // Add pause event to history
+            visitSession.pauseHistory.push({
+                type: 'pause',
+                timestamp: new Date().toISOString(),
+                location: { ...currentLocation },
+                session_duration: currentSessionDuration,
+                accumulated_duration: visitSession.accumulatedDuration
+            });
+            
+            // Store paused visit data
+            const pausedVisitData = {
+                ...visitSession,
+                paused_at: new Date().toISOString(),
+                pause_location: { ...currentLocation }
+            };
+            
+            pausedVisits.set(visitSession.outletName.toLowerCase(), pausedVisitData);
+            savePausedVisitsToLocal();
+            
+            // Stop timer and update UI
+            stopSessionTimer();
+            visitSession.isActive = false; // Mark as inactive but keep data
+            updateVisitSessionStatus();
+            updateFloatingButtons();
+            updateCustomerListPauseStatus();
+            
+            // Reset outlet selection
+            const pelangganSelect = document.getElementById('pelanggan');
+            if (pelangganSelect) {
+                pelangganSelect.value = '';
+                handlePelangganSelection();
+            }
+            
+            document.getElementById('visitPauseModal').classList.remove('show');
+            
+            console.log(`✅ Visit paused successfully. Accumulated duration: ${formatDuration(visitSession.accumulatedDuration)}`);
+            
+            // Save pause event to localStorage
+            savePauseEventToLocal('pause', pausedVisitData);
+        }
+
+        function showResumeVisitModal(outletName) {
+            const pausedVisit = pausedVisits.get(outletName.toLowerCase());
+            if (!pausedVisit) {
+                console.warn('🚫 No paused visit found for:', outletName);
+                return;
+            }
+            
+            const pauseTime = new Date(pausedVisit.paused_at);
+            const startTime = new Date(pausedVisit.startTime);
+            const accumulatedDuration = pausedVisit.accumulatedDuration || 0;
+            
+            document.getElementById('resumeModalCustomerName').textContent = outletName;
+            document.getElementById('resumeModalCustomerDetails').textContent = `Hari JKS: ${pausedVisit.pendingHari || 'Unknown'}`;
+            document.getElementById('resumeStartTime').textContent = startTime.toLocaleTimeString('id-ID');
+            document.getElementById('resumePauseTime').textContent = pauseTime.toLocaleTimeString('id-ID');
+            document.getElementById('resumePrevDuration').textContent = formatDuration(accumulatedDuration);
+            
+            document.getElementById('visitResumeModal').classList.add('show');
+            
+            console.log(`🔄 Showing resume modal for: ${outletName}`);
+        }
+
+        function startNewVisit() {
+            const outletName = visitSession.pendingOutlet;
+            
+            // Remove paused visit
+            pausedVisits.delete(outletName.toLowerCase());
+            savePausedVisitsToLocal();
+            updateCustomerListPauseStatus();
+            
+            // Clear pending data and start fresh
+            visitSession.pendingOutlet = null;
+            visitSession.pendingHari = null;
+            
+            document.getElementById('visitResumeModal').classList.remove('show');
+            
+            // Start new visit
+            const hariSelect = document.getElementById('hari');
+            startVisitSession(outletName, hariSelect.value);
+            
+            console.log(`🆕 Starting new visit for: ${outletName}`);
+        }
+
+        function confirmResumeVisit() {
+            const outletName = visitSession.pendingOutlet;
+            const pausedVisit = pausedVisits.get(outletName.toLowerCase());
+            
+            if (!pausedVisit) {
+                console.error('❌ Cannot resume - paused visit data not found');
+                return;
+            }
+            
+            console.log(`▶️ Resuming visit to: ${outletName}`);
+            
+            // Restore visit session from paused data
+            visitSession.isActive = true;
+            visitSession.isPaused = false;
+            visitSession.outletId = pausedVisit.outletId;
+            visitSession.outletName = pausedVisit.outletName;
+            visitSession.startTime = Date.now(); // New start time for this session
+            visitSession.sessionId = pausedVisit.sessionId;
+            visitSession.accumulatedDuration = pausedVisit.accumulatedDuration || 0;
+            visitSession.startLocation = pausedVisit.startLocation;
+            visitSession.pauseHistory = pausedVisit.pauseHistory || [];
+            visitSession.resumeTime = Date.now();
+            
+            // Add resume event to history
+            visitSession.pauseHistory.push({
+                type: 'resume',
+                timestamp: new Date().toISOString(),
+                location: { ...currentLocation },
+                pause_duration: Math.floor((Date.now() - new Date(pausedVisit.paused_at).getTime()) / 1000)
+            });
+            
+            // Clear pending data
+            visitSession.pendingOutlet = null;
+            visitSession.pendingHari = null;
+            
+            // Update UI
+            updateVisitSessionStatus();
+            startSessionTimer();
+            updateFloatingButtons();
+            
+            document.getElementById('visitResumeModal').classList.remove('show');
+            
+            console.log(`✅ Visit resumed successfully. Previous duration: ${formatDuration(visitSession.accumulatedDuration)}`);
+            
+            // Save resume event to localStorage
+            savePauseEventToLocal('resume', visitSession);
+        }
+
+        // ===== LOCAL STORAGE FOR PAUSED VISITS =====
+        function loadPausedVisitsFromLocal() {
+            if (!currentSalesmanId) return;
+            
+            try {
+                const pausedKey = `paused_visits_${currentSalesmanId}`;
+                const pausedData = localStorage.getItem(pausedKey);
+                
+                if (pausedData) {
+                    const parsed = JSON.parse(pausedData);
+                    pausedVisits = new Map(Object.entries(parsed));
+                    console.log(`📋 Loaded ${pausedVisits.size} paused visits from local storage`);
+                    updateCustomerListPauseStatus();
+                }
+            } catch (error) {
+                console.error('❌ Error loading paused visits:', error);
+                pausedVisits = new Map();
+            }
+        }
+
+        function savePausedVisitsToLocal() {
+            if (!currentSalesmanId) return;
+            
+            try {
+                const pausedKey = `paused_visits_${currentSalesmanId}`;
+                const pausedData = Object.fromEntries(pausedVisits);
+                localStorage.setItem(pausedKey, JSON.stringify(pausedData));
+                console.log('💾 Paused visits saved to localStorage');
+            } catch (error) {
+                console.error('❌ Error saving paused visits:', error);
+            }
+        }
+
+        function savePauseEventToLocal(eventType, sessionData) {
+            try {
+                const eventKey = `pause_events_${currentSalesmanId}`;
+                const existingEvents = JSON.parse(localStorage.getItem(eventKey) || '[]');
+                
+                const pauseEvent = {
+                    event_type: eventType,
+                    timestamp: new Date().toISOString(),
+                    outlet_name: sessionData.outletName,
+                    session_id: sessionData.sessionId,
+                    accumulated_duration: sessionData.accumulatedDuration || 0,
+                    location: { ...currentLocation }
+                };
+                
+                existingEvents.push(pauseEvent);
+                localStorage.setItem(eventKey, JSON.stringify(existingEvents));
+                
+                console.log(`💾 Pause event (${eventType}) saved to localStorage`);
+            } catch (error) {
+                console.error('❌ Error saving pause event:', error);
+            }
+        }
+
+        function updateCustomerListPauseStatus() {
+            const pelangganSelect = document.getElementById('pelanggan');
+            if (!pelangganSelect) return;
+            
+            Array.from(pelangganSelect.options).forEach(option => {
+                if (option.value && pausedVisits.has(option.value.toLowerCase())) {
+                    option.textContent = `${option.value} ⏸️ (Kunjungan tertunda)`;
+                    option.classList.add('customer-paused');
+                    option.style.color = '#f59e0b';
+                    option.style.backgroundColor = '#fef3c7';
+                }
+            });
+        }
+
+        function isPausedVisit(customerName) {
+            return pausedVisits.has(customerName.toLowerCase());
+        }
+
+        // ===== VISIT SESSION MANAGEMENT =====
         function loadTodayVisitedCustomers() {
             const today = new Date().toISOString().split('T')[0];
             const visitKey = `visited_${currentSalesmanId}_${today}`;
@@ -1341,13 +1643,10 @@
                     const visits = JSON.parse(storedVisits);
                     todayVisitedCustomers = new Set();
                     
-                    // Handle both string dan object formats
                     visits.forEach(visit => {
                         if (typeof visit === 'string') {
-                            // Format lama: array of strings
                             todayVisitedCustomers.add(visit.toLowerCase());
                         } else if (visit && visit.outlet_name) {
-                            // Format baru: array of objects
                             todayVisitedCustomers.add(visit.outlet_name.toLowerCase());
                         }
                     });
@@ -1359,16 +1658,12 @@
                     localStorage.removeItem(visitKey);
                     todayVisitedCustomers = new Set();
                 }
-            } else {
-                console.log('📋 No outlets visited today yet');
             }
         }
 
         function markCustomerAsVisited(outletName, sessionId) {
-            // Add to local tracking
             todayVisitedCustomers.add(outletName.toLowerCase());
             
-            // Save to localStorage
             const today = new Date().toISOString().split('T')[0];
             const visitKey = `visited_${currentSalesmanId}_${today}`;
             
@@ -1390,57 +1685,7 @@
                 
             } catch (error) {
                 console.error('❌ Error saving to localStorage:', error);
-                // Fallback: reset localStorage
-                const visitRecord = [{
-                    outlet_name: outletName,
-                    outlet_id: visitSession.outletId,
-                    session_id: sessionId,
-                    visit_time: new Date().toISOString(),
-                    salesman_id: currentSalesmanId,
-                    salesman_name: currentSalesman
-                }];
-                localStorage.setItem(visitKey, JSON.stringify(visitRecord));
             }
-        }
-
-        function cleanupCorruptedLocalStorage() {
-            if (!currentSalesmanId) return;
-            
-            const keyPrefix = `visited_${currentSalesmanId}`;
-            const keysToCheck = [];
-            
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if (key && key.startsWith(keyPrefix)) {
-                    keysToCheck.push(key);
-                }
-            }
-            
-            keysToCheck.forEach(key => {
-                try {
-                    const data = localStorage.getItem(key);
-                    const parsed = JSON.parse(data);
-                    
-                    if (!Array.isArray(parsed)) {
-                        console.warn(`⚠️ Removing invalid localStorage key: ${key}`);
-                        localStorage.removeItem(key);
-                        return;
-                    }
-                    
-                    const isValid = parsed.every(item => {
-                        return typeof item === 'object' && item.outlet_name;
-                    });
-                    
-                    if (!isValid) {
-                        console.warn(`⚠️ Removing corrupted localStorage key: ${key}`);
-                        localStorage.removeItem(key);
-                    }
-                    
-                } catch (error) {
-                    console.warn(`⚠️ Removing unparseable localStorage key: ${key}`);
-                    localStorage.removeItem(key);
-                }
-            });
         }
 
         function isCustomerAlreadyVisited(customerName) {
@@ -1461,8 +1706,16 @@
             });
         }
 
-        // ===== SIMPLIFIED VISIT SESSION FUNCTIONS =====
+        // ===== VISIT MODAL FUNCTIONS =====
         function showVisitStartModal(outletName, hariJKS) {
+            // Check if this outlet has a paused visit
+            if (isPausedVisit(outletName)) {
+                visitSession.pendingOutlet = outletName;
+                visitSession.pendingHari = hariJKS;
+                showResumeVisitModal(outletName);
+                return;
+            }
+            
             visitSession.pendingOutlet = outletName;
             visitSession.pendingHari = hariJKS;
             
@@ -1476,18 +1729,16 @@
         function cancelVisitStart() {
             document.getElementById('visitStartModal').classList.remove('show');
             
-            // Reset outlet selection
             const pelangganSelect = document.getElementById('pelanggan');
             if (pelangganSelect) {
                 pelangganSelect.value = '';
                 handlePelangganSelection();
             }
             
-            // Clear pending data
             visitSession.pendingOutlet = null;
             visitSession.pendingHari = null;
             
-            console.log(`❌ Visit start cancelled`);
+            console.log('❌ Visit start cancelled');
         }
 
         function confirmVisitStart() {
@@ -1496,7 +1747,6 @@
 
             console.log(`🚀 Starting visit confirmation for: ${outletName}`);
 
-            // Check if customer already visited today
             if (isCustomerAlreadyVisited(outletName)) {
                 alert(`❌ Error: Outlet "${outletName}" sudah dikunjungi hari ini!\n\nSistem mencegah duplikasi kunjungan.`);
                 cancelVisitStart();
@@ -1506,22 +1756,22 @@
             document.getElementById('visitStartModal').classList.remove('show');
             startVisitSession(outletName, hariJKS);
             
-            // Clear pending data
             visitSession.pendingOutlet = null;
             visitSession.pendingHari = null;
         }
 
         function showVisitEndModal() {
-            if (!visitSession.isActive) {
-                console.warn('🚫 End modal blocked - no active session');
+            if (!visitSession.isActive || visitSession.isPaused) {
+                console.warn('🚫 End modal blocked - no active session or paused');
                 return;
             }
             
-            const duration = Math.floor((Date.now() - visitSession.startTime) / 1000);
-            const durationText = formatDuration(duration);
+            const currentSessionDuration = Math.floor((Date.now() - visitSession.startTime) / 1000);
+            const totalDuration = visitSession.accumulatedDuration + currentSessionDuration;
+            const durationText = formatDuration(totalDuration);
             
             document.getElementById('endModalCustomerName').textContent = visitSession.outletName;
-            document.getElementById('endModalCustomerDetails').textContent = `Durasi: ${durationText}`;
+            document.getElementById('endModalCustomerDetails').textContent = `Total Durasi: ${durationText}`;
             
             // Reset order status form
             document.getElementById('orderStatusSelect').value = '';
@@ -1553,14 +1803,13 @@
 
         function cancelVisitEnd() {
             document.getElementById('visitEndModal').classList.remove('show');
-            console.log(`❌ Visit end cancelled, continuing visit`);
+            console.log('❌ Visit end cancelled, continuing visit');
         }
 
         function confirmVisitEnd() {
             const orderStatus = document.getElementById('orderStatusSelect').value;
             const soAmount = document.getElementById('soAmountInput').value;
             
-            // Validate input
             if (!orderStatus) {
                 alert('❌ Pilih status kunjungan terlebih dahulu!');
                 return;
@@ -1571,7 +1820,6 @@
                 return;
             }
             
-            // Store order information
             visitSession.orderStatus = orderStatus;
             visitSession.soAmount = orderStatus === 'ada_so' ? parseFloat(soAmount) : 0;
             
@@ -1580,12 +1828,10 @@
         }
 
         function startVisitSession(outletName, hariJKS) {
-            // End any existing session first
             if (visitSession.isActive) {
                 endVisitSession();
             }
             
-            // Get outlet ID from d.details.json
             const outletRecord = detailsData.find(item => {
                 const itemPelanggan = (item['Nama Pelanggan'] || '').toString().trim();
                 return itemPelanggan.toLowerCase() === outletName.toLowerCase();
@@ -1594,7 +1840,6 @@
             const outletId = outletRecord ? outletRecord['Id Pelanggan'] : `OUTLET_${Date.now()}`;
             const sessionId = `visit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
             
-            // Capture current location as start location
             const startLocation = {
                 latitude: currentLocation.latitude,
                 longitude: currentLocation.longitude,
@@ -1603,27 +1848,28 @@
             };
             
             visitSession.isActive = true;
+            visitSession.isPaused = false;
             visitSession.outletId = outletId;
             visitSession.outletName = outletName;
             visitSession.startTime = Date.now();
             visitSession.endTime = null;
             visitSession.duration = 0;
+            visitSession.accumulatedDuration = 0;
             visitSession.sessionId = sessionId;
             visitSession.startLocation = startLocation;
             visitSession.endLocation = null;
             visitSession.orderStatus = null;
             visitSession.soAmount = null;
+            visitSession.pauseHistory = [];
             
-            // Mark customer as visited
             markCustomerAsVisited(outletName, sessionId);
             
-            // Update UI
             updateVisitSessionStatus();
             startSessionTimer();
+            updateFloatingButtons();
             
             console.log(`✅ Visit session started: ${outletName} (ID: ${outletId})`);
             
-            // Save visit data to localStorage
             saveVisitSessionToLocal('session_start', {
                 outlet_id: outletId,
                 outlet_name: outletName,
@@ -1643,7 +1889,6 @@
                 return;
             }
             
-            // Capture current location as end location
             const endLocation = {
                 latitude: currentLocation.latitude,
                 longitude: currentLocation.longitude,
@@ -1652,22 +1897,42 @@
             };
             
             const endTime = Date.now();
-            const duration = Math.floor((endTime - visitSession.startTime) / 1000);
+            const currentSessionDuration = Math.floor((endTime - visitSession.startTime) / 1000);
+            const totalDuration = visitSession.accumulatedDuration + currentSessionDuration;
             
             visitSession.endTime = endTime;
-            visitSession.duration = duration;
+            visitSession.duration = totalDuration;
             visitSession.endLocation = endLocation;
             
-            console.log(`🏁 Ending visit session: ${visitSession.outletName} (duration: ${formatDuration(duration)})`);
+            // Calculate total pause time
+            let totalPauseDuration = 0;
+            let pauseCount = 0;
             
-            // Prepare visit data for Firebase
+            for (let i = 0; i < visitSession.pauseHistory.length - 1; i += 2) {
+                const pauseEvent = visitSession.pauseHistory[i];
+                const resumeEvent = visitSession.pauseHistory[i + 1];
+                
+                if (pauseEvent && pauseEvent.type === 'pause' && resumeEvent && resumeEvent.type === 'resume') {
+                    const pauseTime = new Date(pauseEvent.timestamp).getTime();
+                    const resumeTime = new Date(resumeEvent.timestamp).getTime();
+                    totalPauseDuration += (resumeTime - pauseTime) / 1000;
+                    pauseCount++;
+                }
+            }
+            
+            console.log(`🏁 Ending visit session: ${visitSession.outletName} (total duration: ${formatDuration(totalDuration)})`);
+            
             const visitDataForFirebase = {
                 outlet_id: visitSession.outletId,
                 outlet_name: visitSession.outletName,
                 session_id: visitSession.sessionId,
-                start_time: new Date(visitSession.startTime).toISOString(),
+                start_time: new Date(visitSession.startTime - visitSession.accumulatedDuration * 1000).toISOString(),
                 end_time: new Date(endTime).toISOString(),
-                duration_seconds: duration,
+                total_duration_seconds: totalDuration,
+                active_duration_seconds: totalDuration, // Time actually spent in store
+                pause_count: pauseCount,
+                total_pause_duration: totalPauseDuration,
+                pause_history: visitSession.pauseHistory,
                 start_location: visitSession.startLocation,
                 end_location: endLocation,
                 order_status: visitSession.orderStatus,
@@ -1679,14 +1944,15 @@
                 local_id: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
             };
             
-            // Save to localStorage first (for backup)
+            // Remove from paused visits if it was there
+            pausedVisits.delete(visitSession.outletName.toLowerCase());
+            savePausedVisitsToLocal();
+            
             saveVisitSessionToLocal('session_end', visitDataForFirebase);
             
-            // Try to sync to Firebase
             const firebaseKey = await syncVisitToFirebase(visitDataForFirebase);
             
             if (!firebaseKey) {
-                // If Firebase sync failed, save to pending queue
                 console.log('⏳ Adding visit to pending Firebase sync queue...');
                 saveToPendingFirebaseQueue(visitDataForFirebase);
             }
@@ -1694,22 +1960,26 @@
             // Reset session
             const endedOutlet = visitSession.outletName;
             visitSession.isActive = false;
+            visitSession.isPaused = false;
             visitSession.outletId = null;
             visitSession.outletName = null;
             visitSession.startTime = null;
             visitSession.endTime = null;
             visitSession.duration = 0;
+            visitSession.accumulatedDuration = 0;
             visitSession.sessionId = null;
             visitSession.startLocation = null;
             visitSession.endLocation = null;
             visitSession.orderStatus = null;
             visitSession.soAmount = null;
+            visitSession.pauseHistory = [];
             
-            // Update UI
             updateVisitSessionStatus();
             stopSessionTimer();
+            updateFloatingButtons();
+            updateCustomerListPauseStatus();
             
-            console.log(`✅ Visit session ended successfully: ${endedOutlet}, duration: ${formatDuration(duration)}`);
+            console.log(`✅ Visit session ended successfully: ${endedOutlet}, total duration: ${formatDuration(totalDuration)}`);
         }
 
         function saveToPendingFirebaseQueue(visitData) {
@@ -1721,8 +1991,6 @@
                 localStorage.setItem(pendingKey, JSON.stringify(existingPending));
                 
                 console.log('⏳ Visit saved to pending Firebase sync queue');
-                
-                // Show pending status
                 updateFirebaseStatus('syncing', `⏳ ${existingPending.length} visits pending sync`);
                 
             } catch (error) {
@@ -1740,7 +2008,6 @@
                     ...sessionData
                 };
                 
-                // Save to multiple localStorage keys for different purposes
                 const keys = [
                     `visit_sessions_${currentSalesmanId}`,
                     `daily_sessions_${currentSalesmanId}_${new Date().toISOString().split('T')[0]}`
@@ -1768,8 +2035,9 @@
             }
             
             sessionTimer = setInterval(() => {
-                if (visitSession.isActive && visitSession.startTime) {
-                    visitSession.duration = Math.floor((Date.now() - visitSession.startTime) / 1000);
+                if (visitSession.isActive && !visitSession.isPaused && visitSession.startTime) {
+                    const currentSessionDuration = Math.floor((Date.now() - visitSession.startTime) / 1000);
+                    visitSession.duration = visitSession.accumulatedDuration + currentSessionDuration;
                     updateSessionTimerDisplay();
                 }
             }, 1000);
@@ -1793,15 +2061,37 @@
             const statusElement = document.getElementById('visitSessionStatus');
             const customerElement = document.getElementById('sessionCustomerName');
             const timerElement = document.getElementById('sessionTimer');
+            const statusTextElement = document.getElementById('sessionStatusText');
             
             if (visitSession.isActive) {
-                statusElement.classList.add('active');
-                customerElement.textContent = `🏪 ${visitSession.outletName}`;
-                timerElement.textContent = formatDuration(visitSession.duration);
+                if (visitSession.isPaused) {
+                    statusElement.classList.remove('active');
+                    statusElement.classList.add('paused');
+                    customerElement.textContent = `🏪 ${visitSession.outletName}`;
+                    timerElement.textContent = formatDuration(visitSession.duration);
+                    statusTextElement.textContent = 'DITUNDA';
+                } else {
+                    statusElement.classList.remove('paused');
+                    statusElement.classList.add('active');
+                    customerElement.textContent = `🏪 ${visitSession.outletName}`;
+                    timerElement.textContent = formatDuration(visitSession.duration);
+                    statusTextElement.textContent = 'AKTIF';
+                }
             } else {
-                statusElement.classList.remove('active');
+                statusElement.classList.remove('active', 'paused');
                 customerElement.textContent = 'No Active Visit';
                 timerElement.textContent = '00:00:00';
+                statusTextElement.textContent = '';
+            }
+        }
+
+        function updateFloatingButtons() {
+            const floatingActions = document.getElementById('floatingActions');
+            
+            if (visitSession.isActive && !visitSession.isPaused) {
+                floatingActions.classList.add('show');
+            } else {
+                floatingActions.classList.remove('show');
             }
         }
 
@@ -1841,8 +2131,6 @@
 
         function normalizeHariFormat(hariString) {
             if (!hariString) return '';
-            
-            // Remove bracketed numbers like [6] and clean up
             const cleanHari = hariString.toString().replace(/^\[\d+\]/, '').trim().toUpperCase();
             return cleanHari;
         }
@@ -1864,12 +2152,10 @@
         }
 
         function filterHariByCurrentDay(hariList, currentDay) {
-            // Filter hari data that contains current day name
             const filtered = hariList.filter(hari => {
                 return hari && hari.toUpperCase().includes(currentDay);
             });
             
-            // Sort alphabetically
             return filtered.sort((a, b) => a.localeCompare(b));
         }
 
@@ -1934,7 +2220,6 @@
                     document.getElementById('salesmanName').textContent = currentSalesman;
                 }
             } else if (currentSalesmanId && pelangganData.length > 0) {
-                // Fallback: Get salesman name from pelanggan data
                 const salesmanRecord = pelangganData.find(item => item.szEmployeeId === currentSalesmanId);
                 if (salesmanRecord) {
                     currentSalesman = salesmanRecord.szname;
@@ -1945,12 +2230,12 @@
 
         // ===== SESSION PROTECTION FUNCTIONS =====
         function checkActiveSessionBeforeAction(actionType, targetName = '') {
-            if (visitSession.isActive) {
-                const duration = Math.floor((Date.now() - visitSession.startTime) / 1000);
-                const durationText = formatDuration(duration);
+            if (visitSession.isActive && !visitSession.isPaused) {
+                const currentSessionDuration = Math.floor((Date.now() - visitSession.startTime) / 1000);
+                const totalDuration = visitSession.accumulatedDuration + currentSessionDuration;
+                const durationText = formatDuration(totalDuration);
                 
                 if (actionType === 'change_customer') {
-                    // Show end modal instead of blocking
                     showVisitEndModal();
                     return false;
                 }
@@ -1958,7 +2243,7 @@
                 let message = `⚠️ KUNJUNGAN SEDANG AKTIF!\n\n`;
                 message += `Outlet: ${visitSession.outletName}\n`;
                 message += `Durasi: ${durationText}\n\n`;
-                message += `Silakan akhiri kunjungan terlebih dahulu!`;
+                message += `Silakan akhiri atau tunda kunjungan terlebih dahulu!`;
                 
                 alert(message);
                 return false;
@@ -1968,10 +2253,10 @@
 
         // ===== FILTER AND DATA DISPLAY FUNCTIONS =====
         function updatePelangganOptions() {
-            if (visitSession.isActive) {
+            if (visitSession.isActive && !visitSession.isPaused) {
                 checkActiveSessionBeforeAction('change_hari');
                 const hariSelect = document.getElementById('hari');
-                hariSelect.value = ''; // Reset selection
+                hariSelect.value = '';
                 return;
             }
             
@@ -1979,8 +2264,6 @@
             const pelangganSelect = document.getElementById('pelanggan');
             
             pelangganSelect.innerHTML = '<option value="">🏪 Pilih Outlet</option>';
-            
-            // Clear table and summary
             clearDataDisplay();
             
             if (pelangganData.length > 0 && currentSalesmanId && hariSelect.value) {
@@ -2019,18 +2302,16 @@
                     pelangganSelect.appendChild(option);
                 }
                 
-                // Update customer visit status
                 updateCustomerListVisitStatus();
+                updateCustomerListPauseStatus();
             }
         }
 
         function handlePelangganSelection() {
             const selectedCustomer = document.getElementById('pelanggan').value.trim();
             
-            if (visitSession.isActive && visitSession.outletName !== selectedCustomer && selectedCustomer !== '') {
-                // Show end modal for current visit
+            if (visitSession.isActive && !visitSession.isPaused && visitSession.outletName !== selectedCustomer && selectedCustomer !== '') {
                 showVisitEndModal();
-                // Reset selection
                 const pelangganSelect = document.getElementById('pelanggan');
                 pelangganSelect.value = visitSession.outletName || '';
                 return;
@@ -2044,7 +2325,6 @@
                 const selectedPelanggan = pelangganSelect.value.trim();
                 const selectedHari = hariSelect.value.trim().toUpperCase();
                 
-                // Check if customer already visited today
                 if (isCustomerAlreadyVisited(selectedPelanggan)) {
                     alert(`❌ Outlet "${selectedPelanggan}" sudah dikunjungi hari ini!\n\nSetiap outlet hanya boleh dikunjungi sekali per hari.`);
                     pelangganSelect.value = '';
@@ -2054,13 +2334,11 @@
                 
                 console.log(`👥 Outlet selected: ${selectedPelanggan} for ${selectedHari}`);
                 
-                // Get customer details from d.details.json directly
                 const detailRecord = detailsData.find(item => {
                     const itemPelanggan = (item['Nama Pelanggan'] || '').toString().trim();
                     return itemPelanggan.toLowerCase() === selectedPelanggan.toLowerCase();
                 });
 
-                // Get customer type from d.details.json
                 let customerTypeText = `${selectedHari} Outlet`;
                 if (detailRecord) {
                     const channelGroup = detailRecord['Channel Group'] || 'Unknown';
@@ -2069,15 +2347,12 @@
                     console.log(`📋 Found outlet details: ID=${detailRecord['Id Pelanggan']}, Type=${customerTypeText}`);
                 }
                 
-                // Show customer info
                 customerInfo.style.display = 'block';
                 document.getElementById('customerType').textContent = customerTypeText;
                 
-                // Update summary and table
                 updateSummaryFromCustomer(selectedPelanggan);
                 showVisitData(selectedPelanggan, selectedHari);
                 
-                // Ask if user wants to start visit session
                 showVisitStartModal(selectedPelanggan, selectedHari);
                 
                 console.log('✅ Outlet setup complete:', {
@@ -2085,7 +2360,8 @@
                     hari: selectedHari,
                     type: customerTypeText,
                     id_pelanggan: detailRecord ? detailRecord['Id Pelanggan'] : 'Not found',
-                    alreadyVisited: false
+                    alreadyVisited: false,
+                    isPaused: isPausedVisit(selectedPelanggan)
                 });
                 
             } else {
@@ -2095,7 +2371,6 @@
         }
 
         function clearDataDisplay() {
-            // Clear table
             const tableBody = document.getElementById('tableBody');
             if (tableBody) {
                 tableBody.innerHTML = `
@@ -2110,19 +2385,16 @@
                 `;
             }
             
-            // Clear summary
             document.getElementById('summaryTarget').textContent = '-';
             document.getElementById('summaryActual').textContent = '-';
             document.getElementById('summaryGap').textContent = '-';
             document.getElementById('summaryGap').className = 'summary-value';
             
-            // Clear customer info
             const customerInfo = document.getElementById('customerInfo');
             if (customerInfo) {
                 customerInfo.style.display = 'none';
             }
             
-            // Clear stored data
             window.currentFilteredData = [];
         }
 
@@ -2139,7 +2411,6 @@
                 return;
             }
             
-            // Filter data from d.details.json
             const detailsSummaryData = detailsData.filter(item => {
                 const itemSalesman = (item['szname'] || '').toString().trim();
                 const itemPelanggan = (item['Nama Pelanggan'] || '').toString().trim();
@@ -2168,7 +2439,6 @@
                 totalGap += Number(item['Gap MTD']) || 0;
             });
             
-            // Format numbers
             const formatNumber = (num) => {
                 if (Math.abs(num) >= 1000000) {
                     return (num / 1000000).toFixed(1) + 'M';
@@ -2199,7 +2469,6 @@
                 return;
             }
             
-            // Filter visit data from pelangganData
             const visitData = pelangganData.filter(item => {
                 const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
                 const itemHari = normalizeHariFormat(item.Hari_Kunjungan);
@@ -2226,10 +2495,7 @@
                 return;
             }
             
-            // Store for sorting
             window.currentFilteredData = [...visitData];
-            
-            // Render table
             renderTableData(visitData);
         }
 
@@ -2379,17 +2645,16 @@
             try {
                 showLoading(true);
                 
-                console.log('🚀 Starting Firebase-enabled visit system initialization...');
+                console.log('🚀 Starting Firebase-enabled visit system with pause/resume...');
                 
-                // Initialize day indicator
                 const currentDay = updateDayIndicator();
                 
                 console.log('🔍 Initializing salesman from URL...');
                 initializeSalesmanFromUrl();
                 
-                // Cleanup localStorage yang corrupt
                 if (currentSalesmanId) {
                     cleanupCorruptedLocalStorage();
+                    loadPausedVisitsFromLocal();
                 }
                 
                 console.log('👤 Loading salesman data...');
@@ -2403,7 +2668,6 @@
                 
                 console.log('✅ All data loaded successfully. Processing hari data...');
                 
-                // Create hari data from pelanggan data
                 if (pelangganData.length > 0 && currentSalesmanId) {
                     console.log('🔍 Filtering hari data for salesman...');
                     
@@ -2425,13 +2689,11 @@
                     }
                 }
                 
-                // Fallback to current day
                 if (hariData.length === 0) {
                     console.log('⚠️ No hari data found, using current day fallback...');
                     hariData = [{ Hari_Kunjungan: currentDay }];
                 }
                 
-                // Populate hari dropdown
                 const hariSelect = document.getElementById('hari');
                 hariSelect.innerHTML = '<option value="">📅 Pilih Hari JKS</option>';
                 
@@ -2442,10 +2704,8 @@
                     hariSelect.appendChild(option);
                 });
                 
-                // Load today's visited customers from localStorage
                 loadTodayVisitedCustomers();
                 
-                // Try to sync any pending visits to Firebase
                 if (window.firebaseDB) {
                     setTimeout(syncPendingVisitsToFirebase, 2000);
                 }
@@ -2453,10 +2713,11 @@
                 showLoading(false);
                 showMainContent(true);
                 
-                console.log('✅ Firebase-enabled visit system ready');
+                console.log('✅ Enhanced visit system with pause/resume ready');
                 console.log(`📅 Current day: ${currentDay}`);
                 console.log(`📊 Available hari options: ${hariData.length}`);
-                console.log('📍 Geolocation tracking enabled');
+                console.log(`⏸️ Paused visits loaded: ${pausedVisits.size}`);
+                console.log('🔍 Geolocation tracking enabled');
                 console.log('🏪 Order status tracking enabled');
                 console.log('💾 Local storage session management active');
                 console.log('🔥 Firebase sync enabled');
@@ -2468,26 +2729,105 @@
             }
         }
 
+        function cleanupCorruptedLocalStorage() {
+            if (!currentSalesmanId) return;
+            
+            const keyPrefix = `visited_${currentSalesmanId}`;
+            const keysToCheck = [];
+            
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith(keyPrefix)) {
+                    keysToCheck.push(key);
+                }
+            }
+            
+            keysToCheck.forEach(key => {
+                try {
+                    const data = localStorage.getItem(key);
+                    const parsed = JSON.parse(data);
+                    
+                    if (!Array.isArray(parsed)) {
+                        console.warn(`⚠️ Removing invalid localStorage key: ${key}`);
+                        localStorage.removeItem(key);
+                        return;
+                    }
+                    
+                    const isValid = parsed.every(item => {
+                        return typeof item === 'object' && item.outlet_name;
+                    });
+                    
+                    if (!isValid) {
+                        console.warn(`⚠️ Removing corrupted localStorage key: ${key}`);
+                        localStorage.removeItem(key);
+                    }
+                    
+                } catch (error) {
+                    console.warn(`⚠️ Removing unparseable localStorage key: ${key}`);
+                    localStorage.removeItem(key);
+                }
+            });
+        }
+
+        async function syncPendingVisitsToFirebase() {
+            if (!window.firebaseDB || !currentSalesmanId) {
+                return;
+            }
+
+            try {
+                const pendingKey = `pending_firebase_visits_${currentSalesmanId}`;
+                const pendingVisits = JSON.parse(localStorage.getItem(pendingKey) || '[]');
+                
+                if (pendingVisits.length === 0) {
+                    return;
+                }
+                
+                console.log(`🔄 Syncing ${pendingVisits.length} pending visits to Firebase...`);
+                
+                const syncPromises = pendingVisits.map(async (visit) => {
+                    try {
+                        const firebaseKey = await syncVisitToFirebase(visit);
+                        if (firebaseKey) {
+                            return visit.local_id;
+                        }
+                    } catch (error) {
+                        console.error('🔥 Error syncing visit:', visit.local_id, error);
+                        return null;
+                    }
+                });
+                
+                const syncedIds = (await Promise.all(syncPromises)).filter(id => id !== null);
+                
+                if (syncedIds.length > 0) {
+                    const remainingVisits = pendingVisits.filter(visit => !syncedIds.includes(visit.local_id));
+                    localStorage.setItem(pendingKey, JSON.stringify(remainingVisits));
+                    console.log(`🔥 ${syncedIds.length} visits synced, ${remainingVisits.length} remaining`);
+                }
+                
+            } catch (error) {
+                console.error('🔥 Error syncing pending visits:', error);
+            }
+        }
+
         // ===== EVENT LISTENERS =====
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('hari').addEventListener('change', updatePelangganOptions);
             document.getElementById('pelanggan').addEventListener('change', handlePelangganSelection);
 
-            // Initialize session status
             updateVisitSessionStatus();
-            
-            // Initialize geolocation
+            updateFloatingButtons();
             initializeGeolocation();
-            
-            // Initialize data
             initializeData();
 
-            // Periodically try to sync pending visits
             setInterval(() => {
                 if (window.firebaseDB && currentSalesmanId) {
                     syncPendingVisitsToFirebase();
                 }
-            }, 30000); // Every 30 seconds
+            }, 30000);
+
+            setInterval(() => {
+                updateFloatingButtons();
+            }, 3000);
         });
 
         // ===== NAVIGATION FUNCTIONS WITH SESSION PROTECTION =====
@@ -2510,9 +2850,8 @@
             alert('👤 Profile feature coming soon');
         }
 
-        // Override browser back button protection
         window.addEventListener('beforeunload', function (e) {
-            if (visitSession.isActive) {
+            if (visitSession.isActive && !visitSession.isPaused) {
                 const confirmationMessage = `⚠️ Anda memiliki kunjungan aktif ke ${visitSession.outletName}.\n\nJika Anda meninggalkan halaman, kunjungan akan dianggap tidak selesai.`;
                 
                 e.preventDefault();
@@ -2521,61 +2860,12 @@
             }
         });
 
-		// ===== TAMBAHAN UNTUK END VISIT BUTTON =====
-		function handleEndVisitClick() {
-			try {
-				if (typeof showVisitEndModal === 'function') {
-					showVisitEndModal();
-				} else {
-					// Fallback manual
-					const modal = document.getElementById('visitEndModal');
-					if (modal) {
-						modal.classList.add('show');
-					} else {
-						alert('Silakan refresh halaman untuk mengakhiri kunjungan');
-					}
-				}
-			} catch (error) {
-				console.error('Error calling end visit:', error);
-				alert('Terjadi error. Silakan refresh halaman.');
-			}
-		}
-
-		function updateEndVisitButton() {
-			const btn = document.getElementById('endVisitFloating');
-			if (!btn) return;
-			
-			try {
-				if (typeof visitSession !== 'undefined' && visitSession && visitSession.isActive) {
-					btn.classList.add('show');
-				} else {
-					btn.classList.remove('show');
-				}
-			} catch (error) {
-				console.log('Visit session check error:', error);
-			}
-		}
-
-		// Update button setiap 3 detik
-		setInterval(updateEndVisitButton, 3000);
-
-		// Initial update setelah page load
-		setTimeout(updateEndVisitButton, 2000);
-
-		console.log('✅ Minimal end visit button loaded');
-        console.log('✅ Firebase-Enhanced Visit System loaded');
-        console.log('🧹 All localStorage errors resolved');
-        console.log('💾 Using robust localStorage + Firebase for visit tracking');
-        console.log('📍 Geolocation tracking active');
-        console.log('🏪 Full visit session management working');
-        console.log('🔥 Firebase real-time sync enabled');
+        console.log('✅ Enhanced Visit System with Pause/Resume Feature loaded');
+        console.log('⏸️ Pause/Resume functionality enabled');
+        console.log('🔄 Visit session management with time tracking');
+        console.log('💾 Local storage + Firebase for comprehensive tracking');
+        console.log('🗺️ Location tracking for pause/resume events');
+        console.log('📊 Enhanced visit analytics with pause data');
     </script>
-	
-	<!-- Floating End Visit Button -->
-	<div class="end-visit-floating" id="endVisitFloating">
-		<button class="btn-end-visit" onclick="handleEndVisitClick()">
-			🏁 Akhiri Kunjungan
-		</button>
-	</div>
 </body>
 </html>
