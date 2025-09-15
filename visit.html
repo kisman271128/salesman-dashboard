@@ -777,6 +777,24 @@
             font-weight: 600;
         }
 
+        .customer-info-row {
+            margin-bottom: 4px;
+        }
+
+        .customer-info-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .sku-zero-list {
+            font-size: 10px;
+            color: #ef4444;
+            font-weight: 500;
+            background: #fef2f2;
+            padding: 2px 4px;
+            border-radius: 4px;
+            border: 1px solid #fecaca;
+        }
+
         /* ===== FLOATING ACTION BUTTONS ===== */
         .floating-actions {
             position: fixed;
@@ -960,6 +978,82 @@
             color: #374151;
         }
 
+        /* ===== PROMO TAG STYLING ===== */
+        .promo-tag {
+            font-weight: 600;
+            font-size: 10px;
+            padding: 2px 4px;
+            border-radius: 4px;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        .promo-biscuit, .promo-bisc { 
+            background: linear-gradient(135deg, #dc2626, #ef4444);
+        }
+        .promo-snack, .promo-snackfood { 
+            background: linear-gradient(135deg, #7c3aed, #8b5cf6);
+        }
+        .promo-bev { 
+            background: linear-gradient(135deg, #059669, #10b981);
+        }
+        .promo-others, .promo-sf, .promo-gen, .promo-go { 
+            background: linear-gradient(135deg, #0369a1, #0284c7);
+        }
+        .promo-gbs { 
+            background: linear-gradient(135deg, #7c2d12, #ea580c);
+        }
+        .promo-solmed { 
+            background: linear-gradient(135deg, #d97706, #f59e0b);
+        }
+        .promo-rans, .promo-gbev, .promo-mbr { 
+            background: linear-gradient(135deg, #23A0AD, #CBE030);
+        }
+
+        /* ===== GAP BADGE STYLING ===== */
+        .gap-badge {
+            padding: 2px 4px;
+            border-radius: 8px;
+            font-size: 9px;
+            font-weight: 600;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        .gap-positive {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+
+        .gap-negative {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+
+        .gap-neutral {
+            background: linear-gradient(135deg, #64748b, #475569);
+        }
+
+        /* ===== TABLE ROW STYLING ===== */
+        .summary-row {
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            border-top: 2px solid #667eea;
+        }
+
+        .summary-row td {
+            font-weight: 700;
+            color: #1e293b;
+            padding: 12px 6px;
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+        }
+
+        tr:hover {
+            background-color: #f8fafc;
+        }
+
+        .metric-value {
+            font-weight: 600;
+            font-size: 12px;
+        }
+
         .empty-state {
             text-align: center;
             padding: 40px 20px;
@@ -1055,8 +1149,14 @@
                             
                             <!-- Customer Info Display -->
                             <div id="customerInfo" class="customer-info">
-                                <div class="customer-info-label">Outlet Type:</div>
-                                <div id="customerType" class="customer-info-value"></div>
+                                <div class="customer-info-row">
+                                    <div class="customer-info-label">Outlet Type:</div>
+                                    <div id="customerType" class="customer-info-value"></div>
+                                </div>
+                                <div class="customer-info-row">
+                                    <div class="customer-info-label">SKU POM (Belum CA):</div>
+                                    <div id="skuZeroList" class="customer-info-value sku-zero-list"></div>
+                                </div>
                             </div>
                         </div>
 
@@ -2860,15 +2960,28 @@
                 });
 
                 let customerTypeText = `${selectedHari} Outlet`;
+                let skuZeroText = 'Tidak ada';
+                
                 if (detailRecord) {
                     const channelGroup = detailRecord['Channel Group'] || 'Unknown';
                     const project = detailRecord.Project || 'Unknown';
                     customerTypeText = `${channelGroup} - ${project}`;
-                    console.log(`📋 Found outlet details: ID=${detailRecord['Id Pelanggan']}, Type=${customerTypeText}`);
+                    
+                    // Extract SKU POM with value 0
+                    const skuPomKeys = ['CREAM8', 'GOTA8', 'OKKIOR20', 'PGFC8Z', 'MAXB2', 'RICH2', 'RUMUT5'];
+                    const skuZeroList = skuPomKeys.filter(sku => {
+                        const value = detailRecord[sku];
+                        return value === 0 || value === '0';
+                    });
+                    
+                    skuZeroText = skuZeroList.length > 0 ? skuZeroList.join(', ') : 'Semua SKU POM aktif';
+                    
+                    console.log(`🔋 Found outlet details: ID=${detailRecord['Id Pelanggan']}, Type=${customerTypeText}, SKU Zero=${skuZeroText}`);
                 }
                 
                 customerInfo.style.display = 'block';
                 document.getElementById('customerType').textContent = customerTypeText;
+                document.getElementById('skuZeroList').textContent = skuZeroText;
                 
                 updateSummaryFromCustomer(selectedPelanggan);
                 showVisitData(selectedPelanggan, selectedHari);
@@ -2881,7 +2994,8 @@
                     type: customerTypeText,
                     id_pelanggan: detailRecord ? detailRecord['Id Pelanggan'] : 'Not found',
                     alreadyVisited: false,
-                    isPaused: isPausedVisit(selectedPelanggan)
+                    isPaused: isPausedVisit(selectedPelanggan),
+                    skuZero: skuZeroText
                 });
                 
             } else {
