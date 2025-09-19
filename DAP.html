@@ -1,0 +1,1442 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Outlet - Customer Analytics Dashboard</title>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(180deg, #f8f9ff 0%, #e8ecff 100%);
+            min-height: 100vh;
+            color: #2c3e50;
+            padding-bottom: 100px;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        .detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 0 0 30px 30px;
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        .back-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            padding: 10px;
+            border-radius: 12px;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateX(-2px);
+        }
+
+        .detail-title-container {
+            text-align: center;
+            flex: 1;
+        }
+
+        .detail-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .salesman-name {
+            font-size: 14px;
+            opacity: 0.9;
+            font-weight: 400;
+        }
+
+        .user-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            padding: 10px;
+            border-radius: 12px;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .user-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Day Indicator */
+        .day-indicator {
+            position: fixed;
+            top: 50px;
+            right: 10px;
+            background: rgba(102, 126, 234, 0.9);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            z-index: 1001;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Loading and Error States */
+        .loading-spinner {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            flex-direction: column;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: rgba(231, 76, 60, 0.1);
+            border: 1px solid rgba(231, 76, 60, 0.3);
+            color: #e74c3c;
+            padding: 16px;
+            border-radius: 12px;
+            margin: 20px;
+            text-align: center;
+        }
+
+        /* Filter Section */
+        .filter-section {
+            padding: 0 16px;
+            margin-bottom: 20px;
+        }
+
+        .filter-frame {
+            background: white;
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .filter-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        .filter-item {
+            position: relative;
+            margin-bottom: 12px;
+        }
+
+        .filter-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .filter-item select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 14px;
+            background: white;
+            color: #2d3748;
+            appearance: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .filter-item select:disabled {
+            background: #f7fafc;
+            color: #a0aec0;
+            cursor: not-allowed;
+            border-color: #e2e8f0;
+        }
+
+        .filter-item select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        /* Summary Cards */
+        .summary-section {
+            padding: 0 16px;
+            margin-bottom: 20px;
+        }
+
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .summary-cards.four-cols {
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+        }
+
+        .summary-card {
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 10px;
+            text-align: center;
+        }
+
+        .summary-label {
+            font-size: 9px;
+            color: #64748b;
+            font-weight: 500;
+            margin-bottom: 3px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .summary-value {
+            font-size: 12px;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .summary-value.positive {
+            color: #10b981;
+        }
+
+        .summary-value.negative {
+            color: #ef4444;
+        }
+
+        .summary-value.neutral {
+            color: #64748b;
+        }
+
+        /* Table Section */
+        .table-section {
+            padding: 0 16px;
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .record-count {
+            font-size: 12px;
+            font-weight: 400;
+            color: #64748b;
+            background: #f1f5f9;
+            padding: 4px 8px;
+            border-radius: 8px;
+        }
+
+        /* Table Styles with Performance.html styling */
+        .table-wrapper {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        .table-header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 12px 16px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .table-container {
+            max-height: 400px;
+            overflow-y: auto;
+            overflow-x: auto;
+        }
+
+        .data-table {
+            width: auto;
+            border-collapse: collapse;
+            min-width: fit-content;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 8px 12px;
+            text-align: left;
+            border-bottom: 1px solid #f1f3f4;
+            font-size: 11px;
+            white-space: nowrap;
+            width: auto;
+        }
+
+        .data-table th {
+            background: #f8fafc;
+            font-weight: 600;
+            color: #374151;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            text-align: center;
+        }
+
+        .data-table tbody tr:hover {
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        /* Total row styling */
+        .total-row {
+            background: #f1f5f9 !important;
+            font-weight: 700;
+            border-top: 2px solid #667eea;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .total-row td {
+            background: #f1f5f9 !important;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .total-row:hover {
+            background: #e2e8f0 !important;
+        }
+
+        .total-row .sticky-col {
+            background: #e2e8f0 !important;
+            font-weight: 700;
+        }
+
+        /* Sticky Columns - 3 kolom tetap */
+        .sticky-col {
+            position: sticky;
+            background: #f8fafc !important;
+            z-index: 15;
+            box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+            width: max-content;
+            min-width: fit-content;
+        }
+
+        .data-table tbody .sticky-col {
+            background: white !important;
+            z-index: 5;
+            box-shadow: 2px 0 4px rgba(0, 0, 0, 0.15);
+        }
+
+        .data-table tbody tr:hover .sticky-col {
+            background: rgba(102, 126, 234, 0.05) !important;
+            z-index: 16;
+        }
+
+        .data-table thead .sticky-col {
+            z-index: 20;
+        }
+
+        /* Specific sticky column positioning */
+		.no-col { 
+			position: sticky;
+			left: 0; 
+			width: 40px;
+			min-width: 40px;
+			max-width: 40px;
+			background: #fff;
+			text-align: center !important;
+			z-index: 30;
+		}
+
+		/* Kolom Nama Pelanggan */
+		.customer-col { 
+			position: sticky;
+			left: 40px; /* sesuai lebar No */
+			width: 120px;
+			min-width: 120px; 
+			max-width: 120px;
+			background: #fff;
+			text-align: left !important;
+			padding-left: 12px !important;
+			z-index: 25;
+		}
+
+		/* Kolom Gap */
+		.gap-col { 
+			position: sticky;
+			left: 160px; /* No (40) + Nama (160) */
+			width: 60px;
+			min-width: 60px; 
+			max-width: 60px;
+			background: #fff;
+			text-align: center !important;
+			z-index: 20;
+		}
+
+        /* Value formatting */
+        .value-positive { color: #059669; font-weight: 600; }
+        .value-negative { color: #dc2626; font-weight: 600; }
+        .value-currency { 
+            font-family: 'Courier New', monospace; 
+            text-align: right;
+            min-width: 80px;
+            color: #000000 !important;
+        }
+        .value-percentage { 
+            font-weight: 600; 
+            text-align: center;
+            min-width: 60px;
+        }
+
+        /* Updated Gap styling */
+        .gap-positive { 
+            color: #059669 !important; 
+            font-weight: 600; 
+        }
+        .gap-negative { 
+            color: #dc2626 !important; 
+            font-weight: 600; 
+        }
+
+        .gap-badge {
+            padding: 2px 6px;
+            border-radius: 6px;
+            font-size: 9px;
+            font-weight: 600;
+            display: inline-block;
+            min-width: 40px;
+            text-align: center;
+        }
+
+        .gap-badge.gap-positive {
+            background: rgba(16, 185, 129, 0.1);
+            color: #059669;
+        }
+
+        .gap-badge.gap-negative {
+            background: rgba(239, 68, 68, 0.1);
+            color: #dc2626;
+        }
+
+        .gap-badge.gap-neutral {
+            background: rgba(100, 116, 139, 0.1);
+            color: #64748b;
+        }
+
+        /* Column width classes */
+        .col-narrow { min-width: 40px; max-width: 50px; text-align: center; }
+        .col-medium { min-width: 60px; max-width: 80px; text-align: center; }
+        .col-wide { min-width: 70px; max-width: 90px; text-align: center; }
+        .col-text { min-width: 120px; max-width: 200px; text-align: left; }
+
+        /* Percentage columns styling */
+        .percentage-value {
+            font-weight: 600;
+        }
+
+        .percentage-positive {
+            color: #10b981;
+        }
+
+        .percentage-negative {
+            color: #ef4444;
+        }
+
+        .percentage-neutral {
+            color: #64748b;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #64748b;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 400px;
+            background: white;
+            border-top: 1px solid #f1f2f6;
+            padding: 15px 0;
+            display: flex;
+            justify-content: space-around;
+            box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-decoration: none;
+            color: #bdc3c7;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            padding: 8px 6px;
+            border-radius: 12px;
+            min-width: 50px;
+        }
+
+        .nav-item.active {
+            color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .nav-item:hover {
+            color: #667eea;
+            transform: translateY(-2px);
+        }
+
+        .nav-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 4px;
+            font-size: 12px;
+        }
+
+        .nav-icon.home { background: #3b82f6; color: white; }
+        .nav-icon.visit { background: #ef4444; color: white; }
+        .nav-icon.data { background: #10b981; color: white; }
+        .nav-icon.profile { background: #f59e0b; color: white; }
+
+        .nav-label {
+            font-size: 10px;
+            font-weight: 500;
+        }
+
+        /* Responsive */
+        @media (max-width: 380px) {
+            .data-table th, .data-table td { 
+                padding: 6px 8px; 
+                font-size: 10px; 
+            }
+            .customer-col { 
+                min-width: 100px; 
+                max-width: 140px; 
+            }
+            .value-currency { 
+                min-width: 60px; 
+                font-size: 10px; 
+            }
+            .value-percentage { 
+                min-width: 50px; 
+            }
+            .col-narrow { 
+                min-width: 35px; 
+                max-width: 40px; 
+            }
+            .col-medium { 
+                min-width: 50px; 
+                max-width: 60px; 
+            }
+            .col-wide { 
+                min-width: 60px; 
+                max-width: 70px; 
+            }
+            .col-text { 
+                min-width: 100px; 
+                max-width: 120px; 
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Day Indicator -->
+        <div class="day-indicator" id="dayIndicator">
+            📅 Loading...
+        </div>
+
+        <!-- Header -->
+        <div class="detail-header">
+            <a href="dashboard.html" class="back-btn">←</a>
+            <div class="detail-title-container">
+                <div class="detail-title">Data Outlet</div>
+                <div class="salesman-name" id="salesmanName">Loading...</div>
+            </div>
+            <button class="user-btn" onclick="refreshData()">🔄</button>
+        </div>
+
+        <!-- Loading State -->
+        <div class="loading-spinner" id="loadingSpinner">
+            <div class="spinner"></div>
+            <div>Loading outlet data...</div>
+        </div>
+
+        <!-- Error State -->
+        <div class="error-message" id="errorMessage" style="display: none;">
+            <h3>🚨 Data Loading Error</h3>
+            <p>Unable to load outlet data. Please check your connection.</p>
+            <button onclick="initializeData()" style="margin-top: 10px; padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer;">Retry</button>
+        </div>
+
+        <!-- Main Content -->
+        <div id="mainContent" style="display: none;">
+            <!-- Filter Section -->
+            <div class="filter-section">
+                <div class="filter-frame">
+                    <div class="filter-title">🔍 Filter Data</div>
+                    <div class="filter-item">
+                        <select id="jksSelect">
+                            <option value="">📅 Pilih Hari JKS</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary Section -->
+            <div class="summary-section" id="summarySection" style="display: none;">
+                <!-- Baris 1: T.MTD, A.MTD, Gap MTD -->
+                <div class="summary-cards">
+                    <div class="summary-card">
+                        <div class="summary-label">T.MTD</div>
+                        <div class="summary-value" id="totalTarget">0</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-label">A.MTD</div>
+                        <div class="summary-value" id="totalActual">0</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-label">Gap MTD</div>
+                        <div class="summary-value" id="totalGap">0</div>
+                    </div>
+                </div>
+                
+                <!-- Baris 2: LY, 3LM, LM, Max -->
+                <div class="summary-cards four-cols">
+                    <div class="summary-card">
+                        <div class="summary-label">LY</div>
+                        <div class="summary-value" id="totalLY">0</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-label">3LM</div>
+                        <div class="summary-value" id="total3LM">0</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-label">LM</div>
+                        <div class="summary-value" id="totalLM">0</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-label">Max</div>
+                        <div class="summary-value" id="totalMax">0</div>
+                    </div>
+                </div>
+                
+                <!-- Baris 3: vs LY, vs 3LM, vs LM -->
+                <div class="summary-cards">
+                    <div class="summary-card">
+                        <div class="summary-label">vs LY</div>
+                        <div class="summary-value" id="vsLY">0%</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-label">vs 3LM</div>
+                        <div class="summary-value" id="vs3LM">0%</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-label">vs LM</div>
+                        <div class="summary-value" id="vsLM">0%</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table Section -->
+            <div class="table-section">
+                <div class="section-title">
+                    📊 Data Outlet
+                    <span class="record-count" id="recordCount">0 records</span>
+                </div>
+                <div class="table-wrapper">
+                    <div class="table-header">📊 Data Outlet Performance</div>
+                    <div class="table-container">
+                        <table class="data-table" id="outletTable">
+                            <thead>
+                                <tr>
+                                    <th class="sticky-col no-col">No</th>
+                                    <th class="sticky-col customer-col sortable-header" onclick="sortTable('customer')">Nama Pelanggan</th>
+                                    <th class="sticky-col gap-col sortable-header" onclick="sortTable('gap')">Gap</th>
+                                    <th class="col-wide value-currency sortable-header" onclick="sortTable('target')">T.MTD</th>
+                                    <th class="col-wide value-currency sortable-header" onclick="sortTable('actual')">A.MTD</th>
+                                    <th class="col-wide value-percentage sortable-header" onclick="sortTable('vs3lm')">vs 3LM</th>
+                                    <th class="col-wide value-percentage sortable-header" onclick="sortTable('vslm')">vs LM</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableBody">
+                                <tr>
+                                    <td colspan="7">
+                                        <div class="empty-state">
+                                            <div class="empty-state-icon">📊</div>
+                                            <div>Pilih hari JKS untuk melihat data outlet</div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Navigation -->
+        <div class="bottom-nav">
+            <div class="nav-item" onclick="goHome()">
+                <div class="nav-icon home">🏠</div>
+                <div class="nav-label">Home</div>
+            </div>
+            <div class="nav-item" onclick="goToVisit()">
+                <div class="nav-icon visit">🏪</div>
+                <div class="nav-label">Visit</div>
+            </div>
+            <div class="nav-item active" onclick="showOutletData()">
+                <div class="nav-icon data">📊</div>
+                <div class="nav-label">Data</div>
+            </div>
+            <div class="nav-item" onclick="showProfile()">
+                <div class="nav-icon profile">👤</div>
+                <div class="nav-label">Profile</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== VARIABEL GLOBAL =====
+        let currentSalesman = '';
+        let currentSalesmanId = null;
+        let detailsData = [];
+        let jksData = [];
+        let salesmanData = [];
+        let currentFilteredData = [];
+        let sortState = { column: null, direction: 'asc' };
+
+        // ===== FUNGSI UTILITAS =====
+        function parseJSONL(content) {
+            const lines = content.trim().split('\n');
+            const data = [];
+            
+            lines.forEach((line, index) => {
+                try {
+                    if (line.trim()) {
+                        const obj = JSON.parse(line.trim());
+                        data.push(obj);
+                    }
+                } catch (error) {
+                    console.error(`Error parsing baris ${index + 1}:`, line, error);
+                }
+            });
+            
+            return data;
+        }
+
+        function getUrlParameter(name) {
+            name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+            var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+            var results = regex.exec(location.search);
+            return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+        }
+
+        function getCurrentDayInIndonesian() {
+            const days = ['MINGGU', 'SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
+            const today = new Date();
+            return days[today.getDay()];
+        }
+
+        function updateDayIndicator() {
+            const currentDay = getCurrentDayInIndonesian();
+            const dayIndicator = document.getElementById('dayIndicator');
+            if (dayIndicator) {
+                dayIndicator.textContent = `📅 ${currentDay}`;
+            }
+            return currentDay;
+        }
+
+        function formatCurrencyIndonesia(value) {
+            const val = Math.abs(parseFloat(value) || 0);
+            if (val >= 1000000000) return `${(val/1000000000).toFixed(1)}M`;
+            if (val >= 1000000) return `${(val/1000000).toFixed(1)}jt`;
+            if (val >= 1000) return `${(val/1000).toFixed(0)}rb`;
+            return `${val.toFixed(0)}`;
+        }
+
+        function formatPercentage(value) {
+            if (!isFinite(value)) return '0%';
+            return `${value > 0 ? '+' : ''}${value.toFixed(1)}%`;
+        }
+
+        function calculatePerformanceClass(percentage) {
+            if (percentage > 10) return 'value-positive';
+            if (percentage < -10) return 'value-negative';
+            return 'percentage-neutral';
+        }
+
+        function getGapClass(gap) {
+            return parseFloat(gap) <= 0 ? 'gap-negative' : 'gap-positive';
+        }
+
+        // ===== FUNGSI PEMUATAN DATA =====
+        async function loadSalesmanData() {
+            try {
+                console.log('👤 Memuat data salesman...');
+                const response = await fetch('data/d.salesman.json');
+                if (!response.ok) throw new Error('Gagal memuat data salesman');
+                
+                const content = await response.text();
+                salesmanData = parseJSONL(content);
+                
+                updateSalesmanNameFromData();
+                
+            } catch (error) {
+                console.error('Error memuat data salesman:', error);
+            }
+        }
+
+        async function loadJKSData() {
+            try {
+                console.log('📊 Memuat data JKS...');
+                const response = await fetch('data/d.jks.json');
+                if (!response.ok) throw new Error('Gagal memuat data JKS');
+                
+                const content = await response.text();
+                jksData = parseJSONL(content);
+                
+                console.log(`✅ Berhasil memuat ${jksData.length} record JKS`);
+                
+            } catch (error) {
+                console.error('Error memuat data JKS:', error);
+                throw error;
+            }
+        }
+
+        async function loadDetailsData() {
+            try {
+                console.log('📊 Memuat data detail...');
+                const response = await fetch('data/d.details.json');
+                if (!response.ok) throw new Error('Gagal memuat data detail');
+                
+                const content = await response.text();
+                detailsData = parseJSONL(content);
+                
+                console.log(`✅ Berhasil memuat ${detailsData.length} record detail`);
+                
+            } catch (error) {
+                console.error('Error memuat data detail:', error);
+                throw error;
+            }
+        }
+
+        function initializeSalesmanFromUrl() {
+            currentSalesmanId = getUrlParameter('id') || getUrlParameter('user');
+            
+            if (currentSalesmanId) {
+                console.log('🔍 ID Salesman saat ini: ' + currentSalesmanId);
+            } else {
+                console.warn('⚠️ Tidak ada ID salesman di URL');
+            }
+        }
+
+        function updateSalesmanNameFromData() {
+            if (currentSalesmanId && salesmanData.length > 0) {
+                const salesmanRecord = salesmanData.find(item => item.szEmployeeId.toString() === currentSalesmanId);
+                if (salesmanRecord) {
+                    currentSalesman = salesmanRecord.szname;
+                    document.getElementById('salesmanName').textContent = currentSalesman;
+                }
+            } else if (currentSalesmanId && detailsData.length > 0) {
+                const salesmanRecord = detailsData.find(item => item.szEmployeeId.toString() === currentSalesmanId);
+                if (salesmanRecord) {
+                    currentSalesman = salesmanRecord.szname;
+                    document.getElementById('salesmanName').textContent = currentSalesman;
+                }
+            }
+        }
+
+        // ===== JKS FILTER FUNCTIONS =====
+        function populateJKSOptions() {
+            if (!currentSalesmanId) {
+                console.warn('⚠️ No salesman ID available');
+                return;
+            }
+
+            const jksSelect = document.getElementById('jksSelect');
+            jksSelect.innerHTML = '<option value="">📅 Pilih Hari JKS</option>';
+
+            console.log(`🔍 Looking for JKS data for salesman ID: ${currentSalesmanId}`);
+            
+            // Debug: Log sample JKS data structure
+            if (jksData.length > 0) {
+                console.log('📊 Sample JKS data structure:', jksData[0]);
+                console.log('📊 JKS data fields:', Object.keys(jksData[0]));
+            }
+
+            // Try multiple possible field names for employee ID
+            const possibleEmployeeFields = ['szEmployeeId', 'employeeId', 'EmployeeId', 'ID', 'id'];
+            const possibleJKSFields = ['Hari JKS', 'JKS', 'hari_jks', 'Day'];
+
+            let salesmanJKSData = [];
+            
+            // Find the correct employee field
+            for (const empField of possibleEmployeeFields) {
+                salesmanJKSData = jksData.filter(item => {
+                    return item[empField] && item[empField].toString() === currentSalesmanId.toString();
+                });
+                
+                if (salesmanJKSData.length > 0) {
+                    console.log(`✅ Found data using employee field: ${empField}`);
+                    break;
+                }
+            }
+
+            console.log(`📊 Filtered JKS data count: ${salesmanJKSData.length}`);
+            
+            if (salesmanJKSData.length > 0) {
+                console.log('📊 Sample filtered data:', salesmanJKSData[0]);
+            }
+
+            // Find unique JKS days using multiple possible field names
+            let uniqueJKS = [];
+            
+            for (const jksField of possibleJKSFields) {
+                const jksDays = [...new Set(salesmanJKSData
+                    .map(item => item[jksField])
+                    .filter(jks => jks && jks.toString().trim() !== '')
+                )];
+                
+                if (jksDays.length > 0) {
+                    uniqueJKS = jksDays;
+                    console.log(`✅ Found JKS days using field: ${jksField}`);
+                    break;
+                }
+            }
+
+            uniqueJKS = uniqueJKS.sort();
+            console.log(`📅 Found ${uniqueJKS.length} unique JKS days:`, uniqueJKS);
+
+            if (uniqueJKS.length > 0) {
+                uniqueJKS.forEach(jks => {
+                    const option = document.createElement('option');
+                    option.value = jks;
+                    option.textContent = jks;
+                    jksSelect.appendChild(option);
+                });
+            } else {
+                // As fallback, try to get JKS days from details data
+                console.log('⚠️ No JKS days found in JKS data, trying details data...');
+                
+                const detailsSalesmanData = detailsData.filter(item => {
+                    return item.szEmployeeId && item.szEmployeeId.toString() === currentSalesmanId.toString();
+                });
+
+                const detailsJKS = [...new Set(detailsSalesmanData
+                    .map(item => item['Hari JKS'] || item['JKS'])
+                    .filter(jks => jks && jks.toString().trim() !== '')
+                )].sort();
+
+                console.log(`📅 Found ${detailsJKS.length} JKS days from details:`, detailsJKS);
+
+                if (detailsJKS.length > 0) {
+                    detailsJKS.forEach(jks => {
+                        const option = document.createElement('option');
+                        option.value = jks;
+                        option.textContent = jks;
+                        jksSelect.appendChild(option);
+                    });
+                } else {
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = 'Tidak ada hari JKS ditemukan';
+                    option.disabled = true;
+                    jksSelect.appendChild(option);
+                }
+            }
+        }
+
+        function handleJKSSelection() {
+            const selectedJKS = document.getElementById('jksSelect').value;
+            
+            if (!selectedJKS) {
+                hideDataDisplay();
+                return;
+            }
+
+            console.log(`🔍 Filtering data for JKS: ${selectedJKS}`);
+            
+            // Filter data by salesman and JKS from details data
+            const filteredData = detailsData.filter(item => {
+                const itemSalesmanId = item.szEmployeeId.toString();
+                const itemJKS = item['Hari JKS'] || item['JKS'];
+                
+                return itemSalesmanId === currentSalesmanId && 
+                       itemJKS && itemJKS.toString().trim() === selectedJKS;
+            });
+
+            console.log(`📊 Found ${filteredData.length} outlets for ${selectedJKS}`);
+
+            if (filteredData.length === 0) {
+                showEmptyState(`Tidak ada outlet untuk hari ${selectedJKS}`);
+                return;
+            }
+
+            currentFilteredData = filteredData;
+            updateSummary(selectedJKS); // Pass selected JKS to updateSummary
+            renderOutletTable(filteredData);
+            showDataDisplay();
+        }
+
+        // ===== TABLE FUNCTIONS =====
+        function renderOutletTable(data) {
+            const tableBody = document.getElementById('tableBody');
+            const recordCount = document.getElementById('recordCount');
+            
+            recordCount.textContent = `${data.length} outlets`;
+
+            if (data.length === 0) {
+                showEmptyState('Tidak ada data outlet');
+                return;
+            }
+
+            let totalGapSum = 0;
+            let totalTargetSum = 0;
+            let totalActualSum = 0;
+
+            // Hitung total terlebih dahulu
+            data.forEach((item, index) => {
+                const gap = Number(item['Gap MTD']) || 0;
+                const target = Number(item['T.MTD']) || 0;
+                const actual = Number(item['A.MTD']) || 0;
+
+                totalGapSum += gap;
+                totalTargetSum += target;
+                totalActualSum += actual;
+            });
+
+            let html = '';
+
+            // Tambahkan baris total di bagian atas
+            const totalGapClass = getGapClass(totalGapSum);
+            html += `
+                <tr class="total-row">
+                    <td class="sticky-col no-col"></td>
+                    <td class="sticky-col customer-col"><strong>TOTAL</strong></td>
+                    <td class="sticky-col gap-col"><span class="gap-badge ${totalGapClass}"><strong>${formatCurrencyIndonesia(totalGapSum)}</strong></span></td>
+                    <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(totalTargetSum)}</strong></td>
+                    <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(totalActualSum)}</strong></td>
+                    <td class="value-percentage col-wide">-</td>
+                    <td class="value-percentage col-wide">-</td>
+                </tr>
+            `;
+
+            // Tambahkan baris individual
+            data.forEach((item, index) => {
+                const no = index + 1;
+                const customerName = item['Nama Pelanggan'] || 'N/A';
+                const gap = Number(item['Gap MTD']) || 0;
+                const target = Number(item['T.MTD']) || 0;
+                const actual = Number(item['A.MTD']) || 0;
+                const threeLM = Number(item['3LM']) || 0;
+                const lm = Number(item['LM']) || 0;
+
+                // Hitung persentase vs 3LM dan vs LM
+                const vs3LM = threeLM !== 0 ? ((actual - threeLM) / threeLM) * 100 : 0;
+                const vsLM = lm !== 0 ? ((actual - lm) / lm) * 100 : 0;
+
+                // Kelas styling
+                const gapClass = getGapClass(gap);
+                const vs3LMClass = calculatePerformanceClass(vs3LM);
+                const vsLMClass = calculatePerformanceClass(vsLM);
+
+                html += `
+                    <tr>
+                        <td class="sticky-col no-col">${no}</td>
+                        <td class="sticky-col customer-col" title="${customerName}"><strong>${customerName}</strong></td>
+                        <td class="sticky-col gap-col"><span class="gap-badge ${gapClass}">${formatCurrencyIndonesia(gap)}</span></td>
+                        <td class="value-currency col-wide">${formatCurrencyIndonesia(target)}</td>
+                        <td class="value-currency col-wide">${formatCurrencyIndonesia(actual)}</td>
+                        <td class="value-percentage col-wide ${vs3LMClass}">${formatPercentage(vs3LM)}</td>
+                        <td class="value-percentage col-wide ${vsLMClass}">${formatPercentage(vsLM)}</td>
+                    </tr>
+                `;
+            });
+
+            tableBody.innerHTML = html;
+        }
+
+        function showEmptyState(message) {
+            const tableBody = document.getElementById('tableBody');
+            const recordCount = document.getElementById('recordCount');
+            
+            recordCount.textContent = '0 outlets';
+            
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="7">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">🔭</div>
+                            <div>${message}</div>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+
+        function updateSummary(selectedJKS) {
+            if (!currentSalesmanId || !selectedJKS) {
+                return;
+            }
+
+            console.log(`📊 Updating summary for JKS: ${selectedJKS}`);
+
+            // Try multiple possible field names for employee ID and JKS
+            const possibleEmployeeFields = ['szEmployeeId', 'employeeId', 'EmployeeId', 'ID', 'id'];
+            const possibleJKSFields = ['Hari JKS', 'JKS', 'hari_jks', 'Day'];
+
+            let salesmanJKSData = [];
+            
+            // Find data using different field combinations
+            for (const empField of possibleEmployeeFields) {
+                for (const jksField of possibleJKSFields) {
+                    salesmanJKSData = jksData.filter(item => {
+                        return item[empField] && item[empField].toString() === currentSalesmanId.toString() &&
+                               item[jksField] === selectedJKS;
+                    });
+                    
+                    if (salesmanJKSData.length > 0) {
+                        console.log(`✅ Found summary data using fields: ${empField} & ${jksField}`);
+                        break;
+                    }
+                }
+                if (salesmanJKSData.length > 0) break;
+            }
+
+            console.log(`📊 Summary data count: ${salesmanJKSData.length}`);
+
+            if (salesmanJKSData.length === 0) {
+                // Reset semua metric jika tidak ada data
+                console.warn('⚠️ No JKS data found for summary, resetting metrics');
+                document.getElementById('totalTarget').textContent = '0';
+                document.getElementById('totalActual').textContent = '0';
+                document.getElementById('totalGap').textContent = '0';
+                document.getElementById('totalLY').textContent = '0';
+                document.getElementById('total3LM').textContent = '0';
+                document.getElementById('totalLM').textContent = '0';
+                document.getElementById('totalMax').textContent = '0';
+                document.getElementById('vsLY').textContent = '0%';
+                document.getElementById('vs3LM').textContent = '0%';
+                document.getElementById('vsLM').textContent = '0%';
+                return;
+            }
+
+            // Log sample data for debugging
+            console.log('📊 Sample summary data:', salesmanJKSData[0]);
+
+            // Try different possible field names for the metrics
+            const fieldMappings = {
+                target: [' T.MTD', 'T.MTD', 'Target', 'target'],
+                actual: [' A.MTD', 'A.MTD', 'Actual', 'actual'],
+                gap: [' Gap MTD', 'Gap MTD', 'Gap', 'gap'],
+                ly: [' LY', 'LY', 'LastYear', 'last_year'],
+                threeLM: [' 3LM', '3LM', 'ThreeLastMonth', 'three_lm'],
+                lm: [' LM', 'LM', 'LastMonth', 'last_month'],
+                max: [' Max', 'Max', 'Maximum', 'maximum']
+            };
+
+            // Function to get value using multiple possible field names
+            function getValue(item, fieldType) {
+                const possibleFields = fieldMappings[fieldType] || [];
+                for (const field of possibleFields) {
+                    if (item[field] !== undefined && item[field] !== null) {
+                        return Number(item[field]) || 0;
+                    }
+                }
+                return 0;
+            }
+
+            // Hitung totals dari data JKS
+            let totalTarget = 0, totalActual = 0, totalGap = 0;
+            let totalLY = 0, total3LM = 0, totalLM = 0, totalMax = 0;
+
+            salesmanJKSData.forEach(item => {
+                totalTarget += getValue(item, 'target');
+                totalActual += getValue(item, 'actual');
+                totalGap += getValue(item, 'gap');
+                totalLY += getValue(item, 'ly');
+                total3LM += getValue(item, 'threeLM');
+                totalLM += getValue(item, 'lm');
+                totalMax += getValue(item, 'max');
+            });
+
+            console.log(`📊 Calculated totals:`, {
+                target: totalTarget,
+                actual: totalActual,
+                gap: totalGap,
+                ly: totalLY,
+                threeLM: total3LM,
+                lm: totalLM,
+                max: totalMax
+            });
+
+            // Hitung persentase vs
+            const vsLYPercent = totalLY !== 0 ? ((totalActual - totalLY) / totalLY) * 100 : 0;
+            const vs3LMPercent = total3LM !== 0 ? ((totalActual - total3LM) / total3LM) * 100 : 0;
+            const vsLMPercent = totalLM !== 0 ? ((totalActual - totalLM) / totalLM) * 100 : 0;
+
+            // Update baris 1: T.MTD, A.MTD, Gap MTD
+            document.getElementById('totalTarget').textContent = formatCurrencyIndonesia(totalTarget);
+            document.getElementById('totalActual').textContent = formatCurrencyIndonesia(totalActual);
+            
+            const totalGapElement = document.getElementById('totalGap');
+            totalGapElement.textContent = formatCurrencyIndonesia(totalGap);
+            totalGapElement.className = `summary-value ${totalGap > 0 ? 'positive' : totalGap < 0 ? 'negative' : 'neutral'}`;
+
+            // Update baris 2: LY, 3LM, LM, Max
+            document.getElementById('totalLY').textContent = formatCurrencyIndonesia(totalLY);
+            document.getElementById('total3LM').textContent = formatCurrencyIndonesia(total3LM);
+            document.getElementById('totalLM').textContent = formatCurrencyIndonesia(totalLM);
+            document.getElementById('totalMax').textContent = formatCurrencyIndonesia(totalMax);
+
+            // Update baris 3: vs LY, vs 3LM, vs LM
+            const vsLYElement = document.getElementById('vsLY');
+            vsLYElement.textContent = formatPercentage(vsLYPercent);
+            vsLYElement.className = `summary-value ${vsLYPercent > 0 ? 'positive' : vsLYPercent < 0 ? 'negative' : 'neutral'}`;
+
+            const vs3LMElement = document.getElementById('vs3LM');
+            vs3LMElement.textContent = formatPercentage(vs3LMPercent);
+            vs3LMElement.className = `summary-value ${vs3LMPercent > 0 ? 'positive' : vs3LMPercent < 0 ? 'negative' : 'neutral'}`;
+
+            const vsLMElement = document.getElementById('vsLM');
+            vsLMElement.textContent = formatPercentage(vsLMPercent);
+            vsLMElement.className = `summary-value ${vsLMPercent > 0 ? 'positive' : vsLMPercent < 0 ? 'negative' : 'neutral'}`;
+        }
+
+        // ===== SORTING FUNCTIONS =====
+        function sortTable(column) {
+            if (currentFilteredData.length === 0) {
+                return;
+            }
+
+            // Toggle sort direction
+            if (sortState.column === column) {
+                sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortState.column = column;
+                sortState.direction = 'asc';
+            }
+
+            // Sort the data
+            currentFilteredData.sort((a, b) => {
+                let aValue, bValue;
+
+                switch (column) {
+                    case 'customer':
+                        aValue = (a['Nama Pelanggan'] || '').toLowerCase();
+                        bValue = (b['Nama Pelanggan'] || '').toLowerCase();
+                        break;
+                    case 'gap':
+                        aValue = Number(a['Gap MTD']) || 0;
+                        bValue = Number(b['Gap MTD']) || 0;
+                        break;
+                    case 'target':
+                        aValue = Number(a['T.MTD']) || 0;
+                        bValue = Number(b['T.MTD']) || 0;
+                        break;
+                    case 'actual':
+                        aValue = Number(a['A.MTD']) || 0;
+                        bValue = Number(b['A.MTD']) || 0;
+                        break;
+                    case 'vs3lm':
+                        const threeLMA = Number(a['3LM']) || 0;
+                        const actualA = Number(a['A.MTD']) || 0;
+                        aValue = threeLMA !== 0 ? ((actualA - threeLMA) / threeLMA) * 100 : 0;
+                        
+                        const threeLMB = Number(b['3LM']) || 0;
+                        const actualB = Number(b['A.MTD']) || 0;
+                        bValue = threeLMB !== 0 ? ((actualB - threeLMB) / threeLMB) * 100 : 0;
+                        break;
+                    case 'vslm':
+                        const lmA = Number(a['LM']) || 0;
+                        const actualA2 = Number(a['A.MTD']) || 0;
+                        aValue = lmA !== 0 ? ((actualA2 - lmA) / lmA) * 100 : 0;
+                        
+                        const lmB = Number(b['LM']) || 0;
+                        const actualB2 = Number(b['A.MTD']) || 0;
+                        bValue = lmB !== 0 ? ((actualB2 - lmB) / lmB) * 100 : 0;
+                        break;
+                    default:
+                        return 0;
+                }
+
+                if (typeof aValue === 'string') {
+                    return sortState.direction === 'asc' 
+                        ? aValue.localeCompare(bValue)
+                        : bValue.localeCompare(aValue);
+                } else {
+                    return sortState.direction === 'asc' 
+                        ? aValue - bValue
+                        : bValue - aValue;
+                }
+            });
+
+            // Update sort headers
+            updateSortHeaders();
+            
+            // Re-render table
+            renderOutletTable(currentFilteredData);
+
+            console.log(`🔄 Table sorted by ${column} (${sortState.direction})`);
+        }
+
+        function updateSortHeaders() {
+            document.querySelectorAll('.sortable-header').forEach(header => {
+                header.classList.remove('asc', 'desc');
+            });
+        }
+
+        // ===== UI FUNCTIONS =====
+        function showLoading(show) {
+            document.getElementById('loadingSpinner').style.display = show ? 'flex' : 'none';
+        }
+
+        function showMainContent(show) {
+            document.getElementById('mainContent').style.display = show ? 'block' : 'none';
+        }
+
+        function showDataDisplay() {
+            document.getElementById('summarySection').style.display = 'block';
+        }
+
+        function hideDataDisplay() {
+            document.getElementById('summarySection').style.display = 'none';
+            showEmptyState('Pilih hari JKS untuk melihat data outlet');
+        }
+
+        function refreshData() {
+            console.log('🔄 Refreshing data...');
+            initializeData();
+        }
+
+        // ===== NAVIGATION FUNCTIONS =====
+        function goHome() {
+            window.location.href = 'dashboard.html';
+        }
+
+        function goToVisit() {
+            if (currentSalesmanId) {
+                window.location.href = `visit.html?id=${currentSalesmanId}`;
+            } else {
+                window.location.href = 'visit.html';
+            }
+        }
+
+        function showOutletData() {
+            // Already on outlet data page
+            console.log('📊 Already on outlet data page');
+        }
+
+        function showProfile() {
+            alert('👤 Profile feature coming soon');
+        }
+
+        // ===== INITIALIZATION =====
+        async function initializeData() {
+            try {
+                showLoading(true);
+                
+                console.log('🚀 Starting outlet data dashboard...');
+                
+                updateDayIndicator();
+                initializeSalesmanFromUrl();
+                
+                if (!currentSalesmanId) {
+                    throw new Error('No salesman ID provided');
+                }
+                
+                // Load data sequentially
+                await loadSalesmanData();
+                await loadJKSData(); // Load JKS data
+                await loadDetailsData();
+                
+                // Update salesman name from details data if not found in salesman data
+                if (!currentSalesman && detailsData.length > 0) {
+                    updateSalesmanNameFromData();
+                }
+                
+                // Populate JKS options using JKS data
+                populateJKSOptions();
+                
+                showLoading(false);
+                showMainContent(true);
+                
+                console.log('✅ Outlet data dashboard ready');
+                console.log(`👤 Current salesman: ${currentSalesman} (ID: ${currentSalesmanId})`);
+                console.log(`📊 Loaded ${jksData.length} JKS records`);
+                console.log(`📊 Loaded ${detailsData.length} detail records`);
+                
+            } catch (error) {
+                console.error('⚠️ Critical error in initializeData:', error);
+                showLoading(false);
+                document.getElementById('errorMessage').style.display = 'block';
+            }
+        }
+
+        // ===== EVENT LISTENERS =====
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('jksSelect').addEventListener('change', handleJKSSelection);
+            
+            initializeData();
+        });
+
+        console.log('✅ Outlet Data Dashboard script loaded');
+    </script>
+</body>
+</html>

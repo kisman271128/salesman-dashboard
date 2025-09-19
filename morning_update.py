@@ -1193,6 +1193,7 @@ class SalesmanDashboardUpdater:
                 'mobile-compliance.html',
                 'visit-enhanced-debug.html',
                 'visit_trial.html',
+                'DAP.html',
                 'morning_update.py',
                 'morning_update.log'
             ]
