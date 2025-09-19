@@ -14,7 +14,7 @@ if sys.platform == "win32":
     sys.stderr = codecs.getwriter('utf-8')(sys.stderr.detach())
 
 # Menggunakan path absolut untuk file Excel
-file_path = r'C:\Dashboard\DbaseSalesmanWebApp.xlsm'
+file_path = r'C:\Dashboard\DbaseSalesmanWebApp.xlsb'
 
 # Mengambil semua nama sheet
 xls = pd.ExcelFile(file_path)
@@ -48,7 +48,7 @@ for sheet in filtered_sheets:
 print(f"\nProses selesai. Total {len(filtered_sheets)} sheet telah dikonversi ke JSON dan disimpan di kedua lokasi.")
 
 class SalesmanDashboardUpdater:
-    def __init__(self, excel_file="DbaseSalesmanWebApp.xlsm"):
+    def __init__(self, excel_file="DbaseSalesmanWebApp.xlsb"):
         self.excel_file = excel_file
         self.data_dir = "data"
         self.log_file = 'morning_update.log'
