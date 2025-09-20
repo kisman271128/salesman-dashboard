@@ -1,0 +1,1616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performance By Salesman - Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(180deg, #f8f9ff 0%, #e8ecff 100%);
+            min-height: 100vh;
+            color: #2c3e50;
+            padding-bottom: 100px;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        .detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 0 0 30px 30px;
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        .back-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            padding: 10px;
+            border-radius: 12px;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateX(-2px);
+        }
+
+        .detail-title-container {
+            text-align: center;
+            flex: 1;
+        }
+
+        .detail-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .detail-subtitle {
+            font-size: 12px;
+            opacity: 0.9;
+            font-weight: 400;
+        }
+
+        .user-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            padding: 10px;
+            border-radius: 12px;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .user-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Loading States */
+        .loading-spinner {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            flex-direction: column;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: rgba(231, 76, 60, 0.1);
+            border: 1px solid rgba(231, 76, 60, 0.3);
+            color: #e74c3c;
+            padding: 16px;
+            border-radius: 12px;
+            margin: 20px;
+            text-align: center;
+        }
+
+        /* Performance Cards with Avatar */
+        .performance-summary {
+            padding: 0 16px 20px;
+        }
+
+        .performance-cards {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .performance-card {
+            flex: 1;
+            color: white;
+            padding: 16px;
+            border-radius: 16px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(30, 58, 138, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        /* Performance card achievement colors */
+        .performance-card.achievement-low {
+            background: linear-gradient(135deg, #dc2626, #ef4444);
+        }
+
+        .performance-card.achievement-medium {
+            background: linear-gradient(135deg, #d97706, #f59e0b);
+        }
+
+        .performance-card.achievement-high {
+            background: linear-gradient(135deg, #059669, #10b981);
+        }
+
+        .performance-card.silver {
+            background: linear-gradient(135deg, #94a3b8, #64748b);
+            color: white;
+        }
+
+        .card-label {
+            font-size: 11px;
+            opacity: 0.9;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .card-percentage {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .card-subtitle {
+            font-size: 10px;
+            opacity: 0.8;
+        }
+
+        .avatar-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-width: 60px;
+        }
+
+        .salesman-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            object-fit: cover;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            border: 3px solid white;
+        }
+
+        /* Sales Performance Section */
+        .sales-performance {
+            padding: 0 16px;
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 16px;
+        }
+
+        .performance-list {
+            background: white;
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .performance-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #f1f2f6;
+        }
+
+        .performance-item:last-child {
+            border-bottom: none;
+        }
+
+        .performance-item.total {
+            border-top: 2px solid #e2e8f0;
+            margin-top: 8px;
+            padding-top: 16px;
+            font-weight: 600;
+        }
+
+        .item-left {
+            flex: 1;
+        }
+
+        .item-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 2px;
+        }
+
+        .item-target {
+            font-size: 10px;
+            color: #7f8c8d;
+            line-height: 1.2;
+            margin-bottom: 2px;
+        }
+
+        .item-gap {
+            font-size: 11px;
+            font-weight: 600;
+            line-height: 1.2;
+        }
+
+        .gap-positive {
+            color: #10b981;
+        }
+
+        .gap-negative {
+            color: #ef4444;
+        }
+
+        .progress-container {
+            flex: 2;
+            margin: 0 12px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 12px;
+            background: linear-gradient(90deg, #f1f2f6 0%, #e2e8f0 100%);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 4px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 8px;
+            transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, 
+                rgba(255, 255, 255, 0.3) 25%, 
+                transparent 25%, 
+                transparent 50%, 
+                rgba(255, 255, 255, 0.3) 50%, 
+                rgba(255, 255, 255, 0.3) 75%, 
+                transparent 75%
+            );
+            background-size: 20px 20px;
+            animation: progressShine 2s linear infinite;
+        }
+
+        @keyframes progressShine {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .progress-fill.low {
+            background: linear-gradient(90deg, #ef4444 0%, #dc2626 50%, #b91c1c 100%);
+            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+        }
+
+        .progress-fill.medium {
+            background: linear-gradient(90deg, #f59e0b 0%, #d97706 50%, #b45309 100%);
+            box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+        }
+
+        .progress-fill.high {
+            background: linear-gradient(90deg, #10b981 0%, #059669 50%, #047857 100%);
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
+        }
+
+        .progress-percentage {
+            font-size: 12px;
+            font-weight: 600;
+            color: #374151;
+            text-align: right;
+            margin-top: 2px;
+        }
+
+        /* NEW: Additional Metrics Section */
+        .additional-metrics {
+            padding: 0 16px;
+            margin-bottom: 20px;
+        }
+
+        .metrics-section {
+            margin-bottom: 16px;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(55px, 1fr));
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 16px;
+            padding: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .metric-item {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 12px;
+            padding: 8px 4px;
+            text-align: center;
+            color: white;
+            transition: transform 0.2s ease;
+        }
+
+        .metric-item:hover {
+            transform: translateY(-2px);
+        }
+
+        .metric-label {
+            font-size: 8px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            opacity: 0.9;
+            line-height: 1.1;
+        }
+
+        .metric-value {
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 1.1;
+        }
+
+        /* Special styling for comparison metrics */
+        .metric-item.comparison {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+        }
+
+        .metric-item.gp-food {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+
+        .metric-item.gp-others {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+        }
+
+        /* Bottom Metrics - Circular Progress */
+        .bottom-metrics {
+            padding: 0 16px;
+            margin-bottom: 120px;
+        }
+
+        .circular-metrics {
+            display: flex;
+            justify-content: space-around;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 20px;
+            padding: 20px 8px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .circular-metric {
+            text-align: center;
+            color: #2c3e50;
+        }
+
+        .circular-progress {
+            position: relative;
+            width: 55px;
+            height: 55px;
+            margin: 0 auto 8px;
+        }
+
+        .progress-circle {
+            width: 55px;
+            height: 55px;
+            border-radius: 50%;
+            background: conic-gradient(
+                var(--progress-color) 0deg,
+                var(--progress-color) calc(var(--percentage) * 3.6deg),
+                rgba(220, 220, 220, 0.3) calc(var(--percentage) * 3.6deg),
+                rgba(220, 220, 220, 0.3) 360deg
+            );
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .progress-circle::before {
+            content: '';
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.95);
+            position: absolute;
+        }
+
+        .circular-percentage {
+            position: relative;
+            z-index: 1;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--progress-color);
+        }
+
+        .circular-label {
+            font-size: 10px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        /* SKU Display - Different format */
+        .sku-display {
+            width: 65px;
+            height: 65px;
+            background: linear-gradient(135deg, #f97316, #ea580c);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 8px;
+            box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+        }
+
+        .sku-value {
+            font-size: 12px;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 2px;
+        }
+
+        .sku-strata {
+            font-size: 27px;
+            font-weight: 600;
+            color: white;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 2px 6px;
+            border-radius: 6px;
+        }
+
+        /* Color classes for achievement levels */
+        .metric-low {
+            --progress-color: #ef4444;
+        }
+
+        .metric-medium {
+            --progress-color: #f59e0b;
+        }
+
+        .metric-high {
+            --progress-color: #10b981;
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 400px;
+            background: white;
+            border-top: 1px solid #f1f2f6;
+            padding: 15px 0;
+            display: flex;
+            justify-content: space-around;
+            box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-decoration: none;
+            color: #bdc3c7;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            padding: 8px 6px;
+            border-radius: 12px;
+            min-width: 50px;
+        }
+
+        .nav-item.active {
+            color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .nav-item:hover {
+            color: #667eea;
+            transform: translateY(-2px);
+        }
+
+        .nav-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 4px;
+            font-size: 12px;
+        }
+
+        .nav-icon.home { background: #3b82f6; color: white; }
+        .nav-icon.activity { background: #ef4444; color: white; }
+        .nav-icon.incentive { background: #f59e0b; color: white; }
+        .nav-icon.performance { background: #8b5cf6; color: white; }
+        .nav-icon.profile { background: #10b981; color: white; }
+
+        .nav-label {
+            font-size: 10px;
+            font-weight: 500;
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .performance-cards {
+                gap: 8px;
+            }
+            
+            .performance-card {
+                padding: 12px;
+            }
+            
+            .card-percentage {
+                font-size: 16px;
+            }
+            
+            .salesman-avatar {
+                width: 50px;
+                height: 50px;
+            }
+
+            .circular-progress {
+                width: 45px;
+                height: 45px;
+            }
+
+            .progress-circle {
+                width: 45px;
+                height: 45px;
+            }
+
+            .progress-circle::before {
+                width: 35px;
+                height: 35px;
+            }
+
+            .circular-percentage {
+                font-size: 9px;
+            }
+
+            .circular-label {
+                font-size: 9px;
+            }
+
+            .circular-metrics {
+                padding: 15px 6px;
+            }
+
+            /* SKU Display responsive */
+            .sku-display {
+                width: 55px;
+                height: 55px;
+            }
+
+            .sku-value {
+                font-size: 10px;
+            }
+
+            .sku-strata {
+                font-size: 21px;
+                padding: 2px 5px;
+            }
+
+            /* Additional metrics responsive */
+            .metrics-grid {
+                grid-template-columns: repeat(auto-fit, minmax(45px, 1fr));
+                gap: 6px;
+                padding: 10px;
+            }
+
+            .metric-item {
+                padding: 6px 3px;
+            }
+
+            .metric-label {
+                font-size: 7px;
+            }
+
+            .metric-value {
+                font-size: 9px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="detail-header">
+            <a href="dashboard.html" class="back-btn">←</a>
+            <div class="detail-title-container">
+                <div class="detail-title" id="salesmanTitle">Salesman A</div>
+                <div class="detail-subtitle" id="salesmanType">Sales Representative</div>
+            </div>
+            <button class="user-btn" onclick="showProfile()">👤</button>
+        </div>
+
+        <!-- Loading State -->
+        <div class="loading-spinner" id="loadingSpinner">
+            <div class="spinner"></div>
+            <div>Loading salesman data...</div>
+        </div>
+
+        <!-- Error State -->
+        <div class="error-message" id="errorMessage" style="display: none;">
+            <h3>📡 Data Loading Error</h3>
+            <p>Unable to load salesman data. Please check your connection.</p>
+            <button onclick="loadSalesmanData()" style="margin-top: 10px; padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer;">Retry</button>
+        </div>
+
+        <!-- Main Content -->
+        <div id="mainContent" style="display: none;">
+            <!-- Performance Summary Cards -->
+            <div class="performance-summary">
+                <div class="performance-cards">
+                    <div class="performance-card" id="leftCard">
+                        <div class="card-label">GPPJ + GEN</div>
+                        <div class="card-percentage" id="gppjGenPercentage">0%</div>
+                        <div class="card-subtitle">Ach</div>
+                    </div>
+                    
+                    <div class="avatar-container">
+                        <img id="salesmanAvatar" 
+                             src="https://cdn-icons-png.flaticon.com/512/3048/3048122.png" 
+                             alt="Foto Salesman" 
+                             class="salesman-avatar"
+                             onerror="this.src='https://cdn-icons-png.flaticon.com/512/3048/3048122.png'" />
+                    </div>
+                    
+                    <div class="performance-card" id="rightCard">
+                        <div class="card-label">GBS+OTHERS</div>
+                        <div class="card-percentage" id="gbsOthersPercentage">0%</div>
+                        <div class="card-subtitle">Ach</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sales Performance List -->
+            <div class="sales-performance">
+                <div class="section-title">Sales Performance :</div>
+                <div class="performance-list" id="performanceList">
+                    <!-- Will be populated dynamically -->
+                </div>
+            </div>
+
+            <!-- NEW: Additional Metrics Section -->
+            <div class="additional-metrics">
+                <div class="section-title">Process Metrics :</div>
+                
+                <!-- Row 1: Basic Metrics -->
+                <div class="metrics-section">
+                    <div class="metrics-grid" id="metricsRow1">
+                        <!-- A.CR, A.CA, A.PC, A.AC, A.EC, A.ET -->
+                    </div>
+                </div>
+
+                <!-- Row 2: Comparison Metrics -->
+                <div class="metrics-section">
+                    <div class="metrics-grid" id="metricsRow2">
+                        <!-- EC vs PC, EC vs AC, Ach_CAProdW, A.CAProdR, Ach_CAProdM -->
+                    </div>
+                </div>
+
+                <!-- Row 3: GP Metrics -->
+                <div class="metrics-section">
+                    <div class="metrics-grid" id="metricsRow3">
+                        <!-- A.GPFood, Ach_GPFood, A.GPOthers, Ach_GPOthers -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Circular Metrics -->
+            <div class="bottom-metrics">
+                <div class="circular-metrics">
+                    <div class="circular-metric">
+                        <div class="circular-progress">
+                            <div class="progress-circle metric-high" id="caProgress" style="--percentage: 0">
+                                <div class="circular-percentage">0%</div>
+                            </div>
+                        </div>
+                        <div class="circular-label">CA</div>
+                    </div>
+
+                    <div class="circular-metric">
+                        <div class="circular-progress">
+                            <div class="progress-circle metric-high" id="caProdProgress" style="--percentage: 0">
+                                <div class="circular-percentage">0%</div>
+                            </div>
+                        </div>
+                        <div class="circular-label">CA Prod</div>
+                    </div>
+
+                    <div class="circular-metric">
+                        <div class="sku-display" id="skuDisplay">
+                            <div class="sku-value">SKU = 0</div>
+                            <div class="sku-strata">S-0</div>
+                        </div>
+                        <div class="circular-label">SKU</div>
+                    </div>
+
+                    <div class="circular-metric">
+                        <div class="circular-progress">
+                            <div class="progress-circle metric-high" id="gpProgress" style="--percentage: 0">
+                                <div class="circular-percentage">0%</div>
+                            </div>
+                        </div>
+                        <div class="circular-label">GP</div>
+                    </div>
+
+                    <div class="circular-metric">
+                        <div class="circular-progress">
+                            <div class="progress-circle metric-high" id="arCollProgress" style="--percentage: 0">
+                                <div class="circular-percentage">0%</div>
+                            </div>
+                        </div>
+                        <div class="circular-label">AR Coll</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Navigation -->
+        <div class="bottom-nav">
+            <div class="nav-item" onclick="goHome()">
+                <div class="nav-icon home">🏠</div>
+                <div class="nav-label">Home</div>
+            </div>
+            <div class="nav-item" onclick="showVisitOutlet()">
+                <div class="nav-icon activity">📊</div>
+                <div class="nav-label">Visit Outlet</div>
+            </div>
+            <div class="nav-item" onclick="showIncentive()">
+                <div class="nav-icon incentive">💰</div>
+                <div class="nav-label">Incentive</div>
+            </div>
+            <div class="nav-item" onclick="showPerformance()">
+                <div class="nav-icon performance">📈</div>
+                <div class="nav-label">Performance</div>
+            </div>
+            <div class="nav-item active" onclick="showProfile()">
+                <div class="nav-icon profile">👤</div>
+                <div class="nav-label">Profile</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let salesmanLobData = [];
+        let salesmanProcessData = [];
+        let performanceData = [];
+        let currentSalesmanId = null;
+
+        // ✅ FORMAT CURRENCY INDONESIA (Rb/Jt/M)
+        function formatCurrencyIndonesia(value) {
+            try {
+                const val = Math.abs(parseFloat(value));
+                
+                if (val >= 1000000000) { // >= 1 Miliar
+                    return `${(val/1000000000).toFixed(1)}M`;
+                } else if (val >= 1000000) { // >= 1 Juta
+                    return `${(val/1000000).toFixed(1)} jt`;
+                } else if (val >= 1000) { // >= 1 Ribu
+                    return `${(val/1000).toFixed(0)} rb`;
+                } else { // < 1 Ribu
+                    return `${val.toFixed(0)}`;
+                }
+            } catch {
+                return "0";
+            }
+        }
+		
+		// ✅ FORMAT CURRENCY DENGAN TITIK PEMISAH RIBUAN
+		function formatCurrencyWithDots(value) {
+			try {
+				const val = Math.abs(parseFloat(value));
+				return val.toLocaleString('id-ID');
+			} catch {
+				return "0";
+			}
+		}
+		
+        // ✅ FORMAT PERCENTAGE (NOW RETURNS WHOLE NUMBERS)
+        function formatPercentage(value) {
+            try {
+                const val = parseFloat(value || 0);
+                return `${Math.round(val * 100)}%`;
+            } catch {
+                return "0%";
+            }
+        }
+
+        // ✅ FORMAT DECIMAL VALUE (NOW RETURNS WHOLE NUMBERS)
+        function formatDecimal(value) {
+            try {
+                const val = parseFloat(value || 0);
+                return Math.round(val).toString();
+            } catch {
+                return "0";
+            }
+        }
+
+        // ✅ ENHANCED: Calculate achievement percentage with special logic for target = 0
+        function calculateAchievementPercentage(target, actual) {
+            const targetValue = parseFloat(target || 0);
+            const actualValue = parseFloat(actual || 0);
+            
+            // 🆕 NEW LOGIC: If target is 0 but actual > 0, return 100%
+            if (targetValue === 0 && actualValue > 0) {
+                console.log(`🎯 Special case: Target=0, Actual=${actualValue} → Setting Ach to 100%`);
+                return 100;
+            }
+            
+            // Normal calculation: Ach = (Actual / Target) * 100
+            if (targetValue > 0) {
+                return Math.round((actualValue / targetValue) * 100);
+            }
+            
+            // Both target and actual are 0
+            return 0;
+        }
+
+        // ✅ ENHANCED: Get progress color class with special handling for target = 0
+        function getProgressColorClass(percentage, hasSpecialCase = false) {
+            // 🆕 If it's a special case (target=0, actual>0), always return green
+            if (hasSpecialCase) {
+                return 'high';
+            }
+            
+            if (percentage >= 100) return 'high';      // Green >= 100%
+            if (percentage >= 90) return 'medium';     // Orange 90-99.99%
+            return 'low';                              // Red < 90%
+        }
+
+        // ✅ ENHANCED: Get achievement color class with special handling for target = 0
+        function getAchievementColorClass(percentage, hasSpecialCase = false) {
+            // 🆕 If it's a special case (target=0, actual>0), always return green
+            if (hasSpecialCase) {
+                return 'achievement-high';
+            }
+            
+            if (percentage >= 100) return 'achievement-high';      // Green >= 100%
+            if (percentage >= 90) return 'achievement-medium';     // Orange 90-99.99%
+            return 'achievement-low';                              // Red < 90%
+        }
+
+        // Check if user is logged in
+        function checkLoginStatus() {
+            const isLoggedIn = sessionStorage.getItem('isLoggedIn');
+            const currentUser = sessionStorage.getItem('currentUser');
+            
+            if (!isLoggedIn || !currentUser) {
+                window.location.href = 'index.html';
+                return false;
+            }
+            return true;
+        }
+
+        // Get URL parameter
+        function getUrlParameter(name) {
+            name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+            var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+            var results = regex.exec(location.search);
+            return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+        }
+
+        // ✅ LOAD JSON DATA FROM FILES
+        async function loadJSONData() {
+            try {
+                // Load salesman LOB data
+                const lobResponse = await fetch('data/d.salesmanlob.json');
+                if (!lobResponse.ok) {
+                    throw new Error(`Failed to load LOB data: ${lobResponse.status}`);
+                }
+                const lobText = await lobResponse.text();
+                
+                // Parse JSONL format (each line is a separate JSON object)
+                salesmanLobData = lobText.split('\n')
+                    .filter(line => line.trim())
+                    .map(line => JSON.parse(line));
+
+                console.log(`✅ Loaded ${salesmanLobData.length} LOB records`);
+
+                // Load salesman process data  
+                const processResponse = await fetch('data/d.salesmanproses.json');
+                if (!processResponse.ok) {
+                    throw new Error(`Failed to load process data: ${processResponse.status}`);
+                }
+                const processText = await processResponse.text();
+                
+                // Parse JSONL format
+                salesmanProcessData = processText.split('\n')
+                    .filter(line => line.trim())
+                    .map(line => JSON.parse(line));
+
+                console.log(`✅ Loaded ${salesmanProcessData.length} process records`);
+
+                // 🆕 NEW: Load performance data for TOTAL calculation
+                const performanceResponse = await fetch('data/d.performance.json');
+                if (!performanceResponse.ok) {
+                    throw new Error(`Failed to load performance data: ${performanceResponse.status}`);
+                }
+                const performanceText = await performanceResponse.text();
+                
+                // Parse JSONL format
+                performanceData = performanceText.split('\n')
+                    .filter(line => line.trim())
+                    .map(line => JSON.parse(line));
+
+                console.log(`✅ Loaded ${performanceData.length} performance records`);
+
+                return true;
+            } catch (error) {
+                console.error('❌ Error loading JSON data:', error);
+                throw error;
+            }
+        }
+
+        // ✅ GET SALESMAN LOB DATA
+        function getSalesmanLobData(employeeId) {
+            return salesmanLobData.filter(item => 
+                item.szEmployeeId.toString() === employeeId.toString()
+            );
+        }
+
+        // ✅ GET SALESMAN PROCESS DATA
+        function getSalesmanProcessData(employeeId) {
+            return salesmanProcessData.find(item => 
+                item.szEmployeeId.toString() === employeeId.toString()
+            );
+        }
+
+        // 🆕 NEW: GET SALESMAN PERFORMANCE DATA 
+        function getSalesmanPerformanceData(employeeId) {
+            return performanceData.find(item => 
+                item.szEmployeeId.toString() === employeeId.toString()
+            );
+        }
+
+        // 🆕 NEW: GET SALESMAN TYPE CATEGORY
+        function getSalesmanTypeCategory(salesmanType) {
+            if (!salesmanType) return 'default';
+            
+            const type = salesmanType.toLowerCase();
+            if (type.includes('retailer arjuna')) return 'arjuna';
+            if (type.includes('retailer bima')) return 'bima';
+            return 'default';
+        }
+
+        // 🆕 NEW: GET LOB ORDER BASED ON SALESMAN TYPE
+        function getLobOrderBySalesmanType(salesmanType) {
+            const typeCategory = getSalesmanTypeCategory(salesmanType);
+            
+            if (typeCategory === 'arjuna') {
+                // Sales Representative Retailer Arjuna: hanya GPPJ, GEN, ABBOTT
+                return ['GPPJ', 'GEN', 'ABBOTT'];
+            } else if (typeCategory === 'bima') {
+                // Sales Representative Retailer Bima: semua kecuali GEN dan ABBOTT
+                return ['GPPJ', 'GBS', 'MBR', 'HGJ', 'RANS', 'GSJ'];
+            } else {
+                // Default: semua LOB
+                return ['GPPJ', 'GEN', 'GBS', 'MBR', 'HGJ', 'RANS', 'ABBOTT', 'GSJ'];
+            }
+        }
+
+        // ✅ ENHANCED: CREATE PERFORMANCE ITEM HTML WITH TARGET=0 LOGIC
+        function createPerformanceItemHTML(lobName, data) {
+            const target = parseFloat(data.Target || 0);
+            const actual = parseFloat(data.Actual || 0);
+            
+            // 🆕 ENHANCED: Use new achievement calculation logic
+            const percentage = calculateAchievementPercentage(target, actual);
+            const hasSpecialCase = target === 0 && actual > 0;
+            
+            const gap = Math.abs(actual - target);
+            
+            const targetFormatted = formatCurrencyIndonesia(target);
+            const actualFormatted = formatCurrencyIndonesia(actual);
+            const gapFormatted = formatCurrencyIndonesia(gap);
+            
+            // Determine gap display and color
+            const isPositive = actual >= target;
+            const gapText = isPositive ? `Gap (+) ${gapFormatted}` : `Gap (-) ${gapFormatted}`;
+            const gapClass = isPositive ? 'gap-positive' : 'gap-negative';
+            
+            // 🆕 ENHANCED: Use enhanced color class function
+            const colorClass = getProgressColorClass(percentage, hasSpecialCase);
+            
+            // 🆕 Log special case
+            if (hasSpecialCase) {
+                console.log(`🌟 Special case detected for ${lobName}: Target=0, Actual=${actual} → 100% (Green)`);
+            }
+            
+            return `
+                <div class="performance-item">
+                    <div class="item-left">
+                        <div class="item-name">${lobName}</div>
+                        <div class="item-target">T/A: ${targetFormatted} / ${actualFormatted}</div>
+                        <div class="item-gap ${gapClass}">${gapText}</div>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar">
+                            <div class="progress-fill ${colorClass}" style="width: ${Math.min(percentage, 100)}%"></div>
+                        </div>
+                        <div class="progress-percentage">${percentage}%</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ✅ ENHANCED: UPDATE PERFORMANCE LIST WITH LOB FILTERING BY SALESMAN TYPE
+        function updatePerformanceList(lobData, salesmanInfo) {
+            const performanceList = document.getElementById('performanceList');
+            let html = '';
+            
+            // Group LOB data
+            const lobMap = {};
+            lobData.forEach(item => {
+                lobMap[item.LOB] = item;
+            });
+
+            // Get LOB order based on salesman type
+            const salesmanType = salesmanInfo['Tipe Salesman'] || '';
+            const lobOrder = getLobOrderBySalesmanType(salesmanType);
+            
+            console.log(`🎯 Processing LOB for ${getSalesmanTypeCategory(salesmanType)} type: ${lobOrder}`);
+
+            // Add LOB items based on salesman type
+            lobOrder.forEach(lob => {
+                if (lobMap[lob]) {
+                    html += createPerformanceItemHTML(lob, lobMap[lob]);
+                }
+            });
+
+            // 🆕 ENHANCED: Add TOTAL from d.performance.json with target=0 logic
+            const performanceData = getSalesmanPerformanceData(salesmanInfo.szEmployeeId);
+            if (performanceData) {
+                const totalActual = parseFloat(performanceData.Actual || 0);
+                const totalTarget = parseFloat(performanceData.Target || 0);
+                
+                // 🆕 Use enhanced achievement calculation
+                const totalPercentage = calculateAchievementPercentage(totalTarget, totalActual);
+                const hasSpecialCase = totalTarget === 0 && totalActual > 0;
+                
+                const totalGap = Math.abs(totalActual - totalTarget);
+                
+                // Determine gap display and color for total
+                const isPositive = totalActual >= totalTarget;
+                const gapText = isPositive ? `Gap (+) ${formatCurrencyIndonesia(totalGap)}` : `Gap (-) ${formatCurrencyIndonesia(totalGap)}`;
+                const gapClass = isPositive ? 'gap-positive' : 'gap-negative';
+                
+                // 🆕 Use enhanced color class function
+                const totalColorClass = getProgressColorClass(totalPercentage, hasSpecialCase);
+                
+                // 🆕 Log special case for total
+                if (hasSpecialCase) {
+                    console.log(`🌟 Special case detected for TOTAL: Target=0, Actual=${totalActual} → 100% (Green)`);
+                }
+                
+                html += `
+                    <div class="performance-item total">
+                        <div class="item-left">
+                            <div class="item-name">TOTAL</div>
+                            <div class="item-target">T/A: ${formatCurrencyIndonesia(totalTarget)} / ${formatCurrencyIndonesia(totalActual)}</div>
+                            <div class="item-gap ${gapClass}">${gapText}</div>
+                        </div>
+                        <div class="progress-container">
+                            <div class="progress-bar">
+                                <div class="progress-fill ${totalColorClass}" style="width: ${Math.min(totalPercentage, 100)}%"></div>
+                            </div>
+                            <div class="progress-percentage">${totalPercentage}%</div>
+                        </div>
+                    </div>
+                `;
+                
+                console.log(`✅ Added TOTAL from d.performance.json: ${totalPercentage}%, Target: ${formatCurrencyIndonesia(totalTarget)}, Actual: ${formatCurrencyIndonesia(totalActual)}`);
+            } else {
+                console.log(`⚠️ No performance data found for szEmployeeId: ${salesmanInfo.szEmployeeId}`);
+            }
+
+            performanceList.innerHTML = html;
+        }
+
+        // ✅ ENHANCED: UPDATE SUMMARY CARDS WITH TARGET=0 LOGIC
+        function updateSummaryCards(lobData, salesmanInfo) {
+            const lobMap = {};
+            lobData.forEach(item => {
+                lobMap[item.LOB] = item;
+            });
+
+            const salesmanType = salesmanInfo['Tipe Salesman'] || '';
+            const typeCategory = getSalesmanTypeCategory(salesmanType);
+            
+            console.log(`🎯 Updating summary cards for ${typeCategory} type`);
+
+            // Calculate GPPJ + GEN (or GPPJ Only for Bima)
+            const gppjData = lobMap.GPPJ || { Actual: 0, Target: 0, Ach: 0 };
+            const genData = lobMap.GEN || { Actual: 0, Target: 0, Ach: 0 };
+            
+            let gppjGenTotal, gppjGenPercentage, leftCardLabel, leftHasSpecialCase;
+            
+            if (typeCategory === 'bima') {
+                // Sales Representative Retailer Bima: hanya GPPJ
+                gppjGenTotal = {
+                    actual: gppjData.Actual,
+                    target: gppjData.Target
+                };
+                leftCardLabel = 'GPPJ Only';
+            } else {
+                // Default dan Arjuna: GPPJ + GEN
+                gppjGenTotal = {
+                    actual: gppjData.Actual + genData.Actual,
+                    target: gppjData.Target + genData.Target
+                };
+                leftCardLabel = 'GPPJ + GEN';
+            }
+            
+            // 🆕 Use enhanced calculation for left card
+            gppjGenPercentage = calculateAchievementPercentage(gppjGenTotal.target, gppjGenTotal.actual);
+            leftHasSpecialCase = gppjGenTotal.target === 0 && gppjGenTotal.actual > 0;
+
+            // Calculate GBS + Others
+            const gbsData = lobMap.GBS || { Actual: 0, Target: 0, Ach: 0 };
+            const mbrData = lobMap.MBR || { Actual: 0, Target: 0, Ach: 0 };
+            const hgjData = lobMap.HGJ || { Actual: 0, Target: 0, Ach: 0 };
+            const ransData = lobMap.RANS || { Actual: 0, Target: 0, Ach: 0 };
+            
+            const othersTotal = {
+                actual: gbsData.Actual + mbrData.Actual + hgjData.Actual + ransData.Actual,
+                target: gbsData.Target + mbrData.Target + hgjData.Target + ransData.Target
+            };
+            
+            // 🆕 Use enhanced calculation for right card
+            const othersPercentage = calculateAchievementPercentage(othersTotal.target, othersTotal.actual);
+            const rightHasSpecialCase = othersTotal.target === 0 && othersTotal.actual > 0;
+
+            // Update left card with achievement-based color
+            const leftCard = document.getElementById('leftCard');
+            const leftCardLabelElement = leftCard.querySelector('.card-label');
+            if (leftCardLabelElement) {
+                leftCardLabelElement.textContent = leftCardLabel;
+            }
+            
+            // Remove existing achievement classes and add new one
+            leftCard.classList.remove('achievement-low', 'achievement-medium', 'achievement-high', 'silver');
+            leftCard.classList.add(getAchievementColorClass(gppjGenPercentage, leftHasSpecialCase));
+            
+            document.getElementById('gppjGenPercentage').textContent = `${gppjGenPercentage}%`;
+
+            // 🆕 Log special case for left card
+            if (leftHasSpecialCase) {
+                console.log(`🌟 Special case detected for ${leftCardLabel}: Target=0, Actual=${gppjGenTotal.actual} → 100% (Green)`);
+            }
+
+            // Update right card with achievement-based color
+            const rightCard = document.getElementById('rightCard');
+            
+            if (typeCategory === 'arjuna') {
+                // Sales Representative Retailer Arjuna: silver background
+                rightCard.classList.remove('achievement-low', 'achievement-medium', 'achievement-high');
+                rightCard.classList.add('silver');
+                console.log(`✅ Applied silver styling for Arjuna type`);
+            } else {
+                // Apply achievement-based color for other types with target=0 logic
+                rightCard.classList.remove('achievement-low', 'achievement-medium', 'achievement-high', 'silver');
+                rightCard.classList.add(getAchievementColorClass(othersPercentage, rightHasSpecialCase));
+                
+                // 🆕 Log special case for right card
+                if (rightHasSpecialCase) {
+                    console.log(`🌟 Special case detected for GBS+OTHERS: Target=0, Actual=${othersTotal.actual} → 100% (Green)`);
+                }
+            }
+            
+            document.getElementById('gbsOthersPercentage').textContent = `${othersPercentage}%`;
+            
+            console.log(`✅ Updated summary cards - Left: ${leftCardLabel} ${gppjGenPercentage}% (${getAchievementColorClass(gppjGenPercentage, leftHasSpecialCase)}), Right: GBS+OTHERS ${othersPercentage}% (${typeCategory === 'arjuna' ? 'silver' : getAchievementColorClass(othersPercentage, rightHasSpecialCase)})`);
+        }
+
+        // 🆕 NEW: UPDATE ADDITIONAL METRICS SECTION
+        function updateAdditionalMetrics(processData) {
+            if (!processData) {
+                console.log('⚠️ No process data available for additional metrics');
+                return;
+            }
+
+            console.log('🎯 Updating additional metrics:', processData);
+
+            // Row 1: Basic Metrics - A.CR, A.CA, A.PC, A.AC, A.EC (removed A.ET)
+            const row1Metrics = [
+                { label: 'A.CR', value: formatDecimal(processData['A.CR']) },
+                { label: 'A.CA', value: formatDecimal(processData['A.CA']) },
+                { label: 'A.PC', value: formatDecimal(processData['A.PC']) },
+                { label: 'A.AC', value: formatDecimal(processData['A.AC']) },
+                { label: 'A.EC', value: formatDecimal(processData['A.EC']) }
+            ];
+
+            // Row 2: Percentage Metrics - %EC vs PC, %EC vs AC, Ach_CAProdW, Ach.CAProdR, Ach_CAProdM
+            const ecVsPcPct = processData['A.EC'] && processData['A.PC'] ? 
+                `${Math.round((processData['A.EC'] / processData['A.PC']) * 100)}%` : '0%';
+            const ecVsAcPct = processData['A.EC'] && processData['A.AC'] ? 
+                `${Math.round((processData['A.EC'] / processData['A.AC']) * 100)}%` : '0%';
+
+            const row2Metrics = [
+                { label: '%EC vs PC', value: ecVsPcPct, class: 'comparison' },
+                { label: '%EC vs AC', value: ecVsAcPct, class: 'comparison' },
+                { label: 'CAProdWho', value: formatPercentage(processData['Ach_CAProdW']) },
+                { label: 'CAProdRet', value: formatPercentage(processData['Ach_CAProdR']) },
+                { label: 'CAProdMTI', value: formatPercentage(processData['Ach_CAProdM']) }
+            ];
+
+            // Row 3: GP Metrics - A.GPFood, Ach_GPFood, A.GPOthers, Ach_GPOthers
+            const row3Metrics = [
+                { label: 'A.GPFood', value: formatCurrencyWithDots(processData['A.GPFood']), class: 'gp-food' },
+                { label: 'Ach GPFood', value: formatPercentage(processData['Ach_GPFood']), class: 'gp-food' },
+                { label: 'A.GPOthers', value: formatCurrencyWithDots(processData['A.GPOthers']), class: 'gp-others' },
+                { label: 'Ach GPOthers', value: formatPercentage(processData['Ach_GPOthers']), class: 'gp-others' }
+            ];
+
+            // Update Row 1
+            updateMetricRow('metricsRow1', row1Metrics);
+            
+            // Update Row 2
+            updateMetricRow('metricsRow2', row2Metrics);
+            
+            // Update Row 3
+            updateMetricRow('metricsRow3', row3Metrics);
+
+            console.log('✅ Additional metrics updated successfully');
+        }
+
+        // 🆕 NEW: UPDATE METRIC ROW HELPER FUNCTION
+        function updateMetricRow(containerId, metrics) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            let html = '';
+            metrics.forEach(metric => {
+                const cssClass = metric.class ? `metric-item ${metric.class}` : 'metric-item';
+                html += `
+                    <div class="${cssClass}">
+                        <div class="metric-label">${metric.label}</div>
+                        <div class="metric-value">${metric.value}</div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        // ✅ UPDATED: GET METRIC COLOR CLASS BASED ON NEW ACHIEVEMENT RANGES
+        function getMetricColorClass(percentage) {
+            if (percentage >= 100) return 'metric-high';    // Green >= 100%
+            if (percentage >= 90) return 'metric-medium';   // Orange 90-99.99%
+            return 'metric-low';                            // Red < 90%
+        }
+
+        // ✅ ENHANCED: UPDATE CIRCULAR METRICS WITH REVISED GP CALCULATION AND AR_COLL
+        function updateCircularMetrics(processData) {
+            if (!processData) return;
+
+            // Regular circular metrics (CA, CA Prod, AR Coll) - Updated to use AR_Coll
+            const circularMetrics = [
+                { 
+                    id: 'caProgress', 
+                    percentage: Math.round((processData.Ach_CA || 0) * 100)
+                },
+                { 
+                    id: 'caProdProgress', 
+                    percentage: Math.round((processData.Ach_CAProdAll || 0) * 100)
+                },
+                { 
+                    id: 'arCollProgress', 
+                    percentage: Math.round((processData.AR_Coll || 0) * 100)
+                }
+            ];
+
+            // 🆕 REVISED: GP Calculation using new formula (A.GPFood+A.GPOthers)/(T.GPFood+T.GPOthers)
+            let gpPercentage = 0;
+            const aGpFood = parseFloat(processData['A.GPFood'] || 0);
+            const aGpOthers = parseFloat(processData['A.GPOthers'] || 0);
+            const tGpFood = parseFloat(processData['T.GPFood'] || 0);
+            const tGpOthers = parseFloat(processData['T.GPOthers'] || 0);
+            
+            const totalActualGP = aGpFood + aGpOthers;
+            const totalTargetGP = tGpFood + tGpOthers;
+            
+            if (totalTargetGP > 0) {
+                gpPercentage = Math.round((totalActualGP / totalTargetGP) * 100);
+            } else if (totalActualGP > 0) {
+                // Special case: target=0 but actual>0 → 100%
+                gpPercentage = 100;
+            }
+            
+            circularMetrics.push({
+                id: 'gpProgress',
+                percentage: gpPercentage
+            });
+
+            console.log(`🎯 Revised GP calculation: (${aGpFood}+${aGpOthers})/(${tGpFood}+${tGpOthers}) = ${totalActualGP}/${totalTargetGP} = ${gpPercentage}%`);
+
+            console.log('🎯 Updating circular metrics with AR_Coll data:', circularMetrics);
+
+            // Update regular circular metrics
+            circularMetrics.forEach(metric => {
+                const element = document.getElementById(metric.id);
+                if (element) {
+                    // Update percentage value
+                    element.style.setProperty('--percentage', metric.percentage);
+                    const percentageElement = element.querySelector('.circular-percentage');
+                    if (percentageElement) {
+                        percentageElement.textContent = `${metric.percentage}%`;
+                    }
+
+                    // Update color class based on achievement
+                    const colorClass = getMetricColorClass(metric.percentage);
+                    
+                    // Remove existing color classes
+                    element.classList.remove('metric-low', 'metric-medium', 'metric-high');
+                    
+                    // Add new color class
+                    element.classList.add(colorClass);
+                    
+                    console.log(`✅ Updated ${metric.id}: ${metric.percentage}% (${colorClass})`);
+                }
+            });
+
+            // 🆕 SPECIAL: Update SKU display with different format
+            updateSKUDisplay(processData);
+        }
+
+        // 🆕 NEW: Update SKU display with SKU value and Strata (S0 for strata < 1)
+        function updateSKUDisplay(processData) {
+            const skuDisplay = document.getElementById('skuDisplay');
+            if (!skuDisplay || !processData) return;
+
+            // Get SKU value from A.AvgSKU
+            const skuValue = Math.round(processData['A.AvgSKU'] || 0);
+            
+            // Get Strata value
+            const strata = processData.Strata || 0;
+            
+            // Update SKU value
+            const skuValueElement = skuDisplay.querySelector('.sku-value');
+            if (skuValueElement) {
+                skuValueElement.textContent = `SKU = ${skuValue}`;
+            }
+            
+            // Update Strata - Use S0 if strata < 1, otherwise S-{strata}
+            const skuStrataElement = skuDisplay.querySelector('.sku-strata');
+            if (skuStrataElement) {
+                let strataDisplay;
+                if (strata && strata !== '-' && parseFloat(strata) >= 1) {
+                    strataDisplay = `S-${strata}`;
+                } else {
+                    strataDisplay = 'S0';
+                }
+                skuStrataElement.textContent = strataDisplay;
+            }
+            
+            console.log(`✅ Updated SKU Display: SKU = ${skuValue}, Strata = ${strata} → Display: ${skuStrataElement ? skuStrataElement.textContent : 'N/A'}`);
+        }
+
+        // ✅ LOAD SALESMAN DATA
+        async function loadSalesmanData() {
+            try {
+                showLoading(true);
+                hideError();
+
+                console.log('🔄 Loading salesman data...');
+                
+                // Get salesman ID from URL
+                currentSalesmanId = getUrlParameter('id');
+                
+                if (!currentSalesmanId) {
+                    throw new Error('No salesman ID specified');
+                }
+
+                console.log(`📍 Loading data for salesman ID: ${currentSalesmanId}`);
+                
+                // Load JSON data
+                await loadJSONData();
+                
+                // Get salesman data
+                const salesmanLob = getSalesmanLobData(currentSalesmanId);
+                const salesmanProcess = getSalesmanProcessData(currentSalesmanId);
+
+                if (!salesmanLob || salesmanLob.length === 0) {
+                    throw new Error(`No LOB data found for salesman: ${currentSalesmanId}`);
+                }
+
+                // Get salesman details from first LOB record
+                const salesmanInfo = salesmanLob[0];
+                
+                console.log(`✅ Found salesman: ${salesmanInfo.szname} (${currentSalesmanId})`);
+                console.log(`📊 LOB records: ${salesmanLob.length}`);
+                console.log(`🔄 Process data: ${salesmanProcess ? 'Available' : 'Not found'}`);
+
+                // Update UI
+                updateSalesmanProfile(salesmanInfo);
+                updatePerformanceList(salesmanLob, salesmanInfo);
+                updateSummaryCards(salesmanLob, salesmanInfo);
+                updateAdditionalMetrics(salesmanProcess); // 🆕 NEW: Update additional metrics
+                updateCircularMetrics(salesmanProcess);
+                
+                showLoading(false);
+                showMainContent(true);
+
+            } catch (error) {
+                console.error('❌ Error loading salesman data:', error);
+                showLoading(false);
+                showError(true, error.message);
+            }
+        }
+
+        // ✅ ENHANCED: UPDATE SALESMAN PROFILE WITH PHOTO AND TYPE
+        function updateSalesmanProfile(salesmanInfo) {
+            const salesmanName = salesmanInfo.szname || 'Unknown';
+            const salesmanType = salesmanInfo['Tipe Salesman'] || 'Sales Representative';
+            
+            // Update name and type
+            document.getElementById('salesmanTitle').textContent = salesmanName;
+            document.getElementById('salesmanType').textContent = salesmanType;
+            
+            // 🆕 NEW: Load salesman photo based on szEmployeeId
+            const szEmployeeId = salesmanInfo.szEmployeeId;
+            if (szEmployeeId) {
+                const photoPath = `photos/${szEmployeeId}.jpg`;
+                const avatarElement = document.getElementById('salesmanAvatar');
+                
+                console.log(`📸 Loading photo: ${photoPath} for ${salesmanName}`);
+                
+                // Test if photo exists
+                const img = new Image();
+                img.onload = function() {
+                    avatarElement.src = photoPath;
+                    avatarElement.alt = `Foto ${salesmanName}`;
+                    console.log(`✅ Photo loaded successfully: ${photoPath}`);
+                };
+                
+                img.onerror = function() {
+                    console.log(`⚠️ Photo not found: ${photoPath}, using default`);
+                    avatarElement.src = 'https://cdn-icons-png.flaticon.com/512/3048/3048122.png';
+                    avatarElement.alt = `Default foto untuk ${salesmanName}`;
+                };
+                
+                img.src = photoPath;
+            }
+            
+            // Update page title
+            document.title = `${salesmanName} - Performance Dashboard`;
+            
+            console.log(`✅ Profile updated - Name: ${salesmanName}, Type: ${salesmanType}, Employee ID: ${szEmployeeId}`);
+        }
+
+        // ✅ NAVIGATION FUNCTIONS
+        function goHome() {
+            window.location.href = 'dashboard.html';
+        }
+
+		function showVisitOutlet() {
+			console.log('🏪 Redirecting to Visit Outlet dashboard...');
+			window.location.href = 'visit.html';
+		}
+
+        // ✅ UPDATED INCENTIVE FUNCTION - REDIRECTS TO INCENTIVE DASHBOARD
+        function showIncentive() {
+            if (currentSalesmanId) {
+                console.log(`🎯 Redirecting to incentive dashboard for salesman: ${currentSalesmanId}`);
+                window.location.href = `dashboard_insentif_sales.html?id=${currentSalesmanId}`;
+            } else {
+                alert('❌ Error: No salesman ID available for incentive data');
+            }
+        }
+
+        // ✅ NEW: Show Performance - Redirect to performance page
+        function showPerformance() {
+            if (currentSalesmanId) {
+                console.log(`📈 Redirecting to performance dashboard for salesman: ${currentSalesmanId}`);
+                window.location.href = `performance.html?id=${currentSalesmanId}`;
+            } else {
+                alert('❌ Error: No salesman ID available for performance data');
+            }
+        }
+
+        // ✅ UPDATED: Show Profile - Redirect to profile page
+        function showProfile() {
+            if (currentSalesmanId) {
+                console.log(`👤 Opening profile for salesman: ${currentSalesmanId}`);
+                window.location.href = `profile.html?id=${currentSalesmanId}`;
+            } else {
+                // Fallback to session user if no currentSalesmanId
+                const currentUser = sessionStorage.getItem('currentUser');
+                if (currentUser) {
+                    console.log(`👤 Opening profile for session user: ${currentUser}`);
+                    window.location.href = `profile.html?id=${currentUser}`;
+                } else {
+                    alert('❌ Error: No user ID available for profile data');
+                }
+            }
+        }
+
+        // ✅ UI CONTROL FUNCTIONS
+        function showLoading(show) {
+            document.getElementById('loadingSpinner').style.display = show ? 'flex' : 'none';
+        }
+
+        function showError(show, message = '') {
+            const errorElement = document.getElementById('errorMessage');
+            if (show) {
+                errorElement.style.display = 'block';
+                if (message) {
+                    errorElement.querySelector('p').textContent = message;
+                }
+            } else {
+                errorElement.style.display = 'none';
+            }
+        }
+
+        function hideError() {
+            showError(false);
+        }
+
+        function showMainContent(show) {
+            document.getElementById('mainContent').style.display = show ? 'block' : 'none';
+        }
+
+        // ✅ INITIALIZE PAGE
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!checkLoginStatus()) {
+                return;
+            }
+
+            console.log('🚀 Initializing enhanced salesman detail page with Produktifitas metrics...');
+            loadSalesmanData();
+        });
+
+        console.log('✅ Enhanced salesman detail script loaded with Produktifitas metrics and AR_Coll data');
+    </script>
+</body>
+</html>

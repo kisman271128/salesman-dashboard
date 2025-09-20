@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visit Firebase Only Test</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            padding: 20px; 
+            background: #f5f5f5; 
+        }
+        .status { 
+            padding: 10px; 
+            border-radius: 8px; 
+            margin: 10px 0; 
+            font-weight: bold; 
+        }
+        .online { background: #d1fae5; color: #065f46; }
+        .offline { background: #fecaca; color: #991b1b; }
+        .loading { background: #dbeafe; color: #1e40af; }
+        .container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            background: white; 
+            padding: 20px; 
+            border-radius: 12px; 
+        }
+        .test-btn {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .log-area {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 10px 0;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔥 Visit Firebase Connection Test</h1>
+        
+        <div id="firebaseStatus" class="status loading">
+            📡 Testing Firebase Connection...
+        </div>
+        
+        <div>
+            <strong>Salesman ID:</strong> <span id="salesmanId">-</span><br>
+            <strong>Test Time:</strong> <span id="testTime">-</span>
+        </div>
+        
+        <div>
+            <button class="test-btn" onclick="testConnection()">🔄 Test Connection</button>
+            <button class="test-btn" onclick="testAuthentication()">🔐 Test Auth</button>
+            <button class="test-btn" onclick="simulateVisitEvent()">📊 Test Event</button>
+            <button class="test-btn" onclick="clearLog()">🗑️ Clear Log</button>
+        </div>
+        
+        <h3>📋 Test Log:</h3>
+        <div id="logArea" class="log-area">
+            Initializing Firebase test...
+        </div>
+    </div>
+
+    <!-- Firebase SDK - Same as visit.html -->
+    <script type="module">
+        const firebaseConfig = {
+            apiKey: "AIzaSyAoRV3qVAXQ14AEVA8Mo49HXfAyhMMm8Bs",
+            authDomain: "salesman-route-tracker.firebaseapp.com",
+            databaseURL: "https://salesman-route-tracker-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "salesman-route-tracker",
+            storageBucket: "salesman-route-tracker.firebasestorage.app",
+            messagingSenderId: "590789273516",
+            appId: "1:590789273516:web:79abe0c7e4cbccfa44fc09",
+            measurementId: "G-5RYSWKQ963"
+        };
+
+        try {
+            log('🔥 Loading Firebase modules...', 'info');
+            
+            const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
+            const { 
+                getDatabase, 
+                ref, 
+                push, 
+                set,
+                onValue,
+                serverTimestamp
+            } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js');
+            const {
+                getAuth,
+                signInAnonymously,
+                onAuthStateChanged
+            } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
+
+            log('✅ Firebase modules loaded successfully', 'success');
+
+            const app = initializeApp(firebaseConfig);
+            const database = getDatabase(app);
+            const auth = getAuth(app);
+
+            window.Firebase = {
+                app, database, auth,
+                ref: (path) => ref(database, path),
+                push: (ref) => push(ref),
+                set: (ref, value) => set(ref, value),
+                onValue: (ref, callback) => onValue(ref, callback),
+                serverTimestamp: () => serverTimestamp(),
+                signInAnonymously: () => signInAnonymously(auth),
+                onAuthStateChanged: (callback) => onAuthStateChanged(auth, callback)
+            };
+
+            log('✅ Firebase services initialized', 'success');
+            
+            // Test connection
+            await testFirebaseConnection();
+            
+        } catch (error) {
+            log(`❌ Firebase loading failed: ${error.message}`, 'error');
+            updateStatus('offline', `Error: ${error.message}`);
+        }
+    </script>
+
+    <script>
+        // Get salesman ID from URL
+        function getUrlParameter(name) {
+            name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+            var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+            var results = regex.exec(location.search);
+            return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+        }
+
+        const salesmanId = getUrlParameter('id') || 'TEST_USER';
+        document.getElementById('salesmanId').textContent = salesmanId;
+        document.getElementById('testTime').textContent = new Date().toLocaleString();
+
+        function log(message, type = 'info') {
+            const colors = {
+                'info': '#3b82f6',
+                'success': '#10b981', 
+                'error': '#ef4444',
+                'warning': '#f59e0b'
+            };
+            
+            const timestamp = new Date().toLocaleTimeString();
+            const logArea = document.getElementById('logArea');
+            
+            const logEntry = document.createElement('div');
+            logEntry.style.color = colors[type];
+            logEntry.innerHTML = `[${timestamp}] ${message}`;
+            logArea.appendChild(logEntry);
+            logArea.scrollTop = logArea.scrollHeight;
+            
+            console.log(`Firebase Test: ${message}`);
+        }
+
+        function updateStatus(status, message = '') {
+            const statusElement = document.getElementById('firebaseStatus');
+            
+            switch(status) {
+                case 'online':
+                    statusElement.className = 'status online';
+                    statusElement.innerHTML = '🔥 Firebase Online';
+                    break;
+                case 'offline':
+                    statusElement.className = 'status offline'; 
+                    statusElement.innerHTML = `📱 Firebase Offline - ${message}`;
+                    break;
+                case 'loading':
+                    statusElement.className = 'status loading';
+                    statusElement.innerHTML = '📡 Testing Connection...';
+                    break;
+            }
+        }
+
+        async function testFirebaseConnection() {
+            try {
+                log('🔄 Testing Firebase connection...', 'info');
+                updateStatus('loading');
+                
+                if (!window.Firebase) {
+                    throw new Error('Firebase not initialized');
+                }
+
+                // Test connection
+                const connectedRef = window.Firebase.ref('.info/connected');
+                window.Firebase.onValue(connectedRef, (snapshot) => {
+                    const connected = snapshot.val() === true;
+                    if (connected) {
+                        updateStatus('online');
+                        log('✅ Firebase connection: ONLINE', 'success');
+                    } else {
+                        updateStatus('offline', 'Connection lost');
+                        log('❌ Firebase connection: OFFLINE', 'error');
+                    }
+                });
+
+                // Test authentication
+                const result = await window.Firebase.signInAnonymously();
+                log(`✅ Authentication successful: ${result.user.uid}`, 'success');
+
+                // Test write
+                const testRef = window.Firebase.ref('connection_test');
+                await window.Firebase.set(testRef, {
+                    salesman_id: salesmanId,
+                    test_time: new Date().toISOString(),
+                    timestamp: window.Firebase.serverTimestamp()
+                });
+                
+                log('✅ Write test successful', 'success');
+                updateStatus('online');
+                
+            } catch (error) {
+                log(`❌ Connection test failed: ${error.message}`, 'error');
+                updateStatus('offline', error.message);
+            }
+        }
+
+        window.testConnection = testFirebaseConnection;
+
+        window.testAuthentication = async function() {
+            try {
+                log('🔐 Testing authentication...', 'info');
+                const result = await window.Firebase.signInAnonymously();
+                log(`✅ Auth test successful: ${result.user.uid}`, 'success');
+            } catch (error) {
+                log(`❌ Auth test failed: ${error.message}`, 'error');
+            }
+        };
+
+        window.simulateVisitEvent = async function() {
+            try {
+                log('📊 Simulating visit event...', 'info');
+                
+                const eventData = {
+                    salesman_id: salesmanId,
+                    event_name: 'test_visit_event',
+                    customer_name: 'Test Customer ABC',
+                    timestamp: new Date().toISOString(),
+                    firebase_timestamp: window.Firebase.serverTimestamp(),
+                    location: {
+                        latitude: -6.2000 + (Math.random() - 0.5) * 0.1,
+                        longitude: 106.8000 + (Math.random() - 0.5) * 0.1
+                    }
+                };
+                
+                const eventsRef = window.Firebase.ref('visit_events');
+                const newEventRef = window.Firebase.push(eventsRef);
+                await window.Firebase.set(newEventRef, eventData);
+                
+                log('✅ Visit event saved successfully', 'success');
+                
+            } catch (error) {
+                log(`❌ Event simulation failed: ${error.message}`, 'error');
+            }
+        };
+
+        window.clearLog = function() {
+            document.getElementById('logArea').innerHTML = 'Log cleared...';
+        };
+
+        // Auto-start test when page loads
+        window.addEventListener('load', () => {
+            log('🚀 Firebase connection test started', 'info');
+        });
+    </script>
+</body>
+</html>

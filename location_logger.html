@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Aplikasi Pencatat Lokasi — Offline HTML</title>
+
+  <!-- Leaflet CSS (hash integrity sudah benar) -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+
+  <style>
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; margin:0; display:flex; flex-direction:column; height:100vh }
+    header { padding:12px 16px; background:linear-gradient(90deg,#0ea5a4,#06b6d4); color:#fff }
+    .controls { display:flex; gap:8px; align-items:center; flex-wrap:wrap }
+    button { padding:8px 12px; border-radius:8px; border:none; cursor:pointer; box-shadow:0 1px 2px rgba(0,0,0,0.08) }
+    button.primary { background:#063970; color:#fff }
+    button.warn { background:#dc2626; color:#fff }
+    main { display:flex; gap:12px; height:calc(100vh - 64px); padding:12px }
+    #map { flex:1; border-radius:8px; overflow:hidden }
+    .sidebar { width:360px; max-width:40%; background:#fff; border-radius:8px; padding:12px; box-shadow:0 6px 18px rgba(2,6,23,0.08); overflow:auto }
+    .field { margin-bottom:8px }
+    table { width:100%; border-collapse:collapse }
+    table th, table td { text-align:left; padding:6px; border-bottom:1px solid #f1f5f9 }
+    footer { padding:8px 12px; font-size:13px; color:#334155 }
+    .badge { display:inline-block; font-size:12px; padding:4px 8px; background:#eef2ff; border-radius:999px }
+    input[type="number"] { width:80px; padding:6px; border-radius:6px; border:1px solid #e2e8f0 }
+  </style>
+</head>
+<body>
+  <header>
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-weight:700">Aplikasi Pencatat Lokasi</div>
+        <div style="font-size:13px;opacity:0.9">Mencatat koordinat (lat, lon) setiap interval dan menampilkan titik pada peta</div>
+      </div>
+      <div class="controls">
+        <button id="btnStart" class="primary">Mulai Pencatatan</button>
+        <button id="btnStop">Hentikan</button>
+        <button id="btnExport">Export CSV</button>
+        <button id="btnClear" class="warn">Hapus Data</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div id="map"></div>
+    <aside class="sidebar">
+      <div class="field"><strong>Info</strong></div>
+      <div class="field">Status: <span id="status">Berhenti</span></div>
+      <div class="field">Terakhir tercatat: <span id="last">-</span></div>
+      <div class="field">Interval (detik): <input id="intervalSec" type="number" value="300" min="10" /></div>
+
+      <div class="field"><strong>Riwayat Lokasi (terbaru 1000)</strong></div>
+      <div style="max-height:48vh; overflow:auto">
+        <table id="tbl">
+          <thead><tr><th>Waktu (ISO)</th><th>Lat</th><th>Lon</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div style="height:12px"></div>
+      <div class="field">
+        <div class="badge">Perhatian</div>
+        <p style="margin:8px 0 0;font-size:13px">Aplikasi ini memerlukan koneksi HTTPS (atau berjalan di localhost) agar API Geolocation berfungsi. Browser harus diizinkan mengakses lokasi. Aplikasi mencatat hanya saat halaman dibuka dan script berjalan.</p>
+      </div>
+    </aside>
+  </main>
+
+  <footer>
+    Simpanan lokal: <span id="count">0</span> titik • File yang diunduh akan berupa CSV. Jalankan di server lokal (contoh: live-server) atau di hosting HTTPS.
+  </footer>
+
+  <!-- Leaflet JS (hash integrity sudah benar) -->
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin="">
+  </script>
+
+  <script>
+    const STORAGE_KEY = 'location_log';
+    let timer = null;
+    let map, markersLayer, polyline;
+
+    function loadData() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        return raw ? JSON.parse(raw) : [];
+      } catch(e) { return [] }
+    }
+    function saveData(arr) { localStorage.setItem(STORAGE_KEY, JSON.stringify(arr.slice(-1000))); }
+
+    function addEntry(lat, lon, ts) {
+      const arr = loadData();
+      arr.push({ lat, lon, ts });
+      saveData(arr);
+      renderTable();
+      renderMap();
+    }
+
+    function exportCSV() {
+      const arr = loadData();
+      if (!arr.length) return alert('Tidak ada data untuk diexport');
+      const header = ['timestamp','latitude','longitude'];
+      const csv = [header.join(',')].concat(arr.map(r => `"${r.ts}",${r.lat},${r.lon}`)).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const name = 'location_log_' + new Date().toISOString().replace(/[:.]/g,'-') + '.csv';
+      a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function renderTable() {
+      const tbody = document.querySelector('#tbl tbody');
+      tbody.innerHTML = '';
+      const arr = loadData().slice().reverse();
+      const frag = document.createDocumentFragment();
+      for (const r of arr) {
+        const tr = document.createElement('tr');
+        const td1 = document.createElement('td'); td1.textContent = r.ts; tr.appendChild(td1);
+        const td2 = document.createElement('td'); td2.textContent = r.lat; tr.appendChild(td2);
+        const td3 = document.createElement('td'); td3.textContent = r.lon; tr.appendChild(td3);
+        frag.appendChild(tr);
+      }
+      tbody.appendChild(frag);
+      document.getElementById('count').textContent = loadData().length;
+      document.getElementById('last').textContent = (loadData().length ? loadData().slice(-1)[0].ts : '-');
+    }
+
+    function renderMap() {
+      const arr = loadData();
+      markersLayer.clearLayers();
+      if (polyline) polyline.remove();
+      const latlngs = [];
+      for (const r of arr) {
+        const m = L.circleMarker([r.lat, r.lon], { radius:6 }).bindPopup(`<b>${r.ts}</b><br/>${r.lat}, ${r.lon}`);
+        markersLayer.addLayer(m);
+        latlngs.push([r.lat, r.lon]);
+      }
+      if (latlngs.length) {
+        polyline = L.polyline(latlngs, { weight:3, dashArray: '5,8' }).addTo(map);
+        const bounds = L.latLngBounds(latlngs);
+        map.fitBounds(bounds, { padding:[50,50] });
+      }
+    }
+
+    function startLogging() {
+      if (!navigator.geolocation) return alert('Geolocation API tidak tersedia di browser ini.');
+      const sec = Number(document.getElementById('intervalSec').value) || 300;
+      getAndStorePosition();
+      if (timer) clearInterval(timer);
+      timer = setInterval(getAndStorePosition, sec * 1000);
+      document.getElementById('status').textContent = 'Berjalan (setiap ' + sec + ' detik)';
+      document.getElementById('btnStart').disabled = true;
+    }
+
+    function stopLogging() {
+      if (timer) { clearInterval(timer); timer = null; }
+      document.getElementById('status').textContent = 'Berhenti';
+      document.getElementById('btnStart').disabled = false;
+    }
+
+    function getAndStorePosition() {
+      navigator.geolocation.getCurrentPosition(pos => {
+        const lat = +pos.coords.latitude.toFixed(6);
+        const lon = +pos.coords.longitude.toFixed(6);
+        const ts = new Date().toISOString();
+        addEntry(lat, lon, ts);
+      }, err => {
+        console.warn('Gagal ambil posisi:', err);
+      }, { enableHighAccuracy:true, maximumAge:0, timeout:15000 });
+    }
+
+    function clearData() {
+      if (!confirm('Hapus semua data lokasi dari penyimpanan lokal?')) return;
+      localStorage.removeItem(STORAGE_KEY);
+      renderTable();
+      renderMap();
+    }
+
+    function initMap() {
+      map = L.map('map', { minZoom:2 }).setView([0,0], 2);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
+      markersLayer = L.layerGroup().addTo(map);
+      renderTable();
+      renderMap();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initMap();
+      document.getElementById('btnStart').addEventListener('click', startLogging);
+      document.getElementById('btnStop').addEventListener('click', stopLogging);
+      document.getElementById('btnExport').addEventListener('click', exportCSV);
+      document.getElementById('btnClear').addEventListener('click', clearData);
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') { renderTable(); renderMap(); }
+      });
+      renderTable(); renderMap();
+    });
+  </script>
+</body>
+</html>

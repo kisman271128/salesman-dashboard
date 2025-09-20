@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Kelola Kategori — Modern</title>
+  <style>
+    :root{
+      --bg:#0f1724;
+      --card:#0b1220;
+      --muted:#9aa4b2;
+      --accent:#7c5cff;
+      --accent-2:#4fd1c5;
+      --surface:#0b1220;
+      --glass: rgba(255,255,255,0.03);
+      --danger:#ff6b6b;
+      --radius:12px;
+      --gap:16px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+
+    /* Basic layout */
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      min-height:100vh;
+      background:
+        radial-gradient(600px 400px at 10% 10%, rgba(124,92,255,0.12), transparent 8%),
+        radial-gradient(600px 400px at 90% 90%, rgba(79,209,197,0.06), transparent 8%),
+        var(--bg);
+      color:#e7eef8;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      padding:24px;
+    }
+
+    .container{
+      max-width:1100px;
+      margin:0 auto;
+    }
+
+    header.appbar{
+      display:flex;
+      align-items:center;
+      gap:16px;
+      margin-bottom:20px;
+    }
+    .crumb{
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+    .back-btn{
+      background:transparent;
+      border:1px solid rgba(255,255,255,0.04);
+      padding:8px 10px;
+      border-radius:10px;
+      cursor:pointer;
+      color:var(--muted);
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+    }
+    h1{
+      margin:0;
+      font-size:20px;
+      letter-spacing:0.2px;
+    }
+    p.lead{ margin:0; color:var(--muted); font-size:13px }
+
+    /* toolbar */
+    .toolbar{
+      display:flex;
+      gap:12px;
+      margin:16px 0 22px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .search{
+      flex:1;
+      min-width:220px;
+      display:flex;
+      align-items:center;
+      gap:8px;
+      background:var(--glass);
+      border-radius:999px;
+      padding:8px 12px;
+      border:1px solid rgba(255,255,255,0.03);
+    }
+    .search input{
+      background:transparent;
+      border:0;
+      outline:0;
+      color:inherit;
+      font-size:14px;
+      width:100%;
+    }
+    .btn{
+      background:linear-gradient(180deg,var(--accent), #5b44d6);
+      border:0;
+      color:white;
+      padding:10px 14px;
+      border-radius:12px;
+      cursor:pointer;
+      font-weight:600;
+      box-shadow: 0 6px 18px rgba(124,92,255,0.12);
+    }
+    .btn.ghost{
+      background:transparent;
+      border:1px solid rgba(255,255,255,0.06);
+      color:var(--muted);
+      box-shadow:none;
+      font-weight:500;
+    }
+
+    /* grid list */
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px,1fr));
+      gap:var(--gap);
+    }
+
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border-radius:var(--radius);
+      padding:14px;
+      border:1px solid rgba(255,255,255,0.03);
+      min-height:84px;
+      display:flex;
+      flex-direction:column;
+      justify-content:space-between;
+      transition: transform .16s ease, box-shadow .16s;
+    }
+    .card:hover{ transform: translateY(-6px); box-shadow: 0 10px 30px rgba(2,6,23,0.6); }
+    .cat-title{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      font-weight:700;
+      font-size:16px;
+    }
+    .cat-desc{ color:var(--muted); font-size:13px; margin-top:6px }
+
+    .card-footer{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-top:12px;
+    }
+    .actions{ display:flex; gap:8px; }
+    .icon-btn{
+      background:transparent;
+      border:1px solid rgba(255,255,255,0.03);
+      padding:8px;
+      border-radius:10px;
+      cursor:pointer;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      color:var(--muted);
+      font-size:13px;
+    }
+    .icon-btn.edit{ color:var(--accent); border-color: rgba(124,92,255,0.12); }
+    .icon-btn.delete{ color:var(--danger); border-color: rgba(255,107,107,0.06); }
+
+    /* empty state */
+    .empty{
+      text-align:center;
+      padding:48px 12px;
+      border-radius:14px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.01), transparent);
+      border:1px dashed rgba(255,255,255,0.02);
+      color:var(--muted);
+      margin-top:20px;
+    }
+
+    /* floating add */
+    .fab{
+      position:fixed;
+      right:24px;
+      bottom:24px;
+      width:62px;
+      height:62px;
+      border-radius:999px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      box-shadow: 0 14px 30px rgba(12,10,20,0.6);
+      background:linear-gradient(180deg,var(--accent), #5b44d6);
+      color:white;
+      border:0;
+      cursor:pointer;
+      font-size:26px;
+    }
+
+    /* modal */
+    .modal-backdrop{
+      position:fixed; inset:0;
+      background:rgba(2,6,23,0.6);
+      display:flex; align-items:center; justify-content:center;
+      z-index:120;
+      padding:20px;
+    }
+    .modal{
+      max-width:520px;
+      width:100%;
+      background: linear-gradient(180deg,#071027, #071022);
+      border-radius:12px;
+      padding:18px;
+      border:1px solid rgba(255,255,255,0.04);
+    }
+    .modal h3{ margin:0 0 8px 0; font-size:18px }
+    .modal p{ color:var(--muted); margin:0 0 18px 0 }
+    .modal .row{ display:flex; gap:8px; justify-content:flex-end; }
+
+    /* small screens */
+    @media (max-width:520px){
+      .toolbar{ flex-direction:column; align-items:stretch; }
+      .search{ width:100% }
+    }
+  </style>
+</head>
+<body>
+  <div class="container" role="main">
+    <header class="appbar" aria-label="App bar">
+      <div class="crumb">
+        <button class="back-btn" id="backBtn" aria-label="Kembali">←</button>
+        <div>
+          <h1>Kelola Kategori</h1>
+          <p class="lead">Tambahkan, sunting, atau hapus kategori produk Anda</p>
+        </div>
+      </div>
+    </header>
+
+    <div class="toolbar" role="toolbar" aria-label="Toolbar kategori">
+      <div class="search" role="search">
+        <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden><path fill="currentColor" d="M10 4a6 6 0 1 1 0 12 6 6 0 0 1 0-12Zm8.7 14.3-3.9-3.9" opacity=".9"/></svg>
+        <input id="q" placeholder="Cari kategori..." aria-label="Cari kategori" />
+      </div>
+
+      <button class="btn" id="addBtn">+ Tambah Kategori</button>
+      <button class="btn ghost" id="refreshBtn">Muat ulang</button>
+    </div>
+
+    <section id="grid" class="grid" aria-live="polite">
+      <!-- cards injected here -->
+    </section>
+
+    <div id="empty" class="empty" hidden>
+      <strong>Belum ada Kategori</strong>
+      <div style="margin-top:8px">Tekan tombol <strong>+ Tambah Kategori</strong> untuk membuat kategori baru.</div>
+    </div>
+
+    <button class="fab" id="fabAdd" aria-label="Tambah">+</button>
+  </div>
+
+  <!-- Modal template -->
+  <template id="modalTemplate">
+    <div class="modal-backdrop" role="dialog" aria-modal="true">
+      <div class="modal">
+        <h3 id="modalTitle">Judul</h3>
+        <p id="modalText">Deskripsi</p>
+
+        <div id="modalForm" style="margin-bottom:12px"></div>
+
+        <div class="row">
+          <button class="btn ghost" id="modalCancel">Batal</button>
+          <button class="btn" id="modalConfirm">OK</button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <script>
+    // sample data
+    let categories = [
+      { id: 'c1', name: 'BIG', desc: 'Kategori produk ukuran besar' },
+      { id: 'c2', name: 'MEDIUM', desc: 'Kategori produk ukuran sedang' },
+      { id: 'c3', name: 'SMALL', desc: 'Kategori produk ukuran kecil' },
+      { id: 'c4', name: 'Makanan', desc: 'Kategori makanan & snack' }
+    ];
+
+    const grid = document.getElementById('grid');
+    const empty = document.getElementById('empty');
+    const q = document.getElementById('q');
+
+    function renderList(filter='') {
+      grid.innerHTML = '';
+      const list = categories.filter(c=> c.name.toLowerCase().includes(filter.toLowerCase()) || (c.desc||'').toLowerCase().includes(filter.toLowerCase()));
+      if(list.length === 0) {
+        empty.hidden = false;
+      } else {
+        empty.hidden = true;
+        for(const c of list){
+          const el = document.createElement('article');
+          el.className = 'card';
+          el.setAttribute('aria-label', `Kategori ${c.name}`);
+          el.innerHTML = `
+            <div>
+              <div class="cat-title">${escapeHtml(c.name)} <span style="font-weight:600; font-size:12px; color:var(--muted); margin-left:8px">#${c.id}</span></div>
+              <div class="cat-desc">${escapeHtml(c.desc || '')}</div>
+            </div>
+            <div class="card-footer">
+              <div style="font-size:12px; color:var(--muted)">Terakhir diubah: --</div>
+              <div class="actions">
+                <button class="icon-btn edit" data-id="${c.id}" title="Edit">Edit</button>
+                <button class="icon-btn delete" data-id="${c.id}" title="Hapus">Hapus</button>
+              </div>
+            </div>
+          `;
+          grid.appendChild(el);
+        }
+      }
+      attachCardActions();
+    }
+
+    function attachCardActions(){
+      grid.querySelectorAll('.icon-btn.edit').forEach(btn=>{
+        btn.onclick = ()=> openEditModal(btn.dataset.id);
+      });
+      grid.querySelectorAll('.icon-btn.delete').forEach(btn=>{
+        btn.onclick = ()=> openDeleteModal(btn.dataset.id);
+      });
+    }
+
+    function openEditModal(id){
+      const cat = categories.find(x=>x.id===id);
+      const tpl = document.getElementById('modalTemplate');
+      const node = tpl.content.cloneNode(true);
+      node.querySelector('#modalTitle').textContent = 'Sunting Kategori';
+      node.querySelector('#modalText').textContent = `Ubah informasi kategori "${cat.name}".`;
+      const form = node.querySelector('#modalForm');
+      form.innerHTML = `
+        <label style="display:flex;flex-direction:column;gap:6px">
+          <span style="font-size:12px;color:var(--muted)">Nama</span>
+          <input id="inpName" value="${escapeHtml(cat.name)}" style="padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:inherit">
+        </label>
+        <label style="display:flex;flex-direction:column;gap:6px;margin-top:10px">
+          <span style="font-size:12px;color:var(--muted)">Deskripsi</span>
+          <input id="inpDesc" value="${escapeHtml(cat.desc || '')}" style="padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:inherit">
+        </label>
+      `;
+      const modal = node.querySelector('.modal-backdrop');
+      document.body.appendChild(modal);
+      modal.querySelector('#modalCancel').onclick = ()=> modal.remove();
+      modal.querySelector('#modalConfirm').onclick = ()=>{
+        const newName = modal.querySelector('#inpName').value.trim();
+        const newDesc = modal.querySelector('#inpDesc').value.trim();
+        if(newName === '') { alert('Nama kategori tidak boleh kosong'); return; }
+        cat.name = newName;
+        cat.desc = newDesc;
+        modal.remove();
+        renderList(q.value);
+      };
+    }
+
+    function openDeleteModal(id){
+      const cat = categories.find(x=>x.id===id);
+      const tpl = document.getElementById('modalTemplate');
+      const node = tpl.content.cloneNode(true);
+      node.querySelector('#modalTitle').textContent = 'Konfirmasi Hapus';
+      node.querySelector('#modalText').textContent = `Apakah Anda yakin ingin menghapus kategori "${cat.name}"? Tindakan ini tidak dapat dibatalkan.`;
+      node.querySelector('#modalForm').innerHTML = '';
+      const modal = node.querySelector('.modal-backdrop');
+      document.body.appendChild(modal);
+      modal.querySelector('#modalCancel').onclick = ()=> modal.remove();
+      modal.querySelector('#modalConfirm').onclick = ()=>{
+        categories = categories.filter(x=>x.id !== id);
+        modal.remove();
+        renderList(q.value);
+      };
+    }
+
+    // add new
+    function openAddModal(){
+      const tpl = document.getElementById('modalTemplate');
+      const node = tpl.content.cloneNode(true);
+      node.querySelector('#modalTitle').textContent = 'Tambah Kategori';
+      node.querySelector('#modalText').textContent = 'Buat kategori baru untuk mengelompokkan produk.';
+      const form = node.querySelector('#modalForm');
+      form.innerHTML = `
+        <label style="display:flex;flex-direction:column;gap:6px">
+          <span style="font-size:12px;color:var(--muted)">Nama</span>
+          <input id="inpName" placeholder="Contoh: Mayonaise" style="padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:inherit">
+        </label>
+        <label style="display:flex;flex-direction:column;gap:6px;margin-top:10px">
+          <span style="font-size:12px;color:var(--muted)">Deskripsi (opsional)</span>
+          <input id="inpDesc" placeholder="Deskripsi singkat" style="padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:inherit">
+        </label>
+      `;
+      const modal = node.querySelector('.modal-backdrop');
+      document.body.appendChild(modal);
+      modal.querySelector('#modalCancel').onclick = ()=> modal.remove();
+      modal.querySelector('#modalConfirm').onclick = ()=>{
+        const name = modal.querySelector('#inpName').value.trim();
+        const desc = modal.querySelector('#inpDesc').value.trim();
+        if(!name){ alert('Nama kategori wajib diisi'); return; }
+        const id = 'c' + (Math.random().toString(36).slice(2,7));
+        categories.unshift({ id, name, desc });
+        modal.remove();
+        renderList(q.value);
+      };
+    }
+
+    // helpers
+    function escapeHtml(s=''){ return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+
+    // events
+    document.getElementById('addBtn').onclick = openAddModal;
+    document.getElementById('fabAdd').onclick = openAddModal;
+    document.getElementById('refreshBtn').onclick = ()=> { renderList(q.value); }
+
+    q.addEventListener('input', e=> renderList(e.target.value));
+
+    document.getElementById('backBtn').onclick = ()=> {
+      // contoh: kembali ke halaman sebelumnya
+      if(history.length>1) history.back();
+    };
+
+    // initial render
+    renderList();
+
+    // accessibility: close modal on Escape
+    window.addEventListener('keydown', (e)=>{
+      if(e.key === 'Escape'){
+        document.querySelectorAll('.modal-backdrop').forEach(m=>m.remove());
+      }
+    });
+  </script>
+</body>
+</html>
