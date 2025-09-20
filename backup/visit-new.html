@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visit Outlet - Fixed Anti-Duplication</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(180deg, #f8f9ff 0%, #e8ecff 100%);
+            min-height: 100vh;
+            color: #2c3e50;
+            padding-bottom: 100px;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        .detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 0 0 30px 30px;
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        .back-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            padding: 10px;
+            border-radius: 12px;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateX(-2px);
+        }
+
+        .detail-title-container {
+            text-align: center;
+            flex: 1;
+        }
+
+        .detail-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .salesman-name {
+            font-size: 14px;
+            opacity: 0.9;
+            font-weight: 400;
+        }
+
+        .user-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            padding: 10px;
+            border-radius: 12px;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .user-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* ===== DEBUG PANEL FOR ANTI-DUPLICATION ===== */
+        .debug-panel {
+            position: fixed;
+            bottom: 100px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 8px;
+            border-radius: 8px;
+            font-size: 10px;
+            z-index: 2000;
+            max-width: 200px;
+            display: none;
+        }
+
+        .debug-panel.show {
+            display: block;
+        }
+
+        .debug-item {
+            margin: 2px 0;
+        }
+
+        /* ===== VISIT SESSION MODAL STYLES ===== */
+        .visit-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            backdrop-filter: blur(5px);
+        }
+
+        .visit-modal.show {
+            display: flex;
+            animation: modalFadeIn 0.3s ease;
+        }
+
+        @keyframes modalFadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .visit-modal-content {
+            background: white;
+            padding: 24px;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            max-width: 350px;
+            width: 90%;
+            text-align: center;
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .visit-modal-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+
+        .visit-modal-subtitle {
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 16px;
+        }
+
+        .visit-modal-customer {
+            background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+            padding: 12px;
+            border-radius: 8px;
+            margin: 16px 0;
+            border: 1px solid #cbd5e1;
+        }
+
+        .visit-modal-customer-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+
+        .visit-modal-customer-details {
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        .visit-modal-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .visit-modal-btn {
+            flex: 1;
+            padding: 12px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .visit-modal-btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .visit-modal-btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .visit-modal-btn-secondary {
+            background: #f1f5f9;
+            color: #64748b;
+            border: 1px solid #e2e8f0;
+        }
+
+        .visit-modal-btn-secondary:hover {
+            background: #e2e8f0;
+        }
+
+        /* ===== VISIT SESSION STATUS ===== */
+        .visit-session-status {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(16, 185, 129, 0.95);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            min-width: 120px;
+        }
+
+        .visit-session-status.active {
+            display: block;
+            animation: pulse 2s infinite;
+        }
+
+        .visit-session-customer {
+            font-size: 10px;
+            opacity: 0.9;
+            margin-bottom: 2px;
+        }
+
+        .visit-session-timer {
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.95; }
+            50% { opacity: 1; }
+        }
+
+        /* ===== FIREBASE CONNECTION STATUS ===== */
+        .firebase-status {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(16, 185, 129, 0.9);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            z-index: 1001;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .firebase-status.connected {
+            background: rgba(16, 185, 129, 0.9);
+        }
+
+        .firebase-status.disconnected {
+            background: rgba(239, 68, 68, 0.9);
+        }
+
+        .firebase-status.syncing {
+            background: rgba(245, 158, 11, 0.9);
+            animation: pulse 2s infinite;
+        }
+
+        /* Continue with rest of existing styles... */
+        .loading-spinner {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            flex-direction: column;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: rgba(231, 76, 60, 0.1);
+            border: 1px solid rgba(231, 76, 60, 0.3);
+            color: #e74c3c;
+            padding: 16px;
+            border-radius: 12px;
+            margin: 20px;
+            text-align: center;
+        }
+
+        .content-section {
+            padding: 0 16px;
+            margin-bottom: 20px;
+        }
+
+        .frames-container {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .frame {
+            flex: 1;
+            background: white;
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .frame-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        .filter-item {
+            position: relative;
+            margin-bottom: 12px;
+        }
+
+        .filter-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .filter-item select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 12px;
+            background: white;
+            color: #2d3748;
+            appearance: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .filter-item select:disabled {
+            background: #f7fafc;
+            color: #a0aec0;
+            cursor: not-allowed;
+            border-color: #e2e8f0;
+        }
+
+        .filter-item select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }
+
+        .summary-item {
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 8px;
+            text-align: center;
+        }
+
+        .summary-label {
+            font-size: 10px;
+            color: #64748b;
+            font-weight: 500;
+            margin-bottom: 2px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .summary-value {
+            font-size: 14px;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .summary-value.positive {
+            color: #10b981;
+        }
+
+        .summary-value.negative {
+            color: #ef4444;
+        }
+
+        .summary-value.neutral {
+            color: #64748b;
+        }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 400px;
+            background: white;
+            border-top: 1px solid #f1f2f6;
+            padding: 15px 0;
+            display: flex;
+            justify-content: space-around;
+            box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-decoration: none;
+            color: #bdc3c7;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            padding: 8px 6px;
+            border-radius: 12px;
+            min-width: 50px;
+        }
+
+        .nav-item.active {
+            color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .nav-item:hover {
+            color: #667eea;
+            transform: translateY(-2px);
+        }
+
+        .nav-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 4px;
+            font-size: 12px;
+        }
+
+        .nav-icon.home { background: #3b82f6; color: white; }
+        .nav-icon.visit { background: #ef4444; color: white; }
+        .nav-icon.incentive { background: #f59e0b; color: white; }
+        .nav-icon.profile { background: #10b981; color: white; }
+
+        .nav-label {
+            font-size: 10px;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Firebase Connection Status -->
+        <div class="firebase-status" id="firebaseStatus">
+            🔥 Connecting Firebase...
+        </div>
+
+        <!-- Visit Session Status -->
+        <div class="visit-session-status" id="visitSessionStatus">
+            <div class="visit-session-customer" id="sessionCustomerName">No Active Visit</div>
+            <div class="visit-session-timer" id="sessionTimer">00:00:00</div>
+        </div>
+
+        <!-- Debug Panel for Anti-Duplication -->
+        <div class="debug-panel" id="debugPanel">
+            <div class="debug-item">🛡️ <span id="debugTotalPrevented">0</span> duplicates blocked</div>
+            <div class="debug-item">📊 <span id="debugActiveSession">No Session</span></div>
+            <div class="debug-item">🔑 <span id="debugHashCount">0</span> active hashes</div>
+            <div class="debug-item">⏰ <span id="debugLastEvent">No events</span></div>
+        </div>
+
+        <div class="detail-header">
+            <a href="dashboard.html" class="back-btn">←</a>
+            <div class="detail-title-container">
+                <div class="detail-title">Visit Outlet (Fixed)</div>
+                <div class="salesman-name" id="salesmanName">Loading...</div>
+            </div>
+            <button class="user-btn" onclick="toggleDebugPanel()">🛡️</button>
+        </div>
+
+        <!-- Loading State -->
+        <div class="loading-spinner" id="loadingSpinner">
+            <div class="spinner"></div>
+            <div>Loading data...</div>
+        </div>
+
+        <!-- Error State -->
+        <div class="error-message" id="errorMessage" style="display: none;">
+            <h3>🚨 Data Loading Error</h3>
+            <p>Unable to load visit data. Please check your connection.</p>
+            <button onclick="initializeData()" style="margin-top: 10px; padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer;">Retry</button>
+        </div>
+
+        <!-- Main Content -->
+        <div id="mainContent" style="display: none;">
+            <!-- Visit Tab Content -->
+            <div id="visitTab" class="tab-content">
+                <!-- Two Frame Layout -->
+                <div class="content-section">
+                    <div class="frames-container">
+                        <!-- Left Frame - Filters -->
+                        <div class="frame">
+                            <div class="frame-title">🔍 Select Filters</div>
+                            <div class="filter-item">
+                                <select id="hari">
+                                    <option value="">📅 Pilih Hari JKS</option>
+                                </select>
+                            </div>
+                            
+                            <div class="filter-item">
+                                <select id="pelanggan">
+                                    <option value="">🏪 Pilih Pelanggan</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Right Frame - Summary -->
+                        <div class="frame">
+                            <div class="frame-title">📊 Summary</div>
+                            <div class="summary-grid">
+                                <div class="summary-item">
+                                    <div class="summary-label">Target</div>
+                                    <div class="summary-value" id="summaryTarget">-</div>
+                                </div>
+                                <div class="summary-item">
+                                    <div class="summary-label">Actual</div>
+                                    <div class="summary-value" id="summaryActual">-</div>
+                                </div>
+                                <div class="summary-item">
+                                    <div class="summary-label">Gap</div>
+                                    <div class="summary-value" id="summaryGap">-</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Visit Data Table -->
+                <div class="content-section">
+                    <div class="frame">
+                        <div class="frame-title">📊 Visit Data</div>
+                        <div id="visitDataPlaceholder">
+                            <div style="text-align: center; padding: 40px; color: #64748b;">
+                                <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;">🏪</div>
+                                <div>Mulai kunjungan untuk melihat data</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Visit Start Confirmation Modal -->
+        <div class="visit-modal" id="visitStartModal">
+            <div class="visit-modal-content">
+                <div class="visit-modal-title">🏪 Mulai Kunjungan?</div>
+                <div class="visit-modal-subtitle">Anda akan memulai kunjungan ke outlet berikut:</div>
+                <div class="visit-modal-customer">
+                    <div class="visit-modal-customer-name" id="startModalCustomerName">Customer Name</div>
+                    <div class="visit-modal-customer-details" id="startModalCustomerDetails">Details</div>
+                </div>
+                <div class="visit-modal-buttons">
+                    <button class="visit-modal-btn visit-modal-btn-secondary" onclick="cancelVisitStart()">
+                        ❌ Tidak
+                    </button>
+                    <button class="visit-modal-btn visit-modal-btn-primary" onclick="confirmVisitStart()">
+                        ✅ Ya, Mulai
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Visit End Confirmation Modal -->
+        <div class="visit-modal" id="visitEndModal">
+            <div class="visit-modal-content">
+                <div class="visit-modal-title">🏁 Akhiri Kunjungan?</div>
+                <div class="visit-modal-subtitle">Anda sedang mengunjungi outlet:</div>
+                <div class="visit-modal-customer">
+                    <div class="visit-modal-customer-name" id="endModalCustomerName">Current Customer</div>
+                    <div class="visit-modal-customer-details" id="endModalCustomerDetails">Duration: 00:00:00</div>
+                </div>
+                <div class="visit-modal-buttons">
+                    <button class="visit-modal-btn visit-modal-btn-secondary" onclick="cancelVisitEnd()">
+                        ❌ Lanjutkan
+                    </button>
+                    <button class="visit-modal-btn visit-modal-btn-primary" onclick="confirmVisitEnd()">
+                        ✅ Ya, Akhiri
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Navigation -->
+        <div class="bottom-nav">
+            <div class="nav-item" onclick="goHome()">
+                <div class="nav-icon home">🏠</div>
+                <div class="nav-label">Home</div>
+            </div>
+            <div class="nav-item active" onclick="showVisitOutlet()">
+                <div class="nav-icon visit">🏪</div>
+                <div class="nav-label">Visit</div>
+            </div>
+            <div class="nav-item" onclick="showIncentive()">
+                <div class="nav-icon incentive">💰</div>
+                <div class="nav-label">Incentive</div>
+            </div>
+            <div class="nav-item" onclick="showProfile()">
+                <div class="nav-icon profile">👤</div>
+                <div class="nav-label">Profile</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== GLOBAL VARIABLES =====
+        let currentSalesman = 'Demo Salesman';
+        let currentSalesmanId = 'DEMO001';
+
+        // ===== VISIT SESSION MANAGEMENT WITH ENHANCED ANTI-DUPLICATION =====
+        let visitSession = {
+            isActive: false,
+            customerName: null,
+            startTime: null,
+            duration: 0,
+            pendingCustomer: null,
+            pendingHari: null,
+            sessionId: null,
+            // ENHANCED: More precise session tracking
+            uniqueId: null,
+            confirmed: false,
+            preventMultipleStarts: false
+        };
+
+        let sessionTimer = null;
+
+        // ===== ENHANCED ANTI-DUPLICATION SYSTEM =====
+        class EnhancedAntiDuplication {
+            constructor() {
+                this.sessionEventKeys = new Set(); // Track unique session events
+                this.customerSessionMap = new Map(); // Track customer sessions
+                this.eventSequence = 0; // Sequential event counter
+                this.lastProcessedEvents = new Map(); // Cache of last processed events
+                this.preventionStats = {
+                    totalPrevented: 0,
+                    lastPreventedTime: null,
+                    eventTypes: {}
+                };
+                this.debugMode = false;
+                
+                console.log('🛡️ Enhanced Anti-Duplication System initialized');
+            }
+
+            // ENHANCED: Generate more unique keys for session events
+            generateSessionEventKey(eventType, customerName) {
+                if (!customerName || !visitSession.sessionId) {
+                    return null;
+                }
+
+                // Create unique key based on session, customer, and event type
+                const baseKey = `${visitSession.sessionId}_${customerName}_${eventType}`;
+                
+                // For session start/end events, ensure they can only happen once per session
+                if (eventType === 'session_start' || eventType === 'session_end') {
+                    return `${baseKey}_once`;
+                }
+                
+                // For other events, allow but with sequence
+                return `${baseKey}_${this.eventSequence++}`;
+            }
+
+            // ENHANCED: Check if event should be allowed
+            shouldAllowEvent(eventType, customerName, additionalData = {}) {
+                // If no active session and it's not a session start, block
+                if (!visitSession.isActive && eventType !== 'session_start') {
+                    this.logPrevention('NO_ACTIVE_SESSION', eventType, customerName);
+                    return false;
+                }
+
+                // If session exists but different customer, block
+                if (visitSession.isActive && visitSession.customerName !== customerName && eventType !== 'session_end') {
+                    this.logPrevention('DIFFERENT_CUSTOMER', eventType, customerName);
+                    return false;
+                }
+
+                // Generate session event key
+                const eventKey = this.generateSessionEventKey(eventType, customerName);
+                if (!eventKey) {
+                    this.logPrevention('INVALID_SESSION', eventType, customerName);
+                    return false;
+                }
+
+                // Check for duplicates based on event type
+                if (eventType === 'session_start') {
+                    // Session start should only happen once per session
+                    if (this.sessionEventKeys.has(eventKey) || visitSession.preventMultipleStarts) {
+                        this.logPrevention('DUPLICATE_SESSION_START', eventType, customerName);
+                        return false;
+                    }
+                } else if (eventType === 'session_end') {
+                    // Session end should only happen if session is active
+                    if (!visitSession.isActive) {
+                        this.logPrevention('NO_SESSION_TO_END', eventType, customerName);
+                        return false;
+                    }
+                }
+
+                // Mark event as processed
+                this.sessionEventKeys.add(eventKey);
+                
+                // Update customer session mapping
+                if (!this.customerSessionMap.has(customerName)) {
+                    this.customerSessionMap.set(customerName, {
+                        sessionId: visitSession.sessionId,
+                        startTime: Date.now(),
+                        events: []
+                    });
+                }
+                
+                this.customerSessionMap.get(customerName).events.push({
+                    type: eventType,
+                    timestamp: Date.now(),
+                    key: eventKey
+                });
+
+                this.updateDebugInfo();
+                return true;
+            }
+
+            // ENHANCED: Log prevention with details
+            logPrevention(reason, eventType, customerName) {
+                this.preventionStats.totalPrevented++;
+                this.preventionStats.lastPreventedTime = new Date();
+                
+                if (!this.preventionStats.eventTypes[eventType]) {
+                    this.preventionStats.eventTypes[eventType] = 0;
+                }
+                this.preventionStats.eventTypes[eventType]++;
+
+                console.warn(`🚫 Event blocked: ${eventType} for ${customerName} - Reason: ${reason}`);
+                this.updateDebugInfo();
+            }
+
+            // ENHANCED: Clear session data when session ends
+            clearSessionData(customerName) {
+                if (customerName && this.customerSessionMap.has(customerName)) {
+                    const sessionData = this.customerSessionMap.get(customerName);
+                    console.log(`🧹 Clearing session data for ${customerName}:`, sessionData);
+                    
+                    // Remove session-specific keys
+                    sessionData.events.forEach(event => {
+                        this.sessionEventKeys.delete(event.key);
+                    });
+                    
+                    this.customerSessionMap.delete(customerName);
+                }
+                
+                // Reset session tracking
+                visitSession.preventMultipleStarts = false;
+                this.updateDebugInfo();
+            }
+
+            // ENHANCED: Update debug information
+            updateDebugInfo() {
+                if (this.debugMode) {
+                    const debugPanel = document.getElementById('debugPanel');
+                    if (debugPanel) {
+                        document.getElementById('debugTotalPrevented').textContent = this.preventionStats.totalPrevented;
+                        document.getElementById('debugActiveSession').textContent = 
+                            visitSession.isActive ? visitSession.customerName : 'No Session';
+                        document.getElementById('debugHashCount').textContent = this.sessionEventKeys.size;
+                        document.getElementById('debugLastEvent').textContent = 
+                            this.preventionStats.lastPreventedTime ? 
+                            this.preventionStats.lastPreventedTime.toLocaleTimeString() : 'No events';
+                    }
+                }
+            }
+
+            toggleDebug() {
+                this.debugMode = !this.debugMode;
+                const debugPanel = document.getElementById('debugPanel');
+                if (debugPanel) {
+                    if (this.debugMode) {
+                        debugPanel.classList.add('show');
+                        this.updateDebugInfo();
+                    } else {
+                        debugPanel.classList.remove('show');
+                    }
+                }
+            }
+
+            // ENHANCED: Get prevention statistics
+            getStats() {
+                return {
+                    ...this.preventionStats,
+                    activeSessions: this.customerSessionMap.size,
+                    activeKeys: this.sessionEventKeys.size
+                };
+            }
+        }
+
+        // Initialize enhanced anti-duplication system
+        const antiDuplication = new EnhancedAntiDuplication();
+
+        // ===== FIXED VISIT SESSION MANAGEMENT FUNCTIONS =====
+        function showVisitStartModal(customerName, hariJKS) {
+            // ENHANCED: Prevent showing modal if already processing
+            if (visitSession.preventMultipleStarts) {
+                console.warn('🚫 Start modal blocked - already processing start');
+                return;
+            }
+
+            visitSession.pendingCustomer = customerName;
+            visitSession.pendingHari = hariJKS;
+            
+            document.getElementById('startModalCustomerName').textContent = customerName;
+            document.getElementById('startModalCustomerDetails').textContent = `Hari JKS: ${hariJKS}`;
+            document.getElementById('visitStartModal').classList.add('show');
+            
+            console.log(`🏪 Showing start modal for: ${customerName}`);
+        }
+
+        function showVisitEndModal() {
+            if (!visitSession.isActive) {
+                console.warn('🚫 End modal blocked - no active session');
+                return;
+            }
+            
+            const duration = Math.floor((Date.now() - visitSession.startTime) / 1000);
+            const durationText = formatDuration(duration);
+            
+            document.getElementById('endModalCustomerName').textContent = visitSession.customerName;
+            document.getElementById('endModalCustomerDetails').textContent = `Durasi: ${durationText}`;
+            document.getElementById('visitEndModal').classList.add('show');
+            
+            console.log(`🏁 Showing end modal for: ${visitSession.customerName}`);
+        }
+
+        function confirmVisitStart() {
+            const customerName = visitSession.pendingCustomer;
+            const hariJKS = visitSession.pendingHari;
+
+            // ENHANCED: Check anti-duplication before starting
+            if (!antiDuplication.shouldAllowEvent('session_start', customerName)) {
+                console.error('🚫 Session start blocked by anti-duplication system');
+                cancelVisitStart();
+                return;
+            }
+
+            // Prevent multiple starts
+            visitSession.preventMultipleStarts = true;
+            
+            document.getElementById('visitStartModal').classList.remove('show');
+            
+            startVisitSession(customerName, hariJKS);
+            
+            // Clear pending data
+            visitSession.pendingCustomer = null;
+            visitSession.pendingHari = null;
+        }
+
+        function cancelVisitStart() {
+            document.getElementById('visitStartModal').classList.remove('show');
+            
+            // Reset pelanggan selection
+            const pelangganSelect = document.getElementById('pelanggan');
+            if (pelangganSelect) {
+                pelangganSelect.value = '';
+            }
+            
+            // Clear pending data
+            visitSession.pendingCustomer = null;
+            visitSession.pendingHari = null;
+            visitSession.preventMultipleStarts = false;
+            
+            console.log(`❌ Visit start cancelled`);
+        }
+
+        function confirmVisitEnd() {
+            const customerName = visitSession.customerName;
+
+            // ENHANCED: Check anti-duplication before ending
+            if (!antiDuplication.shouldAllowEvent('session_end', customerName)) {
+                console.error('🚫 Session end blocked by anti-duplication system');
+                cancelVisitEnd();
+                return;
+            }
+
+            document.getElementById('visitEndModal').classList.remove('show');
+            endVisitSession();
+        }
+
+        function cancelVisitEnd() {
+            document.getElementById('visitEndModal').classList.remove('show');
+            console.log(`❌ Visit end cancelled, continuing visit`);
+        }
+
+        function startVisitSession(customerName, hariJKS) {
+            // ENHANCED: Generate unique session ID
+            const sessionId = `visit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            const uniqueId = `${sessionId}_${customerName.replace(/\s+/g, '_')}`;
+            
+            // End any existing session first (with anti-duplication check)
+            if (visitSession.isActive && visitSession.customerName !== customerName) {
+                endVisitSession();
+            }
+            
+            visitSession.isActive = true;
+            visitSession.customerName = customerName;
+            visitSession.startTime = Date.now();
+            visitSession.duration = 0;
+            visitSession.sessionId = sessionId;
+            visitSession.uniqueId = uniqueId;
+            visitSession.confirmed = true;
+            
+            // Update UI
+            updateVisitSessionStatus();
+            startSessionTimer();
+            
+            // ENHANCED: Track session start with anti-duplication
+            trackSessionEvent('session_start', {
+                customer_name: customerName,
+                hari_jks: hariJKS,
+                session_id: sessionId,
+                unique_id: uniqueId,
+                start_time: new Date().toISOString()
+            });
+            
+            console.log(`✅ Visit session started: ${customerName} (ID: ${sessionId})`);
+        }
+
+        function endVisitSession() {
+            if (!visitSession.isActive || !visitSession.confirmed) {
+                console.warn('🚫 Cannot end session - not active or not confirmed');
+                return;
+            }
+            
+            const duration = Math.floor((Date.now() - visitSession.startTime) / 1000);
+            const endedCustomer = visitSession.customerName;
+            const sessionId = visitSession.sessionId;
+            
+            // ENHANCED: Track session end with anti-duplication
+            trackSessionEvent('session_end', {
+                customer_name: endedCustomer,
+                session_id: sessionId,
+                duration_seconds: duration,
+                end_time: new Date().toISOString()
+            });
+            
+            // ENHANCED: Clear session data from anti-duplication system
+            antiDuplication.clearSessionData(endedCustomer);
+            
+            // Reset session
+            visitSession.isActive = false;
+            visitSession.customerName = null;
+            visitSession.startTime = null;
+            visitSession.duration = 0;
+            visitSession.sessionId = null;
+            visitSession.uniqueId = null;
+            visitSession.confirmed = false;
+            visitSession.preventMultipleStarts = false;
+            
+            // Update UI
+            updateVisitSessionStatus();
+            stopSessionTimer();
+            
+            console.log(`🏁 Visit session ended: ${endedCustomer}, duration: ${formatDuration(duration)}`);
+        }
+
+        // ENHANCED: Track session events with anti-duplication
+        function trackSessionEvent(eventType, eventData) {
+            const customerName = eventData.customer_name || visitSession.customerName;
+            
+            if (!antiDuplication.shouldAllowEvent(eventType, customerName, eventData)) {
+                return; // Event blocked by anti-duplication
+            }
+
+            // Simulate event tracking (replace with actual Firebase call)
+            console.log(`📊 Session Event Tracked: ${eventType}`, {
+                customer: customerName,
+                session_id: eventData.session_id || visitSession.sessionId,
+                timestamp: new Date().toISOString(),
+                data: eventData
+            });
+
+            // In real implementation, replace this with Firebase tracking:
+            // firebaseTrack(eventType, eventData);
+        }
+
+        function startSessionTimer() {
+            if (sessionTimer) {
+                clearInterval(sessionTimer);
+            }
+            
+            sessionTimer = setInterval(() => {
+                if (visitSession.isActive && visitSession.startTime) {
+                    visitSession.duration = Math.floor((Date.now() - visitSession.startTime) / 1000);
+                    updateSessionTimerDisplay();
+                }
+            }, 1000);
+        }
+
+        function stopSessionTimer() {
+            if (sessionTimer) {
+                clearInterval(sessionTimer);
+                sessionTimer = null;
+            }
+        }
+
+        function updateSessionTimerDisplay() {
+            const timerElement = document.getElementById('sessionTimer');
+            if (timerElement) {
+                timerElement.textContent = formatDuration(visitSession.duration);
+            }
+        }
+
+        function updateVisitSessionStatus() {
+            const statusElement = document.getElementById('visitSessionStatus');
+            const customerElement = document.getElementById('sessionCustomerName');
+            const timerElement = document.getElementById('sessionTimer');
+            
+            if (visitSession.isActive) {
+                statusElement.classList.add('active');
+                customerElement.textContent = `🏪 ${visitSession.customerName}`;
+                timerElement.textContent = formatDuration(visitSession.duration);
+            } else {
+                statusElement.classList.remove('active');
+                customerElement.textContent = 'No Active Visit';
+                timerElement.textContent = '00:00:00';
+            }
+        }
+
+        function formatDuration(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            
+            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        // ===== FILTER HANDLING WITH SESSION PROTECTION =====
+        function handlePelangganSelection() {
+            const hariSelect = document.getElementById('hari');
+            const pelangganSelect = document.getElementById('pelanggan');
+            const customerInfo = document.getElementById('customerInfo');
+            
+            if (pelangganSelect.value && hariSelect.value) {
+                const selectedPelanggan = pelangganSelect.value.trim();
+                const selectedHari = hariSelect.value.trim().toUpperCase();
+                
+                // Find customer record to get Channel Group and Project
+                const pelangganRecord = pelangganData.find(item => {
+                    const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
+                    const itemHari = (item.Hari_Kunjungan || '').toString().trim().toUpperCase();
+                    const itemPelanggan = (item.Nama_Pelanggan || '').toString().trim();
+                    
+                    return itemSalesmanId === currentSalesmanId &&
+                           itemHari === selectedHari &&
+                           itemPelanggan.toLowerCase() === selectedPelanggan.toLowerCase();
+                });
+
+                // Get customer type from d.details.json using Kode_Pelanggan
+                let customerTypeText = `${selectedHari} Customer`;
+                if (pelangganRecord && pelangganRecord.Kode_Pelanggan) {
+                    const detailRecord = detailsData.find(item => 
+                        item.Kode_Pelanggan === pelangganRecord.Kode_Pelanggan
+                    );
+                    
+                    if (detailRecord) {
+                        const channelGroup = detailRecord['Channel Group'] || 'Unknown';
+                        const project = detailRecord.Project || 'Unknown';
+                        customerTypeText = `${channelGroup} - ${project}`;
+                    }
+                }
+                
+                // Show customer info
+                customerInfo.style.display = 'block';
+                document.getElementById('customerType').textContent = customerTypeText;
+                
+                let masterCoordinates = null;
+                if (pelangganRecord && pelangganRecord.Kode_Pelanggan) {
+                    masterCoordinates = getCustomerCoordinates(selectedPelanggan, pelangganRecord.Kode_Pelanggan);
+                } else {
+                    // Generate demo coordinates
+                    masterCoordinates = getCustomerCoordinates(selectedPelanggan, null);
+                }
+                
+                // Track customer selection with coordinates via Firebase
+                if (visitAnalytics) {
+                    visitAnalytics.trackCustomerSelection(selectedPelanggan, selectedHari, masterCoordinates);
+                }
+                
+                // MOST IMPORTANT: Populate the table regardless of location
+                populateVisitTable(selectedPelanggan);
+                
+                console.log('👥 Customer selected: ' + selectedPelanggan, {
+                    coordinates: masterCoordinates,
+                    channelGroup: pelangganRecord?.['Channel Group'],
+                    project: pelangganRecord?.Project
+                });
+                
+            } else {
+                // Hide customer info and clear table
+                customerInfo.style.display = 'none';
+                populateVisitTable(null);
+                
+                if (visitAnalytics && !pelangganSelect.value) {
+                    visitAnalytics.endCustomerTracking();
+                }
+            }
+        }
+
+        function updatePelangganOptions() {
+            const hariSelect = document.getElementById('hari');
+            const pelangganSelect = document.getElementById('pelanggan');
+            
+            pelangganSelect.innerHTML = '<option value="">🏪 Pilih Pelanggan</option>';
+            
+            // ENHANCED: If session active and hari changed, ask to end session
+            if (visitSession.isActive) {
+                showVisitEndModal();
+                return;
+            }
+            
+            // Simulate loading pelanggan options (replace with actual data loading)
+            if (hariSelect.value) {
+                // Mock data for demo
+                const mockCustomers = ['Customer A', 'Customer B', 'Customer C'];
+                mockCustomers.forEach(customer => {
+                    const option = document.createElement('option');
+                    option.value = customer;
+                    option.textContent = customer;
+                    pelangganSelect.appendChild(option);
+                });
+            }
+        }
+
+        // ===== UI FUNCTIONS =====
+        function showLoading(show) {
+            document.getElementById('loadingSpinner').style.display = show ? 'flex' : 'none';
+        }
+
+        function showMainContent(show) {
+            document.getElementById('mainContent').style.display = show ? 'block' : 'none';
+        }
+
+        function toggleDebugPanel() {
+            antiDuplication.toggleDebug();
+        }
+
+        // ===== INITIALIZATION =====
+        function initializeData() {
+            showLoading(true);
+            
+            // Simulate data loading
+            setTimeout(() => {
+                // Mock hari data
+                const hariSelect = document.getElementById('hari');
+                ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'].forEach(hari => {
+                    const option = document.createElement('option');
+                    option.value = hari;
+                    option.textContent = hari;
+                    hariSelect.appendChild(option);
+                });
+                
+                showLoading(false);
+                showMainContent(true);
+                
+                console.log('✅ Enhanced Visit System Ready');
+                console.log('🛡️ Anti-duplication system active');
+                console.log('📊 Session management with modal confirmations');
+                console.log('🔒 Single customer session tracking');
+            }, 1000);
+        }
+
+        // ===== EVENT LISTENERS =====
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('hari').addEventListener('change', updatePelangganOptions);
+            document.getElementById('pelanggan').addEventListener('change', handlePelangganSelection);
+
+            // Initialize session status
+            updateVisitSessionStatus();
+            
+            // Initialize data
+            initializeData();
+        });
+
+        // ===== NAVIGATION FUNCTIONS =====
+        function goHome() { 
+            window.location.href = 'dashboard.html'; 
+        }
+        
+        function showVisitOutlet() { 
+            window.location.href = 'visit.html';
+        }
+        
+        function showIncentive() {
+            alert('💰 Incentive feature coming soon');
+        }
+        
+        function showProfile() {
+            alert('👤 Profile feature coming soon');
+        }
+
+        console.log('✅ Enhanced Visit System with Fixed Anti-Duplication loaded');
+        console.log('🛡️ Key improvements:');
+        console.log('   - Session-based event tracking');
+        console.log('   - Unique session IDs');
+        console.log('   - Customer session mapping');
+        console.log('   - Enhanced event filtering');
+        console.log('   - Debug panel for monitoring');
+        console.log('   - Prevention of multiple starts');
+        console.log('   - Proper session cleanup');
+    </script>
+</body>
+</html>

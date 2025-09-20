@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Insentif Sales</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-100 font-sans p-4 max-w-sm mx-auto">
+    <!-- Loading State -->
+    <div class="loading-spinner" id="loadingSpinner" style="display: flex; justify-content: center; align-items: center; height: 200px; flex-direction: column;">
+      <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #0891b2; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 16px;"></div>
+      <div style="color: #64748b;">Loading data insentif...</div>
+    </div>
+
+    <!-- Error State -->
+    <div class="error-message" id="errorMessage" style="display: none; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #ef4444; padding: 16px; border-radius: 12px; margin: 20px 0; text-align: center;">
+      <h3>📡 Error Loading Data</h3>
+      <p>Tidak dapat memuat data insentif. Silakan coba lagi.</p>
+      <button onclick="loadIncentiveData()" style="margin-top: 10px; padding: 8px 16px; background: #0891b2; color: white; border: none; border-radius: 8px; cursor: pointer;">Retry</button>
+    </div>
+
+    <!-- Main Content -->
+    <div id="mainContent" style="display: none;">
+      <!-- Header dengan Foto dan Info Salesman -->
+      <header class="flex items-center bg-cyan-700 rounded-xl shadow p-4 mb-4">
+        <div class="flex-shrink-0">
+          <img id="salesmanPhoto" src="https://cdn-icons-png.flaticon.com/512/3048/3048122.png" alt="Foto Salesman" class="w-16 h-16 rounded-full border-4 border-white shadow-lg object-cover" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3048/3048122.png'" />
+        </div>
+        <div class="flex-1 ml-4">
+          <h1 class="text-lg font-bold text-white" id="salesmanName">Nama Salesman</h1>
+          <p class="text-sm font-medium text-white opacity-90" id="salesmanType">Tipe Salesman</p>
+        </div>
+      </header>
+
+      <!-- 🆕 Tab Periode (hanya tampil jika ada lebih dari 1 periode) -->
+      <section class="mb-4" id="periodTabsSection">
+        <div class="bg-white rounded-xl shadow p-1">
+          <div class="flex overflow-x-auto" id="periodTabs">
+            <!-- Tabs akan diisi secara dinamis -->
+          </div>
+        </div>
+        <div class="mt-2 text-center">
+          <p class="text-xs text-gray-500" id="periodInfo">Pilih periode untuk melihat data insentif</p>
+        </div>
+      </section>
+
+      <!-- 🆕 Periode Comparison Section (jika ada lebih dari 1 periode) -->
+      <section class="mb-4" id="comparisonSection" style="display: none;">
+        <div class="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl p-4 border border-blue-200">
+          <h3 class="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+            <span>📊</span> Perbandingan dengan Periode Sebelumnya
+          </h3>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="text-center">
+              <p class="text-xs text-gray-600" id="prevPeriodLabel">Periode Sebelumnya</p>
+              <p class="text-lg font-bold text-blue-600" id="prevPeriodTotal">Rp 0</p>
+            </div>
+            <div class="text-center">
+              <p class="text-xs text-gray-600">Selisih</p>
+              <p class="text-lg font-bold" id="periodDifference">Rp 0</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Ringkasan Total: 2 Kolom Grid -->
+      <section class="grid grid-cols-2 gap-3 mb-4">
+        <div class="bg-white shadow rounded-xl p-3 flex flex-col">
+          <p class="text-sm text-yellow-600 font-medium flex items-center gap-1">
+            <span>🏅</span> Insentif Sales
+          </p>
+          <p class="text-green-600 font-bold text-lg" id="insentifSalesTotal">Rp 0</p>
+        </div>
+
+        <div class="bg-white shadow rounded-xl p-3 flex flex-col">
+          <p class="text-sm text-gray-700 font-medium flex items-center gap-1">
+            <span>⚙️</span> Insentif Proses
+          </p>
+          <p class="text-blue-600 font-bold text-lg" id="insentifProsesTotal">Rp 0</p>
+        </div>
+
+        <div class="bg-white shadow rounded-xl p-3 flex flex-col">
+          <p class="text-sm text-red-600 font-medium flex items-center gap-1">
+            <span>⚠️</span> Penalti AR
+          </p>
+          <p class="text-red-600 font-bold text-lg" id="penaltiARTotal">Rp 0</p>
+        </div>
+
+        <div class="bg-white shadow rounded-xl p-3 flex flex-col">
+          <p class="text-sm text-indigo-700 font-medium flex items-center gap-1">
+            <span>📊</span> Total Bersih
+          </p>
+          <p class="text-indigo-700 font-bold text-lg" id="totalBersih">Rp 0</p>
+        </div>
+      </section>
+
+      <!-- Insentif Sales -->
+      <section class="mb-4">
+        <h2 class="text-sm font-semibold text-gray-700 mb-2">🛍️ Insentif Sales</h2>
+        <div id="insentifSalesDetail">
+          <!-- Will be populated dynamically based on salesman type -->
+        </div>
+      </section>
+
+      <!-- Insentif Proses -->
+      <section class="mb-4">
+        <h2 class="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1">
+          ⚙️ Insentif Proses
+        </h2>
+        <div id="insentifProsesDetail">
+          <!-- Will be populated dynamically -->
+        </div>
+      </section>
+
+      <!-- Penalti AR -->
+      <section class="mb-6" id="penaltiARSection" style="display: none;">
+        <div class="bg-red-100 border border-red-300 p-3 rounded-xl">
+          <p class="text-xs font-semibold text-red-700" id="penaltiARText">⚠️ AR saat ini hanya 87%</p>
+          <p class="text-xs text-red-700" id="penaltiARDesc">Penalti dikenakan sebesar Rp 150.000</p>
+        </div>
+      </section>
+
+      <!-- Back Button -->
+      <section class="mb-4">
+        <button onclick="goBack()" class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-medium py-3 px-4 rounded-xl transition-colors duration-200 flex items-center justify-center gap-2">
+          <span>←</span> Kembali ke Dashboard
+        </button>
+      </section>
+    </div>
+
+    <style>
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      
+      /* 🆕 Tab Styles */
+      .period-tab {
+        transition: all 0.3s ease;
+        white-space: nowrap;
+      }
+      
+      .period-tab.active {
+        background: linear-gradient(135deg, #0891b2, #06b6d4);
+        color: white;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(8, 145, 178, 0.3);
+      }
+      
+      .period-tab:not(.active) {
+        background: #f8fafc;
+        color: #64748b;
+      }
+      
+      .period-tab:not(.active):hover {
+        background: #e2e8f0;
+        color: #475569;
+      }
+    </style>
+
+    <script>
+      // Global variables
+      let insentifData = [];
+      let currentSalesmanId = null;
+      let availablePeriods = [];
+      let currentPeriod = null;
+      let salesmanDataByPeriod = {};
+
+      // Get URL parameter
+      function getUrlParameter(name) {
+        name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+        var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+        var results = regex.exec(location.search);
+        return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+      }
+
+      // Format currency to Indonesian Rupiah
+      function formatCurrencyIDR(value) {
+        try {
+          const val = parseFloat(value) || 0;
+          return new Intl.NumberFormat('id-ID', {
+            style: 'currency',
+            currency: 'IDR',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+          }).format(val);
+        } catch {
+          return 'Rp 0';
+        }
+      }
+
+      // Get salesman type category
+      function getSalesmanTypeCategory(salesmanType) {
+        if (!salesmanType) return 'unknown';
+        
+        const type = salesmanType.toLowerCase();
+        if (type.includes('retailer bima')) return 'bima';
+        if (type.includes('mix yudistira')) return 'yudistira';
+        if (type.includes('retailer arjuna')) return 'arjuna';
+        return 'unknown';
+      }
+
+      // 🆕 Parse dan sort periode
+      function parsePeriods() {
+        const periodsSet = new Set();
+        
+        insentifData.forEach(item => {
+          if (item.Periode) {
+            periodsSet.add(item.Periode);
+          }
+        });
+        
+        // 🔧 FALLBACK: Jika tidak ada periode dalam data, buat periode default
+        if (periodsSet.size === 0) {
+          console.warn('⚠️ No "Periode" column found in data, using default period');
+          const defaultPeriod = new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+          periodsSet.add(defaultPeriod);
+          
+          // Add default period to all data items
+          insentifData.forEach(item => {
+            if (!item.Periode) {
+              item.Periode = defaultPeriod;
+            }
+          });
+        }
+        
+        availablePeriods = Array.from(periodsSet).sort((a, b) => {
+          // Sort dari periode terlama ke terbaru
+          // Assuming format "Bulan YYYY" or "MMM YYYY"
+          const dateA = new Date(convertToDate(a));
+          const dateB = new Date(convertToDate(b));
+          return dateA - dateB;
+        });
+        
+        console.log(`📅 Available periods: ${availablePeriods.join(', ')}`);
+        
+        // Set periode default ke yang terbaru
+        if (availablePeriods.length > 0) {
+          currentPeriod = availablePeriods[availablePeriods.length - 1];
+        }
+      }
+
+      // 🆕 Convert periode string ke date untuk sorting
+      function convertToDate(periode) {
+        try {
+          // Handle format "Juli 2025" atau "Aug 2025"
+          const monthNames = {
+            'jan': 'January', 'januari': 'January',
+            'feb': 'February', 'februari': 'February', 
+            'mar': 'March', 'maret': 'March',
+            'apr': 'April', 'april': 'April',
+            'may': 'May', 'mei': 'May',
+            'jun': 'June', 'juni': 'June',
+            'jul': 'July', 'juli': 'July',
+            'aug': 'August', 'ags': 'August', 'agustus': 'August',
+            'sep': 'September', 'sept': 'September', 'september': 'September',
+            'oct': 'October', 'okt': 'October', 'oktober': 'October',
+            'nov': 'November', 'november': 'November',
+            'dec': 'December', 'des': 'December', 'desember': 'December'
+          };
+          
+          const parts = periode.toLowerCase().split(' ');
+          if (parts.length === 2) {
+            const monthKey = parts[0];
+            const year = parts[1];
+            const englishMonth = monthNames[monthKey] || parts[0];
+            return `${englishMonth} 1, ${year}`;
+          }
+          
+          return periode;
+        } catch (error) {
+          console.error('Error converting date:', error);
+          return periode;
+        }
+      }
+
+      // 🆕 Group data by periode
+      function groupDataByPeriod() {
+        salesmanDataByPeriod = {};
+        
+        insentifData.forEach(item => {
+          const employeeId = item.szEmployeeId?.toString();
+          const periode = item.Periode;
+          
+          if (employeeId && periode) {
+            if (!salesmanDataByPeriod[employeeId]) {
+              salesmanDataByPeriod[employeeId] = {};
+            }
+            salesmanDataByPeriod[employeeId][periode] = item;
+          }
+        });
+        
+        console.log(`📊 Data grouped by period:`, salesmanDataByPeriod);
+        console.log(`🔍 Available employee IDs in grouped data:`, Object.keys(salesmanDataByPeriod));
+      }
+
+      // 🆕 Create period tabs
+      function createPeriodTabs() {
+        const tabsContainer = document.getElementById('periodTabs');
+        const tabsSection = document.getElementById('periodTabsSection');
+        
+        // 🔧 Hide tabs section if only one period
+        if (availablePeriods.length <= 1) {
+          tabsSection.style.display = 'none';
+          console.log('📍 Only one period available, hiding tabs section');
+          return;
+        }
+        
+        tabsSection.style.display = 'block';
+        tabsContainer.innerHTML = '';
+        
+        availablePeriods.forEach((periode, index) => {
+          const tab = document.createElement('button');
+          tab.className = `period-tab px-4 py-2 rounded-lg font-medium text-sm mx-1 flex-shrink-0 ${
+            periode === currentPeriod ? 'active' : ''
+          }`;
+          tab.textContent = periode;
+          tab.onclick = () => switchPeriod(periode);
+          
+          tabsContainer.appendChild(tab);
+        });
+        
+        // Update info text
+        document.getElementById('periodInfo').textContent = 
+          availablePeriods.length > 1 
+            ? `${availablePeriods.length} periode tersedia - Pilih untuk melihat data`
+            : 'Data tersedia untuk 1 periode';
+      }
+
+      // 🆕 Switch periode
+      function switchPeriod(periode) {
+        if (currentPeriod === periode) return;
+        
+        console.log(`🔄 Switching from ${currentPeriod} to ${periode}`);
+        
+        currentPeriod = periode;
+        
+        // Update active tab
+        document.querySelectorAll('.period-tab').forEach(tab => {
+          tab.classList.remove('active');
+          if (tab.textContent === periode) {
+            tab.classList.add('active');
+          }
+        });
+        
+        // Load data untuk periode yang dipilih
+        loadPeriodData();
+      }
+
+      // 🆕 Load data untuk periode tertentu
+      function loadPeriodData() {
+        const salesmanData = salesmanDataByPeriod[currentSalesmanId];
+        
+        if (!salesmanData || !salesmanData[currentPeriod]) {
+          console.error(`❌ No data for employee ${currentSalesmanId} in period ${currentPeriod}`);
+          showNoDataMessage();
+          return;
+        }
+        
+        const incentiveData = salesmanData[currentPeriod];
+        console.log(`✅ Loading data for ${currentPeriod}:`, incentiveData);
+        
+        // Update UI dengan data periode yang dipilih
+        updateSalesmanProfile(incentiveData);
+        updateSummaryCards(incentiveData);
+        updateIncentiveSalesDetail(incentiveData);
+        updateIncentiveProcessDetail(incentiveData);
+        updatePenaltySection(incentiveData);
+        updatePeriodComparison();
+      }
+
+      // 🆕 Update perbandingan periode
+      function updatePeriodComparison() {
+        const comparisonSection = document.getElementById('comparisonSection');
+        
+        // 🔧 Hide comparison if less than 2 periods
+        if (availablePeriods.length < 2) {
+          comparisonSection.style.display = 'none';
+          console.log('📍 Less than 2 periods available, hiding comparison section');
+          return;
+        }
+        
+        const currentIndex = availablePeriods.indexOf(currentPeriod);
+        const prevIndex = currentIndex - 1;
+        
+        if (prevIndex < 0) {
+          comparisonSection.style.display = 'none';
+          console.log('📍 No previous period for comparison');
+          return;
+        }
+        
+        const prevPeriod = availablePeriods[prevIndex];
+        const salesmanData = salesmanDataByPeriod[currentSalesmanId];
+        
+        const currentData = salesmanData[currentPeriod];
+        const prevData = salesmanData[prevPeriod];
+        
+        if (!currentData || !prevData) {
+          comparisonSection.style.display = 'none';
+          console.log('📍 Missing data for period comparison');
+          return;
+        }
+        
+        const currentTotal = currentData.Total_Insentif || 0;
+        const prevTotal = prevData.Total_Insentif || 0;
+        const difference = currentTotal - prevTotal;
+        
+        document.getElementById('prevPeriodLabel').textContent = prevPeriod;
+        document.getElementById('prevPeriodTotal').textContent = formatCurrencyIDR(prevTotal);
+        
+        const diffElement = document.getElementById('periodDifference');
+        diffElement.textContent = formatCurrencyIDR(Math.abs(difference));
+        
+        if (difference > 0) {
+          diffElement.className = 'text-lg font-bold text-green-600';
+          diffElement.textContent = '+' + formatCurrencyIDR(difference);
+        } else if (difference < 0) {
+          diffElement.className = 'text-lg font-bold text-red-600';
+          diffElement.textContent = formatCurrencyIDR(difference);
+        } else {
+          diffElement.className = 'text-lg font-bold text-gray-600';
+          diffElement.textContent = 'Sama';
+        }
+        
+        comparisonSection.style.display = 'block';
+        console.log(`📊 Period comparison: ${prevPeriod} (${prevTotal}) vs ${currentPeriod} (${currentTotal}) = ${difference}`);
+      }
+
+      // 🆕 Show no data message
+      function showNoDataMessage() {
+        document.getElementById('insentifSalesTotal').textContent = 'Rp 0';
+        document.getElementById('insentifProsesTotal').textContent = 'Rp 0';
+        document.getElementById('penaltiARTotal').textContent = 'Rp 0';
+        document.getElementById('totalBersih').textContent = 'Rp 0';
+        
+        document.getElementById('insentifSalesDetail').innerHTML = `
+          <div class="bg-gray-100 p-4 rounded-xl text-center">
+            <p class="text-gray-500 text-sm">Data tidak tersedia untuk periode ${currentPeriod}</p>
+          </div>
+        `;
+        
+        document.getElementById('insentifProsesDetail').innerHTML = `
+          <div class="bg-gray-100 p-4 rounded-xl text-center">
+            <p class="text-gray-500 text-sm">Data tidak tersedia untuk periode ${currentPeriod}</p>
+          </div>
+        `;
+      }
+
+      // Load JSON data from file
+      async function loadJSONData() {
+        try {
+          console.log('📂 Fetching data/d.insentif.json...');
+          const response = await fetch('data/d.insentif.json');
+          if (!response.ok) {
+            throw new Error(`Failed to load incentive data: ${response.status} ${response.statusText}`);
+          }
+          const text = await response.text();
+          
+          if (!text.trim()) {
+            throw new Error('Incentive data file is empty');
+          }
+          
+          // Parse JSONL format (each line is a separate JSON object)
+          insentifData = text.split('\n')
+            .filter(line => line.trim())
+            .map(line => {
+              try {
+                return JSON.parse(line);
+              } catch (parseError) {
+                console.error('❌ Error parsing line:', line, parseError);
+                return null;
+              }
+            })
+            .filter(item => item !== null);
+
+          console.log(`✅ Loaded ${insentifData.length} incentive records`);
+          console.log('📊 Sample data:', insentifData[0]);
+          
+          // Debug: Show all unique employee IDs in raw data
+          const uniqueEmployeeIds = [...new Set(insentifData.map(item => item.szEmployeeId?.toString()))];
+          console.log(`👥 Unique employee IDs in data: [${uniqueEmployeeIds.join(', ')}]`);
+          
+          return true;
+        } catch (error) {
+          console.error('❌ Error loading JSON data:', error);
+          throw error;
+        }
+      }
+
+      // Get salesman incentive data for current period
+      function getSalesmanIncentiveData(employeeId) {
+        const salesmanData = salesmanDataByPeriod[employeeId];
+        return salesmanData ? salesmanData[currentPeriod] : null;
+      }
+
+      // Update salesman profile with photo from photos folder
+      function updateSalesmanProfile(incentiveData) {
+        if (incentiveData) {
+          // Handle names using correct field names from JSON
+          const salesmanName = incentiveData.szname && incentiveData.szname.trim() !== '' 
+            ? incentiveData.szname 
+            : `Salesman ${incentiveData.szEmployeeId}`;
+          
+          const salesmanType = incentiveData["Tipe Salesman"] && incentiveData["Tipe Salesman"].trim() !== '' 
+            ? incentiveData["Tipe Salesman"] 
+            : 'Sales';
+          
+          document.getElementById('salesmanName').textContent = salesmanName;
+          document.getElementById('salesmanType').textContent = salesmanType;
+          
+          // Using szEmployeeId same as in salesman-detail.html
+          const szEmployeeId = incentiveData.szEmployeeId;
+          
+          console.log(`📊 Data salesman:`, {
+            name: salesmanName,
+            szEmployeeId: szEmployeeId,
+            type: salesmanType
+          });
+          
+          if (szEmployeeId) {
+            // Same as salesman-detail.html
+            const photoPath = `photos/${szEmployeeId}.jpg`;
+            const avatarElement = document.getElementById('salesmanPhoto');
+            
+            console.log(`📸 Loading photo: ${photoPath} for ${salesmanName}`);
+            
+            // Test if photo exists
+            const img = new Image();
+            img.onload = function() {
+              avatarElement.src = photoPath;
+              avatarElement.alt = `Foto ${salesmanName}`;
+              console.log(`✅ Photo loaded successfully: ${photoPath}`);
+            };
+            
+            img.onerror = function() {
+              console.log(`⚠️ Photo not found: ${photoPath}, using default`);
+              avatarElement.src = 'https://cdn-icons-png.flaticon.com/512/3048/3048122.png';
+              avatarElement.alt = `Default foto untuk ${salesmanName}`;
+            };
+            
+            img.src = photoPath;
+            
+          } else {
+            console.log(`⚠️ No szEmployeeId found for ${salesmanName}, using default photo`);
+            const photoElement = document.getElementById('salesmanPhoto');
+            photoElement.src = 'https://cdn-icons-png.flaticon.com/512/3048/3048122.png';
+            photoElement.alt = `Default foto untuk ${salesmanName}`;
+          }
+          
+          console.log(`✅ Profile updated - Name: ${salesmanName}, Type: ${salesmanType}, Employee ID: ${szEmployeeId}`);
+        }
+      }
+
+      // Show Profile - Redirect to profile page
+      function showProfile() {
+        if (currentSalesmanId) {
+          console.log(`👤 Opening profile for salesman: ${currentSalesmanId}`);
+          window.location.href = `profile.html?id=${currentSalesmanId}`;
+        } else {
+          // Fallback to session user if no currentSalesmanId
+          const currentUser = sessionStorage.getItem('currentUser');
+          if (currentUser) {
+            console.log(`👤 Opening profile for session user: ${currentUser}`);
+            window.location.href = `profile.html?id=${currentUser}`;
+          } else {
+            alert('❌ Error: No user ID available for profile data');
+          }
+        }
+      }
+
+      // Update summary cards
+      function updateSummaryCards(incentiveData) {
+        if (!incentiveData) return;
+
+        // Use actual data fields from new JSON structure
+        const insentifSales = incentiveData.Insentif_sales || 0;
+        const insentifProses = incentiveData.Insentif_Proses || 0;
+        const penaltiAR = incentiveData["AR Coll"] || 0; // AR Coll might be penalty
+        const totalBersih = incentiveData.Total_Insentif || (insentifSales + insentifProses - Math.abs(penaltiAR));
+
+        // Update UI
+        document.getElementById('insentifSalesTotal').textContent = formatCurrencyIDR(insentifSales);
+        document.getElementById('insentifProsesTotal').textContent = formatCurrencyIDR(insentifProses);
+        document.getElementById('penaltiARTotal').textContent = formatCurrencyIDR(penaltiAR);
+        document.getElementById('totalBersih').textContent = formatCurrencyIDR(totalBersih);
+        
+        // Debug logging
+        console.log(`✅ Summary updated - Sales: ${insentifSales}, Proses: ${insentifProses}, Penalti: ${penaltiAR}, Total: ${totalBersih}`);
+      }
+
+      // Update incentive sales detail based on salesman type
+      function updateIncentiveSalesDetail(incentiveData) {
+        if (!incentiveData) return;
+
+        const salesmanType = incentiveData["Tipe Salesman"] || '';
+        const typeCategory = getSalesmanTypeCategory(salesmanType);
+        
+        console.log(`🎯 Updating sales detail for type: ${salesmanType} (category: ${typeCategory})`);
+
+        let html = '';
+        
+        if (typeCategory === 'bima') {
+          // Sales Representative Retailer Bima: GPPJ, HGJ, OTHERS, MBR
+          // GEN tidak ada (silver with dash)
+          html = `
+            <div class="grid grid-cols-2 gap-3">
+              <div class="bg-green-100 p-4 rounded-xl shadow">
+                <p class="text-sm font-medium text-gray-700">GPPJ</p>
+                <p class="text-green-700 font-bold text-lg">${formatCurrencyIDR(incentiveData.GPPJ || 0)}</p>
+              </div>
+              <div class="bg-blue-100 p-4 rounded-xl shadow">
+                <p class="text-sm font-medium text-gray-700">HGJ</p>
+                <p class="text-blue-700 font-bold text-lg">${formatCurrencyIDR(incentiveData.HGJ || 0)}</p>
+              </div>
+              <div class="bg-yellow-100 p-4 rounded-xl shadow">
+                <p class="text-sm font-medium text-gray-700">OTHERS</p>
+                <p class="text-yellow-700 font-bold text-lg">${formatCurrencyIDR(incentiveData.OTHERS || 0)}</p>
+              </div>
+              <div class="bg-orange-100 p-4 rounded-xl shadow">
+                <p class="text-sm font-medium text-gray-700">MBR</p>
+                <p class="text-orange-700 font-bold text-lg">${formatCurrencyIDR(incentiveData.MBR || 0)}</p>
+              </div>
+            </div>
+          `;
+        } else if (typeCategory === 'yudistira') {
+          // Sales Representative Mix Yudistira: GPPJ & GEN, GBS & OTHERS (2 big metrics)
+          const gppjGen = incentiveData["GPPJ & GEN"] || 0;
+          const gbsOthers = incentiveData["GBS & OTHERS"] || 0;
+          
+          html = `
+            <div class="grid grid-cols-1 gap-4">
+              <div class="bg-green-100 p-6 rounded-xl shadow">
+                <p class="text-lg font-medium text-gray-700 mb-2">GPPJ & GEN</p>
+                <p class="text-green-700 font-bold text-2xl">${formatCurrencyIDR(gppjGen)}</p>
+              </div>
+              <div class="bg-yellow-100 p-6 rounded-xl shadow">
+                <p class="text-lg font-medium text-gray-700 mb-2">GBS & OTHERS</p>
+                <p class="text-yellow-700 font-bold text-2xl">${formatCurrencyIDR(gbsOthers)}</p>
+              </div>
+            </div>
+          `;
+        } else if (typeCategory === 'arjuna') {
+          // Sales Representative Retailer Arjuna: GPPJ & GEN only (1 big metric)
+          const gppjGen = incentiveData["GPPJ & GEN"] || 0;
+          
+          html = `
+            <div class="grid grid-cols-1 gap-4">
+              <div class="bg-green-100 p-8 rounded-xl shadow text-center">
+                <p class="text-xl font-medium text-gray-700 mb-3">GPPJ & GEN</p>
+                <p class="text-green-700 font-bold text-3xl">${formatCurrencyIDR(gppjGen)}</p>
+              </div>
+            </div>
+          `;
+        } else {
+          // Default/Unknown type: Show all available data
+          const gppjGenTotal = incentiveData["GPPJ & GEN"] || 0;
+          const gppjValue = incentiveData.GPPJ || 0;
+          const genValue = gppjGenTotal - gppjValue;
+
+          const salesDetails = [
+            { name: 'GPPJ', value: incentiveData.GPPJ || 0, color: 'green' },
+            { name: 'GEN', value: genValue, color: 'green' },
+            { name: 'GBS', value: incentiveData.GBS || 0, color: 'yellow' },
+            { name: 'OTHERS', value: incentiveData.OTHERS || 0, color: 'yellow' },
+            { name: 'MBR', value: incentiveData.MBR || 0, color: 'blue' },
+            { name: 'HGJ', value: incentiveData.HGJ || 0, color: 'blue' }
+          ];
+
+          html = '<div class="grid grid-cols-2 gap-2">';
+          salesDetails.forEach(item => {
+            html += `
+              <div class="bg-${item.color}-100 p-3 rounded-xl shadow">
+                <p class="text-xs font-medium">${item.name}</p>
+                <p class="text-${item.color}-700 font-bold text-sm">${formatCurrencyIDR(item.value)}</p>
+              </div>
+            `;
+          });
+          html += '</div>';
+        }
+
+        document.getElementById('insentifSalesDetail').innerHTML = html;
+        console.log(`✅ Sales detail updated for ${typeCategory} type`);
+      }
+
+      // Update incentive process detail based on salesman type (with POM)
+      function updateIncentiveProcessDetail(incentiveData) {
+        if (!incentiveData) return;
+
+        const salesmanType = incentiveData["Tipe Salesman"] || '';
+        const typeCategory = getSalesmanTypeCategory(salesmanType);
+        
+        console.log(`⚙️ Updating process detail for type: ${salesmanType} (category: ${typeCategory})`);
+
+        let html = '';
+        
+        if (typeCategory === 'bima') {
+          // Bima: Avg SKU and POM available, GP not available (silver with dash)
+          html = `
+            <div class="grid grid-cols-3 gap-2">
+              <div class="bg-blue-100 p-3 shadow rounded-xl">
+                <p class="text-xs font-medium flex items-center gap-1">
+                  <span>📊</span> Avg SKU
+                </p>
+                <p class="text-blue-700 font-bold text-sm">${formatCurrencyIDR(incentiveData["Avg SKU"] || 0)}</p>
+              </div>
+              <div class="bg-gray-200 p-3 shadow rounded-xl">
+                <p class="text-xs font-medium flex items-center gap-1 text-gray-500">
+                  <span>📈</span> GP
+                </p>
+                <p class="text-gray-500 font-bold text-sm">-</p>
+              </div>
+              <div class="bg-purple-100 p-3 shadow rounded-xl">
+                <p class="text-xs font-medium flex items-center gap-1">
+                  <span>🎯</span> POM
+                </p>
+                <p class="text-purple-700 font-bold text-sm">${formatCurrencyIDR(incentiveData.POM || 0)}</p>
+              </div>
+            </div>
+          `;
+        } else {
+          // Other types: Show available process incentives including POM
+          const processDetails = [
+            { name: 'Avg SKU', value: incentiveData["Avg SKU"] || 0, icon: '📊', color: 'blue' },
+            { name: 'GP', value: incentiveData.GP || 0, icon: '📈', color: 'green' },
+            { name: 'POM', value: incentiveData.POM || 0, icon: '🎯', color: 'purple' }
+          ];
+
+          // Filter out zero values for non-Bima types
+          const availableDetails = processDetails.filter(item => item.value > 0);
+          
+          if (availableDetails.length > 0) {
+            // Adjust grid columns based on number of available details
+            const gridCols = Math.min(availableDetails.length, 3);
+            html = `<div class="grid grid-cols-${gridCols} gap-3">`;
+            
+            availableDetails.forEach(item => {
+              html += `
+                <div class="bg-${item.color}-100 p-3 shadow rounded-xl">
+                  <p class="text-xs font-medium flex items-center gap-1">
+                    <span>${item.icon}</span> ${item.name}
+                  </p>
+                  <p class="text-${item.color}-700 font-bold text-sm">${formatCurrencyIDR(item.value)}</p>
+                </div>
+              `;
+            });
+            html += '</div>';
+          } else {
+            html = `
+              <div class="bg-gray-100 p-4 rounded-xl text-center">
+                <p class="text-gray-500 text-sm">Tidak ada insentif proses</p>
+              </div>
+            `;
+          }
+        }
+
+        document.getElementById('insentifProsesDetail').innerHTML = html;
+        console.log(`✅ Process detail updated for ${typeCategory} type with POM incentive`);
+      }
+
+      // Update penalty AR section
+      function updatePenaltySection(incentiveData) {
+        const penaltiSection = document.getElementById('penaltiARSection');
+        
+        if (!incentiveData) {
+          console.log('⚠️ No incentive data for penalty section');
+          penaltiSection.style.display = 'none';
+          return;
+        }
+        
+        const penaltiAR = incentiveData["AR Coll"] || 0;
+        
+        console.log(`🔍 Penalty check - AR Coll: ${penaltiAR}`);
+        
+        // Show penalty section if there's AR collection penalty
+        if (penaltiAR != 0) {
+          document.getElementById('penaltiARText').textContent = `⚠️ AR Collection Issue Detected`;
+          document.getElementById('penaltiARDesc').textContent = 
+            penaltiAR < 0 
+              ? `Penalti dikenakan sebesar ${formatCurrencyIDR(Math.abs(penaltiAR))}`
+              : `Adjustment sebesar ${formatCurrencyIDR(penaltiAR)}`;
+          penaltiSection.style.display = 'block';
+          console.log(`✅ Penalty section shown - AR Coll: ${formatCurrencyIDR(penaltiAR)}`);
+        } else {
+          penaltiSection.style.display = 'none';
+          console.log(`✅ No AR penalty - AR Coll: ${penaltiAR} (Good performance)`);
+        }
+      }
+
+      // Load incentive data
+      async function loadIncentiveData() {
+        try {
+          showLoading(true);
+          hideError();
+
+          console.log('🔄 Loading incentive data...');
+          
+          // Get salesman ID from URL
+          currentSalesmanId = getUrlParameter('id');
+          
+          if (!currentSalesmanId) {
+            throw new Error('No salesman ID specified');
+          }
+
+          // 🔧 PERBAIKAN: Ensure currentSalesmanId is string for consistency
+          currentSalesmanId = currentSalesmanId.toString();
+          console.log(`📍 Loading incentive data for salesman ID: ${currentSalesmanId} (type: ${typeof currentSalesmanId})`);
+          
+          // Load JSON data
+          await loadJSONData();
+          
+          // 🆕 Process periods and group data
+          parsePeriods();
+          groupDataByPeriod();
+          createPeriodTabs();
+          
+          // Debug: Show all available employee IDs
+          const availableIds = insentifData.map(item => item.szEmployeeId);
+          console.log(`📋 Available employee IDs in raw data: ${availableIds.join(', ')}`);
+          console.log(`🔍 Available employee IDs in grouped data: ${Object.keys(salesmanDataByPeriod).join(', ')}`);
+          console.log(`🎯 Looking for employee ID: "${currentSalesmanId}"`);
+          console.log(`🔍 ID exists in grouped data? ${salesmanDataByPeriod.hasOwnProperty(currentSalesmanId)}`);
+          
+          // Check if salesman has data
+          if (!salesmanDataByPeriod[currentSalesmanId]) {
+            // 🆕 ENHANCED: Try alternative matching if direct match fails
+            console.warn(`⚠️ Direct match failed for employee ID: ${currentSalesmanId}`);
+            
+            // Try to find by szEmployeeId value match
+            const foundEntry = Object.entries(salesmanDataByPeriod).find(([key, value]) => {
+              return key === currentSalesmanId || 
+                     Object.values(value).some(item => item.szEmployeeId?.toString() === currentSalesmanId);
+            });
+            
+            if (foundEntry) {
+              console.log(`✅ Found alternative match for employee ID: ${currentSalesmanId}`);
+              currentSalesmanId = foundEntry[0]; // Use the key that worked
+            } else {
+              console.error(`❌ No data found for employee ID: ${currentSalesmanId}`);
+              console.log('Available grouped data keys:', Object.keys(salesmanDataByPeriod));
+              console.log('Sample raw data:', insentifData.slice(0, 3));
+              throw new Error(`No incentive data found for salesman: ${currentSalesmanId}`);
+            }
+          }
+
+          console.log(`✅ Found incentive data for salesman: ${currentSalesmanId}`);
+          console.log('📊 Available periods for salesman:', Object.keys(salesmanDataByPeriod[currentSalesmanId]));
+
+          // Load data untuk periode default
+          loadPeriodData();
+          
+          showLoading(false);
+          showMainContent(true);
+
+        } catch (error) {
+          console.error('❌ Error loading incentive data:', error);
+          showLoading(false);
+          showError(true, error.message);
+        }
+      }
+
+      // UI control functions
+      function showLoading(show) {
+        document.getElementById('loadingSpinner').style.display = show ? 'flex' : 'none';
+      }
+
+      function showError(show, message = '') {
+        const errorElement = document.getElementById('errorMessage');
+        if (show) {
+          errorElement.style.display = 'block';
+          if (message) {
+            errorElement.querySelector('p').textContent = message;
+          }
+        } else {
+          errorElement.style.display = 'none';
+        }
+      }
+
+      function hideError() {
+        showError(false);
+      }
+
+      function showMainContent(show) {
+        document.getElementById('mainContent').style.display = show ? 'block' : 'none';
+      }
+
+      // Navigation
+      function goBack() {
+        const referrer = document.referrer;
+        if (referrer && referrer.includes('salesman-detail.html')) {
+          window.history.back();
+        } else {
+          window.location.href = `salesman-detail.html?id=${currentSalesmanId}`;
+        }
+      }
+
+      // Initialize page
+      document.addEventListener('DOMContentLoaded', function() {
+        console.log('🚀 Initializing incentive dashboard with periods...');
+        loadIncentiveData();
+      });
+
+      console.log('✅ Incentive dashboard script loaded with period tabs');
+    </script>
+  </body>
+</html>

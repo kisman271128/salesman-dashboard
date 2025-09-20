@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Performance Sales - Depo Tanjung</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 20px 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .stat-card h3 {
+            font-size: 0.9rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .stat-change {
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .positive { color: #10b981; }
+        .negative { color: #ef4444; }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .chart-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .chart-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .chart-canvas {
+            height: 300px !important;
+        }
+
+        .performance-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .table-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        th {
+            background: #f8fafc;
+            font-weight: 600;
+            color: #374151;
+            position: sticky;
+            top: 0;
+        }
+
+        tr:hover {
+            background: #f8fafc;
+        }
+
+        .rank-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: white;
+        }
+
+        .rank-1 { background: #fbbf24; }
+        .rank-2 { background: #9ca3af; }
+        .rank-3 { background: #cd7c2f; }
+        .rank-other { background: #6b7280; }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #10b981, #34d399);
+            transition: width 0.3s ease;
+        }
+
+        .tabs {
+            display: flex;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        .tab {
+            flex: 1;
+            padding: 12px 20px;
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .tab.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .charts-grid, .performance-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>Dashboard Performance Sales</h1>
+            <p>Depo Tanjung - Real-time Sales Analytics & Performance Monitoring</p>
+        </header>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Total Achievement</h3>
+                <div class="stat-value" id="totalAchievement">-</div>
+                <div class="stat-change" id="totalAchievementChange">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>Top Performer</h3>
+                <div class="stat-value" id="topPerformer">-</div>
+                <div class="stat-change positive" id="topPerformerAch">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>Sales Gap</h3>
+                <div class="stat-value" id="salesGap">-</div>
+                <div class="stat-change" id="salesGapChange">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>Active Salesmen</h3>
+                <div class="stat-value" id="activeSalesmen">6</div>
+                <div class="stat-change positive">+0% vs LM</div>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('overview')">Overview</button>
+            <button class="tab" onclick="showTab('performance')">Performance</button>
+            <button class="tab" onclick="showTab('channels')">Channels</button>
+            <button class="tab" onclick="showTab('process')">Process KPIs</button>
+        </div>
+
+        <div id="overview" class="tab-content active">
+            <div class="charts-grid">
+                <div class="chart-container">
+                    <h3 class="chart-title">Performance vs Target by Salesman</h3>
+                    <canvas id="performanceChart" class="chart-canvas"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3 class="chart-title">Achievement Distribution</h3>
+                    <canvas id="achievementChart" class="chart-canvas"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-container full-width">
+                <h3 class="chart-title">Daily Sales Order & Delivery Order Trend</h3>
+                <canvas id="dailyTrendChart" class="chart-canvas"></canvas>
+            </div>
+        </div>
+
+        <div id="performance" class="tab-content">
+            <div class="table-container">
+                <h3 class="chart-title">Salesman Performance Ranking</h3>
+                <table id="performanceTable">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Salesman</th>
+                            <th>Target</th>
+                            <th>Actual</th>
+                            <th>Achievement</th>
+                            <th>Gap</th>
+                            <th>Progress</th>
+                        </tr>
+                    </thead>
+                    <tbody id="performanceTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="channels" class="tab-content">
+            <div class="performance-grid">
+                <div class="chart-container">
+                    <h3 class="chart-title">Channel Performance</h3>
+                    <canvas id="channelChart" class="chart-canvas"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3 class="chart-title">LOB Performance</h3>
+                    <canvas id="lobChart" class="chart-canvas"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div id="process" class="tab-content">
+            <div class="performance-grid">
+                <div class="chart-container">
+                    <h3 class="chart-title">Call Effectiveness (PC/AC/EC)</h3>
+                    <canvas id="callChart" class="chart-canvas"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3 class="chart-title">Weekly Performance Trend</h3>
+                    <canvas id="weeklyChart" class="chart-canvas"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Data dari JSON files
+        const channelData = [
+            {"szEmployeeId":17210032876,"szname":"Asman","Channel":"Wholesaler","LY":623443214.6409131289,"3LM":766255712.8390660286,"LM":623443214.6409131289,"Target":927718770.9127181768,"Actual":623443214.6409131289,"Ach":0.6720174628,"Gap":-304275556.271805048,"vs LY":0,"vs 3LM":-0.1863770747,"vs LM":0},
+            {"szEmployeeId":17210032876,"szname":"Asman","Channel":"Retail","LY":122518843.0155239999,"3LM":96512211.1736140102,"LM":122518843.0155239999,"Target":116095449.9673894495,"Actual":122518843.0155240148,"Ach":1.0553285512,"Gap":6423393.0481345654,"vs LY":0,"vs 3LM":0.2694646773,"vs LM":0},
+            {"szEmployeeId":17210032876,"szname":"Asman","Channel":"MTI","LY":55419921.5861569867,"3LM":54375509.21486599,"LM":55419921.5861569867,"Target":56185779.1198924631,"Actual":55419921.5861569867,"Ach":0.9863691926,"Gap":-765857.5337354764,"vs LY":0,"vs 3LM":0.019207404,"vs LM":0},
+            {"szEmployeeId":17210037897,"szname":"Hindra","Channel":"Wholesaler","LY":163768253.6525540352,"3LM":225630957.2306630611,"LM":163768253.6525540352,"Target":252358295.7790709138,"Actual":163768253.6525540352,"Ach":0.6489513378,"Gap":-88590042.1265168786,"vs LY":0,"vs 3LM":-0.2741764886,"vs LM":0},
+            {"szEmployeeId":17210037897,"szname":"Hindra","Channel":"Retail","LY":127570773.8063760549,"3LM":123324324.4751830548,"LM":127570773.8063760549,"Target":139739671.3072450161,"Actual":127570773.8063760549,"Ach":0.9129173742,"Gap":-12168897.5008689612,"vs LY":0,"vs 3LM":0.0344331854,"vs LM":0},
+            {"szEmployeeId":17210037897,"szname":"Hindra","Channel":"MTI","LY":6342221.3869679999,"3LM":7731417.178797666,"LM":6342221.3869679999,"Target":7902032.913684058,"Actual":6342221.3869679999,"Ach":0.8026062984,"Gap":-1559811.5267160581,"vs LY":0,"vs 3LM":-0.1796819082,"vs LM":0},
+            {"szEmployeeId":17210036369,"szname":"Muhammad Tamrin","Channel":"Wholesaler","LY":274864694.5073930621,"3LM":266921932.2744880021,"LM":274864694.5073930621,"Target":378827722.1582476497,"Actual":274864694.5073930621,"Ach":0.7255664737,"Gap":-103963027.6508545876,"vs LY":0,"vs 3LM":0.0297568737,"vs LM":0},
+            {"szEmployeeId":17210036369,"szname":"Muhammad Tamrin","Channel":"Retail","LY":137069823.7815290093,"3LM":120696018.6142136455,"LM":137069823.7815290093,"Target":167550972.6925671399,"Actual":137069823.7815290093,"Ach":0.818078353,"Gap":-30481148.9110381305,"vs LY":0,"vs 3LM":0.1356615185,"vs LM":0},
+            {"szEmployeeId":17210036369,"szname":"Muhammad Tamrin","Channel":"MTI","LY":18533037.224387005,"3LM":10151068.6759339981,"LM":18533037.224387005,"Target":13621305.1491849851,"Actual":18533037.224387005,"Ach":1.3605918832,"Gap":4911732.0752020199,"vs LY":0,"vs 3LM":0.8257227703,"vs LM":0},
+            {"szEmployeeId":17210037713,"szname":"Rahmani","Channel":"Wholesaler","LY":200011447.2898079753,"3LM":334371868.3424077034,"LM":200011447.2898079753,"Target":408733161.2118127346,"Actual":200011447.2898079753,"Ach":0.4893448006,"Gap":-208721713.9220047593,"vs LY":0,"vs 3LM":-0.4018293217,"vs LM":0},
+            {"szEmployeeId":17210037713,"szname":"Rahmani","Channel":"Retail","LY":99786963.7236179858,"3LM":98330943.4103543013,"LM":99786963.7236179858,"Target":122532642.875884518,"Actual":99786963.7236179858,"Ach":0.8143704517,"Gap":-22745679.1522665322,"vs LY":0,"vs 3LM":0.0148073461,"vs LM":0},
+            {"szEmployeeId":17210037713,"szname":"Rahmani","Channel":"MTI","LY":9990395.2745319996,"3LM":3181092.0774096665,"LM":9990395.2745319996,"Target":3734195.9123027441,"Actual":9990395.2745319977,"Ach":2.6753805931,"Gap":6256199.3622292541,"vs LY":0,"vs 3LM":2.1405552029,"vs LM":0},
+            {"szEmployeeId":17210037632,"szname":"Robianor","Channel":"Wholesaler","LY":336966631.3279029727,"3LM":329584833.2475533485,"LM":336966631.3279029727,"Target":390567069.877527535,"Actual":336966631.3279029727,"Ach":0.8627625248,"Gap":-53600438.5496245623,"vs LY":0,"vs 3LM":0.0223972627,"vs LM":0},
+            {"szEmployeeId":17210037632,"szname":"Robianor","Channel":"Retail","LY":98442961.5722769797,"3LM":117345428.3501700461,"LM":98442961.5722769797,"Target":138081225.5273105204,"Actual":98442961.5722769797,"Ach":0.7129351669,"Gap":-39638263.9550335407,"vs LY":0,"vs 3LM":-0.1610839642,"vs LM":0},
+            {"szEmployeeId":17210037632,"szname":"Robianor","Channel":"MTI","LY":1248354.49,"3LM":1259353.0499999998,"LM":1248354.49,"Target":1351704.5951618662,"Actual":1248354.49,"Ach":0.9235409086,"Gap":-103350.1051618662,"vs LY":0,"vs 3LM":-0.0087335001,"vs LM":0},
+            {"szEmployeeId":17210038077,"szname":"Sopian Sauri","Channel":"Wholesaler","LY":7492781.7525129998,"3LM":13537362.6951080002,"LM":7492781.7525129998,"Target":7853050.3895727582,"Actual":7492781.7525129998,"Ach":0.9541237329,"Gap":-360268.6370597584,"vs LY":0,"vs 3LM":-0.4465109696,"vs LM":0},
+            {"szEmployeeId":17210038077,"szname":"Sopian Sauri","Channel":"Retail","LY":155267845.3470240235,"3LM":148121593.9707916379,"LM":155267845.3470240235,"Target":77428292.1356895119,"Actual":155267845.3470240235,"Ach":2.0053115091,"Gap":77839553.2113345116,"vs LY":0,"vs 3LM":0.0482458444,"vs LM":0},
+            {"szEmployeeId":17210038077,"szname":"Sopian Sauri","Channel":"MTI","LY":25619612.3240309991,"3LM":26460410.2779383361,"LM":25619612.3240309991,"Target":4783657.4747377243,"Actual":25619612.3240310028,"Ach":5.3556535892,"Gap":20835954.8492932767,"vs LY":0,"vs 3LM":-0.031775696,"vs LM":0}
+        ];
+
+        const performanceData = [
+            {"Nama Depo":"Depo Tanjung","szEmployeeId":17210032876,"szname":"Asman","Tipe Salesman":"Sales Representative Mix Yudistira","Target":1000000000,"Actual":805453690.983581543,"Ach":0.805453691,"Gap":-194546309.016418457,"Rank":5},
+            {"Nama Depo":"Depo Tanjung","szEmployeeId":17210037897,"szname":"Hindra","Tipe Salesman":"Sales Representative Mix Yudistira","Target":350000000,"Actual":297681248.8458977938,"Ach":0.8505178538,"Gap":-52318751.1541022062,"Rank":4},
+            {"Nama Depo":"Depo Tanjung","szEmployeeId":17210036369,"szname":"Muhammad Tamrin","Tipe Salesman":"Sales Representative Mix Yudistira","Target":507300000,"Actual":434200528.4070852399,"Ach":0.8559048461,"Gap":-73099471.5929147601,"Rank":3},
+            {"Nama Depo":"Depo Tanjung","szEmployeeId":17210037713,"szname":"Rahmani","Tipe Salesman":"Sales Representative Mix Yudistira","Target":473000000,"Actual":309788806.2879577279,"Ach":0.6549446222,"Gap":-163211193.7120422721,"Rank":6},
+            {"Nama Depo":"Depo Tanjung","szEmployeeId":17210037632,"szname":"Robianor","Tipe Salesman":"Sales Representative Mix Yudistira","Target":469700000,"Actual":436657947.3901799321,"Ach":0.929652858,"Gap":-33042052.6098200679,"Rank":2},
+            {"Nama Depo":"Depo Tanjung","szEmployeeId":17210038077,"szname":"Sopian Sauri","Tipe Salesman":"Sales Representative Retailer Yudistira","Target":200000000,"Actual":190187806.9465408623,"Ach":0.9509390347,"Gap":-9812193.0534591377,"Rank":1}
+        ];
+
+        const dailyData = [
+            {"Tgl":2,"Target":127033525.6106999665,"SO":67834989.5500000268,"DO":44751913.633566007},
+            {"Tgl":3,"Target":127033525.6106999665,"SO":79124212.4700000286,"DO":99834206.7157077938},
+            {"Tgl":4,"Target":127033525.6106999665,"SO":59650865.8700000569,"DO":70955179.6097559631},
+            {"Tgl":5,"Target":127033525.6106999665,"SO":48214987.1400000453,"DO":84994376.3422439098},
+            {"Tgl":7,"Target":127033525.6106999665,"SO":102086006.3700000346,"DO":23379287.8485380076},
+            {"Tgl":9,"Target":127033525.6106999665,"SO":178872854.5700002909,"DO":51828303.0123719797},
+            {"Tgl":10,"Target":127033525.6106999665,"SO":99691426.619999975,"DO":112945527.5212687105},
+            {"Tgl":11,"Target":127033525.6106999665,"SO":99777403.5899999738,"DO":136631036.2961128354},
+            {"Tgl":12,"Target":127033525.6106999665,"SO":113439081.9000000954,"DO":118409161.5567156821},
+            {"Tgl":13,"Target":127033525.6106999665,"SO":143898655.6499998868,"DO":78291161.0038047433},
+            {"Tgl":14,"Target":127033525.6106999665,"SO":182187241.7599997818,"DO":111839910.5147049278},
+            {"Tgl":16,"Target":127033525.6106999665,"SO":198084417.5099994242,"DO":134528147.8219681084},
+            {"Tgl":17,"Target":127033525.6106999665,"SO":106925301.5799998939,"DO":176596055.5520788133},
+            {"Tgl":18,"Target":127033525.6106999665,"SO":56712810.9900001287,"DO":153981655.5663402677},
+            {"Tgl":19,"Target":127033525.6106999665,"SO":135160619.3100001812,"DO":111200687.7546598911},
+            {"Tgl":20,"Target":127033525.6106999665,"SO":139626803.0799999535,"DO":84225554.7910787463},
+            {"Tgl":21,"Target":127033525.6106999665,"SO":183122730.9499991536,"DO":66977942.976345107},
+            {"Tgl":23,"Target":127033525.6106999665,"SO":157858849.7399996519,"DO":138273501.8370648921},
+            {"Tgl":24,"Target":127033525.6106999665,"SO":121517638.6100000888,"DO":212547131.308429867},
+            {"Tgl":25,"Target":127033525.6106999665,"SO":76616337.7199999392,"DO":148503879.4591969848},
+            {"Tgl":26,"Target":127033525.6106999665,"SO":137731360.3299999237,"DO":111099503.3822040707},
+            {"Tgl":27,"Target":0,"SO":293024030.9099994302,"DO":66896483.192149967},
+            {"Tgl":28,"Target":127033525.6106999665,"SO":307020837.8899990916,"DO":144447526.1666279137}
+        ];
+
+        const processData = [
+            {"szname":"Asman","T.PC":25,"A.PC":23.26,"Ach_PC":0.93,"T.AC":24,"A.AC":23.26,"Ach_AC":0.97,"T.EC":18.75,"A.EC":18.59,"Ach_EC":0.99},
+            {"szname":"Hindra","T.PC":25,"A.PC":26.26,"Ach_PC":1.05,"T.AC":24,"A.AC":25.87,"Ach_AC":1.08,"T.EC":18.75,"A.EC":19.82,"Ach_EC":1.06},
+            {"szname":"Muhammad Tamrin","T.PC":25,"A.PC":25.22,"Ach_PC":1.01,"T.AC":24,"A.AC":23.52,"Ach_AC":0.98,"T.EC":18.75,"A.EC":18.77,"Ach_EC":1.00},
+            {"szname":"Rahmani","T.PC":25,"A.PC":24.96,"Ach_PC":1.00,"T.AC":24,"A.AC":22.17,"Ach_AC":0.92,"T.EC":18.75,"A.EC":18.14,"Ach_EC":0.97},
+            {"szname":"Robianor","T.PC":25,"A.PC":24.70,"Ach_PC":0.99,"T.AC":24,"A.AC":21.52,"Ach_AC":0.90,"T.EC":18.75,"A.EC":17.09,"Ach_EC":0.91},
+            {"szname":"Sopian Sauri","T.PC":30,"A.PC":30.78,"Ach_PC":1.03,"T.AC":29,"A.AC":30.78,"Ach_AC":1.06,"T.EC":22.5,"A.EC":22.41,"Ach_EC":1.00}
+        ];
+
+        const pcacecData = [
+            {"szname":"Asman","Week_Report":"W1","Avg PC per Day":23.2,"Avg AC per Day":23.2,"Avg EC per Day":18.2,"SalesOrderValue":124173661.63,"NetSalesPKD":111541353.78},
+            {"szname":"Asman","Week_Report":"W2","Avg PC per Day":23.17,"Avg AC per Day":23.17,"Avg EC per Day":18.83,"SalesOrderValue":208670223.96,"NetSalesPKD":187244227.84},
+            {"szname":"Asman","Week_Report":"W3","Avg PC per Day":23.17,"Avg AC per Day":23.17,"Avg EC per Day":17.83,"SalesOrderValue":246377572.84,"NetSalesPKD":148274017.26},
+            {"szname":"Asman","Week_Report":"W4","Avg PC per Day":23.5,"Avg AC per Day":23.5,"Avg EC per Day":19.6,"SalesOrderValue":451330595.02,"NetSalesPKD":358394092.11},
+            {"szname":"Hindra","Week_Report":"W1","Avg PC per Day":27.2,"Avg AC per Day":27.2,"Avg EC per Day":19.4,"SalesOrderValue":43881397.42,"NetSalesPKD":43305848.47},
+            {"szname":"Hindra","Week_Report":"W2","Avg PC per Day":26.0,"Avg AC per Day":26.0,"Avg EC per Day":22.17,"SalesOrderValue":109968443.14,"NetSalesPKD":95057365.22},
+            {"szname":"Hindra","Week_Report":"W3","Avg PC per Day":26.0,"Avg AC per Day":26.0,"Avg EC per Day":19.33,"SalesOrderValue":81137425.62,"NetSalesPKD":80339440.06},
+            {"szname":"Hindra","Week_Report":"W4","Avg PC per Day":26.0,"Avg AC per Day":24.5,"Avg EC per Day":18.0,"SalesOrderValue":113189815.77,"NetSalesPKD":78978595.10}
+        ];
+
+        const dashboardData = [
+            {"Nama Depo":"Depo Tanjung","LOB":"GPPJ","Target":1750865933.96,"Actual":1670897516.44,"Ach":0.95,"Gap":-79968417.52},
+            {"Nama Depo":"Depo Tanjung","LOB":"GEN","Target":200501454.53,"Actual":131437379.45,"Ach":0.66,"Gap":-69064075.08},
+            {"Nama Depo":"Depo Tanjung","LOB":"GBS","Target":929758973.86,"Actual":611720233.66,"Ach":0.66,"Gap":-318038740.20},
+            {"Nama Depo":"Depo Tanjung","LOB":"MBR","Target":27063736.74,"Actual":21966444.87,"Ach":0.81,"Gap":-5097291.86},
+            {"Nama Depo":"Depo Tanjung","LOB":"HGJ","Target":5107230.79,"Actual":418077.45,"Ach":0.08,"Gap":-4689153.34},
+            {"Nama Depo":"Depo Tanjung","LOB":"RANS","Target":6346325.86,"Actual":33824819.35,"Ach":5.33,"Gap":27478493.49}
+        ];
+
+        // Helper functions
+        function formatCurrency(value) {
+            return new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }).format(value);
+        }
+
+        function formatNumber(value) {
+            return new Intl.NumberFormat('id-ID').format(value);
+        }
+
+        function formatPercentage(value) {
+            return (value * 100).toFixed(1) + '%';
+        }
+
+        // Initialize dashboard
+        function initializeDashboard() {
+            updateStatCards();
+            createPerformanceChart();
+            createAchievementChart();
+            createDailyTrendChart();
+            createChannelChart();
+            createLOBChart();
+            createCallChart();
+            createWeeklyChart();
+            populatePerformanceTable();
+        }
+
+        function updateStatCards() {
+            // Calculate total achievement
+            const totalTarget = performanceData.reduce((sum, item) => sum + item.Target, 0);
+            const totalActual = performanceData.reduce((sum, item) => sum + item.Actual, 0);
+            const totalAchievement = (totalActual / totalTarget);
+            
+            document.getElementById('totalAchievement').textContent = formatPercentage(totalAchievement);
+            document.getElementById('totalAchievementChange').textContent = 'vs Target';
+            document.getElementById('totalAchievementChange').className = 'stat-change ' + (totalAchievement >= 1 ? 'positive' : 'negative');
+
+            // Top performer
+            const topPerformer = performanceData.find(item => item.Rank === 1);
+            document.getElementById('topPerformer').textContent = topPerformer.szname;
+            document.getElementById('topPerformerAch').textContent = formatPercentage(topPerformer.Ach);
+
+            // Sales gap
+            const totalGap = performanceData.reduce((sum, item) => sum + item.Gap, 0);
+            document.getElementById('salesGap').textContent = formatCurrency(totalGap);
+            document.getElementById('salesGapChange').textContent = 'Total Gap';
+            document.getElementById('salesGapChange').className = 'stat-change negative';
+        }
+
+        function createPerformanceChart() {
+            const ctx = document.getElementById('performanceChart').getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: performanceData.map(item => item.szname),
+                    datasets: [{
+                        label: 'Target',
+                        data: performanceData.map(item => item.Target / 1000000),
+                        backgroundColor: 'rgba(102, 126, 234, 0.7)',
+                        borderColor: 'rgba(102, 126, 234, 1)',
+                        borderWidth: 2
+                    }, {
+                        label: 'Actual',
+                        data: performanceData.map(item => item.Actual / 1000000),
+                        backgroundColor: 'rgba(16, 185, 129, 0.7)',
+                        borderColor: 'rgba(16, 185, 129, 1)',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Amount (Million IDR)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createAchievementChart() {
+            const ctx = document.getElementById('achievementChart').getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: performanceData.map(item => item.szname),
+                    datasets: [{
+                        data: performanceData.map(item => item.Ach * 100),
+                        backgroundColor: [
+                            '#667eea',
+                            '#764ba2',
+                            '#f093fb',
+                            '#f5576c',
+                            '#4facfe',
+                            '#00f2fe'
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                        }
+                    }
+                }
+            });
+        }
+
+        function createDailyTrendChart() {
+            const ctx = document.getElementById('dailyTrendChart').getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dailyData.map(item => 'Day ' + item.Tgl),
+                    datasets: [{
+                        label: 'Sales Order',
+                        data: dailyData.map(item => item.SO / 1000000),
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }, {
+                        label: 'Delivery Order',
+                        data: dailyData.map(item => item.DO / 1000000),
+                        borderColor: '#16a085',
+                        backgroundColor: 'rgba(22, 160, 133, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }, {
+                        label: 'Target',
+                        data: dailyData.map(item => item.Target / 1000000),
+                        borderColor: '#e74c3c',
+                        backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                        borderDash: [5, 5],
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Amount (Million IDR)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createChannelChart() {
+            const ctx = document.getElementById('channelChart').getContext('2d');
+            
+            // Aggregate channel data
+            const channelAgg = {};
+            channelData.forEach(item => {
+                if (!channelAgg[item.Channel]) {
+                    channelAgg[item.Channel] = { target: 0, actual: 0 };
+                }
+                channelAgg[item.Channel].target += item.Target;
+                channelAgg[item.Channel].actual += item.Actual;
+            });
+
+            const channels = Object.keys(channelAgg);
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: channels,
+                    datasets: [{
+                        label: 'Target',
+                        data: channels.map(channel => channelAgg[channel].target / 1000000),
+                        backgroundColor: 'rgba(102, 126, 234, 0.7)'
+                    }, {
+                        label: 'Actual',
+                        data: channels.map(channel => channelAgg[channel].actual / 1000000),
+                        backgroundColor: 'rgba(16, 185, 129, 0.7)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Amount (Million IDR)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createLOBChart() {
+            const ctx = document.getElementById('lobChart').getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'horizontalBar',
+                data: {
+                    labels: dashboardData.map(item => item.LOB),
+                    datasets: [{
+                        label: 'Achievement %',
+                        data: dashboardData.map(item => item.Ach * 100),
+                        backgroundColor: dashboardData.map(item => 
+                            item.Ach >= 1 ? '#10b981' : '#ef4444'
+                        ),
+                        borderColor: '#fff',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            max: 600,
+                            title: {
+                                display: true,
+                                text: 'Achievement (%)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createCallChart() {
+            const ctx = document.getElementById('callChart').getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: processData.map(item => item.szname),
+                    datasets: [{
+                        label: 'PC Achievement',
+                        data: processData.map(item => item.Ach_PC * 100),
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.2)',
+                        pointBackgroundColor: '#667eea'
+                    }, {
+                        label: 'AC Achievement',
+                        data: processData.map(item => item.Ach_AC * 100),
+                        borderColor: '#16a085',
+                        backgroundColor: 'rgba(22, 160, 133, 0.2)',
+                        pointBackgroundColor: '#16a085'
+                    }, {
+                        label: 'EC Achievement',
+                        data: processData.map(item => item.Ach_EC * 100),
+                        borderColor: '#e74c3c',
+                        backgroundColor: 'rgba(231, 76, 60, 0.2)',
+                        pointBackgroundColor: '#e74c3c'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        }
+                    },
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            max: 120,
+                            ticks: {
+                                stepSize: 20
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createWeeklyChart() {
+            const ctx = document.getElementById('weeklyChart').getContext('2d');
+            
+            // Filter Asman's weekly data
+            const asmanWeekly = pcacecData.filter(item => item.szname === 'Asman');
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: asmanWeekly.map(item => item.Week_Report),
+                    datasets: [{
+                        label: 'Sales Order Value',
+                        data: asmanWeekly.map(item => item.SalesOrderValue / 1000000),
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        yAxisID: 'y'
+                    }, {
+                        label: 'Avg PC per Day',
+                        data: asmanWeekly.map(item => item["Avg PC per Day"]),
+                        borderColor: '#16a085',
+                        backgroundColor: 'rgba(22, 160, 133, 0.1)',
+                        yAxisID: 'y1'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        }
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Sales Order (Million IDR)'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'PC per Day'
+                            },
+                            grid: {
+                                drawOnChartArea: false,
+                            },
+                        }
+                    }
+                }
+            });
+        }
+
+        function populatePerformanceTable() {
+            const tbody = document.getElementById('performanceTableBody');
+            
+            // Sort by rank
+            const sortedData = [...performanceData].sort((a, b) => a.Rank - b.Rank);
+            
+            tbody.innerHTML = sortedData.map(item => {
+                const rankClass = item.Rank === 1 ? 'rank-1' : 
+                                 item.Rank === 2 ? 'rank-2' : 
+                                 item.Rank === 3 ? 'rank-3' : 'rank-other';
+                
+                return `
+                    <tr>
+                        <td><span class="rank-badge ${rankClass}">#${item.Rank}</span></td>
+                        <td><strong>${item.szname}</strong></td>
+                        <td>${formatCurrency(item.Target)}</td>
+                        <td>${formatCurrency(item.Actual)}</td>
+                        <td><strong>${formatPercentage(item.Ach)}</strong></td>
+                        <td class="${item.Gap >= 0 ? 'positive' : 'negative'}">${formatCurrency(item.Gap)}</td>
+                        <td>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${Math.min(item.Ach * 100, 100)}%"></div>
+                            </div>
+                            ${formatPercentage(item.Ach)}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function showTab(tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab content
+            document.getElementById(tabName).classList.add('active');
+            
+            // Add active class to clicked tab
+            event.target.classList.add('active');
+        }
+
+        // Initialize dashboard when page loads
+        document.addEventListener('DOMContentLoaded', initializeDashboard);
+    </script>
+</body>
+</html>

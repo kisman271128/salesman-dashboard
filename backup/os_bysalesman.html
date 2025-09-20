@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        .header {
+            background: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-bottom: 1px solid #e5e5e5;
+            padding: 12px 16px;
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #1f2937;
+        }
+
+        .region-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 13px;
+        }
+
+        .badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-green { background: #dcfce7; color: #166534; }
+
+        .stats {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            font-size: 13px;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: #6b7280;
+            margin-bottom: 2px;
+        }
+
+        .stat-value {
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        select, button {
+            padding: 6px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-size: 12px;
+            background: white;
+            cursor: pointer;
+        }
+
+        select:focus, button:focus {
+            outline: 2px solid #3b82f6;
+            outline-offset: -2px;
+        }
+
+        button {
+            background: #6b7280;
+            color: white;
+            border: none;
+        }
+
+        button:hover {
+            background: #4b5563;
+        }
+
+        .table-container {
+            background: white;
+            height: calc(100vh - 80px);
+            overflow: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        th, td {
+            padding: 6px 8px;
+            text-align: left;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        th {
+            background: #f9fafb;
+            font-weight: 600;
+            color: #374151;
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .sub-header th {
+            top: 32px;
+            background: #f8fafc;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .sticky-col {
+            position: sticky;
+            background: white;
+            z-index: 10;
+            border-right: 2px solid #e5e7eb;
+        }
+
+        .sticky-col-1 { left: 0px; width: 140px; }
+        .sticky-col-2 { left: 140px; width: 40px; }
+        .sticky-col-3 { left: 180px; width: 30px; }
+        .sticky-col-4 { left: 210px; width: 60px; }
+
+        .group-header {
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+            border-top: 2px solid #3b82f6;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .group-header:hover {
+            background: linear-gradient(135deg, #bfdbfe 0%, #93c5fd 100%);
+        }
+
+        .group-summary {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            border-bottom: 2px solid #0ea5e9;
+            font-weight: 600;
+            color: #0369a1;
+        }
+
+        .group-summary .sticky-col {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            border-right: 2px solid #e5e7eb;
+        }
+
+        .group-header td {
+            padding: 8px 12px;
+            font-weight: bold;
+            color: #1e40af;
+            font-size: 13px;
+        }
+
+        .group-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .group-hint {
+            font-size: 11px;
+            font-weight: normal;
+            color: #2563eb;
+        }
+
+        tr:hover {
+            background: #f9fafb;
+        }
+
+        .text-center { text-align: center; }
+        .font-medium { font-weight: 500; }
+        .font-bold { font-weight: bold; }
+
+        .channel-ws { background: #dbeafe; color: #1e40af; }
+        .channel-rt { background: #dcfce7; color: #166534; }
+        .channel-mt { background: #faf5ff; color: #7c3aed; }
+        .channel-ot { background: #f3f4f6; color: #374151; }
+
+        .ca-active { 
+            width: 16px; 
+            height: 16px; 
+            border-radius: 50%; 
+            background: #10b981; 
+            display: inline-block;
+        }
+
+        .ca-inactive { 
+            width: 16px; 
+            height: 16px; 
+            border-radius: 50%; 
+            background: #ef4444; 
+            display: inline-block;
+        }
+
+        .ach-red { background: #fee2e2; color: #dc2626; }
+        .ach-yellow { background: #fef3c7; color: #d97706; }
+        .ach-green { background: #dcfce7; color: #16a34a; }
+
+        .text-green { color: #059669; }
+        .text-red { color: #dc2626; }
+
+        .weekly-header {
+            background: #f1f5f9;
+            border-left: 1px solid #cbd5e1;
+        }
+
+        .sub-header {
+            background: #f8fafc;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .sub-header th {
+            position: sticky;
+            top: 33px;
+            background: #f8fafc;
+            border-bottom: 1px solid #e5e7eb;
+            z-index: 19;
+        }
+
+        .sub-header .sticky-col {
+            z-index: 21;
+            background: #f8fafc;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6b7280;
+        }
+
+        .empty-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .hidden { display: none; }
+
+        @media (max-width: 1024px) {
+            .header-content {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .stats {
+                justify-content: space-between;
+                overflow-x: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="header-content">
+            <div class="header-left">
+                <div class="title">Sales Dashboard</div>
+                <div id="region-info" class="region-info">
+                    <span class="badge badge-blue">
+                        <span id="region-name">KALIMANTAN</span>
+                    </span>
+                    <span class="badge badge-green">
+                        <span id="depo-name">DEPO TANJUNG</span>
+                    </span>
+                </div>
+            </div>
+            
+            <!-- Quick Stats -->
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-label">Outlets</div>
+                    <div id="total-outlets" class="stat-value">0</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">Active</div>
+                    <div id="active-outlets" class="stat-value" style="color: #059669;">0</div>
+                </div>
+                <div id="bp-stat" class="stat">
+                    <div class="stat-label">BP</div>
+                    <div id="total-bp" class="stat-value" style="color: #2563eb;">0</div>
+                </div>
+                <div id="be-stat" class="stat">
+                    <div class="stat-label">BE MTD</div>
+                    <div id="total-be" class="stat-value" style="color: #7c3aed;">0</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">Total Sales</div>
+                    <div id="total-sales" class="stat-value" style="color: #4f46e5;">0</div>
+                </div>
+                <div id="vs-bp-stat" class="stat">
+                    <div class="stat-label">vs BP</div>
+                    <div id="vs-bp" class="stat-value" style="color: #ea580c;">0%</div>
+                </div>
+                <div id="vs-be-stat" class="stat">
+                    <div class="stat-label">vs BE</div>
+                    <div id="vs-be" class="stat-value" style="color: #0891b2;">0%</div>
+                </div>
+            </div>
+            
+            <!-- Controls -->
+            <div class="controls">
+                <div class="filter-group">
+                    <label style="font-size: 12px; color: #6b7280;">Salesman:</label>
+                    <select id="salesman-filter" onchange="filterData()">
+                        <option value="All">All</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <button onclick="expandAllGroups()" style="background: #059669;">
+                        Expand All
+                    </button>
+                    <button onclick="collapseAllGroups()" style="background: #dc2626;">
+                        Collapse All
+                    </button>
+                </div>
+                
+                <div class="filter-group">
+                    <input type="file" id="file-upload" accept=".json" style="display: none;">
+                    <button onclick="document.getElementById('file-upload').click()">
+                        Load File
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Table -->
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <!-- Sticky Columns -->
+                    <th class="sticky-col sticky-col-1">Outlet</th>
+                    <th class="sticky-col sticky-col-2 text-center">CH</th>
+                    <th class="sticky-col sticky-col-3 text-center">CA</th>
+                    <th class="sticky-col sticky-col-4 text-center">MTD%</th>
+                    
+                    <!-- Weekly Headers -->
+                    <th class="weekly-header text-center" colspan="4">W1</th>
+                    <th class="weekly-header text-center" colspan="4">W2</th>
+                    <th class="weekly-header text-center" colspan="4">W3</th>
+                    <th class="weekly-header text-center" colspan="4">W4</th>
+                    <th class="weekly-header text-center" colspan="4">W5</th>
+                </tr>
+                <tr class="sub-header">
+                    <!-- Sticky Headers -->
+                    <th class="sticky-col sticky-col-1"></th>
+                    <th class="sticky-col sticky-col-2"></th>
+                    <th class="sticky-col sticky-col-3"></th>
+                    <th class="sticky-col sticky-col-4"></th>
+                    
+                    <!-- Week 1 -->
+                    <th class="text-center" style="border-left: 1px solid #cbd5e1;">BP</th>
+                    <th class="text-center">Act</th>
+                    <th class="text-center">%</th>
+                    <th class="text-center" style="border-right: 1px solid #cbd5e1;">Gap</th>
+                    
+                    <!-- Week 2 -->
+                    <th class="text-center" style="border-left: 1px solid #cbd5e1;">BP</th>
+                    <th class="text-center">Act</th>
+                    <th class="text-center">%</th>
+                    <th class="text-center" style="border-right: 1px solid #cbd5e1;">Gap</th>
+                    
+                    <!-- Week 3 -->
+                    <th class="text-center" style="border-left: 1px solid #cbd5e1;">BP</th>
+                    <th class="text-center">Act</th>
+                    <th class="text-center">%</th>
+                    <th class="text-center" style="border-right: 1px solid #cbd5e1;">Gap</th>
+                    
+                    <!-- Week 4 -->
+                    <th class="text-center" style="border-left: 1px solid #cbd5e1;">BP</th>
+                    <th class="text-center">Act</th>
+                    <th class="text-center">%</th>
+                    <th class="text-center" style="border-right: 1px solid #cbd5e1;">Gap</th>
+                    
+                    <!-- Week 5 -->
+                    <th class="text-center" style="border-left: 1px solid #cbd5e1;">BP</th>
+                    <th class="text-center">Act</th>
+                    <th class="text-center">%</th>
+                    <th class="text-center" style="border-right: 1px solid #cbd5e1;">Gap</th>
+                </tr>
+            </thead>
+            <tbody id="table-body">
+                <tr>
+                    <td colspan="100%" class="empty-state">
+                        <div class="empty-icon">📊</div>
+                        <div style="font-size: 16px; margin-bottom: 4px;">Ready to load data</div>
+                        <div style="font-size: 13px;">Click "Load File" to start</div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        let salesData = [];
+        let filteredData = [];
+        let collapsedGroups = new Set();
+
+        // Auto-load on page ready
+        document.addEventListener('DOMContentLoaded', function() {
+            const cachedData = localStorage.getItem('salesDashboardData');
+            if (cachedData) {
+                try {
+                    const data = JSON.parse(cachedData);
+                    processData(data);
+                    console.log('Loaded cached data');
+                } catch (e) {
+                    console.log('No valid cached data');
+                }
+            }
+            autoLoadData();
+        });
+
+        // Auto load function
+        async function autoLoadData() {
+            const possiblePaths = [
+                './data/d.onesheet.json',
+                './d.onesheet.json',
+                '../data/d.onesheet.json',
+                '/data/d.onesheet.json'
+            ];
+
+            for (const path of possiblePaths) {
+                try {
+                    const response = await fetch(path);
+                    if (response.ok) {
+                        const text = await response.text();
+                        const data = parseJSONData(text);
+                        processData(data);
+                        console.log(`Auto-loaded data from: ${path}`);
+                        return;
+                    }
+                } catch (e) {
+                    // Continue to next path
+                }
+            }
+            console.log('Auto-load failed, waiting for manual load');
+        }
+
+        // File upload handler
+        document.getElementById('file-upload').addEventListener('change', handleFileUpload);
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = parseJSONData(e.target.result);
+                    processData(data);
+                    localStorage.setItem('salesDashboardData', JSON.stringify(data));
+                } catch (error) {
+                    alert('Error parsing file: ' + error.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function parseJSONData(text) {
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                const lines = text.trim().split('\n');
+                const data = [];
+                
+                for (const line of lines) {
+                    if (line.trim()) {
+                        try {
+                            data.push(JSON.parse(line));
+                        } catch (lineError) {
+                            continue;
+                        }
+                    }
+                }
+                
+                if (data.length === 0) {
+                    throw new Error('No valid JSON objects found');
+                }
+                return data;
+            }
+        }
+
+        function populateSalesmanFilter() {
+            const salesmanSet = new Set();
+            salesData.forEach(item => {
+                if (item['Nama Salesman']) {
+                    salesmanSet.add(item['Nama Salesman']);
+                }
+            });
+            
+            const select = document.getElementById('salesman-filter');
+            select.innerHTML = '<option value="All">All</option>';
+            
+            Array.from(salesmanSet).sort().forEach(salesman => {
+                const option = document.createElement('option');
+                option.value = salesman;
+                option.textContent = salesman;
+                select.appendChild(option);
+            });
+        }
+
+        function filterData() {
+            const selectedSalesman = document.getElementById('salesman-filter').value;
+            
+            if (selectedSalesman === 'All') {
+                filteredData = [...salesData];
+            } else {
+                filteredData = salesData.filter(item => item['Nama Salesman'] === selectedSalesman);
+            }
+            
+            collapsedGroups.clear();
+            calculateStats();
+            renderTable();
+        }
+
+        function processData(rawData) {
+            salesData = Array.isArray(rawData) ? rawData : [rawData];
+            
+            if (salesData.length > 0) {
+                const first = salesData[0];
+                document.getElementById('region-name').textContent = first.Region || 'N/A';
+                document.getElementById('depo-name').textContent = first.Depo || 'N/A';
+            }
+
+            populateSalesmanFilter();
+            document.getElementById('salesman-filter').value = 'All';
+            filterData();
+        }
+
+        function calculateStats() {
+            const data = filteredData.length > 0 ? filteredData : salesData;
+            const selectedSalesman = document.getElementById('salesman-filter').value;
+            
+            let total, active, totalSales = 0, totalBP = 0, totalBE = 0;
+
+            if (selectedSalesman === 'All') {
+                // For "All": count unique outlets by ID Pelanggan
+                const uniqueOutlets = new Set();
+                data.forEach(item => {
+                    if (item['Id Pelanggan']) {
+                        uniqueOutlets.add(item['Id Pelanggan']);
+                    }
+                });
+                total = uniqueOutlets.size;
+                
+                // Active: sum of CA column
+                active = data.reduce((sum, item) => sum + (parseInt(item.CA) || 0), 0);
+                
+            } else {
+                // For specific salesman: count outlets normally
+                total = data.length;
+                
+                // Active: sum of "CA ALL" column (difference is here!)
+                active = data.reduce((sum, item) => sum + (parseInt(item['CA ALL']) || 0), 0);
+            }
+
+            // Calculate totals (same for both All and individual)
+            data.forEach(item => {
+                totalSales += parseFloat(item.Act) || 0;
+                totalBP += parseFloat(item.BP) || 0;
+                totalBE += parseFloat(item['BE MTD']) || 0;
+            });
+
+            // Update display (all stats always visible)
+            document.getElementById('total-outlets').textContent = total;
+            document.getElementById('active-outlets').textContent = active;
+            document.getElementById('total-sales').textContent = formatCurrency(totalSales);
+            document.getElementById('total-bp').textContent = formatCurrency(totalBP);
+            document.getElementById('total-be').textContent = formatCurrency(totalBE);
+            
+            // Calculate vs BP and vs BE percentages
+            const vsBP = totalBP > 0 ? ((totalSales / totalBP) * 100).toFixed(1) : '0.0';
+            const vsBE = totalBE > 0 ? ((totalSales / totalBE) * 100).toFixed(1) : '0.0';
+            
+            document.getElementById('vs-bp').textContent = vsBP + '%';
+            document.getElementById('vs-be').textContent = vsBE + '%';
+        }
+
+        function formatCurrency(amount) {
+            if (!amount || amount === 0) return '-';
+            
+            const num = parseFloat(amount);
+            const absNum = Math.abs(num);
+            
+            if (absNum >= 1000000000) {
+                return (num / 1000000000).toFixed(1) + 'M';
+            } else if (absNum >= 1000000) {
+                return (num / 1000000).toFixed(1) + 'Jt';
+            } else if (absNum >= 1000) {
+                return (num / 1000).toFixed(0) + 'Rb';
+            } else {
+                return num.toLocaleString();
+            }
+        }
+
+        function groupAndSortData(data) {
+            const grouped = {};
+            
+            data.forEach(item => {
+                const hariKunj = item['Hari Kunj'] || 'No Schedule';
+                if (!grouped[hariKunj]) {
+                    grouped[hariKunj] = [];
+                }
+                grouped[hariKunj].push(item);
+            });
+            
+            const classPriority = {
+                'WHOLESALER SPRBIG': 1,
+                'WHOLESALER BIG': 2,
+                'WHOLESALER MEDIUM': 3,
+                'WHOLESALER SMALL': 4,
+                'MTI BIG': 5,
+                'MTI MEDIUM': 6,
+                'MTI SMALL': 7,
+                'RETAIL BIG': 8,
+                'RETAIL MEDIUM': 9,
+                'RETAIL SMALL': 10
+            };
+            
+            Object.keys(grouped).forEach(day => {
+                grouped[day].sort((a, b) => {
+                    const classA = a.CLASS || 'ZZZ';
+                    const classB = b.CLASS || 'ZZZ';
+                    
+                    const priorityA = classPriority[classA] || 99;
+                    const priorityB = classPriority[classB] || 99;
+                    
+                    if (priorityA !== priorityB) {
+                        return priorityA - priorityB;
+                    }
+                    
+                    const nameA = (a['Nama Pelanggan'] || '').toLowerCase();
+                    const nameB = (b['Nama Pelanggan'] || '').toLowerCase();
+                    return nameA.localeCompare(nameB);
+                });
+            });
+            
+            return grouped;
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = '';
+
+            const dataToShow = filteredData.length > 0 ? filteredData : salesData;
+            
+            if (dataToShow.length === 0) {
+                const selectedSalesman = document.getElementById('salesman-filter').value;
+                const message = selectedSalesman === 'All' 
+                    ? 'No data available. Please load a JSON file.'
+                    : `No outlets found for salesman: ${selectedSalesman}`;
+                    
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="100%" class="empty-state">
+                            <div class="empty-icon">📊</div>
+                            <div style="font-size: 16px; margin-bottom: 4px;">${message}</div>
+                            <div style="font-size: 13px;">Click "Load File" to start</div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            const groupedData = groupAndSortData(dataToShow);
+            
+            const dayOrder = {
+                '[1]SENIN': 1, '[2]SELASA': 2, '[3]RABU': 3, 
+                '[4]KAMIS': 4, '[5]JUMAT': 5, '[6]SABTU': 6,
+                'Rute Hari Senin Minggu 1&3': 7, 'Rute Hari Senin Minggu 2&4': 8,
+                'Rute Hari Selasa Minggu 1&3': 9, 'Rute Hari Selasa Minggu 2&4': 10,
+                'Rute Hari Rabu Minggu 1&3': 11, 'Rute Hari Rabu Minggu 2&4': 12,
+                'Rute Hari Kamis Minggu 1&3': 13, 'Rute Hari Kamis Minggu 2&4': 14,
+                'Rute Hari Jumat Minggu 1&3': 15, 'Rute Hari Jumat Minggu 2&4': 16,
+                'Rute Hari Sabtu Minggu 1&3': 17, 'Rute Hari Sabtu Minggu 2&4': 18,
+                'No Schedule': 99
+            };
+            
+            const sortedDays = Object.keys(groupedData).sort((a, b) => {
+                return (dayOrder[a] || 50) - (dayOrder[b] || 50);
+            });
+
+            sortedDays.forEach(day => {
+                const isCollapsed = collapsedGroups.has(day);
+                
+                const groupHeader = document.createElement('tr');
+                groupHeader.className = 'group-header';
+                groupHeader.onclick = () => toggleGroup(day);
+                groupHeader.innerHTML = `
+                    <td colspan="100%">
+                        <div class="group-toggle">
+                            <span>
+                                <span style="display: inline-block; width: 20px; text-align: center; font-weight: bold; font-size: 14px;">
+                                    ${isCollapsed ? '+' : '−'}
+                                </span>
+                                ${formatDayName(day)} (${groupedData[day].length} outlets)
+                            </span>
+                            <span class="group-hint">
+                                ${isCollapsed ? 'Click to expand' : 'Click to collapse'}
+                            </span>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(groupHeader);
+
+                // Add group summary row
+                const summaryRow = createGroupSummaryRow(groupedData[day], day);
+                tbody.appendChild(summaryRow);
+
+                // Add outlet rows (only if not collapsed)
+                if (!isCollapsed) {
+                    groupedData[day].forEach(item => {
+                        const row = createRow(item);
+                        tbody.appendChild(row);
+                    });
+                }
+            });
+        }
+
+        function toggleGroup(groupName) {
+            if (collapsedGroups.has(groupName)) {
+                collapsedGroups.delete(groupName);
+            } else {
+                collapsedGroups.add(groupName);
+            }
+            renderTable();
+        }
+
+        function expandAllGroups() {
+            collapsedGroups.clear();
+            renderTable();
+        }
+
+        function collapseAllGroups() {
+            const dataToShow = filteredData.length > 0 ? filteredData : salesData;
+            if (dataToShow.length === 0) return;
+            
+            const groupedData = groupAndSortData(dataToShow);
+            Object.keys(groupedData).forEach(day => {
+                collapsedGroups.add(day);
+            });
+            renderTable();
+        }
+
+        function formatDayName(day) {
+            const dayNames = {
+                '[1]SENIN': 'Senin',
+                '[2]SELASA': 'Selasa', 
+                '[3]RABU': 'Rabu',
+                '[4]KAMIS': 'Kamis',
+                '[5]JUMAT': 'Jumat',
+                '[6]SABTU': 'Sabtu'
+            };
+            
+            return dayNames[day] || day;
+        }
+
+        function createRow(item) {
+            const row = document.createElement('tr');
+
+            const channel = getChannel(item.Channel);
+            const mtdAct = parseFloat(item.Act) || 0;
+            const mtdBp = parseFloat(item.BP) || 0;
+            const mtdAch = mtdBp > 0 ? ((mtdAct / mtdBp) * 100).toFixed(0) : '0';
+
+            const classBadge = getClassBadge(item.CLASS);
+
+            row.innerHTML = `
+                <td class="sticky-col sticky-col-1">
+                    <div class="font-medium" style="color: #1f2937;">${item['Nama Pelanggan'] || 'N/A'}</div>
+                    <div style="font-size: 11px; color: #6b7280;">${classBadge}</div>
+                </td>
+                <td class="sticky-col sticky-col-2 text-center">
+                    <span style="display: inline-block; padding: 2px 4px; border-radius: 3px; font-size: 11px; font-weight: 500;" class="channel-${channel.toLowerCase()}">
+                        ${channel}
+                    </span>
+                </td>
+                <td class="sticky-col sticky-col-3 text-center">
+                    <span class="${item.CA === 1 ? 'ca-active' : 'ca-inactive'}"></span>
+                </td>
+                <td class="sticky-col sticky-col-4 text-center font-bold ${getAchClass(parseFloat(mtdAch))}">
+                    ${mtdAch}%
+                </td>
+
+                ${generateWeekCols(item, 1)}
+                ${generateWeekCols(item, 2)}
+                ${generateWeekCols(item, 3)}
+                ${generateWeekCols(item, 4)}
+                ${generateWeekCols(item, 5)}
+            `;
+
+            return row;
+        }
+
+        function getClassBadge(className) {
+            if (!className) return '';
+            
+            const classMap = {
+                'WHOLESALER SPRBIG': '🏪 WS-XL',
+                'WHOLESALER BIG': '🏪 WS-L', 
+                'WHOLESALER MEDIUM': '🏪 WS-M',
+                'WHOLESALER SMALL': '🏪 WS-S',
+                'MTI BIG': '🏬 MT-L',
+                'MTI MEDIUM': '🏬 MT-M', 
+                'MTI SMALL': '🏬 MT-S',
+                'RETAIL BIG': '🏬 RT-L',
+                'RETAIL MEDIUM': '🏬 RT-M',
+                'RETAIL SMALL': '🏬 RT-S'
+            };
+            
+            return classMap[className] || className.substring(0, 15);
+        }
+
+        function generateWeekCols(item, week) {
+            const bp = parseFloat(item[`BP W${week}`]) || 0;
+            const actual = parseFloat(item[`A.W${week}`]) || 0;
+            const gap = parseFloat(item[`Gap A.W${week}`]) || 0;
+            const achPercent = bp > 0 ? ((actual / bp) * 100).toFixed(0) : '0';
+
+            return `
+                <td class="text-center" style="${week === 1 ? 'border-left: 1px solid #cbd5e1;' : ''}">${formatNum(bp)}</td>
+                <td class="text-center font-medium">${formatNum(actual)}</td>
+                <td class="text-center font-bold ${getAchClass(parseFloat(achPercent))}">${achPercent}%</td>
+                <td class="text-center ${gap >= 0 ? 'text-green' : 'text-red'}" style="${week === 5 ? '' : 'border-right: 1px solid #cbd5e1;'}">${formatNum(gap)}</td>
+            `;
+        }
+
+        function getChannel(channel) {
+            if (channel && channel.includes('WHOLESALER')) return 'WS';
+            if (channel && channel.includes('RETAIL')) return 'RT';
+            if (channel && channel.includes('MTI')) return 'MT';
+            return 'OT';
+        }
+
+        function createGroupSummaryRow(groupData, dayName) {
+            const row = document.createElement('tr');
+            row.className = 'group-summary';
+
+            // Calculate group totals
+            let totalOutlets = groupData.length;
+            let activeOutlets = 0;
+            let mtdTotalAct = 0, mtdTotalBp = 0;
+            
+            // Weekly totals
+            let weeklyTotals = {
+                1: { bp: 0, act: 0, gap: 0 },
+                2: { bp: 0, act: 0, gap: 0 },
+                3: { bp: 0, act: 0, gap: 0 },
+                4: { bp: 0, act: 0, gap: 0 },
+                5: { bp: 0, act: 0, gap: 0 }
+            };
+
+            const selectedSalesman = document.getElementById('salesman-filter').value;
+
+            groupData.forEach(item => {
+                // Count active outlets based on filter
+                if (selectedSalesman === 'All') {
+                    activeOutlets += parseInt(item.CA) || 0;
+                } else {
+                    activeOutlets += parseInt(item['CA ALL']) || 0;
+                }
+
+                // MTD totals
+                mtdTotalAct += parseFloat(item.Act) || 0;
+                mtdTotalBp += parseFloat(item.BP) || 0;
+
+                // Weekly totals
+                for (let week = 1; week <= 5; week++) {
+                    weeklyTotals[week].bp += parseFloat(item[`BP W${week}`]) || 0;
+                    weeklyTotals[week].act += parseFloat(item[`A.W${week}`]) || 0;
+                    weeklyTotals[week].gap += parseFloat(item[`Gap A.W${week}`]) || 0;
+                }
+            });
+
+            // Calculate MTD achievement
+            const mtdAch = mtdTotalBp > 0 ? ((mtdTotalAct / mtdTotalBp) * 100).toFixed(0) : '0';
+
+            // Generate weekly summary columns
+            let weeklySummaryHtml = '';
+            for (let week = 1; week <= 5; week++) {
+                const achPercent = weeklyTotals[week].bp > 0 ? 
+                    ((weeklyTotals[week].act / weeklyTotals[week].bp) * 100).toFixed(0) : '0';
+                
+                weeklySummaryHtml += `
+                    <td class="text-center" style="${week === 1 ? 'border-left: 1px solid #cbd5e1;' : ''}">${formatNum(weeklyTotals[week].bp)}</td>
+                    <td class="text-center font-medium">${formatNum(weeklyTotals[week].act)}</td>
+                    <td class="text-center font-bold ${getAchClass(parseFloat(achPercent))}">${achPercent}%</td>
+                    <td class="text-center ${weeklyTotals[week].gap >= 0 ? 'text-green' : 'text-red'}" style="${week === 5 ? '' : 'border-right: 1px solid #cbd5e1;'}">${formatNum(weeklyTotals[week].gap)}</td>
+                `;
+            }
+
+            row.innerHTML = `
+                <td class="sticky-col sticky-col-1">
+                    <div class="font-medium" style="color: #0369a1;">📊 ${formatDayName(dayName)} Summary</div>
+                    <div style="font-size: 11px; color: #0284c7;">${totalOutlets} outlets • ${activeOutlets} active</div>
+                </td>
+                <td class="sticky-col sticky-col-2 text-center">
+                    <span style="display: inline-block; padding: 2px 4px; border-radius: 3px; font-size: 11px; font-weight: 500; background: #0ea5e9; color: white;">
+                        ALL
+                    </span>
+                </td>
+                <td class="sticky-col sticky-col-3 text-center">
+                    <span style="display: inline-block; width: 16px; height: 16px; border-radius: 50%; background: #0ea5e9;"></span>
+                </td>
+                <td class="sticky-col sticky-col-4 text-center font-bold ${getAchClass(parseFloat(mtdAch))}">
+                    ${mtdAch}%
+                </td>
+                ${weeklySummaryHtml}
+            `;
+
+            return row;
+        }
+
+        function getAchClass(percentage) {
+            if (percentage < 100) return 'ach-red';
+            if (percentage === 100) return 'ach-yellow';
+            return 'ach-green';
+        }
+
+        function formatNum(num) {
+            if (!num || num === 0) return '-';
+            const number = parseFloat(num);
+            if (Math.abs(number) >= 1000000) {
+                return (number / 1000000).toFixed(1) + 'M';
+            } else if (Math.abs(number) >= 1000) {
+                return (number / 1000).toFixed(0) + 'K';
+            }
+            return number.toLocaleString();
+        }
+    </script>
+</body>
+</html>

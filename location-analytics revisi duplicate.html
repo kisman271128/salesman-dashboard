@@ -1,0 +1,3122 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Salesman Route Tracking - Enhanced Analytics (Fixed)</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-database-compat.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(180deg, #f8f9ff 0%, #e8ecff 100%);
+            min-height: 100vh;
+            color: #2c3e50;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .header-subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        /* Enhanced Controls */
+        .enhanced-controls {
+            background: white;
+            margin: 16px;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .control-section {
+            margin-bottom: 20px;
+        }
+
+        .control-section h3 {
+            font-size: 14px;
+            color: #4a5568;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .control-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .control-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .control-item label {
+            font-size: 12px;
+            color: #64748b;
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+
+        .control-item select,
+        .control-item input {
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            background: #f8fafc;
+            transition: all 0.3s ease;
+        }
+
+        .control-item select:focus,
+        .control-item input:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        /* Enhanced Statistics */
+        .enhanced-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+            margin: 16px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .stat-header {
+            display: flex;
+            align-items: center;
+            justify-content: between;
+            margin-bottom: 16px;
+        }
+
+        .stat-icon {
+            font-size: 32px;
+            margin-right: 12px;
+        }
+
+        .stat-title {
+            font-size: 14px;
+            color: #64748b;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+
+        .stat-description {
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        .stat-trend {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 8px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .trend-up { color: #10b981; }
+        .trend-down { color: #ef4444; }
+        .trend-neutral { color: #64748b; }
+
+        /* Map Section */
+        .map-section {
+            margin: 16px;
+        }
+
+        .map-wrapper {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        .map-header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .map-title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .map-stats {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        #visitMap {
+            height: 500px;
+            width: 100%;
+        }
+
+        /* Location List */
+        .location-list-section {
+            margin: 16px;
+        }
+
+        .location-list {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .location-list-header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 16px;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .location-list-content {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .location-item {
+            padding: 16px;
+            border-bottom: 1px solid #f1f5f9;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .location-item:hover {
+            background: #f8fafc;
+        }
+
+        .location-item:last-child {
+            border-bottom: none;
+        }
+
+        .location-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .customer-name {
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+
+        .visit-time {
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        .compliance-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .compliance-perfect {
+            background: #ecfdf5;
+            color: #10b981;
+        }
+
+        .compliance-good {
+            background: #dbeafe;
+            color: #3b82f6;
+        }
+
+        .compliance-warning {
+            background: #fef3c7;
+            color: #f59e0b;
+        }
+
+        .compliance-error {
+            background: #fef2f2;
+            color: #ef4444;
+        }
+
+        .location-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .detail-item {
+            background: #f8fafc;
+            padding: 8px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .detail-label {
+            font-size: 10px;
+            color: #64748b;
+            margin-bottom: 2px;
+        }
+
+        .detail-value {
+            font-size: 12px;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f1f5f9;
+            color: #4a5568;
+            border: 1px solid #e2e8f0;
+        }
+
+        .btn-secondary:hover {
+            background: #e2e8f0;
+        }
+
+        /* Loading States */
+        .loading-spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #64748b;
+        }
+
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        /* Firebase Status */
+        .firebase-status {
+            background: #f0f9ff;
+            border: 1px solid #0ea5e9;
+            color: #0369a1;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .firebase-status.connected {
+            background: #f0fdf4;
+            border-color: #10b981;
+            color: #065f46;
+        }
+
+        .firebase-status.error {
+            background: #fef2f2;
+            border-color: #ef4444;
+            color: #991b1b;
+        }
+
+        /* Debug Output */
+        .debug-output {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 16px;
+            border-radius: 8px;
+            margin: 16px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+        }
+
+        .debug-output.show {
+            display: block;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .control-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .enhanced-stats {
+                grid-template-columns: 1fr;
+            }
+
+            .location-details {
+                grid-template-columns: 1fr;
+            }
+
+            #visitMap {
+                height: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🛣️ Salesman Route Tracking Analytics (Firebase Auth)</h1>
+            <div class="header-subtitle">localStorage Analytics • Firebase Authentication • Route Visualization</div>
+        </div>
+
+        <!-- Enhanced Controls -->
+        <div class="enhanced-controls">
+            <!-- Firebase Status -->
+            <div class="firebase-status" id="firebaseStatus">
+                🔄 Connecting to Firebase with Authentication...
+            </div>
+            
+            <!-- Database Info -->
+            <div style="background: #f0f9ff; border: 1px solid #0ea5e9; color: #0369a1; padding: 8px; border-radius: 6px; margin-bottom: 12px; font-size: 11px;">
+                📊 <strong>Database Structure:</strong> visit_events (real-time) • daily_visits (aggregated) • Authentication required
+            </div>
+
+            <div class="control-section">
+                <h3>🎛️ Analytics Filters</h3>
+                <div class="control-grid">
+                    <div class="control-item">
+                        <label>Date From</label>
+                        <input type="date" id="mapDateFrom">
+                    </div>
+                    <div class="control-item">
+                        <label>Date To</label>
+                        <input type="date" id="mapDateTo">
+                    </div>
+                    <div class="control-item">
+                        <label>Salesman</label>
+                        <select id="mapSalesmanFilter">
+                            <option value="">All Salesman</option>
+                        </select>
+                    </div>
+                    <div class="control-item">
+                        <label>Data Source</label>
+                        <select id="dataSourceFilter">
+                            <option value="localStorage">Local Storage (Recommended)</option>
+                            <option value="both">Both Sources (localStorage + Firebase)</option>
+                            <option value="firebase">Firebase Database Only</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="btn btn-primary" onclick="loadEnhancedAnalytics()">
+                        🗺️ Load Analytics
+                    </button>
+                    <button class="btn btn-secondary" onclick="refreshFirebaseConnection()">
+                        🔄 Refresh Firebase
+                    </button>
+                    <button class="btn btn-secondary" onclick="debugLocalStorage()">
+                        🔍 Debug Storage
+                    </button>
+                    <button class="btn btn-secondary" onclick="analyzeDuplicates()">
+                        🔍 Check Duplicates
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearAnalytics()">
+                        🧹 Clear Data
+                    </button>
+                    <button class="btn btn-secondary" onclick="toggleDebugOutput()">
+                        📋 Toggle Debug
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Debug Output -->
+        <div class="debug-output" id="debugOutput">
+            <strong>🔍 Debug Information:</strong><br>
+            <div id="debugContent">Debug information will appear here...</div>
+        </div>
+
+        <!-- Enhanced Statistics -->
+        <div class="enhanced-stats">
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div>
+                        <div class="stat-icon">📍</div>
+                        <div class="stat-title">Total Visits</div>
+                    </div>
+                </div>
+                <div class="stat-value" id="totalVisits">-</div>
+                <div class="stat-description">Location tracked visits</div>
+                <div class="stat-trend trend-neutral" id="visitsChange">
+                    📊 localStorage data
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div>
+                        <div class="stat-icon">✅</div>
+                        <div class="stat-title">Compliance Rate</div>
+                    </div>
+                </div>
+                <div class="stat-value" id="complianceRate">-</div>
+                <div class="stat-description">Visits within 100m radius</div>
+                <div class="stat-trend trend-up" id="complianceChange">
+                    ↗️ Good compliance
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div>
+                        <div class="stat-icon">📏</div>
+                        <div class="stat-title">Avg Distance</div>
+                    </div>
+                </div>
+                <div class="stat-value" id="avgDistance">-</div>
+                <div class="stat-description">Average distance from target</div>
+                <div class="stat-trend trend-neutral" id="distanceChange">
+                    📍 Location accuracy
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div>
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-title">Salesman</div>
+                    </div>
+                </div>
+                <div class="stat-value" id="salesmanCount">-</div>
+                <div class="stat-description">Active salesman tracked</div>
+                <div class="stat-trend trend-neutral" id="salesmanChange">
+                    👤 Team activity
+                </div>
+            </div>
+        </div>
+
+        <!-- Map Container -->
+        <div class="map-section">
+            <div class="map-wrapper">
+                <div class="map-header">
+                    <div class="map-title">🗺️ Route Tracking Map</div>
+                    <div class="map-stats" id="mapStats">Ready to load data</div>
+                </div>
+                <div id="visitMap"></div>
+            </div>
+        </div>
+
+        <!-- Location List -->
+        <div class="location-list-section">
+            <div class="location-list">
+                <div class="location-list-header">
+                    📋 Visit Analytics
+                </div>
+                <div class="location-list-content" id="locationListContent">
+                    <div class="empty-state">
+                        <div class="empty-icon">📊</div>
+                        <div>Load analytics data to see visit information</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+    <script>
+        // ===== GLOBAL VARIABLES =====
+        let visitMap = null;
+        let mapMarkers = [];
+        let currentLocationData = [];
+        let firebaseDatabase = null;
+        let isFirebaseConnected = false;
+        let enhancedAnalytics = null;
+        let debugMessages = [];
+
+        // ===== DEBUG FUNCTIONS =====
+        function addDebugMessage(message) {
+            debugMessages.push(`[${new Date().toLocaleTimeString()}] ${message}`);
+            updateDebugOutput();
+        }
+
+        function updateDebugOutput() {
+            const debugContent = document.getElementById('debugContent');
+            debugContent.innerHTML = debugMessages.slice(-50).join('<br>');
+        }
+
+        function toggleDebugOutput() {
+            const debugOutput = document.getElementById('debugOutput');
+            debugOutput.classList.toggle('show');
+        }
+
+        // ===== FIREBASE CONFIGURATION =====
+        const firebaseConfig = {
+            apiKey: "AIzaSyAoRV3qVAXQ14AEVA8Mo49HXfAyhMMm8Bs",
+            authDomain: "salesman-route-tracker.firebaseapp.com",
+            databaseURL: "https://salesman-route-tracker-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "salesman-route-tracker",
+            storageBucket: "salesman-route-tracker.firebasestorage.app",
+            messagingSenderId: "590789273516",
+            appId: "1:590789273516:web:79abe0c7e4cbccfa44fc09",
+            measurementId: "G-5RYSWKQ963"
+        };
+
+        // ===== IMPROVED FIREBASE ANALYTICS CLASS =====
+        class FirebaseLocationAnalytics {
+            constructor() {
+                this.visitLocations = [];
+                this.salesmanData = {};
+                this.complianceStats = {};
+                this.isInitialized = false;
+                
+                addDebugMessage('🚀 FirebaseLocationAnalytics constructor called');
+                this.init();
+            }
+            
+            async init() {
+                if (this.isInitialized) return;
+                addDebugMessage('🚀 Firebase Location Analytics initializing...');
+                
+                await this.initializeFirebase();
+                this.initializeMap();
+                this.initializeDateInputs();
+                
+                this.isInitialized = true;
+                addDebugMessage('✅ Firebase Location Analytics ready');
+            }
+            
+            async initializeFirebase() {
+                try {
+                    addDebugMessage('🔗 Connecting to Firebase with Authentication...');
+                    this.updateFirebaseStatus('🔄 Initializing Firebase Authentication...', 'connecting');
+                    
+                    // Initialize Firebase
+                    if (!firebase.apps.length) {
+                        firebase.initializeApp(firebaseConfig);
+                        addDebugMessage('✅ Firebase app initialized');
+                    }
+                    
+                    firebaseDatabase = firebase.database();
+                    
+                    // Try Anonymous Authentication first
+                    try {
+                        addDebugMessage('🔐 Attempting anonymous authentication...');
+                        await firebase.auth().signInAnonymously();
+                        addDebugMessage('✅ Anonymous authentication successful');
+                        
+                        // Test database access with correct paths
+                        try {
+                            addDebugMessage('🔍 Testing database access with authenticated user...');
+                            
+                            // Test access to visit_events and daily_visits (as per rules)
+                            const testPaths = [
+                                { path: 'visit_events', description: 'visit events' },
+                                { path: 'daily_visits', description: 'daily visits' }
+                            ];
+                            
+                            let hasAccess = false;
+                            for (const testPath of testPaths) {
+                                try {
+                                    const snapshot = await firebaseDatabase.ref(testPath.path).limitToFirst(1).once('value');
+                                    addDebugMessage(`✅ Successfully accessed ${testPath.description} path`);
+                                    hasAccess = true;
+                                    break;
+                                } catch (pathError) {
+                                    addDebugMessage(`⚠️ Cannot access ${testPath.description}: ${pathError.message}`);
+                                }
+                            }
+                            
+                            if (hasAccess) {
+                                isFirebaseConnected = true;
+                                this.updateFirebaseStatus('✅ Firebase authenticated with database access', 'connected');
+                                addDebugMessage('✅ Firebase authentication and database access confirmed');
+                            } else {
+                                isFirebaseConnected = false;
+                                this.updateFirebaseStatus('⚠️ Firebase authenticated but no data access - using localStorage', 'error');
+                                addDebugMessage('⚠️ Firebase authenticated but cannot access data paths');
+                            }
+                            
+                        } catch (dbError) {
+                            isFirebaseConnected = false;
+                            this.updateFirebaseStatus('⚠️ Firebase authenticated but database access failed - using localStorage', 'error');
+                            addDebugMessage('⚠️ Database access test failed: ' + dbError.message);
+                        }
+                        
+                    } catch (authError) {
+                        addDebugMessage('⚠️ Firebase authentication failed: ' + authError.message);
+                        isFirebaseConnected = false;
+                        this.updateFirebaseStatus('⚠️ Firebase authentication failed - using localStorage only', 'error');
+                        
+                        // Try without authentication (fallback)
+                        try {
+                            addDebugMessage('🔍 Trying database access without authentication...');
+                            await firebaseDatabase.ref('.info/connected').once('value');
+                            addDebugMessage('⚠️ Can connect to Firebase but cannot read data without auth');
+                        } catch (noAuthError) {
+                            addDebugMessage('❌ Cannot connect to Firebase: ' + noAuthError.message);
+                        }
+                    }
+                    
+                    // Load available salesman regardless of connection status
+                    await this.loadAvailableSalesman();
+                    
+                } catch (error) {
+                    addDebugMessage('❌ Firebase initialization error: ' + error.message);
+                    isFirebaseConnected = false;
+                    this.updateFirebaseStatus('❌ Firebase initialization failed - using localStorage only', 'error');
+                }
+            }
+            
+            updateFirebaseStatus(message, status) {
+                const statusElement = document.getElementById('firebaseStatus');
+                statusElement.textContent = message;
+                statusElement.className = `firebase-status ${status}`;
+                addDebugMessage('🔔 Firebase status: ' + message);
+            }
+            
+            async loadAvailableSalesman() {
+                try {
+                    addDebugMessage('👥 Loading available salesman...');
+                    const salesmanSet = new Set();
+                    
+                    // First try Firebase with correct paths if connected
+                    if (isFirebaseConnected) {
+                        try {
+                            addDebugMessage('🔥 Loading salesman from Firebase...');
+                            
+                            // Try visit_events path first
+                            try {
+                                addDebugMessage('🔥 Scanning visit_events for salesman...');
+                                const eventsSnapshot = await firebaseDatabase.ref('visit_events')
+                                    .orderByChild('salesman_id')
+                                    .limitToLast(100)
+                                    .once('value');
+                                    
+                                const eventsData = eventsSnapshot.val();
+                                if (eventsData) {
+                                    Object.values(eventsData).forEach(event => {
+                                        if (event && event.salesman_id) {
+                                            salesmanSet.add(event.salesman_id);
+                                            addDebugMessage(`🔥 Found salesman from events: ${event.salesman_id}`);
+                                        }
+                                    });
+                                }
+                            } catch (eventsError) {
+                                addDebugMessage(`⚠️ Cannot scan visit_events: ${eventsError.message}`);
+                            }
+                            
+                            // Try daily_visits path
+                            try {
+                                addDebugMessage('🔥 Scanning daily_visits for salesman...');
+                                const dailySnapshot = await firebaseDatabase.ref('daily_visits')
+                                    .limitToFirst(50)
+                                    .once('value');
+                                    
+                                const dailyData = dailySnapshot.val();
+                                if (dailyData) {
+                                    // daily_visits structure might have salesman IDs as keys
+                                    Object.entries(dailyData).forEach(([key, value]) => {
+                                        // Check if key looks like salesman ID
+                                        if (key && key.length >= 10 && key.length <= 20 && /^\d+$/.test(key)) {
+                                            salesmanSet.add(key);
+                                            addDebugMessage(`🔥 Found salesman from daily_visits key: ${key}`);
+                                        }
+                                        
+                                        // Also check nested salesman_id fields
+                                        if (value && typeof value === 'object') {
+                                            Object.values(value).forEach(nestedValue => {
+                                                if (nestedValue && nestedValue.salesman_id) {
+                                                    salesmanSet.add(nestedValue.salesman_id);
+                                                    addDebugMessage(`🔥 Found salesman from daily_visits data: ${nestedValue.salesman_id}`);
+                                                }
+                                            });
+                                        }
+                                    });
+                                }
+                            } catch (dailyError) {
+                                addDebugMessage(`⚠️ Cannot scan daily_visits: ${dailyError.message}`);
+                            }
+                            
+                        } catch (firebaseError) {
+                            addDebugMessage('⚠️ Firebase salesman loading failed: ' + firebaseError.message);
+                            isFirebaseConnected = false;
+                            this.updateFirebaseStatus('⚠️ Firebase access limited - using localStorage', 'error');
+                        }
+                    } else {
+                        addDebugMessage('ℹ️ Firebase not connected, skipping Firebase salesman scan');
+                    }
+                    
+                    // Always check localStorage as primary/fallback
+                    addDebugMessage('💾 Loading salesman from localStorage...');
+                    this.loadSalesmanFromLocalStorage(salesmanSet);
+                    
+                    // Update salesman dropdown
+                    this.updateSalesmanDropdown(salesmanSet);
+                    
+                    addDebugMessage(`👥 Total found ${salesmanSet.size} salesman: ${Array.from(salesmanSet).join(', ')}`);
+                    
+                } catch (error) {
+                    addDebugMessage('❌ Error loading salesman: ' + error.message);
+                    // Continue with empty set - will use localStorage data when loading analytics
+                    this.updateSalesmanDropdown(new Set());
+                }
+            }
+            
+            extractSalesmanFromData(data, salesmanSet) {
+                Object.values(data).forEach(item => {
+                    if (item && typeof item === 'object') {
+                        // Direct salesman ID fields
+                        if (item.salesman_id) salesmanSet.add(item.salesman_id);
+                        if (item.salesmanId) salesmanSet.add(item.salesmanId);
+                        
+                        // Nested data
+                        Object.values(item).forEach(subItem => {
+                            if (subItem && typeof subItem === 'object') {
+                                if (subItem.salesman_id) salesmanSet.add(subItem.salesman_id);
+                                if (subItem.salesmanId) salesmanSet.add(subItem.salesmanId);
+                            }
+                        });
+                    }
+                });
+            }
+            
+            loadSalesmanFromLocalStorage(salesmanSet) {
+                addDebugMessage('💾 Scanning localStorage for salesman data...');
+                let foundKeys = 0;
+                let processedKeys = 0;
+                
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && (key.includes('visit') || key.includes('analytics'))) {
+                        foundKeys++;
+                        
+                        try {
+                            // Pattern 1: visit_daily_local_YYYY-MM-DD_SALESMANID
+                            if (key.startsWith('visit_daily_local_')) {
+                                const parts = key.split('_');
+                                if (parts.length >= 4) {
+                                    const salesmanId = parts[parts.length - 1];
+                                    if (salesmanId && salesmanId.length <= 20) {
+                                        salesmanSet.add(salesmanId);
+                                        addDebugMessage(`💾 Found salesman from daily pattern: ${salesmanId}`);
+                                    }
+                                }
+                            }
+                            
+                            // Pattern 2: visit_pending_YYYY-MM-DD_SALESMANID
+                            else if (key.startsWith('visit_pending_')) {
+                                const parts = key.split('_');
+                                if (parts.length >= 4) {
+                                    const salesmanId = parts[parts.length - 1];
+                                    if (salesmanId && salesmanId.length <= 20) {
+                                        salesmanSet.add(salesmanId);
+                                        addDebugMessage(`💾 Found salesman from pending pattern: ${salesmanId}`);
+                                    }
+                                }
+                            }
+                            
+                            // Parse data content for salesman info
+                            const data = localStorage.getItem(key);
+                            if (data && data.length > 10) {
+                                try {
+                                    const parsed = JSON.parse(data);
+                                    processedKeys++;
+                                    
+                                    // Check if this is analytics data with visits
+                                    if (key.startsWith('analytics_')) {
+                                        addDebugMessage(`📊 Parsing analytics data from ${key}`);
+                                        this.extractSalesmanFromAnalytics(parsed, salesmanSet);
+                                    }
+                                    
+                                    // Direct salesman fields
+                                    if (parsed.salesman_id) {
+                                        salesmanSet.add(parsed.salesman_id);
+                                        addDebugMessage(`💾 Found salesman from data.salesman_id: ${parsed.salesman_id}`);
+                                    }
+                                    if (parsed.salesmanId) {
+                                        salesmanSet.add(parsed.salesmanId);
+                                        addDebugMessage(`💾 Found salesman from data.salesmanId: ${parsed.salesmanId}`);
+                                    }
+                                    
+                                    // Extract from salesman_name
+                                    if (parsed.salesman_name && parsed.salesman_name.includes('Salesman ')) {
+                                        const idFromName = parsed.salesman_name.replace('Salesman ', '').trim();
+                                        if (idFromName && idFromName !== parsed.salesman_name && idFromName.length <= 20) {
+                                            salesmanSet.add(idFromName);
+                                            addDebugMessage(`💾 Found salesman from name extraction: ${idFromName}`);
+                                        }
+                                    }
+                                    
+                                    // Check if it's an array of events (pending data)
+                                    if (Array.isArray(parsed)) {
+                                        parsed.forEach(event => {
+                                            if (event && typeof event === 'object') {
+                                                if (event.salesman_id) {
+                                                    salesmanSet.add(event.salesman_id);
+                                                    addDebugMessage(`💾 Found salesman from event data: ${event.salesman_id}`);
+                                                }
+                                                if (event.salesman_name && event.salesman_name.includes('Salesman ')) {
+                                                    const idFromEvent = event.salesman_name.replace('Salesman ', '').trim();
+                                                    if (idFromEvent && idFromEvent.length <= 20) {
+                                                        salesmanSet.add(idFromEvent);
+                                                        addDebugMessage(`💾 Found salesman from event name: ${idFromEvent}`);
+                                                    }
+                                                }
+                                            }
+                                        });
+                                    }
+                                    
+                                } catch (parseError) {
+                                    // Skip invalid JSON, but still try to extract from key pattern
+                                    continue;
+                                }
+                            }
+                            
+                        } catch (error) {
+                            addDebugMessage(`⚠️ Error processing localStorage key ${key}: ${error.message}`);
+                        }
+                    }
+                }
+                
+                addDebugMessage(`💾 localStorage scan complete: ${foundKeys} relevant keys found, ${processedKeys} parsed, ${salesmanSet.size} unique salesman detected`);
+            }
+            
+            extractSalesmanFromAnalytics(analyticsData, salesmanSet) {
+                // Analytics data might have different structures
+                if (typeof analyticsData === 'object') {
+                    // Check top level
+                    if (analyticsData.salesman_id) {
+                        salesmanSet.add(analyticsData.salesman_id);
+                        addDebugMessage(`📊 Found salesman from analytics root: ${analyticsData.salesman_id}`);
+                    }
+                    
+                    // Check nested objects
+                    Object.values(analyticsData).forEach(value => {
+                        if (value && typeof value === 'object') {
+                            if (value.salesman_id) {
+                                salesmanSet.add(value.salesman_id);
+                                addDebugMessage(`📊 Found salesman from analytics nested: ${value.salesman_id}`);
+                            }
+                            if (value.salesmanId) {
+                                salesmanSet.add(value.salesmanId);
+                                addDebugMessage(`📊 Found salesman from analytics nested: ${value.salesmanId}`);
+                            }
+                        }
+                    });
+                }
+            }
+            
+            updateSalesmanDropdown(salesmanSet) {
+                const salesmanSelect = document.getElementById('mapSalesmanFilter');
+                const currentValue = salesmanSelect.value;
+                
+                // Clear existing options except "All Salesman"
+                salesmanSelect.innerHTML = '<option value="">All Salesman</option>';
+                
+                // Add found salesman
+                const sortedSalesman = Array.from(salesmanSet)
+                    .filter(id => id && id !== 'unknown' && id !== '')
+                    .sort();
+                    
+                sortedSalesman.forEach(salesmanId => {
+                    const option = document.createElement('option');
+                    option.value = salesmanId;
+                    option.textContent = `Salesman ${salesmanId}`;
+                    salesmanSelect.appendChild(option);
+                });
+                
+                // Restore previous selection
+                if (currentValue && sortedSalesman.includes(currentValue)) {
+                    salesmanSelect.value = currentValue;
+                }
+                
+                addDebugMessage(`👥 Salesman dropdown updated with ${sortedSalesman.length} entries`);
+            }
+            
+            initializeMap() {
+                if (!visitMap) {
+                    visitMap = L.map('visitMap').setView([-2.1869912738751607, 115.397471857672], 11);
+                    
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '© OpenStreetMap contributors',
+                        maxZoom: 18
+                    }).addTo(visitMap);
+                    
+                    addDebugMessage('🗺️ Map initialized');
+                }
+            }
+            
+            initializeDateInputs() {
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById('mapDateFrom').value = today;
+                document.getElementById('mapDateTo').value = today;
+                addDebugMessage('📅 Date inputs initialized to today: ' + today);
+            }
+            
+            async loadAnalyticsData(dateFrom, dateTo, salesmanFilter = '', dataSource = 'localStorage') {
+                this.visitLocations = [];
+                this.salesmanData = {};
+                
+                addDebugMessage(`📊 Loading analytics from ${dataSource}: ${dateFrom} to ${dateTo}, salesman: ${salesmanFilter || 'all'}`);
+                
+                try {
+                    let firebaseDataLoaded = false;
+                    let localStorageDataLoaded = false;
+                    
+                    // Try Firebase first if requested
+                    if (dataSource === 'firebase' || dataSource === 'both') {
+                        if (isFirebaseConnected) {
+                            await this.loadFromFirebase(dateFrom, dateTo, salesmanFilter);
+                            firebaseDataLoaded = this.visitLocations.length > 0;
+                            addDebugMessage(`🔥 Firebase data loaded: ${this.visitLocations.length} visits`);
+                        } else {
+                            addDebugMessage('⚠️ Firebase not connected, will fallback to localStorage');
+                        }
+                    }
+                    
+                    // Load from localStorage if requested OR if Firebase failed/unavailable
+                    if (dataSource === 'localStorage' || dataSource === 'both' || 
+                        (dataSource === 'firebase' && !firebaseDataLoaded)) {
+                        
+                        const beforeLocalStorage = this.visitLocations.length;
+                        this.loadFromLocalStorage(dateFrom, dateTo, salesmanFilter);
+                        const localStorageVisits = this.visitLocations.length - beforeLocalStorage;
+                        localStorageDataLoaded = localStorageVisits > 0;
+                        addDebugMessage(`💾 localStorage data loaded: ${localStorageVisits} visits`);
+                        
+                        // If Firebase was requested but failed, show fallback message
+                        if (dataSource === 'firebase' && !firebaseDataLoaded && localStorageDataLoaded) {
+                            addDebugMessage('✅ Successfully fell back to localStorage data');
+                        }
+                    }
+                    
+                    // Calculate stats
+                    this.calculateAdvancedStats();
+                    currentLocationData = this.visitLocations;
+                    
+                    const totalVisits = this.visitLocations.length;
+                    let actualSource = dataSource;
+                    
+                    // Determine what actually loaded
+                    if (dataSource === 'firebase' && !firebaseDataLoaded && localStorageDataLoaded) {
+                        actualSource = 'localStorage (Firebase fallback)';
+                    } else if (dataSource === 'both') {
+                        actualSource = `both (${firebaseDataLoaded ? 'Firebase+' : ''}localStorage)`;
+                    }
+                    
+                    addDebugMessage(`✅ Analytics loaded: ${totalVisits} visits from ${actualSource}`);
+                    return this.visitLocations;
+                    
+                } catch (error) {
+                    addDebugMessage('❌ Error in loadAnalyticsData: ' + error.message);
+                    
+                    // Last resort: try localStorage if not already tried
+                    if (dataSource === 'firebase' && this.visitLocations.length === 0) {
+                        addDebugMessage('🆘 Last resort: forcing localStorage load...');
+                        try {
+                            this.loadFromLocalStorage(dateFrom, dateTo, salesmanFilter);
+                            this.calculateAdvancedStats();
+                            currentLocationData = this.visitLocations;
+                            addDebugMessage(`🆘 Emergency localStorage load: ${this.visitLocations.length} visits`);
+                            return this.visitLocations;
+                        } catch (lastError) {
+                            addDebugMessage('❌ Emergency localStorage load failed: ' + lastError.message);
+                        }
+                    }
+                    
+                    throw error;
+                }
+            }
+            
+            async loadFromFirebase(dateFrom, dateTo, salesmanFilter) {
+                if (!isFirebaseConnected) {
+                    addDebugMessage('⚠️ Firebase not connected, skipping Firebase data loading');
+                    return;
+                }
+                
+                addDebugMessage('🔥 Loading data from Firebase with correct database structure...');
+                
+                try {
+                    let totalFirebaseVisits = 0;
+                    
+                    // Strategy 1: Load from visit_events (real-time events)
+                    try {
+                        addDebugMessage('🔥 Trying visit_events path...');
+                        
+                        let visitEventsQuery = firebaseDatabase.ref('visit_events');
+                        
+                        // Add salesman filter if specified
+                        if (salesmanFilter) {
+                            visitEventsQuery = visitEventsQuery.orderByChild('salesman_id').equalTo(salesmanFilter);
+                            addDebugMessage(`🔥 Filtering visit_events by salesman: ${salesmanFilter}`);
+                        } else {
+                            visitEventsQuery = visitEventsQuery.limitToLast(500); // Limit to recent events
+                            addDebugMessage('🔥 Loading recent visit_events (last 500)');
+                        }
+                        
+                        const eventsSnapshot = await visitEventsQuery.once('value');
+                        const eventsData = eventsSnapshot.val();
+                        
+                        if (eventsData) {
+                            addDebugMessage(`🔥 Found ${Object.keys(eventsData).length} visit events`);
+                            
+                            Object.entries(eventsData).forEach(([eventId, eventData]) => {
+                                if (eventData && this.isFirebaseEventInDateRange(eventData, dateFrom, dateTo)) {
+                                    const visitData = this.extractVisitFromEvent(eventId, eventData);
+                                    if (visitData) {
+                                        this.visitLocations.push(visitData);
+                                        this.updateSalesmanData(visitData.salesman_id, visitData.salesman_name, visitData);
+                                        totalFirebaseVisits++;
+                                        addDebugMessage(`🔥 Added visit from event: ${visitData.customer_name} by ${visitData.salesman_id}`);
+                                    }
+                                }
+                            });
+                        } else {
+                            addDebugMessage('ℹ️ No data found in visit_events');
+                        }
+                        
+                    } catch (eventsError) {
+                        addDebugMessage(`⚠️ Cannot access visit_events: ${eventsError.message}`);
+                    }
+                    
+                    // Strategy 2: Load from daily_visits (aggregated daily data)
+                    try {
+                        addDebugMessage('🔥 Trying daily_visits path...');
+                        
+                        // Generate date range to check
+                        const datesToCheck = [];
+                        let currentDate = new Date(dateFrom);
+                        const endDate = new Date(dateTo);
+                        
+                        while (currentDate <= endDate) {
+                            datesToCheck.push(currentDate.toISOString().split('T')[0]);
+                            currentDate.setDate(currentDate.getDate() + 1);
+                        }
+                        
+                        addDebugMessage(`🔥 Checking daily_visits for dates: ${datesToCheck.join(', ')}`);
+                        
+                        for (const dateStr of datesToCheck) {
+                            try {
+                                let dailyQuery;
+                                
+                                if (salesmanFilter) {
+                                    // daily_visits/{salesmanId}/{date}
+                                    dailyQuery = firebaseDatabase.ref(`daily_visits/${salesmanFilter}/${dateStr}`);
+                                    addDebugMessage(`🔥 Checking daily_visits/${salesmanFilter}/${dateStr}`);
+                                } else {
+                                    // daily_visits (all salesman for this date)
+                                    dailyQuery = firebaseDatabase.ref('daily_visits').orderByChild('date').equalTo(dateStr);
+                                    addDebugMessage(`🔥 Checking daily_visits for date: ${dateStr}`);
+                                }
+                                
+                                const dailySnapshot = await dailyQuery.once('value');
+                                const dailyData = dailySnapshot.val();
+                                
+                                if (dailyData) {
+                                    if (salesmanFilter) {
+                                        // Single salesman data
+                                        const visitData = this.extractVisitFromDailyData(`daily_${salesmanFilter}_${dateStr}`, dailyData, dateStr);
+                                        if (visitData) {
+                                            this.visitLocations.push(visitData);
+                                            this.updateSalesmanData(visitData.salesman_id, visitData.salesman_name, visitData);
+                                            totalFirebaseVisits++;
+                                            addDebugMessage(`🔥 Added daily visit: ${visitData.customer_name} by ${visitData.salesman_id}`);
+                                        }
+                                    } else {
+                                        // Multiple salesman data
+                                        Object.entries(dailyData).forEach(([salesmanId, salesmanDailyData]) => {
+                                            if (salesmanDailyData && typeof salesmanDailyData === 'object') {
+                                                const visitData = this.extractVisitFromDailyData(`daily_${salesmanId}_${dateStr}`, salesmanDailyData, dateStr);
+                                                if (visitData) {
+                                                    this.visitLocations.push(visitData);
+                                                    this.updateSalesmanData(visitData.salesman_id, visitData.salesman_name, visitData);
+                                                    totalFirebaseVisits++;
+                                                    addDebugMessage(`🔥 Added daily visit: ${visitData.customer_name} by ${visitData.salesman_id}`);
+                                                }
+                                            }
+                                        });
+                                    }
+                                } else {
+                                    addDebugMessage(`ℹ️ No daily_visits data for ${dateStr}`);
+                                }
+                                
+                            } catch (dailyError) {
+                                addDebugMessage(`⚠️ Error loading daily data for ${dateStr}: ${dailyError.message}`);
+                            }
+                        }
+                        
+                    } catch (dailyError) {
+                        addDebugMessage(`⚠️ Cannot access daily_visits: ${dailyError.message}`);
+                    }
+                    
+                    if (totalFirebaseVisits > 0) {
+                        addDebugMessage(`🔥 Firebase data loaded successfully: ${totalFirebaseVisits} visits`);
+                    } else {
+                        addDebugMessage('ℹ️ No visit data found in Firebase for the specified criteria');
+                    }
+                    
+                } catch (error) {
+                    addDebugMessage('❌ Firebase loading error: ' + error.message);
+                    isFirebaseConnected = false;
+                    this.updateFirebaseStatus('⚠️ Firebase data access failed - using localStorage only', 'error');
+                }
+            }
+            
+            isFirebaseEventInDateRange(eventData, dateFrom, dateTo) {
+                if (!eventData.timestamp) return false;
+                
+                const eventDate = new Date(eventData.timestamp).toISOString().split('T')[0];
+                return eventDate >= dateFrom && eventDate <= dateTo;
+            }
+            
+            extractVisitFromEvent(eventId, eventData) {
+                try {
+                    // Extract location from event data
+                    let location = null;
+                    if (eventData.location) {
+                        location = eventData.location;
+                    } else if (eventData.latitude !== undefined && eventData.longitude !== undefined) {
+                        location = { 
+                            latitude: eventData.latitude, 
+                            longitude: eventData.longitude,
+                            accuracy: eventData.accuracy || 0
+                        };
+                    }
+                    
+                    if (!location || !location.latitude || !location.longitude) {
+                        addDebugMessage(`❌ No valid location in event ${eventId}`);
+                        return null;
+                    }
+                    
+                    // Extract visit information
+                    const salesmanId = eventData.salesman_id || 'unknown';
+                    const salesmanName = eventData.salesman_name || `Salesman ${salesmanId}`;
+                    const customerName = eventData.customer_name || eventData.event_data?.customer_name || 'Unknown Customer';
+                    
+                    // Calculate distance if master coordinates available
+                    let distance = eventData.distance_meters || 0;
+                    let masterLocation = eventData.master_coordinates || eventData.event_data?.master_coordinates;
+                    
+                    if (masterLocation && masterLocation.latitude && masterLocation.longitude && distance === 0) {
+                        distance = this.calculateDistance(
+                            location.latitude,
+                            location.longitude,
+                            masterLocation.latitude,
+                            masterLocation.longitude
+                        );
+                    }
+                    
+                    const visitData = {
+                        id: `firebase_event_${eventId}`,
+                        salesman_id: salesmanId,
+                        salesman_name: salesmanName,
+                        customer_name: customerName,
+                        actual_location: location,
+                        master_location: masterLocation,
+                        distance: distance,
+                        timestamp: eventData.timestamp,
+                        date: new Date(eventData.timestamp).toISOString().split('T')[0],
+                        accuracy: location.accuracy || 0,
+                        compliance_status: this.getComplianceStatus(distance),
+                        session_duration: eventData.session_duration || 0,
+                        visit_count: 1,
+                        source: 'firebase-events'
+                    };
+                    
+                    return visitData;
+                    
+                } catch (error) {
+                    addDebugMessage(`❌ Error extracting visit from event ${eventId}: ${error.message}`);
+                    return null;
+                }
+            }
+            
+            extractVisitFromDailyData(id, dailyData, dateStr) {
+                try {
+                    // Extract basic information
+                    const salesmanId = dailyData.salesman_id || 'unknown';
+                    const salesmanName = dailyData.salesman_name || `Salesman ${salesmanId}`;
+                    
+                    // Daily data might contain multiple visits/customers
+                    // Look for visit information in various possible structures
+                    let visits = [];
+                    
+                    if (dailyData.visits && Array.isArray(dailyData.visits)) {
+                        // Array of visits
+                        visits = dailyData.visits;
+                    } else if (dailyData.customers && typeof dailyData.customers === 'object') {
+                        // Customer-based structure
+                        Object.entries(dailyData.customers).forEach(([customerName, customerData]) => {
+                            if (customerData.location || customerData.latest_location) {
+                                visits.push({
+                                    customer_name: customerName,
+                                    location: customerData.location || customerData.latest_location,
+                                    master_coordinates: customerData.master_coordinates,
+                                    distance: customerData.distance_meters,
+                                    session_duration: customerData.total_duration || 0
+                                });
+                            }
+                        });
+                    } else if (dailyData.location) {
+                        // Single visit structure
+                        visits.push({
+                            customer_name: dailyData.customer_name || 'Unknown Customer',
+                            location: dailyData.location,
+                            master_coordinates: dailyData.master_coordinates,
+                            distance: dailyData.distance_meters,
+                            session_duration: dailyData.session_duration || 0
+                        });
+                    }
+                    
+                    // Return the first valid visit (could be enhanced to return multiple)
+                    for (const visit of visits) {
+                        if (visit.location && visit.location.latitude && visit.location.longitude) {
+                            
+                            let distance = visit.distance || 0;
+                            if (visit.master_coordinates && distance === 0) {
+                                distance = this.calculateDistance(
+                                    visit.location.latitude,
+                                    visit.location.longitude,
+                                    visit.master_coordinates.latitude,
+                                    visit.master_coordinates.longitude
+                                );
+                            }
+                            
+                            const visitData = {
+                                id: `firebase_daily_${id}`,
+                                salesman_id: salesmanId,
+                                salesman_name: salesmanName,
+                                customer_name: visit.customer_name,
+                                actual_location: visit.location,
+                                master_location: visit.master_coordinates,
+                                distance: distance,
+                                timestamp: `${dateStr}T12:00:00Z`, // Default to noon for daily data
+                                date: dateStr,
+                                accuracy: visit.location.accuracy || 0,
+                                compliance_status: this.getComplianceStatus(distance),
+                                session_duration: visit.session_duration || 0,
+                                visit_count: 1,
+                                source: 'firebase-daily'
+                            };
+                            
+                            return visitData;
+                        }
+                    }
+                    
+                    addDebugMessage(`❌ No valid location found in daily data ${id}`);
+                    return null;
+                    
+                } catch (error) {
+                    addDebugMessage(`❌ Error extracting visit from daily data ${id}: ${error.message}`);
+                    return null;
+                }
+            }
+            
+            isVisitData(data) {
+                // Check if data structure looks like visit data
+                const hasLocation = data.latitude !== undefined || data.longitude !== undefined ||
+                                  data.location !== undefined || data.coordinates !== undefined ||
+                                  data.actual_location !== undefined;
+                
+                const hasVisitInfo = data.customer_name !== undefined || data.customerName !== undefined ||
+                                   data.salesman_id !== undefined || data.salesmanId !== undefined;
+                
+                const hasTimestamp = data.timestamp !== undefined || data.time !== undefined ||
+                                   data.date !== undefined || data.created_at !== undefined;
+                
+                return hasLocation && (hasVisitInfo || hasTimestamp);
+            }
+            
+            extractVisitData(key, data, dateFrom, dateTo, salesmanFilter) {
+                try {
+                    // Extract location
+                    let location = null;
+                    if (data.latitude !== undefined && data.longitude !== undefined) {
+                        location = { latitude: data.latitude, longitude: data.longitude, accuracy: data.accuracy || 0 };
+                    } else if (data.location) {
+                        location = data.location;
+                    } else if (data.coordinates) {
+                        location = data.coordinates;
+                    } else if (data.actual_location) {
+                        location = data.actual_location;
+                    }
+                    
+                    if (!location || !location.latitude || !location.longitude) {
+                        addDebugMessage(`❌ No valid location found in ${key}`);
+                        return null;
+                    }
+                    
+                    // Extract basic info
+                    const salesmanId = data.salesman_id || data.salesmanId || 'unknown';
+                    const salesmanName = data.salesman_name || data.salesmanName || `Salesman ${salesmanId}`;
+                    const customerName = data.customer_name || data.customerName || data.name || 'Unknown Customer';
+                    
+                    // Extract timestamp
+                    let timestamp = data.timestamp || data.time || data.created_at || data.date;
+                    if (!timestamp) {
+                        timestamp = new Date().toISOString();
+                    }
+                    
+                    // Convert timestamp to date string for filtering
+                    const visitDate = new Date(timestamp).toISOString().split('T')[0];
+                    
+                    // Filter by date range
+                    if (visitDate < dateFrom || visitDate > dateTo) {
+                        addDebugMessage(`📅 Visit ${customerName} filtered out by date: ${visitDate} not in ${dateFrom}-${dateTo}`);
+                        return null;
+                    }
+                    
+                    // Filter by salesman
+                    if (salesmanFilter && salesmanId !== salesmanFilter) {
+                        addDebugMessage(`👤 Visit ${customerName} filtered out by salesman: ${salesmanId} != ${salesmanFilter}`);
+                        return null;
+                    }
+                    
+                    // Calculate distance if master location exists
+                    let distance = data.distance || 0;
+                    let masterLocation = data.master_location || data.master_coordinates || data.target_location;
+                    
+                    if (masterLocation && masterLocation.latitude && masterLocation.longitude && distance === 0) {
+                        distance = this.calculateDistance(
+                            location.latitude,
+                            location.longitude,
+                            masterLocation.latitude,
+                            masterLocation.longitude
+                        );
+                    }
+                    
+                    const visitData = {
+                        id: key,
+                        salesman_id: salesmanId,
+                        salesman_name: salesmanName,
+                        customer_name: customerName,
+                        actual_location: location,
+                        master_location: masterLocation,
+                        distance: distance,
+                        timestamp: timestamp,
+                        date: visitDate,
+                        accuracy: location.accuracy || data.accuracy || 0,
+                        compliance_status: this.getComplianceStatus(distance),
+                        session_duration: data.duration || data.session_duration || 0,
+                        visit_count: data.visit_count || 1,
+                        source: 'firebase'
+                    };
+                    
+                    addDebugMessage(`✅ Extracted Firebase visit: ${customerName} by ${salesmanId} at ${visitDate}`);
+                    return visitData;
+                    
+                } catch (error) {
+                    addDebugMessage('❌ Error extracting visit data: ' + error.message);
+                    return null;
+                }
+            }
+            
+            loadFromLocalStorage(dateFrom, dateTo, salesmanFilter) {
+                addDebugMessage(`💾 Loading from localStorage for date range: ${dateFrom} to ${dateTo}, salesman filter: ${salesmanFilter || 'none'}`);
+                
+                let currentDate = new Date(dateFrom);
+                const endDate = new Date(dateTo);
+                let localStorageCount = 0;
+                let datesProcessed = 0;
+                
+                while (currentDate <= endDate) {
+                    const dateStr = currentDate.toISOString().split('T')[0];
+                    addDebugMessage(`💾 Processing date: ${dateStr}`);
+                    const dailyCount = this.loadDataForDate(dateStr, salesmanFilter);
+                    localStorageCount += dailyCount;
+                    datesProcessed++;
+                    addDebugMessage(`💾 Found ${dailyCount} visits for ${dateStr} (total so far: ${localStorageCount})`);
+                    currentDate.setDate(currentDate.getDate() + 1);
+                }
+                
+                addDebugMessage(`💾 localStorage data loading complete: ${localStorageCount} total visits loaded from ${datesProcessed} dates`);
+                
+                // If no data found, provide detailed diagnosis
+                if (localStorageCount === 0) {
+                    addDebugMessage('🔍 No data found - running localStorage diagnostic...');
+                    this.diagnoseLocalStorageContents(dateFrom, dateTo, salesmanFilter);
+                }
+            }
+            
+            loadDataForDate(dateStr, salesmanFilter) {
+                const beforeCount = this.visitLocations.length;
+                addDebugMessage(`📅 Loading data for ${dateStr}, current visits: ${beforeCount}`);
+                
+                // Track sources to detect duplicates
+                const visitTracker = new Map(); // key: "salesman_customer", value: {sources: [], visits: []}
+                
+                // Load from daily data first
+                this.loadFromDailyDataWithTracking(dateStr, salesmanFilter, visitTracker);
+                const afterDailyCount = this.visitLocations.length;
+                const dailyFound = afterDailyCount - beforeCount;
+                
+                // Load from analytics events
+                this.loadFromAnalyticsEventsWithTracking(dateStr, salesmanFilter, visitTracker);
+                const afterAnalyticsCount = this.visitLocations.length;
+                const analyticsFound = afterAnalyticsCount - afterDailyCount;
+                
+                // Load from pending events if no other data
+                if (dailyFound === 0 && analyticsFound === 0) {
+                    addDebugMessage(`📅 No daily/analytics data found for ${dateStr}, trying pending events...`);
+                    this.loadFromPendingEventsWithTracking(dateStr, salesmanFilter, visitTracker);
+                    const afterPendingCount = this.visitLocations.length;
+                    const pendingFound = afterPendingCount - afterAnalyticsCount;
+                    addDebugMessage(`📅 Found ${pendingFound} visits from pending events for ${dateStr}`);
+                } else {
+                    addDebugMessage(`📅 Found ${dailyFound} daily + ${analyticsFound} analytics visits for ${dateStr}`);
+                }
+                
+                // Check for potential duplicates in visitTracker
+                let duplicatesFound = 0;
+                visitTracker.forEach((data, key) => {
+                    if (data.sources.length > 1) {
+                        duplicatesFound++;
+                        addDebugMessage(`⚠️ Potential duplicate for ${key}: sources = ${data.sources.join(', ')}`);
+                    }
+                });
+                
+                if (duplicatesFound > 0) {
+                    addDebugMessage(`⚠️ Found ${duplicatesFound} potential duplicates for ${dateStr}`);
+                }
+                
+                const totalFound = this.visitLocations.length - beforeCount;
+                addDebugMessage(`📅 Total found for ${dateStr}: ${totalFound} visits (${duplicatesFound} potential duplicates detected)`);
+                return totalFound;
+            }
+            
+            loadFromDailyDataWithTracking(dateStr, salesmanFilter, visitTracker) {
+                addDebugMessage(`💾 Loading daily data for ${dateStr}...`);
+                let foundCount = 0;
+                
+                const dailyPattern = `visit_daily_local_${dateStr}_`;
+                
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    
+                    if (key && key.startsWith(dailyPattern)) {
+                        foundCount++;
+                        const salesmanId = key.replace(dailyPattern, '');
+                        addDebugMessage(`💾 Found daily data key: ${key} for salesman: ${salesmanId}`);
+                        
+                        if (salesmanFilter && salesmanId !== salesmanFilter) {
+                            addDebugMessage(`💾 Skipping ${salesmanId} due to filter: ${salesmanFilter}`);
+                            continue;
+                        }
+                        
+                        this.processDailyDataKeyWithTracking(key, salesmanId, dateStr, visitTracker);
+                    }
+                }
+                
+                addDebugMessage(`💾 Daily data scan complete for ${dateStr}: ${foundCount} keys found`);
+            }
+            
+            loadFromAnalyticsEventsWithTracking(dateStr, salesmanFilter, visitTracker) {
+                addDebugMessage(`📊 Loading analytics data for ${dateStr}...`);
+                let foundCount = 0;
+                
+                const analyticsKey = `analytics_${dateStr}`;
+                
+                const analyticsData = localStorage.getItem(analyticsKey);
+                if (analyticsData) {
+                    foundCount++;
+                    addDebugMessage(`📊 Found analytics data key: ${analyticsKey}`);
+                    this.processAnalyticsDataKeyWithTracking(analyticsKey, dateStr, salesmanFilter, visitTracker);
+                } else {
+                    addDebugMessage(`📊 No analytics data found for ${dateStr}`);
+                }
+                
+                addDebugMessage(`📊 Analytics data scan complete for ${dateStr}: ${foundCount} keys found`);
+            }
+            
+            loadFromPendingEventsWithTracking(dateStr, salesmanFilter, visitTracker) {
+                addDebugMessage(`📋 Loading pending events for ${dateStr}...`);
+                let foundCount = 0;
+                
+                const pendingPattern = `visit_pending_${dateStr}_`;
+                
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    
+                    if (key && key.startsWith(pendingPattern)) {
+                        foundCount++;
+                        const salesmanId = key.replace(pendingPattern, '');
+                        addDebugMessage(`📋 Found pending data key: ${key} for salesman: ${salesmanId}`);
+                        
+                        if (salesmanFilter && salesmanId !== salesmanFilter) {
+                            addDebugMessage(`📋 Skipping ${salesmanId} due to filter: ${salesmanFilter}`);
+                            continue;
+                        }
+                        
+                        this.processPendingDataKeyWithTracking(key, salesmanId, dateStr, visitTracker);
+                    }
+                }
+                
+                addDebugMessage(`📋 Pending data scan complete for ${dateStr}: ${foundCount} keys found`);
+            }
+            
+            processDailyDataKeyWithTracking(key, salesmanId, dateStr, visitTracker) {
+                try {
+                    const dailyData = JSON.parse(localStorage.getItem(key) || '{}');
+                    addDebugMessage(`💾 Daily data structure: ${Object.keys(dailyData).join(', ')}`);
+                    
+                    if (dailyData.customers && Object.keys(dailyData.customers).length > 0) {
+                        addDebugMessage(`💾 Found ${Object.keys(dailyData.customers).length} customers in daily data`);
+                        
+                        Object.entries(dailyData.customers).forEach(([customerName, customerData]) => {
+                            if (customerData.sessions && customerData.sessions.length > 0) {
+                                const latestSession = customerData.sessions
+                                    .filter(session => session.start_location && session.end)
+                                    .sort((a, b) => new Date(b.start) - new Date(a.start))[0];
+                                
+                                if (latestSession && latestSession.start_location) {
+                                    const distance = this.calculateDistance(
+                                        latestSession.start_location.latitude,
+                                        latestSession.start_location.longitude,
+                                        customerData.master_coordinates ? customerData.master_coordinates.latitude : 0,
+                                        customerData.master_coordinates ? customerData.master_coordinates.longitude : 0
+                                    );
+                                    
+                                    const locationPoint = {
+                                        id: `localStorage_daily_${dateStr}_${salesmanId}_${customerName}`,
+                                        salesman_id: salesmanId,
+                                        salesman_name: dailyData.salesman_name || `Salesman ${salesmanId}`,
+                                        customer_name: customerName,
+                                        actual_location: latestSession.start_location,
+                                        master_location: customerData.master_coordinates,
+                                        distance: distance,
+                                        timestamp: latestSession.start,
+                                        date: dateStr,
+                                        accuracy: latestSession.start_location.accuracy || 0,
+                                        compliance_status: this.getComplianceStatus(distance),
+                                        session_duration: latestSession.duration || 0,
+                                        visit_count: customerData.visitCount || 1,
+                                        source: 'localStorage-daily'
+                                    };
+                                    
+                                    // Track for duplicate detection
+                                    const trackingKey = `${salesmanId}_${customerName}`;
+                                    if (!visitTracker.has(trackingKey)) {
+                                        visitTracker.set(trackingKey, { sources: [], visits: [] });
+                                    }
+                                    visitTracker.get(trackingKey).sources.push('daily');
+                                    visitTracker.get(trackingKey).visits.push(locationPoint);
+                                    
+                                    this.visitLocations.push(locationPoint);
+                                    this.updateSalesmanData(salesmanId, dailyData.salesman_name, locationPoint);
+                                    addDebugMessage(`💾 Added daily visit: ${customerName} by ${salesmanId} at ${latestSession.start_location.latitude},${latestSession.start_location.longitude}`);
+                                }
+                            }
+                        });
+                    } else {
+                        addDebugMessage(`💾 No customer data found in ${key}`);
+                    }
+                    
+                } catch (error) {
+                    addDebugMessage(`⚠️ Error loading daily data for ${key}: ${error.message}`);
+                }
+            }
+            
+            processAnalyticsDataKeyWithTracking(key, dateStr, salesmanFilter, visitTracker) {
+                try {
+                    const analyticsData = JSON.parse(localStorage.getItem(key) || '{}');
+                    addDebugMessage(`📊 Analytics data structure for ${dateStr}: ${Object.keys(analyticsData).join(', ')}`);
+                    
+                    this.extractVisitsFromAnalyticsWithTracking(analyticsData, dateStr, salesmanFilter, visitTracker);
+                    
+                } catch (error) {
+                    addDebugMessage(`⚠️ Error loading analytics data for ${key}: ${error.message}`);
+                }
+            }
+            
+            processPendingDataKeyWithTracking(key, salesmanId, dateStr, visitTracker) {
+                try {
+                    const pendingData = JSON.parse(localStorage.getItem(key) || '[]');
+                    addDebugMessage(`📋 Pending data: ${pendingData.length} events`);
+                    
+                    const customerSelectedEvents = pendingData.filter(event => 
+                        event.event_name === 'visit_customer_selected' && 
+                        event.location && 
+                        event.event_data && 
+                        event.event_data.customer_name
+                    );
+                    
+                    addDebugMessage(`📋 Found ${customerSelectedEvents.length} customer selected events`);
+                    
+                    const processedCustomers = new Set();
+                    customerSelectedEvents.forEach(event => {
+                        const customerName = event.event_data.customer_name;
+                        const trackingKey = `${salesmanId}_${customerName}`;
+                        
+                        // Only process first occurrence to avoid duplicates within pending data
+                        if (!processedCustomers.has(trackingKey)) {
+                            processedCustomers.add(trackingKey);
+                            
+                            const distance = event.event_data.distance_meters || 0;
+                            
+                            const locationPoint = {
+                                id: `localStorage_pending_${dateStr}_${salesmanId}_${customerName}`,
+                                salesman_id: salesmanId,
+                                salesman_name: event.salesman_name || `Salesman ${salesmanId}`,
+                                customer_name: customerName,
+                                actual_location: event.location,
+                                master_location: event.event_data.master_coordinates,
+                                distance: distance,
+                                timestamp: event.timestamp,
+                                date: dateStr,
+                                accuracy: event.location.accuracy || 0,
+                                compliance_status: this.getComplianceStatus(distance),
+                                session_duration: 0,
+                                visit_count: 1,
+                                source: 'localStorage-pending'
+                            };
+                            
+                            // Track for duplicate detection
+                            if (!visitTracker.has(trackingKey)) {
+                                visitTracker.set(trackingKey, { sources: [], visits: [] });
+                            }
+                            visitTracker.get(trackingKey).sources.push('pending');
+                            visitTracker.get(trackingKey).visits.push(locationPoint);
+                            
+                            this.visitLocations.push(locationPoint);
+                            this.updateSalesmanData(salesmanId, event.salesman_name, locationPoint);
+                            addDebugMessage(`📋 Added pending visit: ${customerName} by ${salesmanId} at ${event.location.latitude},${event.location.longitude}`);
+                        }
+                    });
+                    
+                } catch (error) {
+                    addDebugMessage(`⚠️ Error loading pending data for ${key}: ${error.message}`);
+                }
+            }
+            
+            extractVisitsFromAnalyticsWithTracking(analyticsData, dateStr, salesmanFilter, visitTracker) {
+                let extractedCount = 0;
+                
+                if (typeof analyticsData === 'object') {
+                    Object.entries(analyticsData).forEach(([topKey, topValue]) => {
+                        if (topValue && typeof topValue === 'object') {
+                            
+                            if (this.isVisitLikeData(topValue)) {
+                                const visitData = this.convertAnalyticsToVisit(topKey, topValue, dateStr);
+                                if (visitData && (!salesmanFilter || visitData.salesman_id === salesmanFilter)) {
+                                    
+                                    // Track for duplicate detection
+                                    const trackingKey = `${visitData.salesman_id}_${visitData.customer_name}`;
+                                    if (!visitTracker.has(trackingKey)) {
+                                        visitTracker.set(trackingKey, { sources: [], visits: [] });
+                                    }
+                                    visitTracker.get(trackingKey).sources.push('analytics');
+                                    visitTracker.get(trackingKey).visits.push(visitData);
+                                    
+                                    this.visitLocations.push(visitData);
+                                    this.updateSalesmanData(visitData.salesman_id, visitData.salesman_name, visitData);
+                                    extractedCount++;
+                                    addDebugMessage(`📊 Extracted analytics visit: ${visitData.customer_name} by ${visitData.salesman_id} at ${visitData.actual_location.latitude},${visitData.actual_location.longitude}`);
+                                }
+                            }
+                            
+                            Object.entries(topValue).forEach(([subKey, subValue]) => {
+                                if (subValue && typeof subValue === 'object' && this.isVisitLikeData(subValue)) {
+                                    const visitData = this.convertAnalyticsToVisit(`${topKey}_${subKey}`, subValue, dateStr);
+                                    if (visitData && (!salesmanFilter || visitData.salesman_id === salesmanFilter)) {
+                                        
+                                        // Track for duplicate detection
+                                        const trackingKey = `${visitData.salesman_id}_${visitData.customer_name}`;
+                                        if (!visitTracker.has(trackingKey)) {
+                                            visitTracker.set(trackingKey, { sources: [], visits: [] });
+                                        }
+                                        visitTracker.get(trackingKey).sources.push('analytics-nested');
+                                        visitTracker.get(trackingKey).visits.push(visitData);
+                                        
+                                        this.visitLocations.push(visitData);
+                                        this.updateSalesmanData(visitData.salesman_id, visitData.salesman_name, visitData);
+                                        extractedCount++;
+                                        addDebugMessage(`📊 Extracted nested analytics visit: ${visitData.customer_name} by ${visitData.salesman_id} at ${visitData.actual_location.latitude},${visitData.actual_location.longitude}`);
+                                    }
+                                }
+                            });
+                        }
+                    });
+                }
+                
+                // Legacy functions - kept for compatibility but now using WithTracking versions
+            loadFromDailyData(dateStr, salesmanFilter) {
+                // Redirect to tracking version
+                const visitTracker = new Map();
+                this.loadFromDailyDataWithTracking(dateStr, salesmanFilter, visitTracker);
+            }
+            
+            loadFromAnalyticsEvents(dateStr, salesmanFilter) {
+                // Redirect to tracking version
+                const visitTracker = new Map();
+                this.loadFromAnalyticsEventsWithTracking(dateStr, salesmanFilter, visitTracker);
+            }
+            
+            loadFromPendingEvents(dateStr, salesmanFilter) {
+                // Redirect to tracking version
+                const visitTracker = new Map();
+                this.loadFromPendingEventsWithTracking(dateStr, salesmanFilter, visitTracker);
+            }
+            
+            loadFromDailyData(dateStr, salesmanFilter) {
+                addDebugMessage(`💾 Loading daily data for ${dateStr}...`);
+                let foundCount = 0;
+                
+                // Pattern: visit_daily_local_YYYY-MM-DD_SALESMANID
+                const dailyPattern = `visit_daily_local_${dateStr}_`;
+                
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    
+                    if (key && key.startsWith(dailyPattern)) {
+                        foundCount++;
+                        const salesmanId = key.replace(dailyPattern, '');
+                        addDebugMessage(`💾 Found daily data key: ${key} for salesman: ${salesmanId}`);
+                        
+                        if (salesmanFilter && salesmanId !== salesmanFilter) {
+                            addDebugMessage(`💾 Skipping ${salesmanId} due to filter: ${salesmanFilter}`);
+                            continue;
+                        }
+                        
+                        this.processDailyDataKey(key, salesmanId, dateStr);
+                    }
+                }
+                
+                addDebugMessage(`💾 Daily data scan complete for ${dateStr}: ${foundCount} keys found`);
+            }
+            
+            loadFromAnalyticsEvents(dateStr, salesmanFilter) {
+                addDebugMessage(`📊 Loading analytics data for ${dateStr}...`);
+                let foundCount = 0;
+                
+                // Pattern: analytics_YYYY-MM-DD
+                const analyticsKey = `analytics_${dateStr}`;
+                
+                const analyticsData = localStorage.getItem(analyticsKey);
+                if (analyticsData) {
+                    foundCount++;
+                    addDebugMessage(`📊 Found analytics data key: ${analyticsKey}`);
+                    this.processAnalyticsDataKey(analyticsKey, dateStr, salesmanFilter);
+                } else {
+                    addDebugMessage(`📊 No analytics data found for ${dateStr}`);
+                }
+                
+                addDebugMessage(`📊 Analytics data scan complete for ${dateStr}: ${foundCount} keys found`);
+            }
+            
+            loadFromPendingEvents(dateStr, salesmanFilter) {
+                addDebugMessage(`📋 Loading pending events for ${dateStr}...`);
+                let foundCount = 0;
+                
+                const pendingPattern = `visit_pending_${dateStr}_`;
+                
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    
+                    if (key && key.startsWith(pendingPattern)) {
+                        foundCount++;
+                        const salesmanId = key.replace(pendingPattern, '');
+                        addDebugMessage(`📋 Found pending data key: ${key} for salesman: ${salesmanId}`);
+                        
+                        if (salesmanFilter && salesmanId !== salesmanFilter) {
+                            addDebugMessage(`📋 Skipping ${salesmanId} due to filter: ${salesmanFilter}`);
+                            continue;
+                        }
+                        
+                        this.processPendingDataKey(key, salesmanId, dateStr);
+                    }
+                }
+                
+                addDebugMessage(`📋 Pending data scan complete for ${dateStr}: ${foundCount} keys found`);
+            }
+            
+            processDailyDataKey(key, salesmanId, dateStr) {
+                // Redirect to tracking version for consistency
+                const visitTracker = new Map();
+                this.processDailyDataKeyWithTracking(key, salesmanId, dateStr, visitTracker);
+            }
+            
+            processAnalyticsDataKey(key, dateStr, salesmanFilter) {
+                // Redirect to tracking version for consistency
+                const visitTracker = new Map();
+                this.processAnalyticsDataKeyWithTracking(key, dateStr, salesmanFilter, visitTracker);
+            }
+            
+            processPendingDataKey(key, salesmanId, dateStr) {
+                // Redirect to tracking version for consistency
+                const visitTracker = new Map();
+                this.processPendingDataKeyWithTracking(key, salesmanId, dateStr, visitTracker);
+            }
+            
+            processAnalyticsDataKey(key, dateStr, salesmanFilter) {
+                try {
+                    const analyticsData = JSON.parse(localStorage.getItem(key) || '{}');
+                    addDebugMessage(`📊 Analytics data structure for ${dateStr}: ${Object.keys(analyticsData).join(', ')}`);
+                    
+                    // Analytics data might have different structure
+                    this.extractVisitsFromAnalytics(analyticsData, dateStr, salesmanFilter);
+                    
+                } catch (error) {
+                    addDebugMessage(`⚠️ Error loading analytics data for ${key}: ${error.message}`);
+                }
+            }
+            
+            processPendingDataKey(key, salesmanId, dateStr) {
+                try {
+                    const pendingData = JSON.parse(localStorage.getItem(key) || '[]');
+                    addDebugMessage(`📋 Pending data: ${pendingData.length} events`);
+                    
+                    const customerSelectedEvents = pendingData.filter(event => 
+                        event.event_name === 'visit_customer_selected' && 
+                        event.location && 
+                        event.event_data && 
+                        event.event_data.customer_name
+                    );
+                    
+                    addDebugMessage(`📋 Found ${customerSelectedEvents.length} customer selected events`);
+                    
+                    const visitMap = new Map();
+                    customerSelectedEvents.forEach(event => {
+                        const visitKey = `${salesmanId}_${event.event_data.customer_name}`;
+                        
+                        if (!visitMap.has(visitKey)) {
+                            const distance = event.event_data.distance_meters || 0;
+                            
+                            const locationPoint = {
+                                id: `localStorage_pending_${dateStr}_${salesmanId}_${event.event_data.customer_name}`,
+                                salesman_id: salesmanId,
+                                salesman_name: event.salesman_name || `Salesman ${salesmanId}`,
+                                customer_name: event.event_data.customer_name,
+                                actual_location: event.location,
+                                master_location: event.event_data.master_coordinates,
+                                distance: distance,
+                                timestamp: event.timestamp,
+                                date: dateStr,
+                                accuracy: event.location.accuracy || 0,
+                                compliance_status: this.getComplianceStatus(distance),
+                                session_duration: 0,
+                                visit_count: 1,
+                                source: 'localStorage-pending'
+                            };
+                            
+                            visitMap.set(visitKey, locationPoint);
+                            this.visitLocations.push(locationPoint);
+                            this.updateSalesmanData(salesmanId, event.salesman_name, locationPoint);
+                            addDebugMessage(`📋 Added pending visit: ${event.event_data.customer_name} by ${salesmanId} at ${event.location.latitude},${event.location.longitude}`);
+                        }
+                    });
+                    
+                } catch (error) {
+                    addDebugMessage(`⚠️ Error loading pending data for ${key}: ${error.message}`);
+                }
+            }
+            
+            extractVisitsFromAnalytics(analyticsData, dateStr, salesmanFilter) {
+                let extractedCount = 0;
+                
+                if (typeof analyticsData === 'object') {
+                    Object.entries(analyticsData).forEach(([topKey, topValue]) => {
+                        if (topValue && typeof topValue === 'object') {
+                            
+                            // Check if this looks like visit data
+                            if (this.isVisitLikeData(topValue)) {
+                                const visitData = this.convertAnalyticsToVisit(topKey, topValue, dateStr);
+                                if (visitData && (!salesmanFilter || visitData.salesman_id === salesmanFilter)) {
+                                    this.visitLocations.push(visitData);
+                                    this.updateSalesmanData(visitData.salesman_id, visitData.salesman_name, visitData);
+                                    extractedCount++;
+                                    addDebugMessage(`📊 Extracted analytics visit: ${visitData.customer_name} by ${visitData.salesman_id} at ${visitData.actual_location.latitude},${visitData.actual_location.longitude}`);
+                                }
+                            }
+                            
+                            // Check nested levels
+                            Object.entries(topValue).forEach(([subKey, subValue]) => {
+                                if (subValue && typeof subValue === 'object' && this.isVisitLikeData(subValue)) {
+                                    const visitData = this.convertAnalyticsToVisit(`${topKey}_${subKey}`, subValue, dateStr);
+                                    if (visitData && (!salesmanFilter || visitData.salesman_id === salesmanFilter)) {
+                                        this.visitLocations.push(visitData);
+                                        this.updateSalesmanData(visitData.salesman_id, visitData.salesman_name, visitData);
+                                        extractedCount++;
+                                        addDebugMessage(`📊 Extracted nested analytics visit: ${visitData.customer_name} by ${visitData.salesman_id} at ${visitData.actual_location.latitude},${visitData.actual_location.longitude}`);
+                                    }
+                                }
+                            });
+                        }
+                    });
+                }
+                
+                addDebugMessage(`📊 Extracted ${extractedCount} visits from analytics data for ${dateStr}`);
+            }
+            
+            isVisitLikeData(data) {
+                // More comprehensive check for visit-like data
+                const hasLocation = data.latitude !== undefined || data.longitude !== undefined ||
+                                  data.location !== undefined || data.coordinates !== undefined ||
+                                  data.actual_location !== undefined || data.start_location !== undefined;
+                
+                const hasVisitInfo = data.customer_name !== undefined || data.customerName !== undefined ||
+                                   data.salesman_id !== undefined || data.salesmanId !== undefined ||
+                                   data.salesman_name !== undefined || data.name !== undefined;
+                
+                const hasTimestamp = data.timestamp !== undefined || data.time !== undefined ||
+                                   data.date !== undefined || data.created_at !== undefined || data.start !== undefined;
+                
+                return hasLocation || hasVisitInfo || hasTimestamp;
+            }
+            
+            convertAnalyticsToVisit(key, data, dateStr) {
+                try {
+                    // Extract location with more fallback options
+                    let location = null;
+                    if (data.latitude !== undefined && data.longitude !== undefined) {
+                        location = { latitude: data.latitude, longitude: data.longitude, accuracy: data.accuracy || 0 };
+                    } else if (data.location) {
+                        location = data.location;
+                    } else if (data.actual_location) {
+                        location = data.actual_location;
+                    } else if (data.coordinates) {
+                        location = data.coordinates;
+                    } else if (data.start_location) {
+                        location = data.start_location;
+                    }
+                    
+                    if (!location || !location.latitude || !location.longitude) {
+                        addDebugMessage(`❌ No valid location found in analytics data ${key}`);
+                        return null;
+                    }
+                    
+                    // Extract basic info with more fallback options
+                    const salesmanId = data.salesman_id || data.salesmanId || 'unknown';
+                    const salesmanName = data.salesman_name || data.salesmanName || `Salesman ${salesmanId}`;
+                    const customerName = data.customer_name || data.customerName || data.name || `Customer_${key}`;
+                    
+                    // Extract timestamp with more fallback options
+                    let timestamp = data.timestamp || data.time || data.created_at || data.date || data.start;
+                    if (!timestamp) {
+                        timestamp = new Date(`${dateStr}T12:00:00`).toISOString();
+                    }
+                    
+                    // Calculate distance if master location exists
+                    let distance = data.distance || data.distance_meters || 0;
+                    let masterLocation = data.master_location || data.master_coordinates || data.target_location;
+                    
+                    if (masterLocation && masterLocation.latitude && masterLocation.longitude && distance === 0) {
+                        distance = this.calculateDistance(
+                            location.latitude,
+                            location.longitude,
+                            masterLocation.latitude,
+                            masterLocation.longitude
+                        );
+                    }
+                    
+                    const visitData = {
+                        id: `analytics_${dateStr}_${key}`,
+                        salesman_id: salesmanId,
+                        salesman_name: salesmanName,
+                        customer_name: customerName,
+                        actual_location: location,
+                        master_location: masterLocation,
+                        distance: distance,
+                        timestamp: timestamp,
+                        date: dateStr,
+                        accuracy: location.accuracy || data.accuracy || 0,
+                        compliance_status: this.getComplianceStatus(distance),
+                        session_duration: data.duration || data.session_duration || 0,
+                        visit_count: data.visit_count || 1,
+                        source: 'localStorage-analytics'
+                    };
+                    
+                    addDebugMessage(`✅ Converted analytics to visit: ${customerName} by ${salesmanId}`);
+                    return visitData;
+                    
+                } catch (error) {
+                    addDebugMessage('❌ Error converting analytics to visit data: ' + error.message);
+                    return null;
+                }
+            }
+            
+            updateSalesmanData(salesmanId, salesmanName, locationPoint) {
+                if (!this.salesmanData[salesmanId]) {
+                    this.salesmanData[salesmanId] = {
+                        salesman_name: salesmanName || `Salesman ${salesmanId}`,
+                        visits: [],
+                        customers: new Set(),
+                        compliance_stats: { compliant: 0, warning: 0, error: 0 }
+                    };
+                } else {
+                    if (salesmanName && salesmanName !== `Salesman ${salesmanId}`) {
+                        this.salesmanData[salesmanId].salesman_name = salesmanName;
+                    }
+                }
+                
+                this.salesmanData[salesmanId].visits.push(locationPoint);
+                this.salesmanData[salesmanId].customers.add(locationPoint.customer_name);
+                
+                if (locationPoint.distance <= 100) {
+                    this.salesmanData[salesmanId].compliance_stats.compliant++;
+                } else if (locationPoint.distance <= 500) {
+                    this.salesmanData[salesmanId].compliance_stats.warning++;
+                } else {
+                    this.salesmanData[salesmanId].compliance_stats.error++;
+                }
+            }
+            
+            calculateDistance(lat1, lon1, lat2, lon2) {
+                if (!lat1 || !lon1 || !lat2 || !lon2) return 0;
+                
+                const R = 6371e3;
+                const φ1 = lat1 * Math.PI/180;
+                const φ2 = lat2 * Math.PI/180;
+                const Δφ = (lat2-lat1) * Math.PI/180;
+                const Δλ = (lon2-lon1) * Math.PI/180;
+                
+                const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                          Math.cos(φ1) * Math.cos(φ2) *
+                          Math.sin(Δλ/2) * Math.sin(Δλ/2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                
+                return R * c;
+            }
+            
+            getComplianceStatus(distance) {
+                if (distance === undefined) return 'unknown';
+                if (distance <= 50) return 'perfect';
+                if (distance <= 100) return 'good';
+                if (distance <= 500) return 'warning';
+                return 'error';
+            }
+            
+            calculateAdvancedStats() {
+                let totalDistance = 0;
+                let validDistances = 0;
+                let compliantVisits = 0;
+                let totalVisits = this.visitLocations.length;
+                
+                this.visitLocations.forEach(visit => {
+                    if (visit.distance !== undefined) {
+                        totalDistance += visit.distance;
+                        validDistances++;
+                        
+                        if (visit.distance <= 100) {
+                            compliantVisits++;
+                        }
+                    }
+                });
+                
+                this.complianceStats = {
+                    totalVisits: totalVisits,
+                    compliantVisits: compliantVisits,
+                    complianceRate: totalVisits > 0 ? (compliantVisits / totalVisits * 100).toFixed(1) : 0,
+                    averageDistance: validDistances > 0 ? (totalDistance / validDistances).toFixed(0) : 0,
+                    alerts: totalVisits - compliantVisits,
+                    salesmanCount: Object.keys(this.salesmanData).length
+                };
+                
+                addDebugMessage(`📊 Advanced stats calculated: ${this.complianceStats.totalVisits} visits, ${this.complianceStats.complianceRate}% compliance`);
+            }
+            
+            renderEnhancedMap() {
+                this.clearMapMarkers();
+                
+                if (this.visitLocations.length === 0) {
+                    addDebugMessage('⚠️ No location data to render');
+                    return;
+                }
+                
+                const validLocations = this.filterOutlierLocations(this.visitLocations);
+                
+                if (validLocations.length === 0) {
+                    addDebugMessage('⚠️ No valid location data after outlier filtering');
+                    return;
+                }
+                
+                const salesmanRoutes = this.groupLocationsBySalesman(validLocations);
+                const salesmanColors = this.generateSalesmanColors();
+                
+                addDebugMessage(`🗺️ Rendering routes for ${Object.keys(salesmanRoutes).length} salesman`);
+                
+                Object.entries(salesmanRoutes).forEach(([salesmanId, salesmanData]) => {
+                    const color = salesmanColors[salesmanId];
+                    this.renderSalesmanRoute(salesmanData, color, salesmanId);
+                    addDebugMessage(`🗺️ Rendered route for ${salesmanData.salesman_name}: ${salesmanData.visits.length} visits`);
+                });
+                
+                if (mapMarkers.length > 0) {
+                    const group = new L.featureGroup(mapMarkers);
+                    visitMap.fitBounds(group.getBounds().pad(0.1));
+                    addDebugMessage(`🗺️ Map bounds adjusted to fit ${mapMarkers.length} markers`);
+                }
+                
+                addDebugMessage(`🗺️ Map rendering complete: ${Object.keys(salesmanRoutes).length} salesman routes with ${validLocations.length} valid locations`);
+            }
+            
+            filterOutlierLocations(locations) {
+                const DepoCenter = { lat: -2.1869912738751607, lng: 115.397471857672 };
+                const maxDistanceKm = 150;
+                
+                const validLocations = locations.filter(location => {
+                    const distance = this.calculateDistance(
+                        location.actual_location.latitude,
+                        location.actual_location.longitude,
+                        DepoCenter.lat,
+                        DepoCenter.lng
+                    );
+                    
+                    const distanceKm = distance / 1000;
+                    const isValid = distanceKm <= maxDistanceKm;
+                    
+                    if (!isValid) {
+                        addDebugMessage(`🚫 Filtered outlier: ${location.salesman_name} - ${location.customer_name} (${distanceKm.toFixed(1)}km from Depo)`);
+                    }
+                    
+                    return isValid;
+                });
+                
+                addDebugMessage(`📊 Location filtering: ${validLocations.length}/${locations.length} locations within 150km radius`);
+                return validLocations;
+            }
+            
+            groupLocationsBySalesman(locations) {
+                const salesmanRoutes = {};
+                
+                locations.forEach(location => {
+                    if (!salesmanRoutes[location.salesman_id]) {
+                        salesmanRoutes[location.salesman_id] = {
+                            salesman_name: location.salesman_name,
+                            visits: []
+                        };
+                    }
+                    salesmanRoutes[location.salesman_id].visits.push(location);
+                });
+                
+                Object.values(salesmanRoutes).forEach(salesmanData => {
+                    salesmanData.visits.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+                });
+                
+                return salesmanRoutes;
+            }
+            
+            renderSalesmanRoute(salesmanData, color, salesmanId) {
+                const visits = salesmanData.visits;
+                
+                if (visits.length === 0) return;
+                
+                const routeCoordinates = visits.map(visit => [
+                    visit.actual_location.latitude,
+                    visit.actual_location.longitude
+                ]);
+                
+                if (visits.length > 1) {
+                    const routeLine = L.polyline(routeCoordinates, {
+                        color: color,
+                        weight: 3,
+                        opacity: 0.7,
+                        dashArray: '10, 5'
+                    });
+                    
+                    routeLine.bindPopup(`
+                        <div style="font-family: 'Segoe UI', sans-serif;">
+                            <h4 style="margin: 0 0 8px 0; color: #1e293b; font-size: 14px;">🛣️ Route Path</h4>
+                            <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>👤 Salesman:</strong> ${salesmanData.salesman_name}</p>
+                            <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>📍 Visits:</strong> ${visits.length} locations</p>
+                            <p style="margin: 0; font-size: 11px; color: #64748b;">Chronological visit order</p>
+                        </div>
+                    `);
+                    
+                    routeLine.addTo(visitMap);
+                    mapMarkers.push(routeLine);
+                }
+                
+                visits.forEach((visit, index) => {
+                    this.addChronologicalMarker(visit, index + 1, color, visits.length);
+                    
+                    if (visit.master_location) {
+                        this.addMasterMarker(visit);
+                        this.addConnectionLine(visit, color);
+                    }
+                });
+                
+                if (visits.length > 1) {
+                    this.addStartEndMarkers(visits[0], visits[visits.length - 1], color);
+                }
+            }
+            
+            addChronologicalMarker(location, visitNumber, color, totalVisits) {
+                const compliance = this.getComplianceStatus(location.distance);
+                let markerColor = color;
+                
+                if (compliance === 'perfect') markerColor = '#10b981';
+                else if (compliance === 'good') markerColor = '#3b82f6';
+                else if (compliance === 'warning') markerColor = '#f59e0b';
+                else if (compliance === 'error') markerColor = '#ef4444';
+                
+                const numberIcon = L.divIcon({
+                    className: 'custom-number-marker',
+                    html: `<div style="
+                        background: ${markerColor}; 
+                        color: white; 
+                        border: 3px solid white; 
+                        border-radius: 50%; 
+                        width: 28px; 
+                        height: 28px; 
+                        display: flex; 
+                        align-items: center; 
+                        justify-content: center; 
+                        font-weight: bold; 
+                        font-size: 12px;
+                        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+                    ">${visitNumber}</div>`,
+                    iconSize: [28, 28],
+                    iconAnchor: [14, 14]
+                });
+                
+                const numberedMarker = L.marker([location.actual_location.latitude, location.actual_location.longitude], {
+                    icon: numberIcon
+                });
+                
+                const popupContent = this.createChronologicalPopup(location, visitNumber, totalVisits);
+                numberedMarker.bindPopup(popupContent);
+                
+                numberedMarker.addTo(visitMap);
+                mapMarkers.push(numberedMarker);
+            }
+            
+            createChronologicalPopup(location, visitNumber, totalVisits) {
+                const formattedDistance = location.distance !== undefined ? 
+                    (location.distance < 1000 ? `${Math.round(location.distance)}m` : `${(location.distance/1000).toFixed(2)}km`) : 
+                    'N/A';
+                
+                const visitTime = new Date(location.timestamp).toLocaleTimeString();
+                const sessionDuration = location.session_duration ? 
+                    `${Math.floor(location.session_duration / 60)}:${(location.session_duration % 60).toString().padStart(2, '0')}` : 
+                    'N/A';
+                
+                return `
+                    <div style="font-family: 'Segoe UI', sans-serif; min-width: 300px;">
+                        <h4 style="margin: 0 0 8px 0; color: #1e293b; font-size: 14px;">
+                            📍 Visit #${visitNumber} of ${totalVisits}
+                        </h4>
+                        <div style="background: #f8fafc; padding: 8px; border-radius: 6px; margin-bottom: 8px;">
+                            <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>👤 Salesman:</strong> ${location.salesman_name}</p>
+                            <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>🏪 Customer:</strong> ${location.customer_name}</p>
+                            <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>⏰ Time:</strong> ${visitTime}</p>
+                            <p style="margin: 0; font-size: 12px;"><strong>⏱️ Duration:</strong> ${sessionDuration}</p>
+                        </div>
+                        <div style="background: #f1f5f9; padding: 8px; border-radius: 6px; margin-bottom: 8px;">
+                            <p style="margin: 0 0 4px 0; font-size: 11px;"><strong>📍 Coordinates:</strong> ${location.actual_location.latitude.toFixed(6)}, ${location.actual_location.longitude.toFixed(6)}</p>
+                            <p style="margin: 0 0 4px 0; font-size: 11px;"><strong>🎯 Accuracy:</strong> ±${Math.round(location.actual_location.accuracy || location.accuracy)}m</p>
+                            <p style="margin: 0 0 4px 0; font-size: 11px;"><strong>📏 Distance:</strong> ${formattedDistance}</p>
+                            <p style="margin: 0; font-size: 11px;"><strong>🔗 Source:</strong> ${location.source}</p>
+                        </div>
+                        <div style="text-align: center; padding: 4px; background: ${this.getComplianceColor(location.compliance_status)}; border-radius: 4px;">
+                            <span style="font-size: 10px; font-weight: 600; color: white; text-transform: uppercase;">
+                                ${this.getComplianceLabel(location.compliance_status)}
+                            </span>
+                        </div>
+                        <p style="margin: 8px 0 0 0; font-size: 10px; color: #64748b; text-align: center;">
+                            ${new Date(location.timestamp).toLocaleDateString()} • Visit sequence: ${visitNumber}
+                        </p>
+                    </div>
+                `;
+            }
+            
+            addStartEndMarkers(startVisit, endVisit, color) {
+                const startIcon = L.divIcon({
+                    className: 'custom-flag-marker',
+                    html: `<div style="
+                        color: #10b981; 
+                        font-size: 24px;
+                        text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+                    ">🚩</div>`,
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 24]
+                });
+                
+                const startMarker = L.marker([startVisit.actual_location.latitude, startVisit.actual_location.longitude], {
+                    icon: startIcon
+                });
+                
+                startMarker.bindPopup(`
+                    <div style="font-family: 'Segoe UI', sans-serif; text-align: center;">
+                        <h4 style="margin: 0 0 8px 0; color: #10b981;">🚩 Route Start</h4>
+                        <p style="margin: 0; font-size: 12px;">${startVisit.customer_name}</p>
+                        <p style="margin: 0; font-size: 11px; color: #64748b;">${new Date(startVisit.timestamp).toLocaleString()}</p>
+                    </div>
+                `);
+                
+                startMarker.addTo(visitMap);
+                mapMarkers.push(startMarker);
+                
+                const endIcon = L.divIcon({
+                    className: 'custom-flag-marker',
+                    html: `<div style="
+                        color: #ef4444; 
+                        font-size: 24px;
+                        text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+                    ">🏁</div>`,
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 24]
+                });
+                
+                const endMarker = L.marker([endVisit.actual_location.latitude, endVisit.actual_location.longitude], {
+                    icon: endIcon
+                });
+                
+                endMarker.bindPopup(`
+                    <div style="font-family: 'Segoe UI', sans-serif; text-align: center;">
+                        <h4 style="margin: 0 0 8px 0; color: #ef4444;">🏁 Route End</h4>
+                        <p style="margin: 0; font-size: 12px;">${endVisit.customer_name}</p>
+                        <p style="margin: 0; font-size: 11px; color: #64748b;">${new Date(endVisit.timestamp).toLocaleString()}</p>
+                    </div>
+                `);
+                
+                endMarker.addTo(visitMap);
+                mapMarkers.push(endMarker);
+            }
+            
+            generateSalesmanColors() {
+                const colors = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
+                const salesmanIds = Object.keys(this.salesmanData);
+                const colorMap = {};
+                
+                salesmanIds.forEach((id, index) => {
+                    colorMap[id] = colors[index % colors.length];
+                });
+                
+                return colorMap;
+            }
+            
+            getComplianceColor(status) {
+                const colors = {
+                    perfect: '#10b981',
+                    good: '#3b82f6', 
+                    warning: '#f59e0b',
+                    error: '#ef4444',
+                    unknown: '#64748b'
+                };
+                return colors[status] || colors.unknown;
+            }
+            
+            getComplianceLabel(status) {
+                const labels = {
+                    perfect: 'Perfect Match',
+                    good: 'Good Match',
+                    warning: 'Distance Warning', 
+                    error: 'Location Error',
+                    unknown: 'No Master Data'
+                };
+                return labels[status] || 'Unknown';
+            }
+            
+            addMasterMarker(location) {
+                const marker = L.circleMarker([location.master_location.latitude, location.master_location.longitude], {
+                    radius: 8,
+                    fillColor: '#10b981',
+                    color: 'white',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                });
+                
+                marker.bindPopup(`
+                    <div style="font-family: 'Segoe UI', sans-serif;">
+                        <h4 style="margin: 0 0 8px 0; color: #1e293b; font-size: 14px;">🏪 Master Location</h4>
+                        <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Customer:</strong> ${location.customer_name}</p>
+                        <p style="margin: 0; font-size: 11px; color: #64748b;">From Master Database</p>
+                    </div>
+                `);
+                
+                marker.addTo(visitMap);
+                mapMarkers.push(marker);
+            }
+            
+            addConnectionLine(location, color) {
+                const line = L.polyline([
+                    [location.actual_location.latitude, location.actual_location.longitude],
+                    [location.master_location.latitude, location.master_location.longitude]
+                ], {
+                    color: color,
+                    weight: 2,
+                    opacity: 0.6,
+                    dashArray: location.distance <= 100 ? null : '5, 5'
+                });
+                
+                line.addTo(visitMap);
+                mapMarkers.push(line);
+            }
+            
+            clearMapMarkers() {
+                mapMarkers.forEach(marker => {
+                    if (visitMap.hasLayer(marker)) {
+                        visitMap.removeLayer(marker);
+                    }
+                });
+                mapMarkers = [];
+                addDebugMessage('🗺️ Map markers cleared');
+            }
+            
+            updateStatistics() {
+                const DepoCenter = { lat: -2.1869912738751607, lng: 115.397471857672 };
+                const validLocations = this.visitLocations.filter(location => {
+                    const distance = this.calculateDistance(
+                        location.actual_location.latitude,
+                        location.actual_location.longitude,
+                        DepoCenter.lat,
+                        DepoCenter.lng
+                    );
+                    return (distance / 1000) <= 150;
+                });
+                
+                const filteredCount = this.visitLocations.length - validLocations.length;
+                
+                document.getElementById('totalVisits').textContent = validLocations.length;
+                document.getElementById('complianceRate').textContent = `${this.complianceStats.complianceRate}%`;
+                document.getElementById('avgDistance').textContent = `${this.complianceStats.averageDistance}m`;
+                document.getElementById('salesmanCount').textContent = this.complianceStats.salesmanCount;
+                
+                const mapStatsText = validLocations.length > 0 ? 
+                    `${validLocations.length} valid visits • ${Object.keys(this.salesmanData).length} salesman • ${this.complianceStats.complianceRate}% compliant` +
+                    (filteredCount > 0 ? ` • ${filteredCount} outliers filtered` : ' • No outliers') :
+                    'No valid location data within 150km radius';
+                    
+                document.getElementById('mapStats').textContent = mapStatsText;
+                
+                addDebugMessage(`📊 Statistics updated: ${validLocations.length} valid locations, ${filteredCount} outliers filtered`);
+            }
+            
+            renderLocationList() {
+                const content = document.getElementById('locationListContent');
+                
+                if (this.visitLocations.length === 0) {
+                    content.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">📍</div>
+                            <div>No location data available</div>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                let html = '';
+                
+                const sortedLocations = [...this.visitLocations].sort((a, b) => {
+                    if (a.salesman_name !== b.salesman_name) {
+                        return a.salesman_name.localeCompare(b.salesman_name);
+                    }
+                    return new Date(b.timestamp) - new Date(a.timestamp);
+                });
+                
+                let currentSalesman = '';
+                
+                sortedLocations.forEach((location, index) => {
+                    if (location.salesman_name !== currentSalesman) {
+                        currentSalesman = location.salesman_name;
+                        html += `
+                            <div style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 12px 16px; font-weight: 600; font-size: 14px;">
+                                👤 ${currentSalesman} (${location.salesman_id}) • Source: ${location.source}
+                            </div>
+                        `;
+                    }
+                    
+                    const complianceClass = `compliance-${location.compliance_status}`;
+                    const formattedDistance = location.distance !== undefined ? 
+                        (location.distance < 1000 ? `${Math.round(location.distance)}m` : `${(location.distance/1000).toFixed(2)}km`) : 
+                        'N/A';
+                    
+                    const sessionDuration = location.session_duration ? 
+                        `${Math.floor(location.session_duration / 60)}:${(location.session_duration % 60).toString().padStart(2, '0')}` : 
+                        'N/A';
+                    
+                    html += `
+                        <div class="location-item" onclick="focusMapOnLocation(${index})">
+                            <div class="location-header">
+                                <div>
+                                    <div class="customer-name">🏪 ${location.customer_name}</div>
+                                    <div class="visit-time">📅 ${new Date(location.timestamp).toLocaleString()} • ⏱️ Duration: ${sessionDuration}</div>
+                                </div>
+                                <div class="compliance-badge ${complianceClass}">
+                                    ${this.getComplianceLabel(location.compliance_status)}
+                                </div>
+                            </div>
+                            <div class="location-details">
+                                <div class="detail-item">
+                                    <div class="detail-label">Distance</div>
+                                    <div class="detail-value">${formattedDistance}</div>
+                                </div>
+                                <div class="detail-item">
+                                    <div class="detail-label">Accuracy</div>
+                                    <div class="detail-value">±${Math.round(location.accuracy || 0)}m</div>
+                                </div>
+                                <div class="detail-item">
+                                    <div class="detail-label">Source</div>
+                                    <div class="detail-value">${location.source}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                content.innerHTML = html;
+                
+                addDebugMessage(`📋 Location list rendered: ${this.visitLocations.length} unique visits`);
+            }
+        }
+
+        // ===== GLOBAL FUNCTION DEFINITIONS =====
+        
+        // Main analytics function
+        async function loadEnhancedAnalytics() {
+            const dateFrom = document.getElementById('mapDateFrom').value;
+            const dateTo = document.getElementById('mapDateTo').value;
+            const salesmanFilter = document.getElementById('mapSalesmanFilter').value;
+            const dataSource = document.getElementById('dataSourceFilter').value;
+            
+            if (!dateFrom || !dateTo) {
+                alert('Please select date range');
+                return;
+            }
+            
+            addDebugMessage('📊 Loading ROUTE TRACKING analytics...');
+            addDebugMessage(`🎯 Target: ${dateFrom} to ${dateTo}, salesman: ${salesmanFilter || 'all'}, source: ${dataSource}`);
+            
+            if (!enhancedAnalytics) {
+                addDebugMessage('📊 Initializing analytics system...');
+                enhancedAnalytics = new FirebaseLocationAnalytics();
+                await enhancedAnalytics.init();
+            }
+            
+            try {
+                const locationData = await enhancedAnalytics.loadAnalyticsData(dateFrom, dateTo, salesmanFilter, dataSource);
+                
+                // Only render if we have data
+                if (locationData.length > 0) {
+                    enhancedAnalytics.renderEnhancedMap();
+                    enhancedAnalytics.updateStatistics();
+                    enhancedAnalytics.renderLocationList();
+                } else {
+                    addDebugMessage('⚠️ No location data found, showing empty state');
+                    enhancedAnalytics.updateStatistics();
+                    enhancedAnalytics.renderLocationList();
+                }
+                
+                // Calculate route statistics
+                const DepoCenter = { lat: -2.1869912738751607, lng: 115.397471857672 };
+                const validLocations = locationData.filter(location => {
+                    const distance = enhancedAnalytics.calculateDistance(
+                        location.actual_location.latitude,
+                        location.actual_location.longitude,
+                        DepoCenter.lat,
+                        DepoCenter.lng
+                    );
+                    return (distance / 1000) <= 150;
+                });
+                
+                // Quick duplicate check
+                const duplicateCheck = new Map();
+                validLocations.forEach(visit => {
+                    const key = `${visit.salesman_id}_${visit.customer_name}_${visit.date}`;
+                    if (!duplicateCheck.has(key)) {
+                        duplicateCheck.set(key, 0);
+                    }
+                    duplicateCheck.set(key, duplicateCheck.get(key) + 1);
+                });
+                
+                const duplicateCount = Array.from(duplicateCheck.values()).filter(count => count > 1).length;
+                const totalDuplicateVisits = Array.from(duplicateCheck.values()).reduce((sum, count) => sum + Math.max(0, count - 1), 0);
+                
+                const filteredOutliers = locationData.length - validLocations.length;
+                const uniqueSalesman = new Set(validLocations.map(v => v.salesman_id)).size;
+                const firebaseVisits = validLocations.filter(v => v.source === 'firebase').length;
+                const localStorageVisits = validLocations.filter(v => v.source.includes('localStorage')).length;
+                
+                const summaryMessage = `🗺️ Route Tracking Analysis Complete!\n\n` +
+                    `📊 Data source: ${dataSource}\n` +
+                    `💾 LocalStorage visits: ${localStorageVisits}\n` +
+                    `🔥 Firebase visits: ${firebaseVisits}\n` +
+                    `📍 Total valid locations: ${validLocations.length}\n` +
+                    `👥 ${uniqueSalesman} salesman routes tracked\n` +
+                    `🚫 ${filteredOutliers} outlier locations filtered (>150km)\n` +
+                    `📊 ${enhancedAnalytics.complianceStats.complianceRate}% location compliance` +
+                    (duplicateCount > 0 ? `\n\n⚠️ ${duplicateCount} duplicate customer groups detected (${totalDuplicateVisits} extra visits)\n💡 Click "Check Duplicates" for detailed analysis` : '');
+                
+                addDebugMessage(summaryMessage);
+                
+                if (locationData.length === 0) {
+                    // Provide helpful suggestions based on what was found
+                    let suggestion = '';
+                    if (dataSource === 'firebase') {
+                        suggestion = '\n\n💡 Try switching to "Local Storage" data source.\nDebug shows localStorage has visit data available.';
+                    } else if (salesmanFilter) {
+                        suggestion = '\n\n💡 Try selecting "All Salesman" to see if other salesman have data for this date.';
+                    } else {
+                        suggestion = '\n\n💡 Try different date range or check if data exists using "Debug Storage" button.';
+                    }
+                    
+                    alert(`⚠️ No visit data found for selected criteria.${suggestion}`);
+                } else {
+                    const sourceUsed = dataSource === 'firebase' && localStorageVisits > 0 && firebaseVisits === 0 ? 
+                        'localStorage (Firebase fallback)' : dataSource;
+                    
+                    const duplicateWarning = duplicateCount > 0 ? 
+                        `\n\n⚠️ DUPLICATE ALERT:\n${duplicateCount} customer groups with duplicates\n${totalDuplicateVisits} extra visits detected\n\n🔍 Use "Check Duplicates" button for detailed analysis` : 
+                        '\n\n✅ No duplicate visits detected';
+                    
+                    alert(`✅ Analytics loaded successfully!\n\n📊 Found ${locationData.length} visits\n💾 LocalStorage: ${localStorageVisits} visits\n🔥 Firebase: ${firebaseVisits} visits\n🗺️ Data source used: ${sourceUsed}${duplicateWarning}\n\n🔍 Check debug panel for detailed information`);
+                }
+                
+            } catch (error) {
+                addDebugMessage('❌ Error loading analytics: ' + error.message);
+                
+                // Provide more specific error guidance
+                let errorGuidance = '';
+                if (error.message.includes('Firebase')) {
+                    errorGuidance = '\n\n💡 Try using "Local Storage" data source instead.';
+                } else if (error.message.includes('localStorage')) {
+                    errorGuidance = '\n\n💡 Check if visit data exists using "Debug Storage" button.';
+                }
+                
+                alert(`❌ Error loading analytics: ${error.message}${errorGuidance}\n\n🔍 Check debug panel for more details.`);
+            }
+        }
+
+        // Refresh Firebase connection with authentication
+        async function refreshFirebaseConnection() {
+            addDebugMessage('🔄 Refreshing Firebase connection with authentication...');
+            
+            try {
+                if (enhancedAnalytics) {
+                    // Sign out first if already signed in
+                    if (firebase.auth().currentUser) {
+                        addDebugMessage('🔐 Signing out current user...');
+                        await firebase.auth().signOut();
+                    }
+                    
+                    // Reinitialize Firebase connection
+                    await enhancedAnalytics.initializeFirebase();
+                    await enhancedAnalytics.loadAvailableSalesman();
+                    addDebugMessage('✅ Firebase connection refreshed');
+                    
+                    // Update UI based on connection status
+                    if (isFirebaseConnected) {
+                        alert('✅ Firebase connection successful!\n\n🔐 Anonymous authentication enabled\n📊 Database access confirmed\n🗺️ You can now use Firebase data source');
+                    } else {
+                        alert('⚠️ Firebase connection partial!\n\n🔐 Authentication may have failed\n💾 localStorage remains available\n💡 Try using localStorage data source');
+                    }
+                } else {
+                    // Initialize from scratch
+                    enhancedAnalytics = new FirebaseLocationAnalytics();
+                    await enhancedAnalytics.init();
+                    addDebugMessage('✅ Firebase analytics reinitialized');
+                    alert('🔄 Analytics system reinitialized!\n\n💾 localStorage is the recommended data source\n🔥 Firebase with authentication support enabled');
+                }
+            } catch (error) {
+                addDebugMessage('❌ Firebase refresh error: ' + error.message);
+                alert('❌ Firebase refresh failed!\n\n' + error.message + '\n\n💾 Continue using localStorage data source');
+            }
+        }
+
+        // Debug localStorage function
+        function debugLocalStorage() {
+            addDebugMessage('🔍 DEBUG: Analyzing localStorage...');
+            
+            let visitKeys = [];
+            let analyticsKeys = [];
+            let totalKeys = localStorage.length;
+            
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key) {
+                    if (key.includes('visit')) {
+                        const data = localStorage.getItem(key);
+                        visitKeys.push({
+                            key: key,
+                            size: data ? data.length : 0,
+                            preview: data ? data.substring(0, 100) + '...' : 'null'
+                        });
+                    } else if (key.includes('analytics')) {
+                        const data = localStorage.getItem(key);
+                        analyticsKeys.push({
+                            key: key,
+                            size: data ? data.length : 0,
+                            preview: data ? data.substring(0, 100) + '...' : 'null'
+                        });
+                    }
+                }
+            }
+            
+            addDebugMessage(`🔍 Total localStorage keys: ${totalKeys}`);
+            addDebugMessage(`🔍 Visit-related keys: ${visitKeys.length}`);
+            addDebugMessage(`🔍 Analytics-related keys: ${analyticsKeys.length}`);
+            
+            if (visitKeys.length > 0) {
+                addDebugMessage('🔍 Visit keys found:');
+                visitKeys.forEach((item, index) => {
+                    addDebugMessage(`${index + 1}. ${item.key} (${item.size} chars)`);
+                });
+            }
+            
+            if (analyticsKeys.length > 0) {
+                addDebugMessage('🔍 Analytics keys found:');
+                analyticsKeys.forEach((item, index) => {
+                    addDebugMessage(`${index + 1}. ${item.key} (${item.size} chars)`);
+                });
+            }
+            
+            if (visitKeys.length === 0 && analyticsKeys.length === 0) {
+                addDebugMessage('🔍 No visit or analytics keys found in localStorage');
+                addDebugMessage('🔍 All localStorage keys:');
+                for (let i = 0; i < Math.min(localStorage.length, 10); i++) {
+                    addDebugMessage(`   ${i + 1}. ${localStorage.key(i)}`);
+                }
+            }
+            
+            // Show in alert for easy viewing
+            const summary = `🔍 localStorage Debug Summary:\n\n` +
+                          `📊 Total keys: ${totalKeys}\n` +
+                          `📍 Visit keys: ${visitKeys.length}\n` +
+                          `📈 Analytics keys: ${analyticsKeys.length}\n\n` +
+                          `Recent Visit Keys:\n` +
+                          visitKeys.slice(0, 5).map((item, i) => `${i+1}. ${item.key}`).join('\n') +
+                          (visitKeys.length > 5 ? `\n...and ${visitKeys.length - 5} more` : '') +
+                          `\n\nRecent Analytics Keys:\n` +
+                          analyticsKeys.slice(0, 3).map((item, i) => `${i+1}. ${item.key}`).join('\n') +
+                          (analyticsKeys.length > 3 ? `\n...and ${analyticsKeys.length - 3} more` : '') +
+                          `\n\nCheck debug output for detailed analysis.`;
+            
+            alert(summary);
+        }
+
+        // Clear analytics function  
+        function clearAnalytics() {
+            addDebugMessage('🧹 Clear analytics called');
+            if (enhancedAnalytics) {
+                enhancedAnalytics.clearMapMarkers();
+                addDebugMessage('✅ Map cleared');
+            }
+            
+            // Reset statistics
+            document.getElementById('totalVisits').textContent = '-';
+            document.getElementById('complianceRate').textContent = '-';
+            document.getElementById('avgDistance').textContent = '-';
+            document.getElementById('salesmanCount').textContent = '-';
+            document.getElementById('mapStats').textContent = 'Ready to load data';
+            
+            // Clear location list
+            document.getElementById('locationListContent').innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">📊</div>
+                    <div>Load analytics data to see visit information</div>
+                </div>
+            `;
+            
+            addDebugMessage('✅ Analytics cleared');
+        }
+
+        // Analyze duplicates function
+        function analyzeDuplicates() {
+            if (!enhancedAnalytics || enhancedAnalytics.visitLocations.length === 0) {
+                alert('⚠️ No data loaded!\n\nPlease load analytics data first, then check for duplicates.');
+                return;
+            }
+            
+            addDebugMessage('🔍 DUPLICATE ANALYSIS: Starting comprehensive duplicate check...');
+            
+            const visits = enhancedAnalytics.visitLocations;
+            const duplicateGroups = new Map(); // key: "salesman_customer_date", value: [visits]
+            const sourceAnalysis = new Map(); // key: "salesman_customer_date", value: {sources: Set, count: number}
+            const locationVariance = new Map(); // track location differences for same customer
+            
+            // Group visits by salesman, customer, and date
+            visits.forEach(visit => {
+                const key = `${visit.salesman_id}_${visit.customer_name}_${visit.date}`;
+                
+                if (!duplicateGroups.has(key)) {
+                    duplicateGroups.set(key, []);
+                    sourceAnalysis.set(key, { sources: new Set(), count: 0 });
+                    locationVariance.set(key, { locations: [], distances: [] });
+                }
+                
+                duplicateGroups.get(key).push(visit);
+                sourceAnalysis.get(key).sources.add(visit.source);
+                sourceAnalysis.get(key).count++;
+                
+                // Track location variance
+                locationVariance.get(key).locations.push({
+                    lat: visit.actual_location.latitude,
+                    lng: visit.actual_location.longitude,
+                    accuracy: visit.accuracy,
+                    timestamp: visit.timestamp
+                });
+                locationVariance.get(key).distances.push(visit.distance);
+            });
+            
+            // Analyze duplicates
+            const duplicateReport = {
+                totalVisits: visits.length,
+                uniqueCustomerVisits: duplicateGroups.size,
+                duplicateGroups: 0,
+                exactDuplicates: 0,
+                sourceDuplicates: 0,
+                locationVariance: 0,
+                details: []
+            };
+            
+            duplicateGroups.forEach((visitGroup, key) => {
+                if (visitGroup.length > 1) {
+                    duplicateReport.duplicateGroups++;
+                    
+                    const [salesman, customer, date] = key.split('_');
+                    const sources = Array.from(sourceAnalysis.get(key).sources);
+                    const locations = locationVariance.get(key).locations;
+                    const distances = locationVariance.get(key).distances;
+                    
+                    // Check if locations are similar (within 10 meters)
+                    let maxLocationDistance = 0;
+                    for (let i = 0; i < locations.length - 1; i++) {
+                        for (let j = i + 1; j < locations.length; j++) {
+                            const dist = enhancedAnalytics.calculateDistance(
+                                locations[i].lat, locations[i].lng,
+                                locations[j].lat, locations[j].lng
+                            );
+                            maxLocationDistance = Math.max(maxLocationDistance, dist);
+                        }
+                    }
+                    
+                    const isExactDuplicate = maxLocationDistance < 10; // Within 10 meters
+                    const isSourceDuplicate = sources.length > 1;
+                    const hasLocationVariance = maxLocationDistance > 50; // More than 50 meters apart
+                    
+                    if (isExactDuplicate) duplicateReport.exactDuplicates++;
+                    if (isSourceDuplicate) duplicateReport.sourceDuplicates++;
+                    if (hasLocationVariance) duplicateReport.locationVariance++;
+                    
+                    // Determine duplicate type
+                    let duplicateType = '';
+                    if (isExactDuplicate && isSourceDuplicate) {
+                        duplicateType = 'Source Overlap (Same Location)';
+                    } else if (isSourceDuplicate && hasLocationVariance) {
+                        duplicateType = 'Source Overlap (Different Locations)';
+                    } else if (isExactDuplicate) {
+                        duplicateType = 'Exact Location Duplicate';
+                    } else if (hasLocationVariance) {
+                        duplicateType = 'Multiple Visits (Different Locations)';
+                    } else {
+                        duplicateType = 'Multiple Visits (Similar Location)';
+                    }
+                    
+                    duplicateReport.details.push({
+                        key: key,
+                        salesman: salesman,
+                        customer: customer.length > 20 ? customer.substring(0, 20) + '...' : customer,
+                        date: date,
+                        count: visitGroup.length,
+                        sources: sources,
+                        type: duplicateType,
+                        maxLocationDistance: Math.round(maxLocationDistance),
+                        distanceRange: `${Math.min(...distances)}m - ${Math.max(...distances)}m`,
+                        timestamps: visitGroup.map(v => new Date(v.timestamp).toLocaleTimeString()).join(', ')
+                    });
+                    
+                    addDebugMessage(`🔍 DUPLICATE: ${customer} by ${salesman} on ${date}`);
+                    addDebugMessage(`   Count: ${visitGroup.length}, Sources: ${sources.join(', ')}, Max distance: ${Math.round(maxLocationDistance)}m`);
+                    addDebugMessage(`   Type: ${duplicateType}`);
+                }
+            });
+            
+            // Sort duplicates by count (highest first)
+            duplicateReport.details.sort((a, b) => b.count - a.count);
+            
+            // Generate summary message
+            const summary = `🔍 DUPLICATE ANALYSIS RESULTS:\n\n` +
+                          `📊 Total visits loaded: ${duplicateReport.totalVisits}\n` +
+                          `👥 Unique customer-date combinations: ${duplicateReport.uniqueCustomerVisits}\n` +
+                          `🔄 Duplicate groups found: ${duplicateReport.duplicateGroups}\n\n` +
+                          `📍 Exact duplicates (same location): ${duplicateReport.exactDuplicates}\n` +
+                          `📂 Source duplicates (multiple data sources): ${duplicateReport.sourceDuplicates}\n` +
+                          `📏 Location variance (>50m apart): ${duplicateReport.locationVariance}\n\n` +
+                          `TOP DUPLICATES:\n` +
+                          duplicateReport.details.slice(0, 5).map((item, i) => 
+                              `${i+1}. ${item.customer} (${item.count}x) - ${item.type}`
+                          ).join('\n') +
+                          (duplicateReport.details.length > 5 ? `\n...and ${duplicateReport.details.length - 5} more` : '') +
+                          `\n\n🔍 Check debug panel for detailed analysis.`;
+            
+            // Log detailed report
+            addDebugMessage('🔍 DETAILED DUPLICATE REPORT:');
+            duplicateReport.details.forEach((item, i) => {
+                addDebugMessage(`${i+1}. ${item.customer} by Salesman ${item.salesman}`);
+                addDebugMessage(`   Date: ${item.date}, Count: ${item.count}`);
+                addDebugMessage(`   Sources: ${item.sources.join(', ')}`);
+                addDebugMessage(`   Type: ${item.type}`);
+                addDebugMessage(`   Max location distance: ${item.maxLocationDistance}m`);
+                addDebugMessage(`   Distance range: ${item.distanceRange}`);
+                addDebugMessage(`   Times: ${item.timestamps}`);
+                addDebugMessage('');
+            });
+            
+            // Provide recommendations
+            if (duplicateReport.sourceDuplicates > 0) {
+                addDebugMessage('💡 RECOMMENDATION: Source duplicates detected.');
+                addDebugMessage('   This means same visits are appearing from multiple data sources.');
+                addDebugMessage('   Consider using "Local Storage" data source only to avoid overlaps.');
+            }
+            
+            if (duplicateReport.locationVariance > 0) {
+                addDebugMessage('💡 RECOMMENDATION: Location variance detected.');
+                addDebugMessage('   Same customer visited multiple times at different locations.');
+                addDebugMessage('   This might be legitimate multiple visits per day.');
+            }
+            
+            if (duplicateReport.exactDuplicates > 0) {
+                addDebugMessage('💡 RECOMMENDATION: Exact duplicates detected.');
+                addDebugMessage('   Same customer, same location, same day from same/different sources.');
+                addDebugMessage('   Consider implementing deduplication in data collection.');
+            }
+            
+            alert(summary);
+        }
+
+        // Focus map on location function
+        function focusMapOnLocation(index) {
+            if (enhancedAnalytics && enhancedAnalytics.visitLocations[index]) {
+                const location = enhancedAnalytics.visitLocations[index];
+                if (visitMap && location.actual_location) {
+                    visitMap.setView([
+                        location.actual_location.latitude,
+                        location.actual_location.longitude
+                    ], 16);
+                    addDebugMessage(`🎯 Focused map on ${location.customer_name} at ${location.actual_location.latitude},${location.actual_location.longitude}`);
+                }
+            }
+        }
+
+        // ===== INITIALIZATION =====
+        document.addEventListener('DOMContentLoaded', function() {
+            addDebugMessage('🛣️ Starting Route Tracking Analytics (Firebase Auth Version)...');
+            addDebugMessage('💾 Features: localStorage primary, Firebase authentication, route visualization, enhanced debug');
+            addDebugMessage('📊 Database structure: visit_events (real-time) + daily_visits (aggregated)');
+            
+            // Set today's date
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('mapDateFrom').value = today;
+            document.getElementById('mapDateTo').value = today;
+            addDebugMessage('📅 Date inputs set to today: ' + today);
+            
+            // Initialize analytics
+            setTimeout(async () => {
+                try {
+                    enhancedAnalytics = new FirebaseLocationAnalytics();
+                    await enhancedAnalytics.init();
+                    addDebugMessage('✅ Route Tracking Analytics with Firebase Auth ready');
+                } catch (error) {
+                    addDebugMessage('❌ Analytics initialization error: ' + error.message);
+                }
+            }, 1000);
+        });
+
+        addDebugMessage('✅ Enhanced route tracking location-analytics.html (Firebase Auth) loaded');
+    </script>
+</body>
+</html>

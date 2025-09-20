@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Daily Achievement - Depo Tanjung</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
+  
+  <!-- Header -->
+  <div class="bg-white shadow border-b-4 border-blue-600">
+    <div class="max-w-7xl mx-auto px-4 py-3">
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="text-2xl font-bold text-gray-900">Daily Achievement</h1>
+          <p class="text-sm text-blue-600 font-semibold">Team Mix Depo Tanjung</p>
+        </div>
+        <div class="text-right">
+          <p class="text-xs text-gray-600">Tanggal: <span id="tanggal" class="font-semibold"></span></p>
+          <p class="text-xs text-gray-600">Timegone: <span id="timezone" class="font-semibold text-blue-600">74%</span></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="max-w-7xl mx-auto px-4 py-4">
+    
+    <!-- Upload Section -->
+    <div class="bg-white rounded-lg shadow p-4 mb-4 border border-gray-200">
+      <div class="flex items-center mb-3">
+        <svg class="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+        </svg>
+        <h2 class="text-lg font-semibold text-gray-900">Upload Data Files</h2>
+      </div>
+      <div class="flex flex-col sm:flex-row gap-3">
+        <input type="file" id="jsonUploader" accept=".json" multiple 
+               class="flex-1 px-3 py-2 border-2 border-dashed border-gray-300 rounded focus:border-blue-600 focus:outline-none text-sm" />
+        <button onclick="loadAllData()" 
+                class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors duration-200 font-medium shadow">
+          Tampilkan Data
+        </button>
+      </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="bg-white rounded-lg shadow p-3 mb-4 border border-gray-200">
+      <h3 class="font-medium text-gray-900 mb-2 text-sm">Legend Achievement:</h3>
+      <div class="flex flex-wrap gap-3">
+        <div class="flex items-center">
+          <div class="w-3 h-3 bg-red-600 rounded mr-1"></div>
+          <span class="text-xs">< 90%</span>
+        </div>
+        <div class="flex items-center">
+          <div class="w-3 h-3 bg-yellow-600 rounded mr-1"></div>
+          <span class="text-xs">90-100%</span>
+        </div>
+        <div class="flex items-center">
+          <div class="w-3 h-3 bg-green-600 rounded mr-1"></div>
+          <span class="text-xs">≥ 100%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Combined Sales Achievement & Coverage Table -->
+    <div class="bg-white rounded-xl shadow-lg overflow-hidden mb-8 border border-gray-200">
+      <div class="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4">
+        <h2 class="text-xl font-semibold text-white flex items-center">
+          <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+          </svg>
+          Sales Achievement & Coverage
+        </h2>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="min-w-full">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-2 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Rank</th>
+              <th class="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
+              <th class="px-2 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Achievement</th>
+              <th class="px-2 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">CA</th>
+              <th class="px-2 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">CR</th>
+              <th class="px-2 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">AR Collection</th>
+            </tr>
+          </thead>
+          <tbody id="tableCombined" class="bg-white divide-y divide-gray-200">
+            <!-- Data will be inserted here -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Project per Salesman Table -->
+    <div class="bg-white rounded-xl shadow-lg overflow-hidden mb-8 border border-gray-200">
+      <div class="bg-gradient-to-r from-yellow-500 to-yellow-600 px-6 py-4">
+        <h2 class="text-xl font-semibold text-white flex items-center">
+          <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+          </svg>
+          Project per Salesman
+        </h2>
+      </div>
+      <div class="overflow-x-auto">
+        <div id="tableProject">
+          <!-- Data will be inserted here -->
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    document.getElementById("tanggal").textContent = new Date().toLocaleDateString("id-ID");
+
+    function formatRupiah(num) {
+      if (!num && num !== 0) return "-";
+      return new Intl.NumberFormat("id-ID", {
+        style: "currency", 
+        currency: "IDR", 
+        maximumFractionDigits: 0
+      }).format(num);
+    }
+
+    function getAchievementClass(percentage) {
+      if (percentage < 90) return "bg-red-100 text-red-800";
+      if (percentage >= 90 && percentage < 100) return "bg-yellow-100 text-yellow-800";
+      return "bg-green-100 text-green-800";
+    }
+
+    function getFileByName(files, nameContains) {
+      return [...files].find(file => file.name.toLowerCase().includes(nameContains));
+    }
+
+    function readJSON(file) {
+      return new Promise((resolve, reject) => {
+        if (!file) return resolve([]);
+        const reader = new FileReader();
+        reader.onload = e => {
+          const text = e.target.result.trim();
+          try {
+            // Coba parse sebagai array JSON standar
+            if (text.startsWith("[")) {
+              return resolve(JSON.parse(text));
+            }
+
+            // Jika tidak, parse line-by-line (NDJSON)
+            const lines = text.split(/\r?\n/).filter(line => line.trim());
+            const result = lines.map(line => JSON.parse(line));
+            resolve(result);
+          } catch (err) {
+            reject("Format JSON tidak valid: " + err.message);
+          }
+        };
+        reader.onerror = e => reject("Gagal membaca file");
+        reader.readAsText(file);
+      });
+    }
+
+    function toggleSalesman(salesmanId) {
+      const projectsDiv = document.getElementById(`projects-${salesmanId}`);
+      const icon = document.getElementById(`icon-${salesmanId}`);
+      
+      if (projectsDiv.classList.contains('hidden')) {
+        projectsDiv.classList.remove('hidden');
+        icon.style.transform = 'rotate(180deg)';
+      } else {
+        projectsDiv.classList.add('hidden');
+        icon.style.transform = 'rotate(0deg)';
+      }
+    }
+
+    async function loadAllData() {
+      try {
+        const inputFiles = document.getElementById("jsonUploader").files;
+        
+        if (inputFiles.length === 0) {
+          alert("Silakan pilih file JSON terlebih dahulu!");
+          return;
+        }
+
+        const fPerformance = getFileByName(inputFiles, "performance");
+        const fSalesman = getFileByName(inputFiles, "salesmanproses");
+        const fProject = getFileByName(inputFiles, "project");
+
+        const performance = await readJSON(fPerformance);
+        const salesman = await readJSON(fSalesman);
+        const project = await readJSON(fProject);
+
+        // Kosongkan tabel sebelumnya
+        document.getElementById("tableCombined").innerHTML = "";
+        document.getElementById("tableProject").innerHTML = "";
+
+        // Gabungkan data Performance dan Salesman berdasarkan nama
+        const combinedData = performance.map(perfData => {
+          const salesmanData = salesman.find(s => s.szname === perfData.szname) || {};
+          return {
+            ...perfData,
+            ...salesmanData
+          };
+        }).sort((a, b) => a.Rank - b.Rank); // Urutkan berdasarkan ranking
+
+        // Load Combined Data (Performance + Coverage)
+        combinedData.forEach(d => {
+          const achPercentage = (d.Ach * 100);
+          const achClass = getAchievementClass(achPercentage);
+          const arCollPercentage = (d.AR_Coll * 100);
+          const arCollClass = getAchievementClass(arCollPercentage);
+          
+          document.getElementById("tableCombined").innerHTML += `
+            <tr class="hover:bg-gray-50 transition-colors duration-150">
+              <td class="px-2 py-2 text-center">
+                <span class="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">${d.Rank}</span>
+              </td>
+              <td class="px-2 py-2 font-medium text-gray-900 text-xs">${d.szname}</td>
+              <td class="px-2 py-2 text-center">
+                <span class="px-2 py-1 inline-flex text-xs leading-4 font-medium rounded-full ${achClass}">
+                  ${achPercentage.toFixed(1)}%
+                </span>
+              </td>
+              <td class="px-2 py-2 text-center text-gray-900 text-xs">${d["A.CA"] || d.A?.CA || "-"}</td>
+              <td class="px-2 py-2 text-center text-gray-900 text-xs">${d["A.CR"] || d.A?.CR || "-"}</td>
+              <td class="px-2 py-2 text-center">
+                <span class="px-2 py-1 inline-flex text-xs leading-4 font-medium rounded-full ${arCollClass}">
+                  ${arCollPercentage.toFixed(1)}%
+                </span>
+              </td>
+            </tr>`;
+        });
+
+        // Load Project Data with grouping and collapsible functionality
+        const projectBySalesman = {};
+        project.forEach(d => {
+          if (!projectBySalesman[d.szname]) {
+            projectBySalesman[d.szname] = [];
+          }
+          projectBySalesman[d.szname].push(d);
+        });
+
+        let projectHTML = '';
+        Object.keys(projectBySalesman).forEach(salesmanName => {
+          const salesmanId = salesmanName.replace(/\s+/g, '');
+          projectHTML += `
+            <div class="border-b border-gray-200">
+              <div class="p-2 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors duration-150" 
+                   onclick="toggleSalesman('${salesmanId}')">
+                <div class="flex items-center justify-between">
+                  <span class="font-medium text-gray-900 text-xs">${salesmanName}</span>
+                  <svg id="icon-${salesmanId}" class="w-4 h-4 text-gray-500 transform transition-transform duration-200" 
+                       fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                  </svg>
+                </div>
+              </div>
+              <div id="projects-${salesmanId}" class="hidden">
+                <table class="min-w-full">
+                  <thead class="bg-gray-25">
+                    <tr>
+                      <th class="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase">Project</th>
+                      <th class="px-2 py-1 text-center text-xs font-medium text-gray-500 uppercase">CR</th>
+                      <th class="px-2 py-1 text-right text-xs font-medium text-gray-500 uppercase">A.MTD</th>
+                      <th class="px-2 py-1 text-right text-xs font-medium text-gray-500 uppercase">Gap</th>
+                    </tr>
+                  </thead>
+                  <tbody>`;
+          
+          projectBySalesman[salesmanName].forEach(project => {
+            projectHTML += `
+              <tr class="hover:bg-gray-50">
+                <td class="px-2 py-1 text-xs text-gray-900">${project.Project}</td>
+                <td class="px-2 py-1 text-center text-xs text-gray-900">${project["CR on JKS"]}</td>
+                <td class="px-2 py-1 text-right text-xs text-gray-900">${formatRupiah(project[" A.MTD"])}</td>
+                <td class="px-2 py-1 text-right text-xs text-gray-900">${formatRupiah(project[" Gap MTD"])}</td>
+              </tr>`;
+          });
+          
+          projectHTML += `
+                  </tbody>
+                </table>
+              </div>
+            </div>`;
+        });
+
+        document.getElementById("tableProject").innerHTML = projectHTML;
+
+        // Show success message
+        const successMsg = document.createElement('div');
+        successMsg.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+        successMsg.textContent = 'Data berhasil dimuat!';
+        document.body.appendChild(successMsg);
+        
+        setTimeout(() => {
+          successMsg.remove();
+        }, 3000);
+
+      } catch (error) {
+        console.error('Error loading data:', error);
+        alert('Error loading data: ' + error);
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,1445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>One Sheet Dashboard</title>
+    <style>
+        :root {
+            --header-bg-color: #023047;
+            --header-text-color: #ffb703;
+            --header-border-color: #023047;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #ffffff;
+            color: #333;
+        }
+
+        .header {
+            background: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-bottom: 1px solid #e5e5e5;
+            padding: 12px 16px;
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #1f2937;
+        }
+
+        .region-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 13px;
+        }
+
+        .badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-green { background: #dcfce7; color: #166534; }
+
+        /* Stats Cards */
+        .stats {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+        }
+
+        .stat-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 6px 8px;
+            text-align: center;
+            min-width: 60px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        .stat-label {
+            font-size: 9px;
+            color: #6b7280;
+            margin-bottom: 2px;
+            text-transform: uppercase;
+        }
+
+        .stat-value {
+            font-weight: bold;
+            font-size: 11px;
+        }
+
+        /* Performance Colors */
+        .perf-red { color: #dc2626; }
+        .perf-yellow { color: #d97706; }
+        .perf-green { color: #059669; }
+        .perf-gold { color: #d97706; background: linear-gradient(135deg, #fbbf24, #f59e0b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            width: 100%;
+        }
+
+        .controls-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .controls-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        select, button {
+            padding: 6px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-size: 12px;
+            background: white;
+            cursor: pointer;
+        }
+
+        select:focus, button:focus {
+            outline: 2px solid #023047;
+            outline-offset: -2px;
+        }
+
+        button {
+            background: #6b7280;
+            color: white;
+            border: none;
+        }
+
+        button:hover {
+            background: #4b5563;
+        }
+
+        /* Tab System - Updated Colors */
+        .tabs {
+            display: flex;
+            gap: 4px;
+        }
+
+        .tab {
+            padding: 8px 16px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            font-weight: 500;
+            color: white;
+            background: #03045e;
+            transition: all 0.3s ease;
+            border-radius: 6px;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        .tab:hover {
+            background: #041562;
+            color: white;
+        }
+
+        .tab.active {
+            color: white;
+            background: #0077b6;
+            border-bottom-color: #0077b6;
+            font-weight: 600;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .table-container {
+            background: white;
+            height: calc(100vh - 120px);
+            overflow: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            background: white;
+        }
+
+        th, td {
+            padding: 6px 8px;
+            text-align: left;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        /* Updated Header Colors - Now using CSS Custom Properties */
+        th {
+            background: var(--header-bg-color);
+            color: var(--header-text-color);
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            border-bottom: 2px solid var(--header-border-color);
+        }
+
+        .sub-header th {
+            top: 38px;
+            background: var(--header-bg-color);
+            color: var(--header-text-color);
+            border-bottom: 1px solid var(--header-border-color);
+            z-index: 19;
+        }
+
+        .sub-header .sticky-col {
+            z-index: 21;
+            background: var(--header-bg-color);
+        }
+
+        .sticky-col {
+            position: sticky;
+            background: white;
+            z-index: 10;
+            border-right: 2px solid #e5e7eb;
+        }
+
+        .sticky-col-1 { left: 0px; width: 160px; }
+        .sticky-col-2 { left: 160px; width: 50px; }
+        .sticky-col-3 { left: 210px; width: 40px; }
+        .sticky-col-4 { left: 250px; width: 70px; }
+
+        .sticky-col th {
+            background: var(--header-bg-color);
+            color: var(--header-text-color);
+            z-index: 25;
+        }
+
+        .sub-header .sticky-col {
+            z-index: 24;
+            background: var(--header-bg-color);
+        }
+
+        .sub-header .sticky-col th {
+            background: var(--header-bg-color);
+            color: var(--header-text-color);
+            z-index: 24;
+        }
+
+        .group-header {
+            background: white;
+            border-top: 2px solid #023047;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .group-header:hover {
+            background: #f8fafc;
+        }
+
+        .group-header .sticky-col {
+            background: white;
+            z-index: 12;
+        }
+
+        .group-header:hover .sticky-col {
+            background: #f8fafc;
+        }
+
+        .group-header td {
+            padding: 8px 12px;
+            font-weight: bold;
+            color: #023047;
+            font-size: 13px;
+        }
+
+        .group-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .group-hint {
+            font-size: 11px;
+            font-weight: normal;
+            color: #023047;
+        }
+
+        .group-summary {
+            background: #e5e5e5 !important;
+            border-bottom: 2px solid #ffb703;
+            font-weight: 600;
+            color: #023047;
+        }
+
+        .group-summary td {
+            padding: 6px 8px;
+            font-size: 12px;
+            border-bottom: 2px solid #ffb703;
+        }
+
+        .group-summary .sticky-col {
+            background: white;
+            border-right: 2px solid #e5e7eb;
+            z-index: 15;
+        }
+
+        tr:hover {
+            background: #f9fafb;
+        }
+
+        tr:hover .sticky-col {
+            background: #f9fafb;
+        }
+
+        .text-center { text-align: center; }
+        .font-medium { font-weight: 500; }
+        .font-bold { font-weight: bold; }
+
+        .channel-ws { background: #dbeafe; color: #1e40af; }
+        .channel-rt { background: #dcfce7; color: #166534; }
+        .channel-mt { background: #faf5ff; color: #7c3aed; }
+        .channel-ot { background: #f3f4f6; color: #374151; }
+
+        .ca-active { 
+            width: 16px; 
+            height: 16px; 
+            border-radius: 50%; 
+            background: #10b981; 
+            display: inline-block;
+        }
+
+        .ca-inactive { 
+            width: 16px; 
+            height: 16px; 
+            border-radius: 50%; 
+            background: #ef4444; 
+            display: inline-block;
+        }
+
+        .ach-red { background: #fee2e2; color: #dc2626; }
+        .ach-yellow { background: #fef3c7; color: #d97706; }
+        .ach-green { background: #dcfce7; color: #16a34a; }
+        .ach-gold { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: white; }
+
+        .text-green { color: #059669; }
+        .text-red { color: #dc2626; }
+
+        /* Weekly Headers - Now using CSS Custom Properties */
+        .weekly-header {
+            background: var(--header-bg-color);
+            color: var(--header-text-color);
+            border-left: 1px solid var(--header-border-color);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6b7280;
+            background: white;
+        }
+
+        .empty-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .hidden { display: none; }
+
+        /* Channel Hierarchy Styles */
+        .channel-group {
+            background: white;
+            font-weight: bold;
+            color: #023047;
+            border-top: 2px solid #023047;
+        }
+
+        .channel-subgroup {
+            background: white;
+            font-weight: 600;
+            color: #374151;
+            padding-left: 20px;
+        }
+
+        @media (max-width: 1024px) {
+            .header-content {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .controls {
+                flex-direction: column;
+                gap: 16px;
+            }
+            
+            .controls-left, .controls-right {
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+            
+            .stats {
+                justify-content: space-between;
+                overflow-x: auto;
+                flex-wrap: wrap;
+            }
+        }
+    
+        /* PATCH: Perbaikan z-index untuk sticky header dan sticky columns */
+        th {
+            z-index: 30;
+        }
+        thead th.sticky-col {
+            z-index: 35;
+        }
+        .sticky-col {
+            z-index: 10;
+        }
+        .sub-header .sticky-col {
+            z-index: 20;
+        }
+
+        /* FIX: Sticky untuk baris sub-header kedua */
+        tr.sub-header {
+          position: sticky;
+          top: 28px; /* Sesuai tinggi header utama */
+          z-index: 25;
+          background: var(--header-bg-color);
+        }
+
+        tr.sub-header th {
+          background: var(--header-bg-color);
+          color: var(--header-text-color);
+          z-index: 26;
+        }
+
+        /* Sub-headers with weekly column styling using custom properties */
+        .sub-header th[style*="border-left"] {
+            border-left: 1px solid var(--header-border-color) !important;
+        }
+
+        .sub-header th[style*="border-right"] {
+            border-right: 1px solid var(--header-border-color) !important;
+        }
+
+        /* Tab Theme Specific Styles */
+        .theme-outlet {
+            --header-bg-color: #cad2c5;
+            --header-text-color: #14213d;
+            --header-border-color: #cad2c5;
+        }
+
+        .theme-channel {
+            --header-bg-color: #cad2c5;
+            --header-text-color: #14213d;
+            --header-border-color: #cad2c5;
+        }
+    </style>
+</head>
+<body class="theme-outlet">
+    <!-- Header -->
+    <div class="header">
+        <div class="header-content">
+            <div class="header-left">
+                <div class="title">Sales Dashboard</div>
+                <div id="region-info" class="region-info">
+                    <span class="badge badge-blue">
+                        <span id="region-name">KALIMANTAN</span>
+                    </span>
+                    <span class="badge badge-green">
+                        <span id="depo-name">DEPO BARABAI</span>
+                    </span>
+                </div>
+            </div>
+            
+            <!-- Stats Cards -->
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-label">CR</div>
+                    <div id="total-outlets" class="stat-value">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">CA</div>
+                    <div id="active-outlets" class="stat-value perf-green">0</div>
+                </div>
+                <div id="bp-stat" class="stat-card">
+                    <div class="stat-label">BP</div>
+                    <div id="total-bp" class="stat-value perf-green">0</div>
+                </div>
+                <div id="be-stat" class="stat-card">
+                    <div class="stat-label">BE MTD</div>
+                    <div id="total-be" class="stat-value perf-green">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Sales</div>
+                    <div id="total-sales" class="stat-value perf-green">0</div>
+                </div>
+                <div id="vs-bp-stat" class="stat-card">
+                    <div class="stat-label">vs BP</div>
+                    <div id="vs-bp" class="stat-value">0%</div>
+                </div>
+                <div id="vs-be-stat" class="stat-card">
+                    <div class="stat-label">vs BE</div>
+                    <div id="vs-be" class="stat-value">0%</div>
+                </div>
+            </div>
+            
+            <!-- Controls -->
+            <div class="controls">
+                <div class="controls-left">
+                    <div class="filter-group">
+                        <label style="font-size: 12px; color: #6b7280;">Salesman:</label>
+                        <select id="salesman-filter" onchange="filterData()">
+                            <option value="All">All</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <button onclick="expandAllGroups()" style="background: #059669;">
+                            Expand All
+                        </button>
+                        <button onclick="collapseAllGroups()" style="background: #dc2626;">
+                            Collapse All
+                        </button>
+                        <input type="file" id="file-upload" accept=".json" style="display: none;">
+                        <button onclick="document.getElementById('file-upload').click()">
+                            Load File
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="controls-right">
+                    <!-- Tab Navigation -->
+                    <div class="tabs">
+                        <div class="tab active" onclick="switchTab('outlet')">Sales By Outlet</div>
+                        <div class="tab" onclick="switchTab('channel')">Sales By Channel</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab Content: Sales By Outlet -->
+    <div id="outlet-tab" class="tab-content active">
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <!-- Sticky Columns -->
+                        <th class="sticky-col sticky-col-1">Outlet</th>
+                        <th class="sticky-col sticky-col-2 text-center">CH</th>
+                        <th class="sticky-col sticky-col-3 text-center">CA</th>
+                        <th class="sticky-col sticky-col-4 text-center">MTD%</th>
+                        
+                        <!-- Weekly Headers -->
+                        <th class="weekly-header text-center" colspan="4">W1</th>
+                        <th class="weekly-header text-center" colspan="4">W2</th>
+                        <th class="weekly-header text-center" colspan="4">W3</th>
+                        <th class="weekly-header text-center" colspan="4">W4</th>
+                        <th class="weekly-header text-center" colspan="4">W5</th>
+                    </tr>
+                    <tr class="sub-header">
+                        <!-- Sticky Headers -->
+                        <th class="sticky-col sticky-col-1"></th>
+                        <th class="sticky-col sticky-col-2"></th>
+                        <th class="sticky-col sticky-col-3"></th>
+                        <th class="sticky-col sticky-col-4"></th>
+                        
+                        <!-- Week Sub-headers -->
+                        <th class="text-center" style="border-left: 1px solid var(--header-border-color);">BP</th>
+                        <th class="text-center">Act</th>
+                        <th class="text-center">%</th>
+                        <th class="text-center" style="border-right: 1px solid var(--header-border-color);">Gap</th>
+                        
+                        <th class="text-center" style="border-left: 1px solid var(--header-border-color);">BP</th>
+                        <th class="text-center">Act</th>
+                        <th class="text-center">%</th>
+                        <th class="text-center" style="border-right: 1px solid var(--header-border-color);">Gap</th>
+                        
+                        <th class="text-center" style="border-left: 1px solid var(--header-border-color);">BP</th>
+                        <th class="text-center">Act</th>
+                        <th class="text-center">%</th>
+                        <th class="text-center" style="border-right: 1px solid var(--header-border-color);">Gap</th>
+                        
+                        <th class="text-center" style="border-left: 1px solid var(--header-border-color);">BP</th>
+                        <th class="text-center">Act</th>
+                        <th class="text-center">%</th>
+                        <th class="text-center" style="border-right: 1px solid var(--header-border-color);">Gap</th>
+                        
+                        <th class="text-center" style="border-left: 1px solid var(--header-border-color);">BP</th>
+                        <th class="text-center">Act</th>
+                        <th class="text-center">%</th>
+                        <th class="text-center" style="border-right: 1px solid var(--header-border-color);">Gap</th>
+                    </tr>
+                </thead>
+                <tbody id="outlet-table-body">
+                    <tr>
+                        <td colspan="100%" class="empty-state">
+                            <div class="empty-icon">📊</div>
+                            <div style="font-size: 16px; margin-bottom: 4px;">Ready to load data</div>
+                            <div style="font-size: 13px;">Click "Load File" to start</div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Tab Content: Sales By Channel -->
+    <div id="channel-tab" class="tab-content">
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th class="sticky-col sticky-col-1">Channel</th>
+                        <th class="sticky-col sticky-col-2 text-center">#CR</th>
+                        <th class="sticky-col sticky-col-3 text-center">#CA</th>
+                        <th class="sticky-col sticky-col-4 text-center">MTD%</th>
+                        
+                        <th class="weekly-header text-center" colspan="4">W1</th>
+                        <th class="weekly-header text-center" colspan="4">W2</th>
+                        <th class="weekly-header text-center" colspan="4">W3</th>
+                        <th class="weekly-header text-center" colspan="4">W4</th>
+                        <th class="weekly-header text-center" colspan="4">W5</th>
+                    </tr>
+                    <tr class="sub-header">
+                        <th class="sticky-col sticky-col-1"></th>
+                        <th class="sticky-col sticky-col-2"></th>
+                        <th class="sticky-col sticky-col-3"></th>
+                        <th class="sticky-col sticky-col-4"></th>
+                        
+                        <th class="text-center" style="border-left: 1px solid var(--header-border-color);">BP</th>
+                        <th class="text-center">Act</th>
+                        <th class="text-center">%</th>
+                        <th class="text-center" style="border-right: 1px solid var(--header-border-color);">Gap</th>
+                        
+                        <th class="text-center" style="border-left: 1px solid var(--header-border-color);">BP</th>
+                        <th class="text-center">Act</th>
+                        <th class="text-center">%</th>
+                        <th class="text-center" style="border-right: 1px solid var(--header-border-color);">Gap</th>
+                        
+                        <th class="text-center" style="border-left: 1px solid var(--header-border-color);">BP</th>
+                        <th class="text-center">Act</th>
+                        <th class="text-center">%</th>
+                        <th class="text-center" style="border-right: 1px solid var(--header-border-color);">Gap</th>
+                        
+                        <th class="text-center" style="border-left: 1px solid var(--header-border-color);">BP</th>
+                        <th class="text-center">Act</th>
+                        <th class="text-center">%</th>
+                        <th class="text-center" style="border-right: 1px solid var(--header-border-color);">Gap</th>
+                        
+                        <th class="text-center" style="border-left: 1px solid var(--header-border-color);">BP</th>
+                        <th class="text-center">Act</th>
+                        <th class="text-center">%</th>
+                        <th class="text-center" style="border-right: 1px solid var(--header-border-color);">Gap</th>
+                    </tr>
+                </thead>
+                <tbody id="channel-table-body">
+                    <tr>
+                        <td colspan="100%" class="empty-state">
+                            <div class="empty-icon">📊</div>
+                            <div style="font-size: 16px; margin-bottom: 4px;">Channel analysis ready</div>
+                            <div style="font-size: 13px;">Load data to see channel performance</div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let salesData = [];
+        let filteredData = [];
+        let collapsedGroups = new Set();
+        let activeTab = 'outlet';
+
+        // Auto-load on page ready
+        document.addEventListener('DOMContentLoaded', function() {
+            const cachedData = localStorage.getItem('salesDashboardData');
+            if (cachedData) {
+                try {
+                    const data = JSON.parse(cachedData);
+                    processData(data);
+                    console.log('Loaded cached data');
+                } catch (e) {
+                    console.log('No valid cached data');
+                }
+            }
+            autoLoadData();
+        });
+
+        // Tab switching with theme update
+        function switchTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(tabName + '-tab').classList.add('active');
+
+            activeTab = tabName;
+
+            // Update theme
+            updateHeaderTheme(tabName);
+
+            // Render appropriate table
+            if (tabName === 'outlet') {
+                renderOutletTable();
+            } else {
+                renderChannelTable();
+            }
+        }
+
+        // Theme update function
+        function updateHeaderTheme(tab) {
+            const body = document.body;
+            
+            // Remove existing theme classes
+            body.classList.remove('theme-outlet', 'theme-channel');
+            
+            // Add new theme class
+            if (tab === 'outlet') {
+                body.classList.add('theme-outlet');
+            } else if (tab === 'channel') {
+                body.classList.add('theme-channel');
+            }
+        }
+
+        // Auto load function
+        async function autoLoadData() {
+            const possiblePaths = [
+                './data/d.onesheet.json',
+                './d.onesheet.json',
+                '../data/d.onesheet.json',
+                '/data/d.onesheet.json'
+            ];
+
+            for (const path of possiblePaths) {
+                try {
+                    const response = await fetch(path);
+                    if (response.ok) {
+                        const text = await response.text();
+                        const data = parseJSONData(text);
+                        processData(data);
+                        console.log(`Auto-loaded data from: ${path}`);
+                        return;
+                    }
+                } catch (e) {
+                    // Continue to next path
+                }
+            }
+            console.log('Auto-load failed, waiting for manual load');
+        }
+
+        // File upload handler
+        document.getElementById('file-upload').addEventListener('change', handleFileUpload);
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = parseJSONData(e.target.result);
+                    processData(data);
+                    localStorage.setItem('salesDashboardData', JSON.stringify(data));
+                } catch (error) {
+                    alert('Error parsing file: ' + error.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function parseJSONData(text) {
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                const lines = text.trim().split('\n');
+                const data = [];
+                
+                for (const line of lines) {
+                    if (line.trim()) {
+                        try {
+                            data.push(JSON.parse(line));
+                        } catch (lineError) {
+                            continue;
+                        }
+                    }
+                }
+                
+                if (data.length === 0) {
+                    throw new Error('No valid JSON objects found');
+                }
+                return data;
+            }
+        }
+
+        function populateSalesmanFilter() {
+            const salesmanSet = new Set();
+            salesData.forEach(item => {
+                if (item['Nama Salesman']) {
+                    salesmanSet.add(item['Nama Salesman']);
+                }
+            });
+            
+            const select = document.getElementById('salesman-filter');
+            select.innerHTML = '<option value="All">All</option>';
+            
+            Array.from(salesmanSet).sort().forEach(salesman => {
+                const option = document.createElement('option');
+                option.value = salesman;
+                option.textContent = salesman;
+                select.appendChild(option);
+            });
+        }
+
+        function filterData() {
+            const selectedSalesman = document.getElementById('salesman-filter').value;
+            
+            if (selectedSalesman === 'All') {
+                filteredData = [...salesData];
+            } else {
+                filteredData = salesData.filter(item => item['Nama Salesman'] === selectedSalesman);
+            }
+            
+            collapsedGroups.clear();
+            calculateStats();
+            
+            if (activeTab === 'outlet') {
+                renderOutletTable();
+            } else {
+                renderChannelTable();
+            }
+        }
+
+        function processData(rawData) {
+            salesData = Array.isArray(rawData) ? rawData : [rawData];
+            
+            if (salesData.length > 0) {
+                const first = salesData[0];
+                document.getElementById('region-name').textContent = first.Region || 'N/A';
+                document.getElementById('depo-name').textContent = first.Depo || 'N/A';
+            }
+
+            populateSalesmanFilter();
+            document.getElementById('salesman-filter').value = 'All';
+            filterData();
+        }
+
+        function calculateStats() {
+            const data = filteredData.length > 0 ? filteredData : salesData;
+            const selectedSalesman = document.getElementById('salesman-filter').value;
+            
+            let total, active, totalSales = 0, totalBP = 0, totalBE = 0;
+
+            if (selectedSalesman === 'All') {
+                const uniqueOutlets = new Set();
+                data.forEach(item => {
+                    if (item['Id Pelanggan']) {
+                        uniqueOutlets.add(item['Id Pelanggan']);
+                    }
+                });
+                total = uniqueOutlets.size;
+                active = data.reduce((sum, item) => sum + (parseInt(item.CA) || 0), 0);
+            } else {
+                total = data.length;
+                active = data.reduce((sum, item) => sum + (parseInt(item['CA ALL']) || 0), 0);
+            }
+
+            data.forEach(item => {
+                totalSales += parseFloat(item.Act) || 0;
+                totalBP += parseFloat(item.BP) || 0;
+                totalBE += parseFloat(item['BE MTD']) || 0;
+            });
+
+            // Calculate vs BP and vs BE percentages
+            const vsBP = totalBP > 0 ? ((totalSales / totalBP) * 100).toFixed(1) : '0.0';
+            const vsBE = totalBE > 0 ? ((totalSales / totalBE) * 100).toFixed(1) : '0.0';
+
+            // Update display with performance colors
+            document.getElementById('total-outlets').textContent = total;
+            document.getElementById('active-outlets').textContent = active;
+            document.getElementById('total-sales').textContent = formatCurrency(totalSales);
+            document.getElementById('total-bp').textContent = formatCurrency(totalBP);
+            document.getElementById('total-be').textContent = formatCurrency(totalBE);
+            
+            // Apply performance colors
+            document.getElementById('vs-bp').textContent = vsBP + '%';
+            document.getElementById('vs-bp').className = 'stat-value ' + getPerformanceClass(parseFloat(vsBP));
+            
+            document.getElementById('vs-be').textContent = vsBE + '%';
+            document.getElementById('vs-be').className = 'stat-value ' + getPerformanceClass(parseFloat(vsBE));
+        }
+
+        function getPerformanceClass(percentage) {
+            if (percentage < 90) return 'perf-red';
+            if (percentage < 100) return 'perf-yellow';
+            if (percentage < 110) return 'perf-green';
+            return 'perf-gold';
+        }
+
+        // Updated currency formatting
+        function formatCurrency(amount) {
+            if (!amount || amount === 0) return '-';
+            
+            const num = parseFloat(amount);
+            const absNum = Math.abs(num);
+            
+            if (absNum >= 1000000000) {
+                return (num / 1000000000).toFixed(1) + 'M';
+            } else if (absNum >= 1000000) {
+                return (num / 1000000).toFixed(1) + 'Jt';
+            } else if (absNum >= 1000) {
+                return (num / 1000).toFixed(0) + 'Rb';
+            } else {
+                return num.toLocaleString();
+            }
+        }
+
+        function formatNum(num) {
+            if (!num || num === 0) return '-';
+            const number = parseFloat(num);
+            const absNum = Math.abs(number);
+            
+            if (absNum >= 1000000000) {
+                return (number / 1000000000).toFixed(1) + 'M';
+            } else if (absNum >= 1000000) {
+                return (number / 1000000).toFixed(1) + 'Jt';
+            } else if (absNum >= 1000) {
+                return (number / 1000).toFixed(0) + 'Rb';
+            } else {
+                return number.toLocaleString();
+            }
+        }
+
+        function expandAllGroups() {
+            collapsedGroups.clear();
+            if (activeTab === 'outlet') {
+                renderOutletTable();
+            }
+        }
+
+        function collapseAllGroups() {
+            const dataToShow = filteredData.length > 0 ? filteredData : salesData;
+            if (dataToShow.length === 0) return;
+            
+            if (activeTab === 'outlet') {
+                const groupedData = groupAndSortData(dataToShow);
+                Object.keys(groupedData).forEach(day => {
+                    collapsedGroups.add(day);
+                });
+                renderOutletTable();
+            }
+        }
+
+        // Group and sort data
+        function groupAndSortData(data) {
+            const grouped = {};
+            
+            data.forEach(item => {
+                const hariKunj = item['Hari Kunj'] || 'No Schedule';
+                if (!grouped[hariKunj]) {
+                    grouped[hariKunj] = [];
+                }
+                grouped[hariKunj].push(item);
+            });
+            
+            const classPriority = {
+                'WHOLESALER SPRBIG': 1,
+                'WHOLESALER BIG': 2,
+                'WHOLESALER MEDIUM': 3,
+                'WHOLESALER SMALL': 4,
+                'MTI BIG': 5,
+                'MTI MEDIUM': 6,
+                'MTI SMALL': 7,
+                'RETAIL BIG': 8,
+                'RETAIL MEDIUM': 9,
+                'RETAIL SMALL': 10
+            };
+            
+            Object.keys(grouped).forEach(day => {
+                grouped[day].sort((a, b) => {
+                    const classA = a.CLASS || 'ZZZ';
+                    const classB = b.CLASS || 'ZZZ';
+                    
+                    const priorityA = classPriority[classA] || 99;
+                    const priorityB = classPriority[classB] || 99;
+                    
+                    if (priorityA !== priorityB) {
+                        return priorityA - priorityB;
+                    }
+                    
+                    const nameA = (a['Nama Pelanggan'] || '').toLowerCase();
+                    const nameB = (b['Nama Pelanggan'] || '').toLowerCase();
+                    return nameA.localeCompare(nameB);
+                });
+            });
+            
+            return grouped;
+        }
+
+        function renderOutletTable() {
+            const tbody = document.getElementById('outlet-table-body');
+            tbody.innerHTML = '';
+
+            const dataToShow = filteredData.length > 0 ? filteredData : salesData;
+            
+            if (dataToShow.length === 0) {
+                const selectedSalesman = document.getElementById('salesman-filter').value;
+                const message = selectedSalesman === 'All' 
+                    ? 'No data available. Please load a JSON file.'
+                    : `No outlets found for salesman: ${selectedSalesman}`;
+                    
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="100%" class="empty-state">
+                            <div class="empty-icon">📊</div>
+                            <div style="font-size: 16px; margin-bottom: 4px;">${message}</div>
+                            <div style="font-size: 13px;">Click "Load File" to start</div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            const groupedData = groupAndSortData(dataToShow);
+            
+            const dayOrder = {
+                '[1]SENIN': 1, '[2]SELASA': 2, '[3]RABU': 3, 
+                '[4]KAMIS': 4, '[5]JUMAT': 5, '[6]SABTU': 6,
+                'Rute Hari Senin Minggu 1&3': 7, 'Rute Hari Senin Minggu 2&4': 8,
+                'Rute Hari Selasa Minggu 1&3': 9, 'Rute Hari Selasa Minggu 2&4': 10,
+                'Rute Hari Rabu Minggu 1&3': 11, 'Rute Hari Rabu Minggu 2&4': 12,
+                'Rute Hari Kamis Minggu 1&3': 13, 'Rute Hari Kamis Minggu 2&4': 14,
+                'Rute Hari Jumat Minggu 1&3': 15, 'Rute Hari Jumat Minggu 2&4': 16,
+                'Rute Hari Sabtu Minggu 1&3': 17, 'Rute Hari Sabtu Minggu 2&4': 18,
+                'No Schedule': 99
+            };
+            
+            const sortedDays = Object.keys(groupedData).sort((a, b) => {
+                return (dayOrder[a] || 50) - (dayOrder[b] || 50);
+            });
+
+            sortedDays.forEach(day => {
+                const isCollapsed = collapsedGroups.has(day);
+                
+                const groupHeader = document.createElement('tr');
+                groupHeader.className = 'group-header';
+                groupHeader.onclick = () => toggleGroup(day);
+                groupHeader.innerHTML = `
+                    <td colspan="100%">
+                        <div class="group-toggle">
+                            <span>
+                                <span style="display: inline-block; width: 20px; text-align: center; font-weight: bold; font-size: 14px;">
+                                    ${isCollapsed ? '+' : '−'}
+                                </span>
+                                ${formatDayName(day)} (${groupedData[day].length} outlets)
+                            </span>
+                            <span class="group-hint">
+                                ${isCollapsed ? 'Click to expand' : 'Click to collapse'}
+                            </span>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(groupHeader);
+
+                // Add group summary row
+                const summaryRow = createGroupSummaryRow(groupedData[day], day);
+                tbody.appendChild(summaryRow);
+
+                // Add outlet rows (only if not collapsed)
+                if (!isCollapsed) {
+                    groupedData[day].forEach(item => {
+                        const row = createOutletRow(item);
+                        tbody.appendChild(row);
+                    });
+                }
+            });
+        }
+
+        function renderChannelTable() {
+            const tbody = document.getElementById('channel-table-body');
+            tbody.innerHTML = '';
+
+            const dataToShow = filteredData.length > 0 ? filteredData : salesData;
+            
+            if (dataToShow.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="100%" class="empty-state">
+                            <div class="empty-icon">📊</div>
+                            <div style="font-size: 16px; margin-bottom: 4px;">No data available</div>
+                            <div style="font-size: 13px;">Load data to see channel analysis</div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            const channelData = groupByChannel(dataToShow);
+            
+            // Render WHOLESALER
+            renderChannelGroup(tbody, 'WHOLESALER', channelData.WHOLESALER, ['SPRBIG', 'BIG', 'MEDIUM', 'SMALL']);
+            
+            // Render RETAIL
+            renderChannelGroup(tbody, 'RETAIL', channelData.RETAIL, ['BIG', 'MEDIUM', 'SMALL']);
+            
+            // Render MTI
+            renderChannelGroup(tbody, 'MTI', channelData.MTI, ['MEDIUM', 'SMALL']);
+        }
+
+        function groupByChannel(data) {
+            const channels = {
+                WHOLESALER: { SPRBIG: [], BIG: [], MEDIUM: [], SMALL: [] },
+                RETAIL: { BIG: [], MEDIUM: [], SMALL: [] },
+                MTI: { MEDIUM: [], SMALL: [] }
+            };
+
+            data.forEach(item => {
+                const className = item.CLASS || '';
+                
+                if (className.includes('WHOLESALER')) {
+                    if (className.includes('SPRBIG')) channels.WHOLESALER.SPRBIG.push(item);
+                    else if (className.includes('BIG')) channels.WHOLESALER.BIG.push(item);
+                    else if (className.includes('MEDIUM')) channels.WHOLESALER.MEDIUM.push(item);
+                    else if (className.includes('SMALL')) channels.WHOLESALER.SMALL.push(item);
+                } else if (className.includes('RETAIL')) {
+                    if (className.includes('BIG')) channels.RETAIL.BIG.push(item);
+                    else if (className.includes('MEDIUM')) channels.RETAIL.MEDIUM.push(item);
+                    else if (className.includes('SMALL')) channels.RETAIL.SMALL.push(item);
+                } else if (className.includes('MTI')) {
+                    if (className.includes('MEDIUM')) channels.MTI.MEDIUM.push(item);
+                    else if (className.includes('SMALL')) channels.MTI.SMALL.push(item);
+                }
+            });
+
+            return channels;
+        }
+
+        function renderChannelGroup(tbody, channelName, channelData, subChannels) {
+            // Channel header
+            const channelHeader = document.createElement('tr');
+            channelHeader.className = 'channel-group';
+            
+            // Calculate channel totals
+            let totalOutlets = 0, totalActive = 0, totalSales = 0, totalBP = 0;
+            let weeklyTotals = { 1: {bp:0,act:0,gap:0}, 2: {bp:0,act:0,gap:0}, 3: {bp:0,act:0,gap:0}, 4: {bp:0,act:0,gap:0}, 5: {bp:0,act:0,gap:0} };
+            
+            subChannels.forEach(subChannel => {
+                const subData = channelData[subChannel] || [];
+                totalOutlets += subData.length;
+                
+                subData.forEach(item => {
+                    totalActive += parseInt(item.CA) || 0;
+                    totalSales += parseFloat(item.Act) || 0;
+                    totalBP += parseFloat(item.BP) || 0;
+                    
+                    for (let week = 1; week <= 5; week++) {
+                        weeklyTotals[week].bp += parseFloat(item[`BP W${week}`]) || 0;
+                        weeklyTotals[week].act += parseFloat(item[`A.W${week}`]) || 0;
+                        weeklyTotals[week].gap += parseFloat(item[`Gap A.W${week}`]) || 0;
+                    }
+                });
+            });
+            
+            const mtdAch = totalBP > 0 ? ((totalSales / totalBP) * 100).toFixed(0) : '0';
+            
+            let weeklyHtml = '';
+            for (let week = 1; week <= 5; week++) {
+                const achPercent = weeklyTotals[week].bp > 0 ? ((weeklyTotals[week].act / weeklyTotals[week].bp) * 100).toFixed(0) : '0';
+                weeklyHtml += `
+                    <td class="text-center" style="${week === 1 ? 'border-left: 1px solid var(--header-border-color);' : ''}">${formatNum(weeklyTotals[week].bp)}</td>
+                    <td class="text-center font-medium">${formatNum(weeklyTotals[week].act)}</td>
+                    <td class="text-center font-bold ${getAchClass(parseFloat(achPercent))}">${achPercent}%</td>
+                    <td class="text-center ${weeklyTotals[week].gap >= 0 ? 'text-green' : 'text-red'}" style="${week === 5 ? '' : 'border-right: 1px solid var(--header-border-color);'}">${formatNum(weeklyTotals[week].gap)}</td>
+                `;
+            }
+            
+            channelHeader.innerHTML = `
+                <td class="sticky-col sticky-col-1">
+                    <div class="font-bold" style="color: #023047;">🏢 ${channelName}</div>
+                </td>
+                <td class="sticky-col sticky-col-2 text-center font-bold">${totalOutlets}</td>
+                <td class="sticky-col sticky-col-3 text-center font-bold">${totalActive}</td>
+                <td class="sticky-col sticky-col-4 text-center font-bold ${getAchClass(parseFloat(mtdAch))}">${mtdAch}%</td>
+                ${weeklyHtml}
+            `;
+            tbody.appendChild(channelHeader);
+            
+            // Sub-channel rows
+            subChannels.forEach(subChannel => {
+                const subData = channelData[subChannel] || [];
+                if (subData.length > 0) {
+                    const subRow = createChannelSubRow(subChannel, subData);
+                    tbody.appendChild(subRow);
+                }
+            });
+        }
+
+        function createChannelSubRow(subChannelName, data) {
+            const row = document.createElement('tr');
+            row.className = 'channel-subgroup';
+
+            let totalOutlets = data.length;
+            let totalActive = 0, totalSales = 0, totalBP = 0;
+            let weeklyTotals = { 1: {bp:0,act:0,gap:0}, 2: {bp:0,act:0,gap:0}, 3: {bp:0,act:0,gap:0}, 4: {bp:0,act:0,gap:0}, 5: {bp:0,act:0,gap:0} };
+
+            data.forEach(item => {
+                totalActive += parseInt(item.CA) || 0;
+                totalSales += parseFloat(item.Act) || 0;
+                totalBP += parseFloat(item.BP) || 0;
+                
+                for (let week = 1; week <= 5; week++) {
+                    weeklyTotals[week].bp += parseFloat(item[`BP W${week}`]) || 0;
+                    weeklyTotals[week].act += parseFloat(item[`A.W${week}`]) || 0;
+                    weeklyTotals[week].gap += parseFloat(item[`Gap A.W${week}`]) || 0;
+                }
+            });
+
+            const mtdAch = totalBP > 0 ? ((totalSales / totalBP) * 100).toFixed(0) : '0';
+
+            let weeklyHtml = '';
+            for (let week = 1; week <= 5; week++) {
+                const achPercent = weeklyTotals[week].bp > 0 ? ((weeklyTotals[week].act / weeklyTotals[week].bp) * 100).toFixed(0) : '0';
+                weeklyHtml += `
+                    <td class="text-center" style="${week === 1 ? 'border-left: 1px solid var(--header-border-color);' : ''}">${formatNum(weeklyTotals[week].bp)}</td>
+                    <td class="text-center font-medium">${formatNum(weeklyTotals[week].act)}</td>
+                    <td class="text-center font-bold ${getAchClass(parseFloat(achPercent))}">${achPercent}%</td>
+                    <td class="text-center ${weeklyTotals[week].gap >= 0 ? 'text-green' : 'text-red'}" style="${week === 5 ? '' : 'border-right: 1px solid var(--header-border-color);'}">${formatNum(weeklyTotals[week].gap)}</td>
+                `;
+            }
+
+            row.innerHTML = `
+                <td class="sticky-col sticky-col-1">
+                    <div style="padding-left: 20px; color: #374151;">├─ ${subChannelName}</div>
+                </td>
+                <td class="sticky-col sticky-col-2 text-center">${totalOutlets}</td>
+                <td class="sticky-col sticky-col-3 text-center">${totalActive}</td>
+                <td class="sticky-col sticky-col-4 text-center font-bold ${getAchClass(parseFloat(mtdAch))}">${mtdAch}%</td>
+                ${weeklyHtml}
+            `;
+
+            return row;
+        }
+
+        function toggleGroup(groupName) {
+            if (collapsedGroups.has(groupName)) {
+                collapsedGroups.delete(groupName);
+            } else {
+                collapsedGroups.add(groupName);
+            }
+            renderOutletTable();
+        }
+
+        function formatDayName(day) {
+            const dayNames = {
+                '[1]SENIN': 'Senin',
+                '[2]SELASA': 'Selasa', 
+                '[3]RABU': 'Rabu',
+                '[4]KAMIS': 'Kamis',
+                '[5]JUMAT': 'Jumat',
+                '[6]SABTU': 'Sabtu'
+            };
+            
+            return dayNames[day] || day;
+        }
+
+        function createGroupSummaryRow(groupData, dayName) {
+            const row = document.createElement('tr');
+            row.className = 'group-summary';
+
+            let totalOutlets = groupData.length;
+            let activeOutlets = 0;
+            let mtdTotalAct = 0, mtdTotalBp = 0;
+            
+            let weeklyTotals = {
+                1: { bp: 0, act: 0, gap: 0 },
+                2: { bp: 0, act: 0, gap: 0 },
+                3: { bp: 0, act: 0, gap: 0 },
+                4: { bp: 0, act: 0, gap: 0 },
+                5: { bp: 0, act: 0, gap: 0 }
+            };
+
+            const selectedSalesman = document.getElementById('salesman-filter').value;
+
+            groupData.forEach(item => {
+                if (selectedSalesman === 'All') {
+                    activeOutlets += parseInt(item.CA) || 0;
+                } else {
+                    activeOutlets += parseInt(item['CA ALL']) || 0;
+                }
+
+                mtdTotalAct += parseFloat(item.Act) || 0;
+                mtdTotalBp += parseFloat(item.BP) || 0;
+
+                for (let week = 1; week <= 5; week++) {
+                    weeklyTotals[week].bp += parseFloat(item[`BP W${week}`]) || 0;
+                    weeklyTotals[week].act += parseFloat(item[`A.W${week}`]) || 0;
+                    weeklyTotals[week].gap += parseFloat(item[`Gap A.W${week}`]) || 0;
+                }
+            });
+
+            const mtdAch = mtdTotalBp > 0 ? ((mtdTotalAct / mtdTotalBp) * 100).toFixed(0) : '0';
+
+            let weeklySummaryHtml = '';
+            for (let week = 1; week <= 5; week++) {
+                const achPercent = weeklyTotals[week].bp > 0 ? 
+                    ((weeklyTotals[week].act / weeklyTotals[week].bp) * 100).toFixed(0) : '0';
+                
+                weeklySummaryHtml += `
+                    <td class="text-center" style="${week === 1 ? 'border-left: 1px solid var(--header-border-color);' : ''}">${formatNum(weeklyTotals[week].bp)}</td>
+                    <td class="text-center font-medium">${formatNum(weeklyTotals[week].act)}</td>
+                    <td class="text-center font-bold ${getAchClass(parseFloat(achPercent))}">${achPercent}%</td>
+                    <td class="text-center ${weeklyTotals[week].gap >= 0 ? 'text-green' : 'text-red'}" style="${week === 5 ? '' : 'border-right: 1px solid var(--header-border-color);'}">${formatNum(weeklyTotals[week].gap)}</td>
+                `;
+            }
+
+            row.innerHTML = `
+                <td class="sticky-col sticky-col-1">
+                    <div class="font-medium" style="color: #023047;">📊 ${formatDayName(dayName)} Summary</div>
+                    <div style="font-size: 11px; color: #023047;">${totalOutlets} outlets • ${activeOutlets} active</div>
+                </td>
+                <td class="sticky-col sticky-col-2 text-center">
+                    <span style="display: inline-block; padding: 2px 4px; border-radius: 3px; font-size: 11px; font-weight: 500; background: #ffb703; color: white;">
+                        ALL
+                    </span>
+                </td>
+                <td class="sticky-col sticky-col-3 text-center">
+                    <span style="display: inline-block; width: 16px; height: 16px; border-radius: 50%; background: #ffb703;"></span>
+                </td>
+                <td class="sticky-col sticky-col-4 text-center font-bold ${getAchClass(parseFloat(mtdAch))}">
+                    ${mtdAch}%
+                </td>
+                ${weeklySummaryHtml}
+            `;
+
+            return row;
+        }
+
+        function createOutletRow(item) {
+            const row = document.createElement('tr');
+
+            const channel = getChannel(item.Channel);
+            const mtdAct = parseFloat(item.Act) || 0;
+            const mtdBp = parseFloat(item.BP) || 0;
+            const mtdAch = mtdBp > 0 ? ((mtdAct / mtdBp) * 100).toFixed(0) : '0';
+
+            const classBadge = getClassBadge(item.CLASS);
+
+            row.innerHTML = `
+                <td class="sticky-col sticky-col-1">
+                    <div class="font-medium" style="color: #1f2937;">${item['Nama Pelanggan'] || 'N/A'}</div>
+                    <div style="font-size: 11px; color: #6b7280;">${classBadge}</div>
+                </td>
+                <td class="sticky-col sticky-col-2 text-center">
+                    <span style="display: inline-block; padding: 2px 4px; border-radius: 3px; font-size: 11px; font-weight: 500;" class="channel-${channel.toLowerCase()}">
+                        ${channel}
+                    </span>
+                </td>
+                <td class="sticky-col sticky-col-3 text-center">
+                    <span class="${item.CA === 1 ? 'ca-active' : 'ca-inactive'}"></span>
+                </td>
+                <td class="sticky-col sticky-col-4 text-center font-bold ${getAchClass(parseFloat(mtdAch))}">
+                    ${mtdAch}%
+                </td>
+
+                ${generateWeekCols(item, 1)}
+                ${generateWeekCols(item, 2)}
+                ${generateWeekCols(item, 3)}
+                ${generateWeekCols(item, 4)}
+                ${generateWeekCols(item, 5)}
+            `;
+
+            return row;
+        }
+
+        function getClassBadge(className) {
+            if (!className) return '';
+            
+            const classMap = {
+                'WHOLESALER SPRBIG': '🏪 WS-XL',
+                'WHOLESALER BIG': '🏪 WS-L', 
+                'WHOLESALER MEDIUM': '🏪 WS-M',
+                'WHOLESALER SMALL': '🏪 WS-S',
+                'MTI BIG': '🏬 MT-L',
+                'MTI MEDIUM': '🏬 MT-M', 
+                'MTI SMALL': '🏬 MT-S',
+                'RETAIL BIG': '🏬 RT-L',
+                'RETAIL MEDIUM': '🏬 RT-M',
+                'RETAIL SMALL': '🏬 RT-S'
+            };
+            
+            return classMap[className] || className.substring(0, 15);
+        }
+
+        function generateWeekCols(item, week) {
+            const bp = parseFloat(item[`BP W${week}`]) || 0;
+            const actual = parseFloat(item[`A.W${week}`]) || 0;
+            const gap = parseFloat(item[`Gap A.W${week}`]) || 0;
+            const achPercent = bp > 0 ? ((actual / bp) * 100).toFixed(0) : '0';
+
+            return `
+                <td class="text-center" style="${week === 1 ? 'border-left: 1px solid var(--header-border-color);' : ''}">${formatNum(bp)}</td>
+                <td class="text-center font-medium">${formatNum(actual)}</td>
+                <td class="text-center font-bold ${getAchClass(parseFloat(achPercent))}">${achPercent}%</td>
+                <td class="text-center ${gap >= 0 ? 'text-green' : 'text-red'}" style="${week === 5 ? '' : 'border-right: 1px solid var(--header-border-color);'}">${formatNum(gap)}</td>
+            `;
+        }
+
+        function getChannel(channel) {
+            if (channel && channel.includes('WHOLESALER')) return 'WS';
+            if (channel && channel.includes('RETAIL')) return 'RT';
+            if (channel && channel.includes('MTI')) return 'MT';
+            return 'OT';
+        }
+
+        function getAchClass(percentage) {
+            if (percentage < 90) return 'ach-red';
+            if (percentage < 100) return 'ach-yellow';
+            return 'ach-green';
+        }
+    </script>
+</body>
+</html>

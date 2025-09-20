@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase Debug - Visit Tracking</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            margin: 5px;
+        }
+        
+        .status.connected { background: #10b981; color: white; }
+        .status.disconnected { background: #ef4444; color: white; }
+        .status.pending { background: #f59e0b; color: white; }
+        
+        .section {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #667eea;
+        }
+        
+        .section h3 {
+            margin-top: 0;
+            color: #667eea;
+        }
+        
+        .code-block {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            margin: 10px 0;
+        }
+        
+        .button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 5px;
+            font-weight: 600;
+            transition: background 0.3s ease;
+        }
+        
+        .button:hover { background: #5a67d8; }
+        .button.danger { background: #ef4444; }
+        .button.danger:hover { background: #dc2626; }
+        
+        .log-area {
+            background: #000;
+            color: #0f0;
+            padding: 15px;
+            border-radius: 8px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            margin: 10px 0;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        @media (max-width: 768px) {
+            .grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔥 Firebase Debug & Fix</h1>
+            <p>Diagnose and fix Firebase Realtime Database issues for Visit Tracking</p>
+            <div id="firebaseStatus">
+                <span class="status disconnected">🔥 Firebase: Disconnected</span>
+                <span class="status disconnected">👤 Auth: Not authenticated</span>
+                <span class="status pending">📡 Database: Testing...</span>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>🔍 Problem Analysis</h3>
+            <p><strong>Issue:</strong> Salesman activities are not being saved to Firebase Realtime Database</p>
+            <p><strong>Current Database Structure:</strong></p>
+            <div class="code-block">
+salesman-route-tracker-default-rtdb/
+├── test: "connection_ok"
+├── test_connection: "rules_working"  
+└── test_visits/
+    └── test_event_1/
+        ├── event_name: "test_event"
+        ├── salesman_id: "SALES001"
+        └── timestamp: "2024-08-13T10:00:00Z"
+            </div>
+            <p><strong>Expected Structure:</strong></p>
+            <div class="code-block">
+salesman-route-tracker-default-rtdb/
+├── visit_events/
+│   ├── event_1/ { session_id, salesman_id, event_name, event_data, timestamp, location }
+│   ├── event_2/ { ... }
+│   └── event_N/ { ... }
+├── daily_visits/
+│   └── [salesman_id]/
+│       └── [date]/
+│           ├── date, salesman_id, salesman_name
+│           ├── customers: { [customer_name]: {...} }
+│           ├── locations: [...]
+│           └── totalDuration, accessCount
+└── realtime_status/
+    └── [salesman_id]/
+        ├── online: true/false
+        ├── last_seen: timestamp
+        └── current_customer: "..."
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="section">
+                <h3>🔧 Quick Fixes</h3>
+                <button class="button" onclick="testFirebaseConnection()">Test Firebase Connection</button>
+                <button class="button" onclick="testAuthentication()">Test Authentication</button>
+                <button class="button" onclick="testWritePermissions()">Test Write Permissions</button>
+                <button class="button" onclick="simulateVisitEvent()">Simulate Visit Event</button>
+                <button class="button danger" onclick="clearTestData()">Clear Test Data</button>
+            </div>
+            
+            <div class="section">
+                <h3>📊 Database Rules</h3>
+                <p>Current rules need to be updated:</p>
+                <div class="code-block">{
+  "rules": {
+    ".read": "auth != null",
+    ".write": "auth != null",
+    "visit_events": {
+      ".indexOn": ["salesman_id", "timestamp"]
+    },
+    "daily_visits": {
+      ".indexOn": ["date", "salesman_id"]
+    },
+    "realtime_status": {
+      ".indexOn": ["salesman_id"]
+    }
+  }
+}</div>
+                <button class="button" onclick="copyRulesToClipboard()">Copy Rules</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>📝 Debug Log</h3>
+            <div id="debugLog" class="log-area">
+                <div>🚀 Firebase Debug Console initialized...</div>
+                <div>📱 Waiting for Firebase operations...</div>
+            </div>
+            <button class="button" onclick="clearLog()">Clear Log</button>
+            <button class="button" onclick="exportLog()">Export Log</button>
+        </div>
+
+        <div class="section">
+            <h3>🎯 Solution Implementation</h3>
+            <p>Follow these steps to fix the database issues:</p>
+            <ol>
+                <li><strong>Update Database Rules:</strong> Copy the rules above to Firebase Console</li>
+                <li><strong>Test Connection:</strong> Use the "Test Firebase Connection" button</li>
+                <li><strong>Test Authentication:</strong> Ensure anonymous auth is working</li>
+                <li><strong>Test Write Permissions:</strong> Verify data can be written</li>
+                <li><strong>Monitor Real Data:</strong> Use "Simulate Visit Event" to test real scenarios</li>
+            </ol>
+        </div>
+
+        <div class="section">
+            <h3>📱 Real-time Monitoring</h3>
+            <div id="realtimeData">
+                <p>Monitoring Firebase for real-time updates...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAoRV3qVAXQ14AEVA8Mo49HXfAyhMMm8Bs",
+            authDomain: "salesman-route-tracker.firebaseapp.com",
+            databaseURL: "https://salesman-route-tracker-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "salesman-route-tracker",
+            storageBucket: "salesman-route-tracker.firebasestorage.app",
+            messagingSenderId: "590789273516",
+            appId: "1:590789273516:web:79abe0c7e4cbccfa44fc09",
+            measurementId: "G-5RYSWKQ963"
+        };
+
+        // Import Firebase modules
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { 
+            getDatabase, 
+            ref, 
+            push, 
+            set,
+            get,
+            onValue,
+            off,
+            serverTimestamp,
+            connectionsRef
+        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+        import {
+            getAuth,
+            signInAnonymously,
+            onAuthStateChanged
+        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+        const auth = getAuth(app);
+
+        // Global variables for debugging
+        window.app = app;
+        window.database = database;
+        window.auth = auth;
+        window.firebaseModules = { ref, push, set, get, onValue, off, serverTimestamp };
+
+        let isConnected = false;
+        let isAuthenticated = false;
+
+        // Debug logging function
+        function debugLog(message, type = 'info') {
+            const logArea = document.getElementById('debugLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const colors = {
+                'info': '#0f0',
+                'warning': '#ff0',
+                'error': '#f00',
+                'success': '#0f0'
+            };
+            
+            const logEntry = document.createElement('div');
+            logEntry.style.color = colors[type] || '#0f0';
+            logEntry.innerHTML = `[${timestamp}] ${message}`;
+            logArea.appendChild(logEntry);
+            logArea.scrollTop = logArea.scrollHeight;
+            
+            console.log(`Firebase Debug: ${message}`);
+        }
+
+        // Update status indicators
+        function updateStatus() {
+            const statusDiv = document.getElementById('firebaseStatus');
+            const firebaseStatus = isConnected ? 'connected' : 'disconnected';
+            const authStatus = isAuthenticated ? 'connected' : 'disconnected';
+            
+            statusDiv.innerHTML = `
+                <span class="status ${firebaseStatus}">🔥 Firebase: ${isConnected ? 'Connected' : 'Disconnected'}</span>
+                <span class="status ${authStatus}">👤 Auth: ${isAuthenticated ? 'Authenticated' : 'Not authenticated'}</span>
+                <span class="status connected">📡 Database: Ready</span>
+            `;
+        }
+
+        // Initialize Firebase monitoring
+        async function initializeFirebaseDebug() {
+            try {
+                debugLog('🚀 Initializing Firebase debug session...', 'info');
+                
+                // Monitor connection status
+                const connectedRef = ref(database, '.info/connected');
+                onValue(connectedRef, (snapshot) => {
+                    isConnected = snapshot.val() === true;
+                    debugLog(`🌐 Firebase connection: ${isConnected ? 'ONLINE' : 'OFFLINE'}`, isConnected ? 'success' : 'warning');
+                    updateStatus();
+                });
+
+                // Monitor authentication
+                onAuthStateChanged(auth, (user) => {
+                    isAuthenticated = !!user;
+                    debugLog(`👤 Authentication: ${isAuthenticated ? 'AUTHENTICATED' : 'NOT AUTHENTICATED'}`, isAuthenticated ? 'success' : 'warning');
+                    if (user) {
+                        debugLog(`👤 User UID: ${user.uid}`, 'info');
+                    }
+                    updateStatus();
+                });
+
+                // Try to authenticate
+                await signInAnonymously(auth);
+                debugLog('✅ Anonymous authentication successful', 'success');
+
+                // Monitor realtime data
+                setupRealtimeMonitoring();
+
+            } catch (error) {
+                debugLog(`❌ Firebase initialization error: ${error.message}`, 'error');
+            }
+        }
+
+        // Setup realtime monitoring
+        function setupRealtimeMonitoring() {
+            // Monitor visit events
+            const visitEventsRef = ref(database, 'visit_events');
+            onValue(visitEventsRef, (snapshot) => {
+                const data = snapshot.val();
+                const count = data ? Object.keys(data).length : 0;
+                debugLog(`📊 Visit events in database: ${count}`, 'info');
+                
+                if (data) {
+                    const realtimeDiv = document.getElementById('realtimeData');
+                    realtimeDiv.innerHTML = `
+                        <h4>📊 Visit Events: ${count}</h4>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            });
+
+            // Monitor daily visits
+            const dailyVisitsRef = ref(database, 'daily_visits');
+            onValue(dailyVisitsRef, (snapshot) => {
+                const data = snapshot.val();
+                const count = data ? Object.keys(data).length : 0;
+                debugLog(`📅 Daily visits in database: ${count}`, 'info');
+            });
+        }
+
+        // Global functions for buttons
+        window.testFirebaseConnection = async function() {
+            debugLog('🔍 Testing Firebase connection...', 'info');
+            try {
+                const connectedRef = ref(database, '.info/connected');
+                const snapshot = await get(connectedRef);
+                const isConnected = snapshot.val();
+                debugLog(`🌐 Connection test result: ${isConnected ? 'SUCCESS' : 'FAILED'}`, isConnected ? 'success' : 'error');
+            } catch (error) {
+                debugLog(`❌ Connection test error: ${error.message}`, 'error');
+            }
+        };
+
+        window.testAuthentication = async function() {
+            debugLog('🔍 Testing authentication...', 'info');
+            try {
+                const result = await signInAnonymously(auth);
+                debugLog(`✅ Authentication successful. UID: ${result.user.uid}`, 'success');
+            } catch (error) {
+                debugLog(`❌ Authentication error: ${error.message}`, 'error');
+            }
+        };
+
+        window.testWritePermissions = async function() {
+            debugLog('🔍 Testing write permissions...', 'info');
+            try {
+                const testRef = ref(database, 'debug_test');
+                await set(testRef, {
+                    timestamp: serverTimestamp(),
+                    test_message: "Debug write test",
+                    user_uid: auth.currentUser?.uid || 'anonymous'
+                });
+                debugLog('✅ Write permission test: SUCCESS', 'success');
+            } catch (error) {
+                debugLog(`❌ Write permission error: ${error.message}`, 'error');
+            }
+        };
+
+        window.simulateVisitEvent = async function() {
+            debugLog('🎯 Simulating visit event...', 'info');
+            try {
+                const eventData = {
+                    session_id: 'debug_session_' + Date.now(),
+                    salesman_id: 'DEBUG_SALES001',
+                    salesman_name: 'Debug Salesman',
+                    event_name: 'debug_customer_selected',
+                    event_data: {
+                        customer_name: 'Debug Customer',
+                        hari_jks: 'SENIN',
+                        selection_time: new Date().toISOString()
+                    },
+                    timestamp: new Date().toISOString(),
+                    firebase_timestamp: serverTimestamp(),
+                    location: {
+                        latitude: -6.2000,
+                        longitude: 106.8000,
+                        accuracy: 10
+                    }
+                };
+
+                const eventsRef = ref(database, 'visit_events');
+                const newEventRef = push(eventsRef);
+                await set(newEventRef, eventData);
+                
+                debugLog('✅ Visit event simulation: SUCCESS', 'success');
+                debugLog(`📝 Event ID: ${newEventRef.key}`, 'info');
+
+                // Also simulate daily visit data
+                const dailyData = {
+                    date: new Date().toISOString().split('T')[0],
+                    salesman_id: 'DEBUG_SALES001',
+                    salesman_name: 'Debug Salesman',
+                    firebase_timestamp: serverTimestamp(),
+                    customers: {
+                        'Debug Customer': {
+                            name: 'Debug Customer',
+                            hari_jks: 'SENIN',
+                            totalDuration: 300,
+                            visitCount: 1,
+                            sessions: [{
+                                start: new Date().toISOString(),
+                                duration: 300
+                            }]
+                        }
+                    },
+                    totalDuration: 300,
+                    accessCount: 1
+                };
+
+                const dailyRef = ref(database, `daily_visits/DEBUG_SALES001/${new Date().toISOString().split('T')[0]}`);
+                await set(dailyRef, dailyData);
+                
+                debugLog('✅ Daily visit simulation: SUCCESS', 'success');
+
+            } catch (error) {
+                debugLog(`❌ Simulation error: ${error.message}`, 'error');
+            }
+        };
+
+        window.clearTestData = async function() {
+            debugLog('🧹 Clearing test data...', 'warning');
+            try {
+                // Clear debug test data
+                await set(ref(database, 'debug_test'), null);
+                await set(ref(database, 'visit_events'), null);
+                await set(ref(database, 'daily_visits'), null);
+                
+                debugLog('✅ Test data cleared', 'success');
+            } catch (error) {
+                debugLog(`❌ Clear data error: ${error.message}`, 'error');
+            }
+        };
+
+        window.clearLog = function() {
+            document.getElementById('debugLog').innerHTML = '<div>🚀 Debug log cleared...</div>';
+        };
+
+        window.exportLog = function() {
+            const logContent = document.getElementById('debugLog').textContent;
+            const blob = new Blob([logContent], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `firebase-debug-${new Date().toISOString().split('T')[0]}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        };
+
+        window.copyRulesToClipboard = function() {
+            const rules = `{
+  "rules": {
+    ".read": "auth != null",
+    ".write": "auth != null",
+    "visit_events": {
+      ".indexOn": ["salesman_id", "timestamp"]
+    },
+    "daily_visits": {
+      ".indexOn": ["date", "salesman_id"]
+    },
+    "realtime_status": {
+      ".indexOn": ["salesman_id"]
+    }
+  }
+}`;
+            
+            navigator.clipboard.writeText(rules).then(() => {
+                debugLog('📋 Database rules copied to clipboard', 'success');
+                alert('Database rules copied to clipboard! Paste them in Firebase Console > Realtime Database > Rules');
+            }).catch(() => {
+                debugLog('❌ Failed to copy rules', 'error');
+            });
+        };
+
+        // Initialize when page loads
+        window.onload = function() {
+            setTimeout(initializeFirebaseDebug, 500);
+        };
+
+    </script>
+</body>
+</html>
