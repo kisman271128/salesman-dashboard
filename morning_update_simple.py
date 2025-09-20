@@ -81,7 +81,8 @@ def validate_sheets(file_path, required_sheets):
 # === 5. Git commit & push ===
 def git_commit_push(message="Pembaruan otomatis pagi"):
     try:
-        subprocess.run(["git", "add", "."], check=True)
+        # Tambahkan hanya folder data + file HTML/Python
+        subprocess.run(["git", "add", "data", "*.html", "*.py"], check=True)
         subprocess.run(["git", "commit", "-m", message], check=True)
         subprocess.run(["git", "push"], check=True)
         logging.info("Perubahan berhasil dikirim ke GitHub")
