@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Metrics & SKU History</title>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(180deg, #f8f9ff 0%, #e8ecff 100%);
+            min-height: 100vh;
+            color: #2c3e50;
+            padding-bottom: 100px;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        .detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 0 0 30px 30px;
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        .back-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            padding: 10px;
+            border-radius: 12px;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateX(-2px);
+        }
+
+        .detail-title-container {
+            text-align: center;
+            flex: 1;
+        }
+
+        .detail-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            opacity: 0.9;
+            font-weight: 400;
+        }
+
+        .user-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            padding: 10px;
+            border-radius: 12px;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .user-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Loading and Error States */
+        .loading-spinner {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            flex-direction: column;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: rgba(231, 76, 60, 0.1);
+            border: 1px solid rgba(231, 76, 60, 0.3);
+            color: #e74c3c;
+            padding: 16px;
+            border-radius: 12px;
+            margin: 20px;
+            text-align: center;
+        }
+
+        /* Filter Section */
+        .filter-section {
+            padding: 0 16px;
+            margin-bottom: 20px;
+        }
+
+        .filter-frame {
+            background: white;
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .filter-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        .filter-item {
+            position: relative;
+            margin-bottom: 12px;
+        }
+
+        .filter-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .filter-item select, .search-select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 14px;
+            background: white;
+            color: #2d3748;
+            appearance: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .search-select {
+            appearance: menulist;
+            background: white url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") no-repeat right 0.75rem center/1.5em 1.5em;
+        }
+
+        .filter-item select:disabled, .search-select:disabled {
+            background: #f7fafc;
+            color: #a0aec0;
+            cursor: not-allowed;
+            border-color: #e2e8f0;
+        }
+
+        .filter-item select:focus, .search-select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        /* Custom searchable select styling */
+        .searchable-select {
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 14px;
+            background: white;
+            color: #2d3748;
+            transition: all 0.2s ease;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .search-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-top: none;
+            border-radius: 0 0 12px 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+
+        .search-dropdown.show {
+            display: block;
+        }
+
+        .search-option {
+            padding: 10px 16px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            border-bottom: 1px solid #f1f3f4;
+        }
+
+        .search-option:hover {
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .search-option.selected {
+            background: rgba(102, 126, 234, 0.2);
+            font-weight: 600;
+        }
+
+        .search-option:last-child {
+            border-bottom: none;
+        }
+
+        /* Customer Metrics Section */
+        .metrics-section {
+            padding: 0 16px;
+            margin-bottom: 20px;
+        }
+
+        .metrics-cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .metrics-cards.four-cols {
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+        }
+
+        .metrics-card {
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 10px;
+            text-align: center;
+        }
+
+        .metrics-label {
+            font-size: 9px;
+            color: #64748b;
+            font-weight: 500;
+            margin-bottom: 3px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .metrics-value {
+            font-size: 12px;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .metrics-value.positive {
+            color: #10b981;
+        }
+
+        .metrics-value.negative {
+            color: #ef4444;
+        }
+
+        .metrics-value.neutral {
+            color: #64748b;
+        }
+
+        /* Table Section */
+        .table-section {
+            padding: 0 16px;
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .record-count {
+            font-size: 12px;
+            font-weight: 400;
+            color: #64748b;
+            background: #f1f5f9;
+            padding: 4px 8px;
+            border-radius: 8px;
+        }
+
+        .table-wrapper {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        .table-header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 12px 16px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .table-container {
+            max-height: 400px;
+            overflow-y: auto;
+            overflow-x: auto;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 8px 12px;
+            text-align: left;
+            border-bottom: 1px solid #f1f3f4;
+            font-size: 11px;
+            white-space: nowrap;
+        }
+
+        .data-table th {
+            background: #f8fafc;
+            font-weight: 600;
+            color: #374151;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            text-align: center;
+        }
+
+        .data-table tbody tr:hover {
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .value-currency { 
+            font-family: 'Courier New', monospace; 
+            text-align: right;
+            min-width: 80px;
+            color: #000000 !important;
+        }
+
+        .col-narrow { min-width: 40px; max-width: 50px; text-align: center; }
+        .col-medium { min-width: 60px; max-width: 80px; text-align: center; }
+        .col-wide { min-width: 70px; max-width: 90px; text-align: center; }
+        .col-text { min-width: 120px; max-width: 200px; text-align: left; }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #64748b;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 400px;
+            background: white;
+            border-top: 1px solid #f1f2f6;
+            padding: 15px 0;
+            display: flex;
+            justify-content: space-around;
+            box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-decoration: none;
+            color: #bdc3c7;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            padding: 8px 6px;
+            border-radius: 12px;
+            min-width: 50px;
+        }
+
+        .nav-item.active {
+            color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .nav-item:hover {
+            color: #667eea;
+            transform: translateY(-2px);
+        }
+
+        .nav-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 4px;
+            font-size: 12px;
+        }
+
+        .nav-icon.home { background: #3b82f6; color: white; }
+        .nav-icon.visit { background: #ef4444; color: white; }
+        .nav-icon.data { background: #10b981; color: white; }
+        .nav-icon.profile { background: #f59e0b; color: white; }
+
+        .nav-label {
+            font-size: 10px;
+            font-weight: 500;
+        }
+
+        /* Responsive */
+        @media (max-width: 380px) {
+            .data-table th, .data-table td { 
+                padding: 6px 8px; 
+                font-size: 10px; 
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="detail-header">
+            <a href="dashboard.html" class="back-btn">←</a>
+            <div class="detail-title-container">
+                <div class="detail-title">Customer Metrics</div>
+                <div class="subtitle">SKU History & Performance</div>
+            </div>
+            <button class="user-btn" onclick="refreshData()">🔄</button>
+        </div>
+
+        <!-- Loading State -->
+        <div class="loading-spinner" id="loadingSpinner">
+            <div class="spinner"></div>
+            <div>Loading customer data...</div>
+        </div>
+
+        <!-- Error State -->
+        <div class="error-message" id="errorMessage" style="display: none;">
+            <h3>🚨 Data Loading Error</h3>
+            <p>Unable to load customer data. Please check your connection.</p>
+            <button onclick="initializeData()" style="margin-top: 10px; padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer;">Retry</button>
+        </div>
+
+        <!-- Main Content -->
+        <div id="mainContent" style="display: none;">
+            <!-- Filter Section -->
+            <div class="filter-section">
+                <div class="filter-frame">
+                    <div class="filter-title">🔍 Select Customer</div>
+                    
+                    <!-- Salesman Selection -->
+                    <div class="filter-item">
+                        <select id="salesmanSelect">
+                            <option value="">👤 Pilih Salesman</option>
+                        </select>
+                    </div>
+
+                    <!-- Customer Selection with Search -->
+                    <div class="filter-item">
+                        <div class="searchable-select">
+                            <input type="text" 
+                                   id="customerSearch" 
+                                   class="search-input" 
+                                   placeholder="🔍 Cari nama pelanggan..." 
+                                   disabled>
+                            <div id="customerDropdown" class="search-dropdown">
+                                <!-- Customer options will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Customer Metrics Section -->
+            <div class="metrics-section" id="metricsSection" style="display: none;">
+                <div class="section-title">
+                    📊 Customer Performance
+                    <span class="record-count" id="customerName">-</span>
+                </div>
+                
+                <!-- Row 1: T.MTD, A.MTD, Gap MTD -->
+                <div class="metrics-cards">
+                    <div class="metrics-card">
+                        <div class="metrics-label">T.MTD</div>
+                        <div class="metrics-value" id="customerTarget">0</div>
+                    </div>
+                    <div class="metrics-card">
+                        <div class="metrics-label">A.MTD</div>
+                        <div class="metrics-value" id="customerActual">0</div>
+                    </div>
+                    <div class="metrics-card">
+                        <div class="metrics-label">Gap MTD</div>
+                        <div class="metrics-value" id="customerGap">0</div>
+                    </div>
+                </div>
+                
+                <!-- Row 2: LY, 3LM, LM, Max -->
+                <div class="metrics-cards four-cols">
+                    <div class="metrics-card">
+                        <div class="metrics-label">LY</div>
+                        <div class="metrics-value" id="customerLY">0</div>
+                    </div>
+                    <div class="metrics-card">
+                        <div class="metrics-label">3LM</div>
+                        <div class="metrics-value" id="customer3LM">0</div>
+                    </div>
+                    <div class="metrics-card">
+                        <div class="metrics-label">LM</div>
+                        <div class="metrics-value" id="customerLM">0</div>
+                    </div>
+                    <div class="metrics-card">
+                        <div class="metrics-label">Max</div>
+                        <div class="metrics-value" id="customerMax">0</div>
+                    </div>
+                </div>
+                
+                <!-- Row 3: vs LY, vs 3LM, vs LM -->
+                <div class="metrics-cards">
+                    <div class="metrics-card">
+                        <div class="metrics-label">vs LY</div>
+                        <div class="metrics-value" id="customerVsLY">0%</div>
+                    </div>
+                    <div class="metrics-card">
+                        <div class="metrics-label">vs 3LM</div>
+                        <div class="metrics-value" id="customerVs3LM">0%</div>
+                    </div>
+                    <div class="metrics-card">
+                        <div class="metrics-label">vs LM</div>
+                        <div class="metrics-value" id="customerVsLM">0%</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SKU History Table Section -->
+            <div class="table-section" id="skuTableSection" style="display: none;">
+                <div class="section-title">
+                    🛍️ SKU History
+                    <span class="record-count" id="skuRecordCount">0 SKUs</span>
+                </div>
+                <div class="table-wrapper">
+                    <div class="table-header">🛍️ Customer SKU Transaction History</div>
+                    <div class="table-container">
+                        <table class="data-table" id="skuTable">
+                            <thead>
+                                <tr>
+                                    <th class="col-narrow">No</th>
+                                    <th class="col-text">SKU Name</th>
+                                    <th class="col-medium">Date</th>
+                                    <th class="col-wide value-currency">Qty</th>
+                                    <th class="col-wide value-currency">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody id="skuTableBody">
+                                <tr>
+                                    <td colspan="5">
+                                        <div class="empty-state">
+                                            <div class="empty-state-icon">🛍️</div>
+                                            <div>Pilih pelanggan untuk melihat history SKU</div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Navigation -->
+        <div class="bottom-nav">
+            <div class="nav-item" onclick="goHome()">
+                <div class="nav-icon home">🏠</div>
+                <div class="nav-label">Home</div>
+            </div>
+            <div class="nav-item" onclick="goToVisit()">
+                <div class="nav-icon visit">🏪</div>
+                <div class="nav-label">Visit</div>
+            </div>
+            <div class="nav-item" onclick="goToData()">
+                <div class="nav-icon data">📊</div>
+                <div class="nav-label">Data</div>
+            </div>
+            <div class="nav-item active" onclick="showCustomerMetrics()">
+                <div class="nav-icon profile">👤</div>
+                <div class="nav-label">Customer</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== GLOBAL VARIABLES =====
+        let salesmanData = [];
+        let detailsData = [];
+        let skuPelangganData = [];
+        let currentSalesmanId = null;
+        let currentCustomerName = null;
+        let filteredCustomers = [];
+
+        // ===== UTILITY FUNCTIONS =====
+        function parseJSONL(content) {
+            const lines = content.trim().split('\n');
+            const data = [];
+            
+            lines.forEach((line, index) => {
+                try {
+                    if (line.trim()) {
+                        const obj = JSON.parse(line.trim());
+                        data.push(obj);
+                    }
+                } catch (error) {
+                    console.error(`Error parsing line ${index + 1}:`, line, error);
+                }
+            });
+            
+            return data;
+        }
+
+        function formatCurrencyIndonesia(value) {
+            const val = Math.abs(parseFloat(value) || 0);
+            if (val >= 1000000000) return `${(val/1000000000).toFixed(1)}M`;
+            if (val >= 1000000) return `${(val/1000000).toFixed(1)}jt`;
+            if (val >= 1000) return `${(val/1000).toFixed(0)}rb`;
+            return `${val.toFixed(0)}`;
+        }
+
+        function formatPercentage(value) {
+            if (!isFinite(value)) return '0%';
+            return `${value > 0 ? '+' : ''}${value.toFixed(1)}%`;
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return '-';
+            try {
+                const date = new Date(dateString);
+                return date.toLocaleDateString('id-ID');
+            } catch (e) {
+                return dateString;
+            }
+        }
+
+        // ===== DATA LOADING FUNCTIONS =====
+        async function loadSalesmanData() {
+            try {
+                console.log('Loading salesman data...');
+                const response = await fetch('data/d.salesman.json');
+                if (!response.ok) throw new Error('Failed to load salesman data');
+                
+                const content = await response.text();
+                salesmanData = parseJSONL(content);
+                
+                console.log(`Loaded ${salesmanData.length} salesman records`);
+                
+            } catch (error) {
+                console.error('Error loading salesman data:', error);
+                throw error;
+            }
+        }
+
+        async function loadDetailsData() {
+            try {
+                console.log('Loading details data...');
+                const response = await fetch('data/d.details.json');
+                if (!response.ok) throw new Error('Failed to load details data');
+                
+                const content = await response.text();
+                detailsData = parseJSONL(content);
+                
+                console.log(`Loaded ${detailsData.length} detail records`);
+                
+            } catch (error) {
+                console.error('Error loading details data:', error);
+                throw error;
+            }
+        }
+
+        async function loadSKUPelangganData() {
+            try {
+                console.log('Loading SKU pelanggan data...');
+                const response = await fetch('data/d.skupelanggan.json');
+                if (!response.ok) throw new Error('Failed to load SKU pelanggan data');
+                
+                const content = await response.text();
+                skuPelangganData = parseJSONL(content);
+                
+                console.log(`Loaded ${skuPelangganData.length} SKU records`);
+                
+            } catch (error) {
+                console.error('Error loading SKU pelanggan data:', error);
+                throw error;
+            }
+        }
+
+        // ===== UI POPULATION FUNCTIONS =====
+        function populateSalesmanOptions() {
+            const salesmanSelect = document.getElementById('salesmanSelect');
+            salesmanSelect.innerHTML = '<option value="">👤 Pilih Salesman</option>';
+
+            if (salesmanData.length === 0) {
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = 'No salesman data available';
+                option.disabled = true;
+                salesmanSelect.appendChild(option);
+                return;
+            }
+
+            // Sort salesman by name
+            const sortedSalesman = [...salesmanData].sort((a, b) => {
+                const nameA = (a.szname || '').toLowerCase();
+                const nameB = (b.szname || '').toLowerCase();
+                return nameA.localeCompare(nameB);
+            });
+
+            sortedSalesman.forEach(salesman => {
+                if (salesman.szEmployeeId && salesman.szname) {
+                    const option = document.createElement('option');
+                    option.value = salesman.szEmployeeId;
+                    option.textContent = salesman.szname;
+                    salesmanSelect.appendChild(option);
+                }
+            });
+        }
+
+        function handleSalesmanSelection() {
+            const selectedSalesmanId = document.getElementById('salesmanSelect').value;
+            currentSalesmanId = selectedSalesmanId;
+            
+            // Reset customer selection
+            currentCustomerName = null;
+            document.getElementById('customerSearch').value = '';
+            document.getElementById('customerSearch').disabled = !selectedSalesmanId;
+            
+            if (!selectedSalesmanId) {
+                hideCustomerData();
+                clearCustomerDropdown();
+                return;
+            }
+
+            console.log(`Selected salesman ID: ${selectedSalesmanId}`);
+            
+            // Get customers for this salesman
+            const salesmanCustomers = detailsData.filter(item => {
+                return item.szEmployeeId && item.szEmployeeId.toString() === selectedSalesmanId.toString();
+            });
+
+            // Get unique customer names
+            const uniqueCustomers = [...new Set(salesmanCustomers
+                .map(item => item['Nama Pelanggan'])
+                .filter(name => name && name.trim() !== '')
+            )].sort();
+
+            filteredCustomers = uniqueCustomers;
+            console.log(`Found ${uniqueCustomers.length} customers for salesman`);
+
+            hideCustomerData();
+        }
+
+        function setupCustomerSearch() {
+            const searchInput = document.getElementById('customerSearch');
+            const dropdown = document.getElementById('customerDropdown');
+
+            searchInput.addEventListener('input', function() {
+                const searchTerm = this.value.toLowerCase();
+                
+                if (searchTerm.length === 0) {
+                    hideCustomerDropdown();
+                    return;
+                }
+
+                if (!currentSalesmanId) {
+                    hideCustomerDropdown();
+                    return;
+                }
+
+                // Filter customers based on search term
+                const matchingCustomers = filteredCustomers.filter(customer =>
+                    customer.toLowerCase().includes(searchTerm)
+                );
+
+                populateCustomerDropdown(matchingCustomers);
+                showCustomerDropdown();
+            });
+
+            searchInput.addEventListener('focus', function() {
+                if (currentSalesmanId && this.value.length > 0) {
+                    const searchTerm = this.value.toLowerCase();
+                    const matchingCustomers = filteredCustomers.filter(customer =>
+                        customer.toLowerCase().includes(searchTerm)
+                    );
+                    populateCustomerDropdown(matchingCustomers);
+                    showCustomerDropdown();
+                }
+            });
+
+            // Close dropdown when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('.searchable-select')) {
+                    hideCustomerDropdown();
+                }
+            });
+        }
+
+        function populateCustomerDropdown(customers) {
+            const dropdown = document.getElementById('customerDropdown');
+            dropdown.innerHTML = '';
+
+            if (customers.length === 0) {
+                const option = document.createElement('div');
+                option.className = 'search-option';
+                option.textContent = 'No customers found';
+                option.style.color = '#64748b';
+                option.style.fontStyle = 'italic';
+                dropdown.appendChild(option);
+                return;
+            }
+
+            customers.forEach(customer => {
+                const option = document.createElement('div');
+                option.className = 'search-option';
+                option.textContent = customer;
+                option.addEventListener('click', function() {
+                    selectCustomer(customer);
+                });
+                dropdown.appendChild(option);
+            });
+        }
+
+        function selectCustomer(customerName) {
+            currentCustomerName = customerName;
+            document.getElementById('customerSearch').value = customerName;
+            hideCustomerDropdown();
+            
+            console.log(`Selected customer: ${customerName}`);
+            
+            // Update customer metrics and SKU history
+            updateCustomerMetrics();
+            updateSKUHistory();
+            showCustomerData();
+        }
+
+        function showCustomerDropdown() {
+            document.getElementById('customerDropdown').classList.add('show');
+        }
+
+        function hideCustomerDropdown() {
+            document.getElementById('customerDropdown').classList.remove('show');
+        }
+
+        function clearCustomerDropdown() {
+            document.getElementById('customerDropdown').innerHTML = '';
+            hideCustomerDropdown();
+        }
+
+        // ===== CUSTOMER DATA FUNCTIONS =====
+        function updateCustomerMetrics() {
+            if (!currentSalesmanId || !currentCustomerName) {
+                return;
+            }
+
+            console.log(`Updating metrics for customer: ${currentCustomerName}`);
+
+            // Find customer data in details
+            const customerData = detailsData.filter(item => {
+                return item.szEmployeeId && item.szEmployeeId.toString() === currentSalesmanId.toString() &&
+                       item['Nama Pelanggan'] === currentCustomerName;
+            });
+
+            if (customerData.length === 0) {
+                console.warn('No customer data found');
+                return;
+            }
+
+            // Aggregate metrics for this customer
+            let totalTarget = 0, totalActual = 0, totalGap = 0;
+            let totalLY = 0, total3LM = 0, totalLM = 0, totalMax = 0;
+
+            customerData.forEach(item => {
+                totalTarget += Number(item['T.MTD']) || 0;
+                totalActual += Number(item['A.MTD']) || 0;
+                totalGap += Number(item['Gap MTD']) || 0;
+                totalLY += Number(item['LY']) || 0;
+                total3LM += Number(item['3LM']) || 0;
+                totalLM += Number(item['LM']) || 0;
+                totalMax += Number(item['Max']) || 0;
+            });
+
+            // Calculate percentages
+            const vsLYPercent = totalLY !== 0 ? ((totalActual - totalLY) / totalLY) * 100 : 0;
+            const vs3LMPercent = total3LM !== 0 ? ((totalActual - total3LM) / total3LM) * 100 : 0;
+            const vsLMPercent = totalLM !== 0 ? ((totalActual - totalLM) / totalLM) * 100 : 0;
+
+            // Update customer name display
+            document.getElementById('customerName').textContent = currentCustomerName;
+
+            // Update metrics - Row 1
+            document.getElementById('customerTarget').textContent = formatCurrencyIndonesia(totalTarget);
+            document.getElementById('customerActual').textContent = formatCurrencyIndonesia(totalActual);
+            
+            const gapElement = document.getElementById('customerGap');
+            gapElement.textContent = formatCurrencyIndonesia(totalGap);
+            gapElement.className = `metrics-value ${totalGap > 0 ? 'positive' : totalGap < 0 ? 'negative' : 'neutral'}`;
+
+            // Update metrics - Row 2
+            document.getElementById('customerLY').textContent = formatCurrencyIndonesia(totalLY);
+            document.getElementById('customer3LM').textContent = formatCurrencyIndonesia(total3LM);
+            document.getElementById('customerLM').textContent = formatCurrencyIndonesia(totalLM);
+            document.getElementById('customerMax').textContent = formatCurrencyIndonesia(totalMax);
+
+            // Update metrics - Row 3
+            const vsLYElement = document.getElementById('customerVsLY');
+            vsLYElement.textContent = formatPercentage(vsLYPercent);
+            vsLYElement.className = `metrics-value ${vsLYPercent > 0 ? 'positive' : vsLYPercent < 0 ? 'negative' : 'neutral'}`;
+
+            const vs3LMElement = document.getElementById('customerVs3LM');
+            vs3LMElement.textContent = formatPercentage(vs3LMPercent);
+            vs3LMElement.className = `metrics-value ${vs3LMPercent > 0 ? 'positive' : vs3LMPercent < 0 ? 'negative' : 'neutral'}`;
+
+            const vsLMElement = document.getElementById('customerVsLM');
+            vsLMElement.textContent = formatPercentage(vsLMPercent);
+            vsLMElement.className = `metrics-value ${vsLMPercent > 0 ? 'positive' : vsLMPercent < 0 ? 'negative' : 'neutral'}`;
+
+            console.log('Customer metrics updated:', {
+                target: totalTarget,
+                actual: totalActual,
+                gap: totalGap
+            });
+        }
+
+        function updateSKUHistory() {
+            if (!currentCustomerName) {
+                showEmptySKUState('Pilih pelanggan untuk melihat history SKU');
+                return;
+            }
+
+            console.log(`Loading SKU history for customer: ${currentCustomerName}`);
+
+            // Find SKU data for this customer
+            const customerSKUData = skuPelangganData.filter(item => {
+                // Try different possible field names for customer name
+                const possibleNameFields = ['Nama Pelanggan', 'Customer', 'customer_name', 'CustomerName'];
+                
+                for (const field of possibleNameFields) {
+                    if (item[field] === currentCustomerName) {
+                        return true;
+                    }
+                }
+                return false;
+            });
+
+            console.log(`Found ${customerSKUData.length} SKU records for customer`);
+
+            if (customerSKUData.length === 0) {
+                showEmptySKUState(`Tidak ada history SKU untuk ${currentCustomerName}`);
+                return;
+            }
+
+            // Sort by date (newest first)
+            customerSKUData.sort((a, b) => {
+                const dateA = new Date(a.date || a.Date || a.tanggal || 0);
+                const dateB = new Date(b.date || b.Date || b.tanggal || 0);
+                return dateB - dateA;
+            });
+
+            renderSKUTable(customerSKUData);
+        }
+
+        function renderSKUTable(skuData) {
+            const tableBody = document.getElementById('skuTableBody');
+            const recordCount = document.getElementById('skuRecordCount');
+            
+            recordCount.textContent = `${skuData.length} SKUs`;
+
+            if (skuData.length === 0) {
+                showEmptySKUState('Tidak ada data SKU');
+                return;
+            }
+
+            let html = '';
+
+            skuData.forEach((item, index) => {
+                const no = index + 1;
+                
+                // Try different possible field names
+                const skuName = item['SKU Name'] || item['sku_name'] || item['ProductName'] || item['nama_sku'] || 'N/A';
+                const date = item['date'] || item['Date'] || item['tanggal'] || item['transaction_date'] || '-';
+                const qty = Number(item['qty'] || item['Qty'] || item['quantity'] || item['jumlah'] || 0);
+                const amount = Number(item['amount'] || item['Amount'] || item['total'] || item['nilai'] || 0);
+
+                html += `
+                    <tr>
+                        <td class="col-narrow">${no}</td>
+                        <td class="col-text" title="${skuName}">${skuName}</td>
+                        <td class="col-medium">${formatDate(date)}</td>
+                        <td class="value-currency col-wide">${qty.toLocaleString()}</td>
+                        <td class="value-currency col-wide">${formatCurrencyIndonesia(amount)}</td>
+                    </tr>
+                `;
+            });
+
+            tableBody.innerHTML = html;
+        }
+
+        function showEmptySKUState(message) {
+            const tableBody = document.getElementById('skuTableBody');
+            const recordCount = document.getElementById('skuRecordCount');
+            
+            recordCount.textContent = '0 SKUs';
+            
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="5">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">🛍️</div>
+                            <div>${message}</div>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+
+        // ===== UI STATE FUNCTIONS =====
+        function showLoading(show) {
+            document.getElementById('loadingSpinner').style.display = show ? 'flex' : 'none';
+        }
+
+        function showMainContent(show) {
+            document.getElementById('mainContent').style.display = show ? 'block' : 'none';
+        }
+
+        function showCustomerData() {
+            document.getElementById('metricsSection').style.display = 'block';
+            document.getElementById('skuTableSection').style.display = 'block';
+        }
+
+        function hideCustomerData() {
+            document.getElementById('metricsSection').style.display = 'none';
+            document.getElementById('skuTableSection').style.display = 'none';
+            showEmptySKUState('Pilih pelanggan untuk melihat history SKU');
+        }
+
+        function refreshData() {
+            console.log('Refreshing data...');
+            initializeData();
+        }
+
+        // ===== NAVIGATION FUNCTIONS =====
+        function goHome() {
+            window.location.href = 'dashboard.html';
+        }
+
+        function goToVisit() {
+            window.location.href = 'visit.html';
+        }
+
+        function goToData() {
+            window.location.href = 'DAP.html';
+        }
+
+        function showCustomerMetrics() {
+            // Already on customer metrics page
+            console.log('Already on customer metrics page');
+        }
+
+        // ===== INITIALIZATION =====
+        async function initializeData() {
+            try {
+                showLoading(true);
+                
+                console.log('Starting customer metrics dashboard...');
+                
+                // Load all data
+                await loadSalesmanData();
+                await loadDetailsData();
+                await loadSKUPelangganData();
+                
+                // Populate salesman options
+                populateSalesmanOptions();
+                
+                // Setup customer search functionality
+                setupCustomerSearch();
+                
+                showLoading(false);
+                showMainContent(true);
+                
+                console.log('Customer metrics dashboard ready');
+                console.log(`Loaded ${salesmanData.length} salesman, ${detailsData.length} details, ${skuPelangganData.length} SKU records`);
+                
+            } catch (error) {
+                console.error('Critical error in initializeData:', error);
+                showLoading(false);
+                document.getElementById('errorMessage').style.display = 'block';
+            }
+        }
+
+        // ===== EVENT LISTENERS =====
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('salesmanSelect').addEventListener('change', handleSalesmanSelection);
+            
+            initializeData();
+        });
+
+        console.log('Customer Metrics Dashboard script loaded');
+    </script>
+</body>
+</html>
