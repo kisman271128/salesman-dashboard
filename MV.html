@@ -1191,27 +1191,63 @@
             }
         }
 
-        // ===== LOCATION & MAP FUNCTIONS =====
-        async function getCustomerCoordinates(customerId) {
-            // Simulasi pengambilan koordinat berdasarkan ID Pelanggan
-            // Dalam implementasi nyata, ini akan mengambil data dari database/API
-            const mockCoordinates = {
-                '12345': { lat: -6.2088, lng: 106.8456, address: 'Jakarta Pusat' },
-                '12346': { lat: -6.1751, lng: 106.8650, address: 'Jakarta Utara' },
-                '12347': { lat: -6.2615, lng: 106.7809, address: 'Jakarta Barat' },
-                // Tambahkan koordinat customer lainnya
-            };
+        // ===== UPDATED LOCATION & MAP FUNCTIONS =====
+        async function getCustomerCoordinates(customerId, customerName) {
+            try {
+                // Find the customer record in detailsData that matches both customer ID and name
+                const customerRecord = detailsData.find(item => {
+                    return item.szEmployeeId && item.szEmployeeId.toString() === currentSalesmanId.toString() &&
+                           item['Nama Pelanggan'] === customerName &&
+                           item['Id Pelanggan'] === customerId;
+                });
 
-            // Fallback: generate random coordinates around Jakarta
-            const jakartaCenter = { lat: -6.2088, lng: 106.8456 };
-            const randomLat = jakartaCenter.lat + (Math.random() - 0.5) * 0.1;
-            const randomLng = jakartaCenter.lng + (Math.random() - 0.5) * 0.1;
+                if (customerRecord) {
+                    // Extract longitude and latitude from the customer record (using correct column names)
+                    const longitude = parseFloat(customerRecord['Longitude']) || null;
+                    const latitude = parseFloat(customerRecord['Latitude']) || null;
+                    
+                    // Check if we have valid coordinates
+                    if (longitude && latitude && !isNaN(longitude) && !isNaN(latitude)) {
+                        console.log(`Found coordinates for ${customerName}: ${latitude}, ${longitude}`);
+                        
+                        return {
+                            lat: latitude,
+                            lng: longitude,
+                            address: customerRecord['CC5'] || customerRecord['Alamat'] || 'Unknown Address'
+                        };
+                    } else {
+                        console.warn(`Invalid or missing coordinates for ${customerName}:`, {
+                            longitude: customerRecord['Longitude'],
+                            latitude: customerRecord['Latitude']
+                        });
+                    }
+                } else {
+                    console.warn(`Customer record not found for ${customerName} (ID: ${customerId})`);
+                }
 
-            return mockCoordinates[customerId] || {
-                lat: randomLat,
-                lng: randomLng,
-                address: 'Jakarta Area'
-            };
+                // Fallback: generate coordinates around Jakarta if no valid data found
+                const jakartaCenter = { lat: -6.2088, lng: 106.8456 };
+                const randomLat = jakartaCenter.lat + (Math.random() - 0.5) * 0.1;
+                const randomLng = jakartaCenter.lng + (Math.random() - 0.5) * 0.1;
+
+                console.log(`Using fallback coordinates for ${customerName}: ${randomLat}, ${randomLng}`);
+                
+                return {
+                    lat: randomLat,
+                    lng: randomLng,
+                    address: 'Jakarta Area (Estimated)'
+                };
+                
+            } catch (error) {
+                console.error('Error getting customer coordinates:', error);
+                
+                // Return Jakarta center as ultimate fallback
+                return {
+                    lat: -6.2088,
+                    lng: 106.8456,
+                    address: 'Jakarta (Default)'
+                };
+            }
         }
 
         function calculateDistance(lat1, lng1, lat2, lng2) {
@@ -1263,14 +1299,16 @@
                 return;
             }
 
-            // Get customer coordinates
-            currentCustomerCoordinates = await getCustomerCoordinates(currentCustomerId);
+            console.log(`Showing map for customer: ${currentCustomerName} (ID: ${currentCustomerId})`);
+
+            // Get customer coordinates from actual data
+            currentCustomerCoordinates = await getCustomerCoordinates(currentCustomerId, currentCustomerName);
             
             // Update popup content
             document.getElementById('popupCustomerName').textContent = currentCustomerName;
             document.getElementById('popupCustomerAddress').textContent = currentCustomerCoordinates.address;
             document.getElementById('popupCoordinates').textContent = 
-                `${currentCustomerCoordinates.lat.toFixed(4)}, ${currentCustomerCoordinates.lng.toFixed(4)}`;
+                `${currentCustomerCoordinates.lat.toFixed(6)}, ${currentCustomerCoordinates.lng.toFixed(6)}`;
 
             // Try to get user location for distance calculation
             getCurrentLocation();
@@ -1278,7 +1316,7 @@
             // Show popup
             document.getElementById('mapOverlay').style.display = 'flex';
 
-            // Initialize simple map (in real implementation, use Google Maps API)
+            // Initialize map with real coordinates
             initializeSimpleMap();
         }
 
@@ -1286,11 +1324,12 @@
             const mapContainer = document.getElementById('mapContainer');
             
             if (currentCustomerCoordinates) {
-                // Create iframe with OpenStreetMap
                 const lat = currentCustomerCoordinates.lat;
                 const lng = currentCustomerCoordinates.lng;
                 
-                // Use OpenStreetMap iframe embed
+                console.log(`Initializing map with coordinates: ${lat}, ${lng}`);
+                
+                // Use OpenStreetMap iframe embed with actual coordinates
                 mapContainer.innerHTML = `
                     <iframe 
                         width="100%" 
@@ -1300,32 +1339,65 @@
                         marginheight="0" 
                         marginwidth="0" 
                         style="border-radius: 12px;"
-                        src="https://www.openstreetmap.org/export/embed.html?bbox=${lng-0.01},${lat-0.01},${lng+0.01},${lat+0.01}&amp;layer=mapnik&amp;marker=${lat},${lng}"
+                        src="https://www.openstreetmap.org/export/embed.html?bbox=${lng-0.005},${lat-0.005},${lng+0.005},${lat+0.005}&amp;layer=mapnik&amp;marker=${lat},${lng}"
                         >
                     </iframe>
                 `;
                 
-                // Fallback if iframe doesn't work
+                // Enhanced fallback if iframe doesn't work
                 setTimeout(() => {
                     const iframe = mapContainer.querySelector('iframe');
                     if (!iframe || iframe.offsetHeight === 0) {
-                        // Create simple map placeholder with coordinates
+                        // Create enhanced map placeholder with real coordinates
                         mapContainer.innerHTML = `
-                            <div style="background: linear-gradient(135deg, #10b981, #059669); width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; flex-direction: column; text-align: center; color: white; border-radius: 12px;">
-                                <div style="font-size: 32px; margin-bottom: 8px;">🗺️</div>
+                            <div style="background: linear-gradient(135deg, #10b981, #059669); width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; flex-direction: column; text-align: center; color: white; border-radius: 12px; position: relative;">
+                                <div style="position: absolute; top: 8px; right: 8px; background: rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">
+                                    REAL LOCATION
+                                </div>
+                                <div style="font-size: 32px; margin-bottom: 8px;">📍</div>
                                 <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">${currentCustomerName}</div>
-                                <div style="font-size: 12px; opacity: 0.9;">${currentCustomerCoordinates.address}</div>
-                                <div style="font-size: 10px; opacity: 0.8; margin-top: 4px; font-family: monospace;">
-                                    ${currentCustomerCoordinates.lat.toFixed(4)}, ${currentCustomerCoordinates.lng.toFixed(4)}
+                                <div style="font-size: 12px; opacity: 0.9; margin-bottom: 8px;">${currentCustomerCoordinates.address}</div>
+                                <div style="font-size: 10px; opacity: 0.8; font-family: monospace; background: rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 8px;">
+                                    ${currentCustomerCoordinates.lat.toFixed(6)}, ${currentCustomerCoordinates.lng.toFixed(6)}
                                 </div>
                                 <div style="font-size: 10px; opacity: 0.7; margin-top: 8px;">
-                                    Klik "Buka Maps" untuk navigasi
+                                    📱 Klik "Buka Maps" untuk navigasi
                                 </div>
                             </div>
                         `;
                     }
-                }, 2000);
+                }, 3000);
+            } else {
+                // Show error state
+                mapContainer.innerHTML = `
+                    <div style="background: #ef4444; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; flex-direction: column; text-align: center; color: white; border-radius: 12px;">
+                        <div style="font-size: 24px; margin-bottom: 8px;">❌</div>
+                        <div style="font-size: 12px;">Lokasi tidak tersedia</div>
+                    </div>
+                `;
             }
+        }
+
+        // Updated function to check for coordinate data availability
+        function checkLocationDataAvailability() {
+            if (!currentCustomerId || !currentCustomerName) {
+                return false;
+            }
+
+            const customerRecord = detailsData.find(item => {
+                return item.szEmployeeId && item.szEmployeeId.toString() === currentSalesmanId.toString() &&
+                       item['Nama Pelanggan'] === currentCustomerName &&
+                       item['Id Pelanggan'] === currentCustomerId;
+            });
+
+            if (customerRecord) {
+                const longitude = parseFloat(customerRecord['Longitude']) || null;
+                const latitude = parseFloat(customerRecord['Latitude']) || null;
+                
+                return longitude && latitude && !isNaN(longitude) && !isNaN(latitude);
+            }
+            
+            return false;
         }
 
         function closeMapPopup() {
@@ -1554,6 +1626,7 @@
             });
         }
 
+        // Updated customer selection to show map button based on coordinate availability
         function selectCustomer(customerName) {
             currentCustomerName = customerName;
             document.getElementById('customerSearch').value = customerName;
@@ -1568,6 +1641,10 @@
             if (customerDetailsRecord) {
                 currentCustomerId = customerDetailsRecord['Id Pelanggan'];
                 console.log(`Selected customer: ${customerName} (ID: ${currentCustomerId})`);
+                
+                // Check if coordinate data is available
+                const hasCoordinates = checkLocationDataAvailability();
+                console.log(`Coordinate data available for ${customerName}: ${hasCoordinates}`);
             }
             
             // Update customer metrics and project data and SKU history
@@ -1756,6 +1833,7 @@
             document.getElementById('projectSection').style.display = 'none';
         }
 
+        // Updated metrics function to properly show/hide map button
         function updateCustomerMetrics() {
             if (!currentSalesmanId || !currentCustomerName) {
                 return;
@@ -1799,10 +1877,11 @@
             // Update customer CC5 display
             document.getElementById('customerCC5').textContent = currentCustomerCC5;
             
-            // Show map button if we have customer ID
+            // Show map button only if we have valid coordinate data
             const mapBtn = document.getElementById('mapBtn');
-            if (currentCustomerId) {
+            if (currentCustomerId && checkLocationDataAvailability()) {
                 mapBtn.style.display = 'inline-block';
+                mapBtn.title = 'Show Real Location';
             } else {
                 mapBtn.style.display = 'none';
             }
