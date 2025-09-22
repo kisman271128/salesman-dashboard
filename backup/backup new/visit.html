@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Visit Outlet - Enhanced with Pause/Resume</title>
+    <title>Visit Outlet - Enhanced with Pause/Resume & Location Tracking</title>
     
     <style>
         * {
@@ -433,30 +433,86 @@
             50% { opacity: 1; }
         }
 
-        /* ===== LOCATION STATUS ===== */
-        .location-status {
+        /* ===== ENHANCED LOCATION STATUS ===== */
+        .location-status-enhanced {
             position: fixed;
             top: 10px;
             right: 10px;
-            background: rgba(245, 158, 11, 0.9);
+            background: rgba(245, 158, 11, 0.95);
             color: white;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 11px;
+            padding: 8px 12px;
+            border-radius: 16px;
+            font-size: 10px;
             font-weight: 600;
             z-index: 1001;
             display: flex;
+            flex-direction: column;
             align-items: center;
-            gap: 4px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            gap: 2px;
+            box-shadow: 0 3px 12px rgba(0, 0, 0, 0.2);
+            min-width: 100px;
         }
 
-        .location-status.success {
+        .location-status-enhanced.success {
+            background: rgba(16, 185, 129, 0.95);
+        }
+
+        .location-status-enhanced.error {
+            background: rgba(239, 68, 68, 0.95);
+        }
+
+        .location-accuracy {
+            font-size: 8px;
+            opacity: 0.8;
+        }
+
+        .location-last-sync {
+            font-size: 8px;
+            opacity: 0.9;
+            margin-top: 2px;
+        }
+
+        /* ===== LOCATION TRACKING STATUS ===== */
+        .location-tracking-status {
+            position: fixed;
+            top: 110px;
+            right: 10px;
+            background: rgba(59, 130, 246, 0.9);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 9px;
+            font-weight: 600;
+            z-index: 1001;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            min-width: 120px;
+            text-align: center;
+        }
+
+        .location-tracking-status.active {
+            background: rgba(16, 185, 129, 0.9);
+            animation: trackingPulse 3s infinite;
+        }
+
+        .location-tracking-status.syncing {
+            background: rgba(245, 158, 11, 0.9);
+        }
+
+        .location-tracking-status.success {
             background: rgba(16, 185, 129, 0.9);
         }
 
-        .location-status.error {
+        .location-tracking-status.error {
             background: rgba(239, 68, 68, 0.9);
+        }
+
+        .location-tracking-status.stopped {
+            background: rgba(107, 114, 128, 0.9);
+        }
+
+        @keyframes trackingPulse {
+            0%, 100% { opacity: 0.9; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.02); }
         }
 
         /* ===== DAY INDICATOR ===== */
@@ -472,6 +528,33 @@
             font-weight: 600;
             z-index: 1001;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Admin position monitoring button */
+        .admin-location-btn {
+            position: fixed;
+            bottom: 120px;
+            left: 15px;
+            background: rgba(59, 130, 246, 0.9);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+            display: none;
+            z-index: 998;
+        }
+
+        .admin-location-btn:hover {
+            background: rgba(59, 130, 246, 1);
+            transform: translateY(-1px);
+        }
+
+        .admin-location-btn.show {
+            display: block;
         }
 
         /* Continue with rest of existing styles... */
@@ -694,6 +777,24 @@
             font-weight: 600;
         }
 
+        .customer-info-row {
+            margin-bottom: 4px;
+        }
+
+        .customer-info-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .sku-zero-list {
+            font-size: 10px;
+            color: #ef4444;
+            font-weight: 500;
+            background: #fef2f2;
+            padding: 2px 4px;
+            border-radius: 4px;
+            border: 1px solid #fecaca;
+        }
+
         /* ===== FLOATING ACTION BUTTONS ===== */
         .floating-actions {
             position: fixed;
@@ -756,6 +857,16 @@
         .btn-end-visit:hover {
             background: #dc2626;
             box-shadow: 0 5px 15px rgba(239, 68, 68, 0.4);
+        }
+
+        .btn-manual-sync {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-manual-sync:hover {
+            background: #2563eb;
+            box-shadow: 0 5px 15px rgba(59, 130, 246, 0.4);
         }
 
         /* Pause indicator for customer list */
@@ -859,12 +970,88 @@
 
         .sku-code {
             font-family: 'Courier New', monospace;
-            background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+            /background: linear-gradient(135deg, #f1f5f9, #e2e8f0);/
             padding: 2px 4px;
             border-radius: 4px;
             font-size: 10px;
             font-weight: 600;
             color: #374151;
+        }
+
+        /* ===== PROMO TAG STYLING ===== */
+        .promo-tag {
+            font-weight: 600;
+            font-size: 10px;
+            padding: 2px 4px;
+            border-radius: 4px;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        .promo-biscuit, .promo-bisc { 
+            background: linear-gradient(135deg, #dc2626, #ef4444);
+        }
+        .promo-snack, .promo-snackfood { 
+            background: linear-gradient(135deg, #7c3aed, #8b5cf6);
+        }
+        .promo-bev { 
+            background: linear-gradient(135deg, #059669, #10b981);
+        }
+        .promo-others, .promo-sf, .promo-gen, .promo-go { 
+            background: linear-gradient(135deg, #0369a1, #0284c7);
+        }
+        .promo-gbs { 
+            background: linear-gradient(135deg, #7c2d12, #ea580c);
+        }
+        .promo-solmed { 
+            background: linear-gradient(135deg, #d97706, #f59e0b);
+        }
+        .promo-rans, .promo-gbev, .promo-mbr { 
+            background: linear-gradient(135deg, #23A0AD, #CBE030);
+        }
+
+        /* ===== GAP BADGE STYLING ===== */
+        .gap-badge {
+            padding: 2px 4px;
+            border-radius: 8px;
+            font-size: 9px;
+            font-weight: 600;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        .gap-positive {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+
+        .gap-negative {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+
+        .gap-neutral {
+            background: linear-gradient(135deg, #64748b, #475569);
+        }
+
+        /* ===== TABLE ROW STYLING ===== */
+        .summary-row {
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            border-top: 2px solid #667eea;
+        }
+
+        .summary-row td {
+            font-weight: 700;
+            color: #1e293b;
+            padding: 12px 6px;
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+        }
+
+        tr:hover {
+            background-color: #f8fafc;
+        }
+
+        .metric-value {
+            font-weight: 600;
+            font-size: 12px;
         }
 
         .empty-state {
@@ -882,9 +1069,11 @@
 </head>
 <body>
     <div class="container">
-        <!-- Location Status -->
-        <div class="location-status" id="locationStatus">
-            📍 Getting location...
+        <!-- Enhanced Location Status -->
+        <div class="location-status-enhanced" id="locationStatusEnhanced">
+            <div class="location-main">📍 Getting location...</div>
+            <div class="location-accuracy" id="locationAccuracy">Accuracy: --</div>
+            <div class="location-last-sync" id="locationLastSync">Last sync: --</div>
         </div>
 
         <!-- Day Indicator -->
@@ -897,6 +1086,11 @@
             🔄 Syncing...
         </div>
 
+        <!-- Location Tracking Status -->
+        <div class="location-tracking-status" id="locationTrackingStatus">
+            📍 Initializing tracking...
+        </div>
+
         <!-- Enhanced Visit Session Status -->
         <div class="visit-session-status" id="visitSessionStatus">
             <div class="visit-session-customer" id="sessionCustomerName">No Active Visit</div>
@@ -904,13 +1098,18 @@
             <div class="visit-session-status-text" id="sessionStatusText"></div>
         </div>
 
+        <!-- Admin Position Monitoring Button -->
+        <button class="admin-location-btn" id="adminLocationBtn" onclick="showAllSalesmanPositions()">
+            👥 View All Positions
+        </button>
+
         <div class="detail-header">
             <a href="dashboard.html" class="back-btn">←</a>
             <div class="detail-title-container">
                 <div class="detail-title">Visit Outlet Enhanced</div>
                 <div class="salesman-name" id="salesmanName">Loading...</div>
             </div>
-            <button class="user-btn" onclick="getCurrentLocation()">📍</button>
+            <button class="user-btn" onclick="forceSyncLocation()">📍</button>
         </div>
 
         <!-- Loading State -->
@@ -950,8 +1149,14 @@
                             
                             <!-- Customer Info Display -->
                             <div id="customerInfo" class="customer-info">
-                                <div class="customer-info-label">Outlet Type:</div>
-                                <div id="customerType" class="customer-info-value"></div>
+                                <div class="customer-info-row">
+                                    <div class="customer-info-label">Outlet Type:</div>
+                                    <div id="customerType" class="customer-info-value"></div>
+                                </div>
+                                <div class="customer-info-row">
+                                    <div class="customer-info-label">SKU POM (Belum CA):</div>
+                                    <div id="skuZeroList" class="customer-info-value sku-zero-list"></div>
+                                </div>
                             </div>
                         </div>
 
@@ -1207,6 +1412,11 @@
         };
 
         let watchId = null;
+        
+        // ===== PERIODIC LOCATION TRACKING VARIABLES =====
+        let locationTrackingTimer = null;
+        let lastLocationSync = null;
+        let isLocationTrackingActive = false;
 
         // ===== ENHANCED VISIT SESSION WITH PAUSE/RESUME =====
         let visitSession = {
@@ -1234,6 +1444,354 @@
 
         // ===== PAUSE/RESUME MANAGEMENT =====
         let pausedVisits = new Map(); // Store paused visits by outlet name
+
+        // ===== PERIODIC LOCATION SYNC FUNCTIONS =====
+        function startPeriodicLocationTracking() {
+            if (!currentSalesmanId) {
+                console.warn('🚫 Cannot start location tracking - no salesman ID');
+                return;
+            }
+
+            if (locationTrackingTimer) {
+                clearInterval(locationTrackingTimer);
+            }
+
+            isLocationTrackingActive = true;
+            console.log('📍 Starting periodic location tracking (10 minute intervals)');
+            
+            // Sync immediately on start
+            syncCurrentLocationToFirebase();
+            
+            // Then sync every 10 minutes
+            locationTrackingTimer = setInterval(() => {
+                if (isLocationTrackingActive && currentSalesmanId) {
+                    syncCurrentLocationToFirebase();
+                }
+            }, 10 * 60 * 1000); // 10 minutes in milliseconds
+            
+            updateLocationTrackingStatus('active', '📍 Position tracking active');
+        }
+
+        function stopPeriodicLocationTracking() {
+            if (locationTrackingTimer) {
+                clearInterval(locationTrackingTimer);
+                locationTrackingTimer = null;
+            }
+            
+            isLocationTrackingActive = false;
+            console.log('📍 Stopped periodic location tracking');
+            updateLocationTrackingStatus('stopped', '📍 Position tracking stopped');
+        }
+
+        async function syncCurrentLocationToFirebase() {
+            if (!window.firebaseDB || !currentSalesmanId || !currentLocation.latitude) {
+                console.warn('📍 Cannot sync location - missing requirements');
+                return false;
+            }
+
+            try {
+                updateLocationTrackingStatus('syncing', '📍 Syncing position...');
+                
+                const now = new Date();
+                const locationData = {
+                    salesman_id: currentSalesmanId,
+                    salesman_name: currentSalesman,
+                    latitude: currentLocation.latitude,
+                    longitude: currentLocation.longitude,
+                    accuracy: currentLocation.accuracy,
+                    timestamp: now.toISOString(),
+                    last_updated: window.firebaseServerTimestamp(),
+                    device_info: {
+                        user_agent: navigator.userAgent,
+                        platform: navigator.platform,
+                        online: navigator.onLine
+                    },
+                    // Additional context
+                    visit_session: {
+                        is_active: visitSession.isActive,
+                        is_paused: visitSession.isPaused,
+                        current_outlet: visitSession.outletName || null,
+                        session_duration: visitSession.isActive ? visitSession.duration : 0
+                    }
+                };
+
+                // Store in Firebase - this will overwrite previous data for this salesman
+                const positionRef = window.firebaseRef(window.firebaseDB, `current_positions/${currentSalesmanId}`);
+                await window.firebaseSet(positionRef, locationData);
+                
+                lastLocationSync = now;
+                console.log('📍 Location synced to Firebase:', {
+                    lat: currentLocation.latitude.toFixed(6),
+                    lng: currentLocation.longitude.toFixed(6),
+                    accuracy: Math.round(currentLocation.accuracy),
+                    time: now.toLocaleTimeString('id-ID')
+                });
+                
+                updateLocationTrackingStatus('success', `📍 Position synced at ${now.toLocaleTimeString('id-ID')}`);
+                
+                // Also save to local storage as backup
+                saveLocationToLocalStorage(locationData);
+                
+                return true;
+                
+            } catch (error) {
+                console.error('📍 Firebase location sync error:', error);
+                updateLocationTrackingStatus('error', '❌ Position sync failed');
+                return false;
+            }
+        }
+
+        function saveLocationToLocalStorage(locationData) {
+            try {
+                const locationKey = `current_location_${currentSalesmanId}`;
+                localStorage.setItem(locationKey, JSON.stringify(locationData));
+                
+                // Keep location history (last 24 hours only)
+                const historyKey = `location_history_${currentSalesmanId}`;
+                const existingHistory = JSON.parse(localStorage.getItem(historyKey) || '[]');
+                
+                // Add current location to history
+                existingHistory.push(locationData);
+                
+                // Remove entries older than 24 hours
+                const cutoffTime = new Date(Date.now() - 24 * 60 * 60 * 1000);
+                const filteredHistory = existingHistory.filter(entry => 
+                    new Date(entry.timestamp) > cutoffTime
+                );
+                
+                // Keep maximum 144 entries (24 hours * 6 per hour = 144)
+                const trimmedHistory = filteredHistory.slice(-144);
+                localStorage.setItem(historyKey, JSON.stringify(trimmedHistory));
+                
+                console.log('💾 Location saved to localStorage');
+                
+            } catch (error) {
+                console.error('💾 Error saving location to localStorage:', error);
+            }
+        }
+
+        function updateLocationTrackingStatus(status, message) {
+            // Update existing location status element
+            const statusElement = document.getElementById('locationStatusEnhanced');
+            if (statusElement) {
+                statusElement.classList.remove('success', 'error');
+                statusElement.classList.add(status);
+                const mainElement = statusElement.querySelector('.location-main');
+                if (mainElement) {
+                    mainElement.textContent = message;
+                }
+            }
+            
+            // Also update tracking indicator
+            const trackingElement = document.getElementById('locationTrackingStatus');
+            if (trackingElement) {
+                trackingElement.textContent = message;
+                trackingElement.className = `location-tracking-status ${status}`;
+            }
+            
+            // Auto-hide success/error messages after 5 seconds
+            if (status === 'success' || status === 'error') {
+                setTimeout(() => {
+                    if (statusElement) {
+                        statusElement.classList.remove('success', 'error');
+                    }
+                    if (trackingElement) {
+                        trackingElement.classList.remove('success', 'error');
+                    }
+                }, 5000);
+            }
+        }
+
+        // ===== LOCATION TRACKING MANAGEMENT =====
+        function initializeLocationTracking() {
+            // Enhanced geolocation initialization
+            if ("geolocation" in navigator) {
+                console.log('📍 Geolocation is available');
+                getCurrentLocationEnhanced();
+                startLocationTracking();
+                
+                // Start periodic tracking after initial location is obtained
+                setTimeout(() => {
+                    if (currentLocation.latitude) {
+                        startPeriodicLocationTracking();
+                    }
+                }, 2000);
+                
+            } else {
+                console.warn('📍 Geolocation is not available');
+                updateLocationTrackingStatus('error', '❌ Location not supported');
+            }
+        }
+
+        // Enhanced getCurrentLocation with better error handling
+        function getCurrentLocationEnhanced() {
+            updateLocationTrackingStatus('loading', '📍 Getting current position...');
+            
+            const options = {
+                enableHighAccuracy: true,
+                timeout: 15000,
+                maximumAge: 5 * 60 * 1000 // 5 minutes
+            };
+            
+            return new Promise((resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        currentLocation = {
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude,
+                            accuracy: position.coords.accuracy,
+                            timestamp: new Date().toISOString()
+                        };
+                        
+                        console.log('📍 Enhanced location obtained:', {
+                            lat: currentLocation.latitude.toFixed(6),
+                            lng: currentLocation.longitude.toFixed(6),
+                            accuracy: Math.round(currentLocation.accuracy)
+                        });
+                        
+                        updateLocationTrackingStatus('success', '📍 Location ready');
+                        updateEnhancedLocationStatus();
+                        resolve(currentLocation);
+                    },
+                    (error) => {
+                        console.error('📍 Enhanced location error:', error);
+                        const errorMessage = getLocationErrorMessage(error);
+                        updateLocationTrackingStatus('error', errorMessage);
+                        reject(error);
+                    },
+                    options
+                );
+            });
+        }
+
+        function getLocationErrorMessage(error) {
+            switch (error.code) {
+                case error.PERMISSION_DENIED:
+                    return '❌ Location access denied';
+                case error.POSITION_UNAVAILABLE:
+                    return '❌ Location unavailable';
+                case error.TIMEOUT:
+                    return '❌ Location timeout';
+                default:
+                    return '❌ Location error';
+            }
+        }
+
+        // Enhanced location status update function
+        function updateEnhancedLocationStatus() {
+            const statusElement = document.getElementById('locationStatusEnhanced');
+            const accuracyElement = document.getElementById('locationAccuracy');
+            const lastSyncElement = document.getElementById('locationLastSync');
+            
+            if (statusElement && currentLocation.latitude) {
+                statusElement.classList.add('success');
+                statusElement.querySelector('.location-main').textContent = '📍 Location active';
+                
+                if (accuracyElement) {
+                    accuracyElement.textContent = `Accuracy: ±${Math.round(currentLocation.accuracy)}m`;
+                }
+                
+                if (lastSyncElement && lastLocationSync) {
+                    lastSyncElement.textContent = `Last sync: ${lastLocationSync.toLocaleTimeString('id-ID', { 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                    })}`;
+                }
+            }
+        }
+
+        // ===== ADMIN MONITORING FUNCTIONS =====
+        async function getCurrentSalesmanPositions() {
+            if (!window.firebaseDB) {
+                console.warn('🚫 Firebase not available for position monitoring');
+                return null;
+            }
+
+            try {
+                const positionsRef = window.firebaseRef(window.firebaseDB, 'current_positions');
+                const snapshot = await window.firebaseGet(positionsRef);
+                
+                if (snapshot.exists()) {
+                    const positions = snapshot.val();
+                    console.log('📍 Retrieved current positions for all salesmen:', Object.keys(positions).length);
+                    return positions;
+                } else {
+                    console.log('📍 No current positions found');
+                    return {};
+                }
+                
+            } catch (error) {
+                console.error('📍 Error retrieving positions:', error);
+                return null;
+            }
+        }
+
+        // Function to show all salesman positions (for admin)
+        async function showAllSalesmanPositions() {
+            try {
+                const positions = await getCurrentSalesmanPositions();
+                
+                if (!positions) {
+                    alert('❌ Unable to retrieve positions');
+                    return;
+                }
+                
+                let positionInfo = '👥 Current Salesman Positions:\n\n';
+                
+                Object.entries(positions).forEach(([salesmanId, data]) => {
+                    const timeAgo = new Date(data.timestamp);
+                    const minutesAgo = Math.floor((Date.now() - timeAgo.getTime()) / (1000 * 60));
+                    
+                    positionInfo += `👤 ${data.salesman_name || salesmanId}\n`;
+                    positionInfo += `📍 ${data.latitude.toFixed(6)}, ${data.longitude.toFixed(6)}\n`;
+                    positionInfo += `⏰ ${minutesAgo} minutes ago\n`;
+                    positionInfo += `🎯 Accuracy: ±${Math.round(data.accuracy)}m\n`;
+                    
+                    if (data.visit_session?.is_active) {
+                        positionInfo += `🏪 Visiting: ${data.visit_session.current_outlet || 'Unknown'}\n`;
+                        if (data.visit_session.is_paused) {
+                            positionInfo += `⏸️ Status: Paused\n`;
+                        } else {
+                            positionInfo += `✅ Status: Active\n`;
+                        }
+                    } else {
+                        positionInfo += `📱 Status: Available\n`;
+                    }
+                    
+                    positionInfo += '\n';
+                });
+                
+                alert(positionInfo);
+                
+            } catch (error) {
+                console.error('❌ Error showing positions:', error);
+                alert('❌ Error retrieving positions');
+            }
+        }
+
+        // Check if user is admin and show position monitoring button
+        function checkAdminAccess() {
+            // Add your admin check logic here
+            // For example, check if user ID is in admin list
+            const adminIds = ['ADMIN001', 'SUPERVISOR001']; // Add your admin IDs
+            
+            if (adminIds.includes(currentSalesmanId)) {
+                const adminBtn = document.getElementById('adminLocationBtn');
+                if (adminBtn) {
+                    adminBtn.classList.add('show');
+                }
+            }
+        }
+
+        // Manual location sync function (for testing)
+        function forceSyncLocation() {
+            console.log('📍 Manual location sync triggered');
+            getCurrentLocationEnhanced().then(() => {
+                syncCurrentLocationToFirebase();
+            }).catch(error => {
+                console.error('📍 Manual sync failed:', error);
+            });
+        }
 
         // ===== FIREBASE FUNCTIONS =====
         function updateFirebaseStatus(status, message) {
@@ -1312,18 +1870,6 @@
             }
         }
 
-        // ===== GEOLOCATION FUNCTIONS =====
-        function initializeGeolocation() {
-            if ("geolocation" in navigator) {
-                console.log('📍 Geolocation is available');
-                getCurrentLocation();
-                startLocationTracking();
-            } else {
-                console.warn('📍 Geolocation is not available');
-                updateLocationStatus('error', '❌ Location not supported');
-            }
-        }
-
         function getCurrentLocation() {
             updateLocationStatus('loading', '📍 Getting location...');
             
@@ -1368,6 +1914,8 @@
                     if (visitSession.isActive && !visitSession.isPaused) {
                         updateLocationStatus('success', '📍 Tracking active');
                     }
+                    
+                    updateEnhancedLocationStatus();
                 },
                 (error) => {
                     console.warn('📍 Location tracking error:', error);
@@ -1381,11 +1929,7 @@
         }
 
         function updateLocationStatus(status, message) {
-            const statusElement = document.getElementById('locationStatus');
-            if (statusElement) {
-                statusElement.textContent = message;
-                statusElement.className = `location-status ${status}`;
-            }
+            // Keep for compatibility
         }
 
         // ===== PAUSE/RESUME VISIT FUNCTIONS =====
@@ -1636,7 +2180,7 @@
             return pausedVisits.has(customerName.toLowerCase());
         }
 
-        // ===== VISIT SESSION MANAGEMENT - FIXED =====
+        // ===== VISIT SESSION MANAGEMENT =====
         function loadTodayVisitedCustomers() {
             const today = new Date().toISOString().split('T')[0];
             const visitKey = `visited_${currentSalesmanId}_${today}`;
@@ -2416,15 +2960,28 @@
                 });
 
                 let customerTypeText = `${selectedHari} Outlet`;
+                let skuZeroText = 'Tidak ada';
+                
                 if (detailRecord) {
                     const channelGroup = detailRecord['Channel Group'] || 'Unknown';
                     const project = detailRecord.Project || 'Unknown';
                     customerTypeText = `${channelGroup} - ${project}`;
-                    console.log(`📋 Found outlet details: ID=${detailRecord['Id Pelanggan']}, Type=${customerTypeText}`);
+                    
+                    // Extract SKU POM with value 0
+                    const skuPomKeys = ['CREAM8', 'GOTA8', 'OKKIOR20', 'PGFC8Z', 'MAXB2', 'RICH2', 'RUMUT5'];
+                    const skuZeroList = skuPomKeys.filter(sku => {
+                        const value = detailRecord[sku];
+                        return value === 0 || value === '0';
+                    });
+                    
+                    skuZeroText = skuZeroList.length > 0 ? skuZeroList.join(', ') : 'Semua SKU POM aktif';
+                    
+                    console.log(`🔋 Found outlet details: ID=${detailRecord['Id Pelanggan']}, Type=${customerTypeText}, SKU Zero=${skuZeroText}`);
                 }
                 
                 customerInfo.style.display = 'block';
                 document.getElementById('customerType').textContent = customerTypeText;
+                document.getElementById('skuZeroList').textContent = skuZeroText;
                 
                 updateSummaryFromCustomer(selectedPelanggan);
                 showVisitData(selectedPelanggan, selectedHari);
@@ -2437,7 +2994,8 @@
                     type: customerTypeText,
                     id_pelanggan: detailRecord ? detailRecord['Id Pelanggan'] : 'Not found',
                     alreadyVisited: false,
-                    isPaused: isPausedVisit(selectedPelanggan)
+                    isPaused: isPausedVisit(selectedPelanggan),
+                    skuZero: skuZeroText
                 });
                 
             } else {
@@ -2721,7 +3279,7 @@
             try {
                 showLoading(true);
                 
-                console.log('🚀 Starting Firebase-enabled visit system with pause/resume...');
+                console.log('🚀 Starting Firebase-enabled visit system with pause/resume & location tracking...');
                 
                 const currentDay = updateDayIndicator();
                 
@@ -2789,11 +3347,11 @@
                 showLoading(false);
                 showMainContent(true);
                 
-                console.log('✅ Enhanced visit system with pause/resume ready');
+                console.log('✅ Enhanced visit system with pause/resume & location tracking ready');
                 console.log(`📅 Current day: ${currentDay}`);
                 console.log(`📊 Available hari options: ${hariData.length}`);
                 console.log(`⏸️ Paused visits loaded: ${pausedVisits.size}`);
-                console.log('📍 Geolocation tracking enabled');
+                console.log('📍 10-minute location tracking enabled');
                 console.log('🏪 Order status tracking enabled');
                 console.log('💾 Local storage session management active');
                 console.log('🔥 Firebase sync enabled');
@@ -2885,6 +3443,31 @@
             }
         }
 
+        // Add manual sync button for testing
+        function addManualSyncButton() {
+            const floatingActions = document.getElementById('floatingActions');
+            
+            if (floatingActions && currentSalesmanId) {
+                const manualSyncBtn = document.createElement('button');
+                manualSyncBtn.className = 'floating-btn btn-manual-sync';
+                manualSyncBtn.innerHTML = '📍 Sync Location';
+                manualSyncBtn.onclick = forceSyncLocation;
+                
+                floatingActions.appendChild(manualSyncBtn);
+            }
+        }
+
+        // Enhanced initialization function
+        function initializeEnhancedLocation() {
+            initializeLocationTracking();
+            
+            // Update enhanced status every 30 seconds
+            setInterval(updateEnhancedLocationStatus, 30000);
+            
+            // Check admin access
+            setTimeout(checkAdminAccess, 1000);
+        }
+
         // ===== EVENT LISTENERS =====
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('hari').addEventListener('change', updatePelangganOptions);
@@ -2892,7 +3475,13 @@
 
             updateVisitSessionStatus();
             updateFloatingButtons();
-            initializeGeolocation();
+            
+            // Initialize enhanced location tracking
+            setTimeout(initializeEnhancedLocation, 1000);
+            
+            // Add manual sync button for testing
+            setTimeout(addManualSyncButton, 2000);
+            
             initializeData();
 
             setInterval(() => {
@@ -2926,6 +3515,7 @@
             alert('👤 Profile feature coming soon');
         }
 
+        // ===== CLEANUP AND VISIBILITY HANDLING =====
         window.addEventListener('beforeunload', function (e) {
             if (visitSession.isActive && !visitSession.isPaused) {
                 const confirmationMessage = `⚠️ Anda memiliki kunjungan aktif ke ${visitSession.outletName}.\n\nJika Anda meninggalkan halaman, kunjungan akan dianggap tidak selesai.`;
@@ -2934,15 +3524,37 @@
                 e.returnValue = confirmationMessage;
                 return confirmationMessage;
             }
+            
+            if (isLocationTrackingActive) {
+                // Final location sync before leaving
+                syncCurrentLocationToFirebase();
+                stopPeriodicLocationTracking();
+            }
         });
 
-        console.log('✅ Enhanced Visit System with Pause/Resume Feature loaded');
+        // Visibility change handling for location tracking
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                // Page is hidden - maintain tracking
+                console.log('📍 Page hidden - maintaining tracking');
+            } else {
+                // Page is visible - ensure tracking is active
+                console.log('📍 Page visible - ensuring tracking is active');
+                if (currentSalesmanId && !isLocationTrackingActive) {
+                    initializeLocationTracking();
+                }
+            }
+        });
+
+        console.log('✅ Enhanced Visit System with Pause/Resume & Location Tracking loaded');
         console.log('⏸️ Pause/Resume functionality enabled');
         console.log('🔄 Visit session management with time tracking');
         console.log('💾 Local storage + Firebase for comprehensive tracking');
         console.log('🗺️ Location tracking for pause/resume events');
         console.log('📊 Enhanced visit analytics with pause data');
-        console.log('🐛 Bug Fixed: Paused visits can now be resumed properly');
+        console.log('📍 10-minute periodic location sync to Firebase');
+        console.log('👥 Admin position monitoring available');
+        console.log('🛡️ Improved session protection and data integrity');
     </script>
 </body>
 </html>
