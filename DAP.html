@@ -376,41 +376,41 @@
         }
 
         /* Specific sticky column positioning */
-		.no-col { 
-			position: sticky;
-			left: 0; 
-			width: 40px;
-			min-width: 40px;
-			max-width: 40px;
-			background: #fff;
-			text-align: center !important;
-			z-index: 30;
-		}
+        .no-col { 
+            position: sticky;
+            left: 0; 
+            width: 40px;
+            min-width: 40px;
+            max-width: 40px;
+            background: #fff;
+            text-align: center !important;
+            z-index: 30;
+        }
 
-		/* Kolom Nama Pelanggan */
-		.customer-col { 
-			position: sticky;
-			left: 40px; /* sesuai lebar No */
-			width: 120px;
-			min-width: 120px; 
-			max-width: 120px;
-			background: #fff;
-			text-align: left !important;
-			padding-left: 12px !important;
-			z-index: 25;
-		}
+        /* Kolom Nama Pelanggan */
+        .customer-col { 
+            position: sticky;
+            left: 40px; /* sesuai lebar No */
+            width: 120px;
+            min-width: 120px; 
+            max-width: 120px;
+            background: #fff;
+            text-align: left !important;
+            padding-left: 12px !important;
+            z-index: 25;
+        }
 
-		/* Kolom Gap */
-		.gap-col { 
-			position: sticky;
-			left: 160px; /* No (40) + Nama (160) */
-			width: 60px;
-			min-width: 60px; 
-			max-width: 60px;
-			background: #fff;
-			text-align: center !important;
-			z-index: 20;
-		}
+        /* Kolom Gap */
+        .gap-col { 
+            position: sticky;
+            left: 160px; /* No (40) + Nama (160) */
+            width: 60px;
+            min-width: 60px; 
+            max-width: 60px;
+            background: #fff;
+            text-align: center !important;
+            z-index: 20;
+        }
 
         /* Value formatting */
         .value-positive { color: #059669; font-weight: 600; }
@@ -1034,6 +1034,293 @@
             showDataDisplay();
         }
 
+        // ===== ENHANCED SUMMARY FUNCTIONS =====
+        function updateSummary(selectedJKS) {
+            if (!currentSalesmanId || !selectedJKS) {
+                return;
+            }
+
+            console.log(`📊 Updating summary for JKS: ${selectedJKS}`);
+            console.log(`🔍 Looking for salesman ID: ${currentSalesmanId}`);
+
+            // Enhanced debugging - log actual data structure
+            if (jksData.length > 0) {
+                console.log('📋 Sample JKS data structure:', jksData[0]);
+                console.log('📋 Available JKS fields:', Object.keys(jksData[0]));
+                
+                // Show first few records to help identify patterns
+                console.log('📋 First 3 JKS records:', jksData.slice(0, 3));
+            }
+
+            // Try multiple possible field names for employee ID and JKS
+            const possibleEmployeeFields = ['szEmployeeId', 'employeeId', 'EmployeeId', 'ID', 'id', 'employee_id', 'emp_id'];
+            const possibleJKSFields = ['Hari JKS', 'JKS', 'hari_jks', 'Day', 'jks_day', 'HariJKS'];
+
+            let salesmanJKSData = [];
+            let matchedEmployeeField = null;
+            let matchedJKSField = null;
+            
+            // Enhanced: More thorough field detection
+            for (const empField of possibleEmployeeFields) {
+                for (const jksField of possibleJKSFields) {
+                    salesmanJKSData = jksData.filter(item => {
+                        const empId = item[empField];
+                        const jksDay = item[jksField];
+                        
+                        // More flexible matching
+                        const empMatch = empId && empId.toString().trim() === currentSalesmanId.toString().trim();
+                        const jksMatch = jksDay && jksDay.toString().trim() === selectedJKS.toString().trim();
+                        
+                        return empMatch && jksMatch;
+                    });
+                    
+                    if (salesmanJKSData.length > 0) {
+                        matchedEmployeeField = empField;
+                        matchedJKSField = jksField;
+                        console.log(`✅ Found summary data using fields: ${empField} & ${jksField}`);
+                        console.log(`📊 Found ${salesmanJKSData.length} matching records`);
+                        break;
+                    }
+                }
+                if (salesmanJKSData.length > 0) break;
+            }
+
+            // Enhanced: Additional debugging if no data found
+            if (salesmanJKSData.length === 0) {
+                console.warn('❌ No direct match found. Debugging...');
+                
+                // Check what employee IDs exist in JKS data
+                const uniqueEmployeeIds = new Set();
+                const uniqueJKSValues = new Set();
+                
+                possibleEmployeeFields.forEach(field => {
+                    jksData.forEach(item => {
+                        if (item[field]) {
+                            uniqueEmployeeIds.add(item[field].toString());
+                        }
+                    });
+                });
+                
+                possibleJKSFields.forEach(field => {
+                    jksData.forEach(item => {
+                        if (item[field]) {
+                            uniqueJKSValues.add(item[field].toString());
+                        }
+                    });
+                });
+                
+                console.log('🔍 Available Employee IDs in JKS data:', Array.from(uniqueEmployeeIds).slice(0, 10));
+                console.log('🔍 Available JKS values:', Array.from(uniqueJKSValues));
+                console.log('🔍 Looking for Employee ID:', currentSalesmanId);
+                console.log('🔍 Looking for JKS value:', selectedJKS);
+                
+                // Try to find partial matches
+                const partialEmployeeMatches = jksData.filter(item => {
+                    return possibleEmployeeFields.some(field => 
+                        item[field] && item[field].toString().includes(currentSalesmanId)
+                    );
+                });
+                
+                const partialJKSMatches = jksData.filter(item => {
+                    return possibleJKSFields.some(field => 
+                        item[field] && item[field].toString().includes(selectedJKS)
+                    );
+                });
+                
+                console.log('🔍 Partial employee matches:', partialEmployeeMatches.length);
+                console.log('🔍 Partial JKS matches:', partialJKSMatches.length);
+                
+                // Try case-insensitive matching
+                salesmanJKSData = jksData.filter(item => {
+                    const empMatch = possibleEmployeeFields.some(field => 
+                        item[field] && item[field].toString().toLowerCase().trim() === currentSalesmanId.toString().toLowerCase().trim()
+                    );
+                    const jksMatch = possibleJKSFields.some(field => 
+                        item[field] && item[field].toString().toLowerCase().trim() === selectedJKS.toString().toLowerCase().trim()
+                    );
+                    return empMatch && jksMatch;
+                });
+                
+                if (salesmanJKSData.length > 0) {
+                    console.log('✅ Found data with case-insensitive matching');
+                }
+            }
+
+            console.log(`📊 Final summary data count: ${salesmanJKSData.length}`);
+
+            if (salesmanJKSData.length === 0) {
+                // FALLBACK: Try to get summary from details data instead
+                console.log('⚡ Attempting fallback: calculating summary from details data...');
+                
+                const detailsSummary = calculateSummaryFromDetails(selectedJKS);
+                if (detailsSummary) {
+                    updateSummaryDisplay(detailsSummary);
+                    return;
+                }
+                
+                // If still no data, reset all metrics
+                console.warn('⚠️ No JKS data found for summary, resetting metrics');
+                resetSummaryMetrics();
+                return;
+            }
+
+            // Log sample data for debugging
+            console.log('📊 Sample summary data:', salesmanJKSData[0]);
+
+            // Enhanced: More flexible field mapping with auto-detection
+            const detectedFields = autoDetectFields(salesmanJKSData[0]);
+            console.log('🔍 Auto-detected fields:', detectedFields);
+
+            // Calculate totals using auto-detected fields
+            let totalTarget = 0, totalActual = 0, totalGap = 0;
+            let totalLY = 0, total3LM = 0, totalLM = 0, totalMax = 0;
+
+            salesmanJKSData.forEach(item => {
+                totalTarget += getValueWithDetection(item, detectedFields.target) || 0;
+                totalActual += getValueWithDetection(item, detectedFields.actual) || 0;
+                totalGap += getValueWithDetection(item, detectedFields.gap) || 0;
+                totalLY += getValueWithDetection(item, detectedFields.ly) || 0;
+                total3LM += getValueWithDetection(item, detectedFields.threeLM) || 0;
+                totalLM += getValueWithDetection(item, detectedFields.lm) || 0;
+                totalMax += getValueWithDetection(item, detectedFields.max) || 0;
+            });
+
+            const summaryData = {
+                totalTarget,
+                totalActual, 
+                totalGap,
+                totalLY,
+                total3LM,
+                totalLM,
+                totalMax
+            };
+
+            console.log(`📊 Calculated summary totals:`, summaryData);
+            updateSummaryDisplay(summaryData);
+        }
+
+        // Auto-detect field names based on common patterns
+        function autoDetectFields(sampleItem) {
+            const fields = Object.keys(sampleItem);
+            const detectedFields = {};
+
+            // Field detection patterns
+            const patterns = {
+                target: [/t\.mtd/i, /target/i, /tmtd/i],
+                actual: [/a\.mtd/i, /actual/i, /amtd/i],
+                gap: [/gap/i, /selisih/i],
+                ly: [/ly$/i, /last.*year/i, /tahun.*lalu/i],
+                threeLM: [/3lm/i, /three.*last/i, /tiga.*bulan/i],
+                lm: [/\blm$/i, /last.*month/i, /bulan.*lalu/i],
+                max: [/max/i, /maximum/i, /maksimum/i]
+            };
+
+            Object.keys(patterns).forEach(key => {
+                const matchingField = fields.find(field => 
+                    patterns[key].some(pattern => pattern.test(field))
+                );
+                detectedFields[key] = matchingField || null;
+            });
+
+            return detectedFields;
+        }
+
+        // Get value using detected field name
+        function getValueWithDetection(item, fieldName) {
+            if (!fieldName || !item[fieldName]) return 0;
+            return Number(item[fieldName]) || 0;
+        }
+
+        // Calculate summary from details data as fallback
+        function calculateSummaryFromDetails(selectedJKS) {
+            const filteredDetails = detailsData.filter(item => {
+                return item.szEmployeeId.toString() === currentSalesmanId.toString() && 
+                       (item['Hari JKS'] === selectedJKS || item['JKS'] === selectedJKS);
+            });
+
+            if (filteredDetails.length === 0) {
+                return null;
+            }
+
+            console.log(`📊 Calculating summary from ${filteredDetails.length} detail records`);
+
+            let totalTarget = 0, totalActual = 0, totalGap = 0;
+            let totalLY = 0, total3LM = 0, totalLM = 0, totalMax = 0;
+
+            filteredDetails.forEach(item => {
+                totalTarget += Number(item['T.MTD']) || 0;
+                totalActual += Number(item['A.MTD']) || 0;
+                totalGap += Number(item['Gap MTD']) || 0;
+                totalLY += Number(item['LY']) || 0;
+                total3LM += Number(item['3LM']) || 0;
+                totalLM += Number(item['LM']) || 0;
+                totalMax += Number(item['Max']) || 0;
+            });
+
+            return {
+                totalTarget,
+                totalActual,
+                totalGap,
+                totalLY,
+                total3LM,
+                totalLM,
+                totalMax
+            };
+        }
+
+        // Update summary display with calculated data
+        function updateSummaryDisplay(summaryData) {
+            const { totalTarget, totalActual, totalGap, totalLY, total3LM, totalLM, totalMax } = summaryData;
+
+            // Calculate percentages
+            const vsLYPercent = totalLY !== 0 ? ((totalActual - totalLY) / totalLY) * 100 : 0;
+            const vs3LMPercent = total3LM !== 0 ? ((totalActual - total3LM) / total3LM) * 100 : 0;
+            const vsLMPercent = totalLM !== 0 ? ((totalActual - totalLM) / totalLM) * 100 : 0;
+
+            // Update baris 1: T.MTD, A.MTD, Gap MTD
+            document.getElementById('totalTarget').textContent = formatCurrencyIndonesia(totalTarget);
+            document.getElementById('totalActual').textContent = formatCurrencyIndonesia(totalActual);
+            
+            const totalGapElement = document.getElementById('totalGap');
+            totalGapElement.textContent = formatCurrencyIndonesia(totalGap);
+            totalGapElement.className = `summary-value ${totalGap > 0 ? 'positive' : totalGap < 0 ? 'negative' : 'neutral'}`;
+
+            // Update baris 2: LY, 3LM, LM, Max
+            document.getElementById('totalLY').textContent = formatCurrencyIndonesia(totalLY);
+            document.getElementById('total3LM').textContent = formatCurrencyIndonesia(total3LM);
+            document.getElementById('totalLM').textContent = formatCurrencyIndonesia(totalLM);
+            document.getElementById('totalMax').textContent = formatCurrencyIndonesia(totalMax);
+
+            // Update baris 3: vs LY, vs 3LM, vs LM
+            const vsLYElement = document.getElementById('vsLY');
+            vsLYElement.textContent = formatPercentage(vsLYPercent);
+            vsLYElement.className = `summary-value ${vsLYPercent > 0 ? 'positive' : vsLYPercent < 0 ? 'negative' : 'neutral'}`;
+
+            const vs3LMElement = document.getElementById('vs3LM');
+            vs3LMElement.textContent = formatPercentage(vs3LMPercent);
+            vs3LMElement.className = `summary-value ${vs3LMPercent > 0 ? 'positive' : vs3LMPercent < 0 ? 'negative' : 'neutral'}`;
+
+            const vsLMElement = document.getElementById('vsLM');
+            vsLMElement.textContent = formatPercentage(vsLMPercent);
+            vsLMElement.className = `summary-value ${vsLMPercent > 0 ? 'positive' : vsLMPercent < 0 ? 'negative' : 'neutral'}`;
+
+            console.log('✅ Summary display updated successfully');
+        }
+
+        // Reset all summary metrics to zero
+        function resetSummaryMetrics() {
+            document.getElementById('totalTarget').textContent = '0';
+            document.getElementById('totalActual').textContent = '0';
+            document.getElementById('totalGap').textContent = '0';
+            document.getElementById('totalLY').textContent = '0';
+            document.getElementById('total3LM').textContent = '0';
+            document.getElementById('totalLM').textContent = '0';
+            document.getElementById('totalMax').textContent = '0';
+            document.getElementById('vsLY').textContent = '0%';
+            document.getElementById('vs3LM').textContent = '0%';
+            document.getElementById('vsLM').textContent = '0%';
+        }
+
         // ===== TABLE FUNCTIONS =====
         function renderOutletTable(data) {
             const tableBody = document.getElementById('tableBody');
@@ -1128,135 +1415,6 @@
                     </td>
                 </tr>
             `;
-        }
-
-        function updateSummary(selectedJKS) {
-            if (!currentSalesmanId || !selectedJKS) {
-                return;
-            }
-
-            console.log(`📊 Updating summary for JKS: ${selectedJKS}`);
-
-            // Try multiple possible field names for employee ID and JKS
-            const possibleEmployeeFields = ['szEmployeeId', 'employeeId', 'EmployeeId', 'ID', 'id'];
-            const possibleJKSFields = ['Hari JKS', 'JKS', 'hari_jks', 'Day'];
-
-            let salesmanJKSData = [];
-            
-            // Find data using different field combinations
-            for (const empField of possibleEmployeeFields) {
-                for (const jksField of possibleJKSFields) {
-                    salesmanJKSData = jksData.filter(item => {
-                        return item[empField] && item[empField].toString() === currentSalesmanId.toString() &&
-                               item[jksField] === selectedJKS;
-                    });
-                    
-                    if (salesmanJKSData.length > 0) {
-                        console.log(`✅ Found summary data using fields: ${empField} & ${jksField}`);
-                        break;
-                    }
-                }
-                if (salesmanJKSData.length > 0) break;
-            }
-
-            console.log(`📊 Summary data count: ${salesmanJKSData.length}`);
-
-            if (salesmanJKSData.length === 0) {
-                // Reset semua metric jika tidak ada data
-                console.warn('⚠️ No JKS data found for summary, resetting metrics');
-                document.getElementById('totalTarget').textContent = '0';
-                document.getElementById('totalActual').textContent = '0';
-                document.getElementById('totalGap').textContent = '0';
-                document.getElementById('totalLY').textContent = '0';
-                document.getElementById('total3LM').textContent = '0';
-                document.getElementById('totalLM').textContent = '0';
-                document.getElementById('totalMax').textContent = '0';
-                document.getElementById('vsLY').textContent = '0%';
-                document.getElementById('vs3LM').textContent = '0%';
-                document.getElementById('vsLM').textContent = '0%';
-                return;
-            }
-
-            // Log sample data for debugging
-            console.log('📊 Sample summary data:', salesmanJKSData[0]);
-
-            // Try different possible field names for the metrics
-            const fieldMappings = {
-                target: [' T.MTD', 'T.MTD', 'Target', 'target'],
-                actual: [' A.MTD', 'A.MTD', 'Actual', 'actual'],
-                gap: [' Gap MTD', 'Gap MTD', 'Gap', 'gap'],
-                ly: [' LY', 'LY', 'LastYear', 'last_year'],
-                threeLM: [' 3LM', '3LM', 'ThreeLastMonth', 'three_lm'],
-                lm: [' LM', 'LM', 'LastMonth', 'last_month'],
-                max: [' Max', 'Max', 'Maximum', 'maximum']
-            };
-
-            // Function to get value using multiple possible field names
-            function getValue(item, fieldType) {
-                const possibleFields = fieldMappings[fieldType] || [];
-                for (const field of possibleFields) {
-                    if (item[field] !== undefined && item[field] !== null) {
-                        return Number(item[field]) || 0;
-                    }
-                }
-                return 0;
-            }
-
-            // Hitung totals dari data JKS
-            let totalTarget = 0, totalActual = 0, totalGap = 0;
-            let totalLY = 0, total3LM = 0, totalLM = 0, totalMax = 0;
-
-            salesmanJKSData.forEach(item => {
-                totalTarget += getValue(item, 'target');
-                totalActual += getValue(item, 'actual');
-                totalGap += getValue(item, 'gap');
-                totalLY += getValue(item, 'ly');
-                total3LM += getValue(item, 'threeLM');
-                totalLM += getValue(item, 'lm');
-                totalMax += getValue(item, 'max');
-            });
-
-            console.log(`📊 Calculated totals:`, {
-                target: totalTarget,
-                actual: totalActual,
-                gap: totalGap,
-                ly: totalLY,
-                threeLM: total3LM,
-                lm: totalLM,
-                max: totalMax
-            });
-
-            // Hitung persentase vs
-            const vsLYPercent = totalLY !== 0 ? ((totalActual - totalLY) / totalLY) * 100 : 0;
-            const vs3LMPercent = total3LM !== 0 ? ((totalActual - total3LM) / total3LM) * 100 : 0;
-            const vsLMPercent = totalLM !== 0 ? ((totalActual - totalLM) / totalLM) * 100 : 0;
-
-            // Update baris 1: T.MTD, A.MTD, Gap MTD
-            document.getElementById('totalTarget').textContent = formatCurrencyIndonesia(totalTarget);
-            document.getElementById('totalActual').textContent = formatCurrencyIndonesia(totalActual);
-            
-            const totalGapElement = document.getElementById('totalGap');
-            totalGapElement.textContent = formatCurrencyIndonesia(totalGap);
-            totalGapElement.className = `summary-value ${totalGap > 0 ? 'positive' : totalGap < 0 ? 'negative' : 'neutral'}`;
-
-            // Update baris 2: LY, 3LM, LM, Max
-            document.getElementById('totalLY').textContent = formatCurrencyIndonesia(totalLY);
-            document.getElementById('total3LM').textContent = formatCurrencyIndonesia(total3LM);
-            document.getElementById('totalLM').textContent = formatCurrencyIndonesia(totalLM);
-            document.getElementById('totalMax').textContent = formatCurrencyIndonesia(totalMax);
-
-            // Update baris 3: vs LY, vs 3LM, vs LM
-            const vsLYElement = document.getElementById('vsLY');
-            vsLYElement.textContent = formatPercentage(vsLYPercent);
-            vsLYElement.className = `summary-value ${vsLYPercent > 0 ? 'positive' : vsLYPercent < 0 ? 'negative' : 'neutral'}`;
-
-            const vs3LMElement = document.getElementById('vs3LM');
-            vs3LMElement.textContent = formatPercentage(vs3LMPercent);
-            vs3LMElement.className = `summary-value ${vs3LMPercent > 0 ? 'positive' : vs3LMPercent < 0 ? 'negative' : 'neutral'}`;
-
-            const vsLMElement = document.getElementById('vsLM');
-            vsLMElement.textContent = formatPercentage(vsLMPercent);
-            vsLMElement.className = `summary-value ${vsLMPercent > 0 ? 'positive' : vsLMPercent < 0 ? 'negative' : 'neutral'}`;
         }
 
         // ===== SORTING FUNCTIONS =====
