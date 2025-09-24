@@ -28,34 +28,67 @@ class SalesmanDashboardUpdater:
         self.logger.info(f"Morning Update Session Started - {datetime.now()}")
 
     def read_excel_sheets(self):
-        """Read required sheets from Excel file"""
+        """Read Excel file and return xl_file object"""
         try:
-            self.logger.info("Reading Excel sheets...")
-            required_sheets = ['d.dashboard', 'd.performance', 'd.salesmanlob', 
-                             'd.salesmanproses', 'd.soharian']
-            optional_sheets = ['d.insentif']
+            self.logger.info("Reading Excel file...")
             
             # Try different engines for compatibility
             try:
-                xl_file = pd.ExcelFile(self.excel_file, engine='openpyxl')
+                xl_file = pd.ExcelFile(self.excel_file, engine='pyxlsb')
             except:
-                xl_file = pd.ExcelFile(self.excel_file)
+                try:
+                    xl_file = pd.ExcelFile(self.excel_file, engine='openpyxl')
+                except:
+                    xl_file = pd.ExcelFile(self.excel_file)
             
-            sheets = {}
-            available_sheets = xl_file.sheet_names
-            
-            for sheet_name in required_sheets + optional_sheets:
-                if sheet_name in available_sheets:
-                    sheets[sheet_name] = pd.read_excel(xl_file, sheet_name=sheet_name)
-                    self.logger.info(f"Loaded {sheet_name}: {len(sheets[sheet_name])} rows")
-                elif sheet_name in required_sheets:
-                    raise Exception(f"Required sheet {sheet_name} not found")
-            
-            return sheets
+            self.logger.info(f"Excel file loaded with {len(xl_file.sheet_names)} sheets")
+            return xl_file
             
         except Exception as e:
             self.logger.error(f"Error reading Excel: {e}")
             return None
+
+    def export_raw_sheets_for_android(self, xl_file):
+        """Export raw sheets for Android app"""
+        try:
+            self.logger.info("Exporting raw JSONL sheets for Android app...")
+            
+            # Get all sheet names that start with "d."
+            all_sheet_names = xl_file.sheet_names
+            filtered_sheets = [sheet for sheet in all_sheet_names if sheet.startswith('d.')]
+            
+            # Define output folders
+            android_folder = r'C:\Users\kisman.pidu\AndroidStudioProjects\MAS\app\src\main\assets\data'
+            dashboard_folder = r'C:\Dashboard\data'
+            
+            # Create folders if they don't exist
+            os.makedirs(android_folder, exist_ok=True)
+            os.makedirs(dashboard_folder, exist_ok=True)
+            
+            # Export each filtered sheet to both locations
+            for sheet in filtered_sheets:
+                try:
+                    df = pd.read_excel(xl_file, sheet_name=sheet)
+                    
+                    # Save to Android Studio location (JSONL format)
+                    android_file = os.path.join(android_folder, f"{sheet}.json")
+                    df.to_json(android_file, orient='records', lines=True)
+                    
+                    # Save to Dashboard location (JSONL format) 
+                    dashboard_file = os.path.join(dashboard_folder, f"{sheet}.json")
+                    df.to_json(dashboard_file, orient='records', lines=True)
+                    
+                    self.logger.info(f"Exported raw {sheet} to both locations ({len(df)} rows)")
+                    
+                except Exception as e:
+                    self.logger.warning(f"Could not export {sheet}: {e}")
+            
+            self.logger.info(f"Raw export completed: {len(filtered_sheets)} sheets processed")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Error exporting raw sheets: {e}")
+            return False
 
     def safe_float(self, value):
         """Safely convert value to float"""
@@ -83,264 +116,17 @@ class SalesmanDashboardUpdater:
         except:
             return "0"
 
-    def parse_percentage(self, value):
-        """Parse percentage values"""
-        if pd.isna(value) or value == 0:
-            return 0
+    def generate_chart_data_only(self, xl_file):
+        """Generate only chart_data.json for web dashboard"""
         try:
-            if isinstance(value, (int, float)):
-                return int(round(value * 100 if -1 <= value <= 1 else value))
-            if isinstance(value, str):
-                clean_value = str(value).strip().replace('%', '').replace(',', '')
-                if '(' in clean_value and ')' in clean_value:
-                    clean_value = '-' + clean_value.replace('(', '').replace(')', '')
-                return int(round(float(clean_value)))
-            return int(round(float(value)))
-        except:
-            return 0
-
-    def find_column_value(self, row, possible_names):
-        """Find column value from multiple possible column names"""
-        for name in possible_names:
-            if name in row.index and pd.notna(row.get(name)) and row.get(name) != 0:
-                return row.get(name)
-        return 0
-
-    def process_dashboard_data(self, sheets):
-        """Process dashboard data"""
-        try:
-            self.logger.info("Processing dashboard data...")
-            dashboard_df = sheets['d.dashboard']
+            self.logger.info("Generating chart_data.json...")
             
-            lob_cards = []
-            total_data = None
-            
-            for _, row in dashboard_df.iterrows():
-                if pd.notna(row.get('LOB', '')) and row.get('LOB', '').strip() != '':
-                    lob_name = str(row['LOB']).strip()
-                    
-                    actual = self.safe_float(row.get('Actual', 0))
-                    bp = self.safe_float(row.get('BP', 1))
-                    gap = self.safe_float(row.get('Gap', 0))
-                    achievement = (actual / bp * 100) if bp > 0 else 0
-                    
-                    # Get vs metrics
-                    vs_bp = self.parse_percentage(self.find_column_value(row, ['vs BP', 'vs_BP', 'vsBP']))
-                    vs_ly = self.parse_percentage(self.find_column_value(row, ['vs LY', 'vs_LY', 'vsLY']))
-                    vs_3lm = self.parse_percentage(self.find_column_value(row, ['vs 3LM', 'vs_3LM', 'vs3LM']))
-                    vs_lm = self.parse_percentage(self.find_column_value(row, ['vs LM', 'vs_LM', 'vsLM']))
-                    
-                    lob_data = {
-                        'name': lob_name,
-                        'achievement': f"{int(round(achievement))}%",
-                        'actual': self.format_currency_indonesia(actual),
-                        'target': self.format_currency_indonesia(bp),
-                        'gap': self.format_currency_indonesia(abs(gap)),
-                        'vs_bp': f"{'+' if vs_bp >= 0 else ''}{vs_bp}%",
-                        'vs_ly': f"{'+' if vs_ly >= 0 else ''}{vs_ly}%",
-                        'vs_3lm': f"{'+' if vs_3lm >= 0 else ''}{vs_3lm}%",
-                        'vs_lm': f"{'+' if vs_lm >= 0 else ''}{vs_lm}%"
-                    }
-                    
-                    if lob_name.upper() == 'TOTAL':
-                        total_data = lob_data
-                    else:
-                        lob_cards.append(lob_data)
-            
-            result = {
-                'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                'depo_name': 'Depo Tanjung',
-                'region_name': 'Region Kalimantan',
-                'lob_cards': lob_cards
-            }
-            
-            if total_data:
-                result['total_data'] = total_data
-            
-            self.logger.info(f"Processed {len(lob_cards)} LOB cards + TOTAL data")
-            return result
-            
-        except Exception as e:
-            self.logger.error(f"Error processing dashboard data: {e}")
-            return None
-
-    def process_salesman_data(self, sheets):
-        """Process salesman list for ranking and login"""
-        try:
-            self.logger.info("Processing salesman data...")
-            performance_df = sheets['d.performance']
-            salesman_list = []
-            
-            for _, row in performance_df.iterrows():
-                if pd.notna(row.get('szEmployeeId', '')) and pd.notna(row.get('szname', '')):
-                    nik = str(int(float(row['szEmployeeId'])))
-                    name = str(row['szname']).strip()
-                    
-                    actual = self.safe_float(row.get('Actual', 0))
-                    target = self.safe_float(row.get('Target', 1))
-                    achievement = (actual / target * 100) if target > 0 else 0
-                    
-                    # Determine status
-                    if achievement >= 100:
-                        status = 'Excellent'
-                    elif achievement >= 90:
-                        status = 'Very Good'
-                    elif achievement >= 70:
-                        status = 'Good'
-                    else:
-                        status = 'Extra Effort'
-                    
-                    salesman_list.append({
-                        'id': nik,
-                        'name': name,
-                        'achievement': f"{int(round(achievement))}%",
-                        'actual': self.format_currency_indonesia(actual),
-                        'target': self.format_currency_indonesia(target),
-                        'rank': int(row.get('Rank', 0)) if pd.notna(row.get('Rank')) else 0,
-                        'type': str(row.get('Tipe Salesman', 'Sales')).strip(),
-                        'status': status
-                    })
-            
-            salesman_list.sort(key=lambda x: x['rank'] if x['rank'] > 0 else 999)
-            self.logger.info(f"Processed {len(salesman_list)} salesman")
-            return salesman_list
-            
-        except Exception as e:
-            self.logger.error(f"Error processing salesman data: {e}")
-            return []
-
-    def process_salesman_details(self, sheets):
-        """Process detailed salesman data"""
-        try:
-            self.logger.info("Processing salesman details...")
-            lob_df = sheets['d.salesmanlob']
-            process_df = sheets['d.salesmanproses']
-            performance_df = sheets['d.performance']
-            
-            salesman_details = {}
-            
-            # Process LOB performance
-            for _, row in lob_df.iterrows():
-                if pd.notna(row.get('szEmployeeId', '')) and pd.notna(row.get('LOB', '')):
-                    nik = str(int(float(row['szEmployeeId'])))
-                    lob_name = str(row['LOB']).strip()
-                    
-                    if nik not in salesman_details:
-                        salesman_details[nik] = {
-                            'name': str(row.get('szname', '')).strip(),
-                            'sac': str(row.get('Nama SAC', '')).strip(),
-                            'type': str(row.get('Tipe Salesman', '')).strip(),
-                            'performance': {},
-                            'metrics': {}
-                        }
-                    
-                    actual = self.safe_float(row.get('Actual', 0))
-                    target = self.safe_float(row.get('Target', 1))
-                    achievement = (actual / target * 100) if target > 0 else 0
-                    gap = actual - target
-                    
-                    salesman_details[nik]['performance'][lob_name] = {
-                        'actual': actual,
-                        'target': target,
-                        'percentage': int(round(achievement)),
-                        'gap': gap
-                    }
-            
-            # Process metrics
-            for _, row in process_df.iterrows():
-                if pd.notna(row.get('szEmployeeId', '')):
-                    nik = str(int(float(row['szEmployeeId'])))
-                    if nik in salesman_details:
-                        ca = self.safe_float(row.get('Ach_CA', 0))
-                        gp_food = self.safe_float(row.get('Ach_GPFood', 0))
-                        gp_others = self.safe_float(row.get('Ach_GPOthers', 0))
-                        avg_sku = self.safe_float(row.get('Ach_AvgSKU', 0))
-                        
-                        salesman_details[nik]['metrics'] = {
-                            'CA': int(round(ca)),
-                            'CAProd': int(round(self.safe_float(row.get('Ach_CAProdAll', 0)))),
-                            'SKU': int(round(avg_sku)),
-                            'GP': int(round((gp_food + gp_others) / 2)) if (gp_food + gp_others) > 0 else 0
-                        }
-            
-            # Add TOTAL and Ranking
-            total_salesman_count = len(salesman_details)
-            for _, row in performance_df.iterrows():
-                if pd.notna(row.get('szEmployeeId', '')):
-                    nik = str(int(float(row['szEmployeeId'])))
-                    if nik in salesman_details:
-                        total_actual = self.safe_float(row.get('Actual', 0))
-                        total_target = self.safe_float(row.get('Target', 1))
-                        total_achievement = (total_actual / total_target * 100) if total_target > 0 else 0
-                        
-                        salesman_details[nik]['TOTAL'] = {
-                            'actual': total_actual,
-                            'target': total_target,
-                            'percentage': int(round(total_achievement)),
-                            'gap': total_actual - total_target
-                        }
-                        
-                        salesman_details[nik]['Ranking'] = {
-                            'Rank': int(row.get('Rank', 0)) if pd.notna(row.get('Rank')) else 0,
-                            'total_salesman': total_salesman_count
-                        }
-            
-            self.logger.info(f"Processed details for {len(salesman_details)} salesman")
-            return salesman_details
-            
-        except Exception as e:
-            self.logger.error(f"Error processing salesman details: {e}")
-            return {}
-
-    def process_incentive_data(self, sheets):
-        """Process incentive data if available"""
-        try:
-            if 'd.insentif' not in sheets:
-                self.logger.info("No incentive data available")
-                return []
-                
-            self.logger.info("Processing incentive data...")
-            insentif_df = sheets['d.insentif']
-            incentive_records = []
-            
-            for _, row in insentif_df.iterrows():
-                if pd.notna(row.get('szEmployeeId', '')):
-                    incentive_record = {
-                        'NIK SAC': int(self.safe_float(row.get('NIK SAC', 0))),
-                        'Nama SAC': str(row.get('Nama SAC', '')).strip(),
-                        'szEmployeeId': int(self.safe_float(row.get('szEmployeeId', 0))),
-                        'szname': str(row.get('szname', '')).strip(),
-                        'Dept': str(row.get('Dept', '')).strip(),
-                        'Tipe Salesman': str(row.get('Tipe Salesman', '')).strip(),
-                        'GPPJ & GEN': int(self.safe_float(row.get('GPPJ & GEN', 0))),
-                        'GBS & OTHERS': int(self.safe_float(row.get('GBS & OTHERS', 0))),
-                        'GPPJ': int(self.safe_float(row.get('GPPJ', 0))),
-                        'GBS': int(self.safe_float(row.get('GBS', 0))),
-                        'MBR': int(self.safe_float(row.get('MBR', 0))),
-                        'HGJ': int(self.safe_float(row.get('HGJ', 0))),
-                        'OTHERS': int(self.safe_float(row.get('OTHERS', 0))),
-                        'Avg SKU': int(self.safe_float(row.get('Avg SKU', 0))),
-                        'GP': int(self.safe_float(row.get('GP', 0))),
-                        'POM': None if pd.isna(row.get('POM')) else int(self.safe_float(row.get('POM'))),
-                        'AR Coll': int(self.safe_float(row.get('AR Coll', 0))),
-                        'Insentif_sales': int(self.safe_float(row.get('Insentif_sales', 0))),
-                        'Insentif_Proses': int(self.safe_float(row.get('Insentif_Proses', 0))),
-                        'Total_Insentif': int(self.safe_float(row.get('Total_Insentif', 0)))
-                    }
-                    incentive_records.append(incentive_record)
-            
-            self.logger.info(f"Processed {len(incentive_records)} incentive records")
-            return incentive_records
-            
-        except Exception as e:
-            self.logger.error(f"Error processing incentive data: {e}")
-            return []
-
-    def generate_chart_data(self, sheets):
-        """Generate chart data"""
-        try:
-            self.logger.info("Generating chart data...")
-            so_df = sheets['d.soharian']
+            # Read only the required sheet for chart
+            try:
+                so_df = pd.read_excel(xl_file, sheet_name='d.soharian')
+            except Exception as e:
+                self.logger.error(f"Could not read d.soharian sheet: {e}")
+                return None
             
             # Process dates and numeric columns
             if 'Tgl' in so_df.columns:
@@ -375,19 +161,18 @@ class SalesmanDashboardUpdater:
                        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'][current_date.month - 1]
             period = f"{month_id} {current_date.year}"
             
-            # Get gap from dashboard
+            # Get gap from dashboard sheet
             gap_total = "0"
             try:
-                dashboard_df = sheets.get('d.dashboard')
-                if dashboard_df is not None:
-                    for _, row in dashboard_df.iterrows():
-                        if str(row.get('LOB', '')).strip().upper() == 'TOTAL':
-                            gap_value = self.safe_float(row.get('Gap', 0))
-                            if gap_value != 0:
-                                gap_total = self.format_currency_indonesia(abs(gap_value))
-                                break
-            except:
-                pass
+                dashboard_df = pd.read_excel(xl_file, sheet_name='d.dashboard')
+                for _, row in dashboard_df.iterrows():
+                    if str(row.get('LOB', '')).strip().upper() == 'TOTAL':
+                        gap_value = self.safe_float(row.get('Gap', 0))
+                        if gap_value != 0:
+                            gap_total = self.format_currency_indonesia(abs(gap_value))
+                            break
+            except Exception as e:
+                self.logger.warning(f"Could not get gap total from dashboard: {e}")
             
             chart_data = {
                 'period': period,
@@ -412,51 +197,23 @@ class SalesmanDashboardUpdater:
             self.logger.error(f"Error generating chart data: {e}")
             return None
 
-    def save_json_files(self, sheets):
-        """Generate and save all JSON files"""
+    def save_chart_data_json(self, chart_data):
+        """Save only chart_data.json"""
         try:
-            self.logger.info("Generating JSON files...")
-            
-            # Process all data
-            dashboard_data = self.process_dashboard_data(sheets)
-            salesman_list = self.process_salesman_data(sheets)
-            salesman_details = self.process_salesman_details(sheets)
-            incentive_data = self.process_incentive_data(sheets)
-            chart_data = self.generate_chart_data(sheets)
-            
-            if not dashboard_data or not salesman_list:
-                self.logger.error("Failed to process required data")
+            if not chart_data:
+                self.logger.error("No chart data to save")
                 return False
             
-            # Save files
-            files_to_save = [
-                ('dashboard.json', dashboard_data),
-                ('salesman_list.json', salesman_list),
-                ('salesman_details.json', salesman_details),
-                ('chart_data.json', chart_data)
-            ]
+            # Save chart_data.json
+            chart_file = os.path.join(self.data_dir, 'chart_data.json')
+            with open(chart_file, 'w', encoding='utf-8') as f:
+                json.dump(chart_data, f, indent=2, ensure_ascii=False)
+            self.logger.info(f"Saved chart_data.json")
             
-            for filename, data in files_to_save:
-                if data:
-                    filepath = os.path.join(self.data_dir, filename)
-                    with open(filepath, 'w', encoding='utf-8') as f:
-                        json.dump(data, f, indent=2, ensure_ascii=False)
-                    self.logger.info(f"Saved {filename}")
-            
-            # Save incentive data in JSONL format
-            if incentive_data:
-                incentive_file = os.path.join(self.data_dir, 'd.insentif.json')
-                with open(incentive_file, 'w', encoding='utf-8') as f:
-                    for record in incentive_data:
-                        json.dump(record, f, ensure_ascii=False)
-                        f.write('\n')
-                self.logger.info(f"Saved d.insentif.json with {len(incentive_data)} records")
-            
-            self.logger.info("All JSON files generated successfully")
             return True
             
         except Exception as e:
-            self.logger.error(f"Error generating JSON files: {e}")
+            self.logger.error(f"Error saving chart data: {e}")
             return False
 
     def git_push_changes(self):
@@ -481,7 +238,7 @@ class SalesmanDashboardUpdater:
                 subprocess.run(['git', 'add', pattern], capture_output=True)
             
             # Commit
-            commit_message = f"Morning update: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            commit_message = f"Morning update: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Simplified: Raw JSONL + Chart Data Only"
             commit_result = subprocess.run(['git', 'commit', '-m', commit_message], 
                                          capture_output=True, text=True)
             
@@ -509,17 +266,23 @@ class SalesmanDashboardUpdater:
             return False
 
     def run(self):
-        """Run the complete update process"""
+        """Run the super simplified update process"""
         start_time = datetime.now()
         
         try:
-            # Read Excel data
-            sheets = self.read_excel_sheets()
-            if not sheets:
+            # Read Excel file
+            xl_file = self.read_excel_sheets()
+            if not xl_file:
                 return False
             
-            # Generate JSON files
-            if not self.save_json_files(sheets):
+            # Export raw JSONL sheets for Android app
+            # This creates d.dashboard.json, d.performance.json, etc. in JSONL format
+            if not self.export_raw_sheets_for_android(xl_file):
+                self.logger.warning("Raw sheets export failed, continuing...")
+            
+            # Generate only chart_data.json for web dashboard
+            chart_data = self.generate_chart_data_only(xl_file)
+            if not self.save_chart_data_json(chart_data):
                 return False
             
             # Push to GitHub
@@ -528,7 +291,7 @@ class SalesmanDashboardUpdater:
             
             # Success
             duration = (datetime.now() - start_time).total_seconds()
-            self.logger.info(f"Update completed successfully in {duration:.2f} seconds")
+            self.logger.info(f"Super simplified update finished successfully in {duration:.2f} seconds")
             return True
             
         except Exception as e:
@@ -536,17 +299,30 @@ class SalesmanDashboardUpdater:
             return False
 
 def main():
-    print("Salesman Dashboard Updater - Simplified Version")
-    print("=" * 50)
+    print("Salesman Dashboard Updater - Super Simplified Version")
+    print("=" * 55)
+    print("Features:")
+    print("- Raw JSONL export for Android app (all d.* sheets)")
+    print("- Only chart_data.json for web dashboard")
+    print("- No processed JSON files (dashboard.json, salesman_list.json, etc.)")
+    print("- Dual location export (Android Studio + Dashboard folder)")
+    print()
+    print("Files Generated:")
+    print("1. data/d.dashboard.json (JSONL) - For dashboard.html")
+    print("2. data/d.performance.json (JSONL) - For dashboard.html") 
+    print("3. data/chart_data.json (JSON) - For dashboard.html")
+    print("4. All other d.* sheets (JSONL) - For Android app")
     
     updater = SalesmanDashboardUpdater()
     success = updater.run()
     
     if success:
-        print("\nUpdate successful!")
-        print("Dashboard URLs:")
+        print("\nSuper simplified update successful!")
+        print("\nWeb Dashboard (uses 3 files only):")
         print("- https://kisman271128.github.io/salesman-dashboard/")
         print("- https://kisman271128.github.io/salesman-dashboard/dashboard.html")
+        print("\nAndroid App Data:")
+        print("- All d.* sheets exported as JSONL to Android Studio assets")
     else:
         print("\nUpdate failed! Check morning_update.log for details.")
         return 1
