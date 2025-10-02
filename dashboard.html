@@ -1050,15 +1050,33 @@
             try {
                 const val = parseFloat(value);
                 
-                if (val >= 1000000000) {  // >= 1 Miliar
-                    return (val / 1000000000).toFixed(1) + 'M';
-                } else if (val >= 1000000) {  // >= 1 Juta, < 1 Miliar  
-                    return (val / 1000000).toFixed(1) + 'Jt';
-                } else if (val >= 1000) {  // >= 1 Ribu, < 1 Juta
-                    return Math.round(val / 1000) + 'Rb';
+                // Handle NaN
+                if (isNaN(val)) return '0';
+                
+                // Check if negative
+                const isNegative = val < 0;
+                const absVal = Math.abs(val);
+                
+                let formatted;
+                
+                if (absVal >= 1000000000) {  // >= 1 Miliar
+                    // Check if whole number after division
+                    const result = absVal / 1000000000;
+                    formatted = (Number.isInteger(result) ? result.toFixed(0) : result.toFixed(1)) + 'M';
+                } else if (absVal >= 1000000) {  // >= 1 Juta, < 1 Miliar  
+                    const result = absVal / 1000000;
+                    formatted = (Number.isInteger(result) ? result.toFixed(0) : result.toFixed(1)) + 'Jt';
+                } else if (absVal >= 1000) {  // >= 1 Ribu, < 1 Juta
+                    const result = absVal / 1000;
+                    formatted = (Number.isInteger(result) ? result.toFixed(0) : result.toFixed(1)) + 'Rb';
                 } else {  // < 1 Ribu
-                    return Math.round(val).toString();
+                    // Check if whole number
+                    formatted = Number.isInteger(absVal) ? absVal.toString() : absVal.toFixed(1);
                 }
+                
+                // Add minus sign if negative
+                return isNegative ? '-' + formatted : formatted;
+                
             } catch {
                 return "0";
             }
