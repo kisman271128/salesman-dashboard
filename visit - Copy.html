@@ -2985,20 +2985,13 @@
                     const project = detailRecord.Project || 'Unknown';
                     customerTypeText = `${channelGroup} - ${project}`;
                     
-                    // Extract SKU POM from pelangganData where Sts_POM = "POM" and CA_POM = 1
-                    const skuPomList = pelangganData
-                        .filter(item => {
-                            const itemPelanggan = (item.Nama_Pelanggan || '').toString().trim();
-                            const stsPom = (item.Sts_POM || '').toString().trim();
-                            const caPom = Number(item.CA_POM);
-                            
-                            return itemPelanggan.toLowerCase() === selectedPelanggan.toLowerCase() &&
-                                stsPom === 'POM' &&
-                                caPom === 1;
-                        })
-                        .map(item => item.SKU)
-                        .filter(sku => sku && sku.toString().trim() !== '');
-                  
+                    // Extract SKU POM with value 0
+                    const skuPomKeys = ['POCO5', 'DCBCO5', 'RICH5', 'OKKIOR20', 'SUC01A', 'PACA5', 'YPCB1', 'PGM7D', 'KUKI2'];
+                    const skuZeroList = skuPomKeys.filter(sku => {
+                        const value = detailRecord[sku];
+                        return value === 0 || value === '0';
+                    });
+                    
                     skuZeroText = skuZeroList.length > 0 ? skuZeroList.join(', ') : 'Semua SKU POM aktif';
                     
                     console.log(`📋 Found outlet details: ID=${detailRecord['Id Pelanggan']}, Type=${customerTypeText}, SKU Zero=${skuZeroText}`);
