@@ -976,6 +976,25 @@
             font-weight: 600;
             color: #374151;
         }
+        
+        /* ===== SKU MSS STATUS STYLING ===== */
+        .sku-mss-inactive {
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            color: #78350f;
+            border: 1px solid #f59e0b;
+            padding: 3px 6px;
+            border-radius: 6px;
+            font-weight: 700;
+        }
+
+        .sku-mss-active {
+            background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+            color: #065f46;
+            border: 1px solid #10b981;
+            padding: 3px 6px;
+            border-radius: 6px;
+            font-weight: 700;
+        }
 
         /* ===== PROMO TAG STYLING ===== */
         .promo-tag {
@@ -3268,6 +3287,7 @@
             
             let html = '';
             let totalPlan = 0, totalMTD = 0;
+            let mssInactiveCount = 0, mssActiveCount = 0;
             
             data.forEach((item, index) => {
                 const no = index + 1;
@@ -3287,11 +3307,26 @@
                 const gapBadgeClass = gap > 0 ? 'gap-positive' : gap < 0 ? 'gap-negative' : 'gap-neutral';
                 const promoClass = `promo-${promo.toLowerCase().replace(/\s+/g, '')}`;
                 
+                // Check MSS status for SKU coloring
+                let skuClass = 'sku-code';
+                const stsMss = (item.Sts_MSS || '').toString().trim().toUpperCase();
+                const caMss = Number(item.CA_MSS || 0);
+                
+                if (stsMss === 'MSS') {
+                    if (caMss === 0) {
+                        skuClass = 'sku-code sku-mss-inactive'; // Yellow - MSS not active
+                        mssInactiveCount++;
+                    } else if (caMss === 1) {
+                        skuClass = 'sku-code sku-mss-active'; // Green - MSS active
+                        mssActiveCount++;
+                    }
+                }
+                
                 html += `
                     <tr>
                         <td>${no}</td>
                         <td><span class="promo-tag ${promoClass}">${promo}</span></td>
-                        <td><span class="sku-code">${sku}</span></td>
+                        <td><span class="${skuClass}">${sku}</span></td>
                         <td><span class="gap-badge ${gapBadgeClass}">${gap > 0 ? '+' : ''}${formatNumber(gap)}</span></td>
                         <td class="metric-value">${formatNumber(plan)}</td>
                         <td class="metric-value">${formatNumber(mtd)}</td>
@@ -3321,7 +3356,10 @@
             
             tableBody.innerHTML = html;
             
-            console.log(`📊 Table rendered: ${data.length} items with summary row`);
+            console.log(`📊 Table rendered: ${data.length} items with summary row and MSS status coloring`);
+            if (mssInactiveCount > 0 || mssActiveCount > 0) {
+                console.log(`🎨 MSS Status: ${mssActiveCount} active (green), ${mssInactiveCount} inactive (yellow)`);
+            }
         }
 
         function generateRecommendation(gap, plan, mtd) {
