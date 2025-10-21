@@ -794,7 +794,98 @@
             border-radius: 4px;
             border: 1px solid #fecaca;
         }
+        
+        /* ===== TAB SYSTEM ===== */
+        .tab-navigation {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            padding: 0 16px;
+        }
 
+        .tab-button {
+            flex: 1;
+            padding: 12px 16px;
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #64748b;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .tab-button.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .tab-button:hover:not(.active) {
+            background: #f8fafc;
+            border-color: #cbd5e1;
+        }
+
+        .tab-content-panel {
+            display: none;
+        }
+
+        .tab-content-panel.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* ===== SKU MSS GRID ===== */
+        .mss-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            padding: 16px;
+        }
+
+        .mss-card {
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            border: 1px solid #f59e0b;
+            border-radius: 8px;
+            padding: 8px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .mss-card-sku {
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            font-weight: 700;
+            color: #78350f;
+            margin-bottom: 2px;
+        }
+
+        .mss-card-team {
+            font-size: 8px;
+            color: #92400e;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .mss-empty {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 40px 20px;
+            color: #64748b;
+        }
+
+        @media (max-width: 400px) {
+            .mss-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
         /* ===== FLOATING ACTION BUTTONS ===== */
         .floating-actions {
             position: fixed;
@@ -975,6 +1066,25 @@
             font-size: 14px;
             font-weight: 600;
             color: #374151;
+        }
+        
+        /* ===== SKU MSS STATUS STYLING ===== */
+        .sku-mss-inactive {
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            color: #78350f;
+            border: 1px solid #f59e0b;
+            padding: 3px 6px;
+            border-radius: 6px;
+            font-weight: 700;
+        }
+
+        .sku-mss-active {
+            background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+            color: #065f46;
+            border: 1px solid #10b981;
+            padding: 3px 6px;
+            border-radius: 6px;
+            font-weight: 700;
         }
 
         /* ===== PROMO TAG STYLING ===== */
@@ -1182,35 +1292,61 @@
 
                 <!-- Visit Data Table -->
                 <div class="content-section">
-                    <div class="table-section">
-                        <div class="section-title">📊 Visit Data:</div>
-                        <div class="table-wrapper">
-                            <div class="table-container">
-                                <table id="dataTable">
-                                    <thead>
-                                        <tr>
-                                            <th>No</th>
-                                            <th class="sortable-header" onclick="sortTable('promo')">Promo</th>
-                                            <th>SKU</th>
-                                            <th>Gap</th>
-                                            <th>Plan</th>
-                                            <th>MTD</th>
-                                            <th>3LM</th>
-                                            <th>LM</th>
-                                            <th>Rec</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="tableBody">
-                                        <tr>
-                                            <td colspan="9">
-                                                <div class="empty-state">
-                                                    <div class="empty-state-icon">📊</div>
-                                                    <div>Pilih filter untuk melihat data</div>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+                    <!-- Tab Navigation -->
+                    <div class="tab-navigation">
+                        <button class="tab-button active" onclick="switchTab('dataSku')">
+                            📊 Data SKU
+                        </button>
+                        <button class="tab-button" onclick="switchTab('mssBelumAktif')">
+                            ⚠️ SKU MSS Belum Aktif
+                        </button>
+                    </div>
+
+                    <!-- Tab Content: Data SKU -->
+                    <div id="dataSku" class="tab-content-panel active">
+                        <div class="table-section">
+                            <div class="section-title">📊 Visit Data:</div>
+                            <div class="table-wrapper">
+                                <div class="table-container">
+                                    <table id="dataTable">
+                                        <thead>
+                                            <tr>
+                                                <th>No</th>
+                                                <th class="sortable-header" onclick="sortTable('promo')">Promo</th>
+                                                <th>SKU</th>
+                                                <th>Gap</th>
+                                                <th>Plan</th>
+                                                <th>MTD</th>
+                                                <th>3LM</th>
+                                                <th>LM</th>
+                                                <th>Rec</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="tableBody">
+                                            <tr>
+                                                <td colspan="9">
+                                                    <div class="empty-state">
+                                                        <div class="empty-state-icon">📊</div>
+                                                        <div>Pilih filter untuk melihat data</div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab Content: SKU MSS Belum Aktif -->
+                    <div id="mssBelumAktif" class="tab-content-panel">
+                        <div class="table-section">
+                            <div class="section-title">⚠️ SKU MSS Belum Aktif:</div>
+                            <div id="mssGridContainer" class="mss-grid">
+                                <div class="mss-empty">
+                                    <div class="empty-state-icon">⚠️</div>
+                                    <div>Pilih outlet untuk melihat SKU MSS yang belum aktif</div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1399,7 +1535,8 @@
         let detailsData = [];
         let salesmanData = [];
         let tpomData = [];
-        
+        let salesmanTeam = '';
+
         // ===== LOCAL STORAGE FOR VISITS =====
         let todayVisitedCustomers = new Set();
 
@@ -2873,6 +3010,19 @@
                 if (salesmanRecord) {
                     currentSalesman = salesmanRecord.szname;
                     document.getElementById('salesmanName').textContent = currentSalesman;
+                    
+                    // Get salesman team type
+                    const salesmanType = (salesmanRecord.sztype || '').toString().toUpperCase();
+                    if (salesmanType.includes('ARJUNA')) {
+                        salesmanTeam = 'ARJUNA';
+                    } else if (salesmanType.includes('BIMA')) {
+                        salesmanTeam = 'BIMA';
+                    } else if (salesmanType.includes('YUDISTIRA')) {
+                        salesmanTeam = 'YUDISTIRA';
+                    } else {
+                        salesmanTeam = 'YUDISTIRA'; // Default to show all
+                    }
+                    console.log(`👤 Salesman Team: ${salesmanTeam}`);
                 }
             } else if (currentSalesmanId && pelangganData.length > 0) {
                 const salesmanRecord = pelangganData.find(item => item.szEmployeeId === currentSalesmanId);
@@ -2883,6 +3033,104 @@
             }
         }
 
+        // ===== TAB SWITCHING FUNCTIONS =====
+        function switchTab(tabName) {
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            document.querySelectorAll('.tab-content-panel').forEach(panel => {
+                panel.classList.remove('active');
+            });
+            
+            // Add active class to selected tab
+            if (tabName === 'dataSku') {
+                document.querySelectorAll('.tab-button')[0].classList.add('active');
+                document.getElementById('dataSku').classList.add('active');
+            } else if (tabName === 'mssBelumAktif') {
+                document.querySelectorAll('.tab-button')[1].classList.add('active');
+                document.getElementById('mssBelumAktif').classList.add('active');
+            }
+            
+            console.log(`📑 Switched to tab: ${tabName}`);
+        }
+
+        // Make switchTab available globally
+        window.switchTab = switchTab;
+
+        function showMSSBelumAktif(customerName) {
+            const mssContainer = document.getElementById('mssGridContainer');
+            
+            if (!customerName || !pelangganData.length) {
+                mssContainer.innerHTML = `
+                    <div class="mss-empty">
+                        <div class="empty-state-icon">⚠️</div>
+                        <div>Pilih outlet untuk melihat SKU MSS yang belum aktif</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Filter SKU MSS yang belum aktif
+            const mssInactive = pelangganData.filter(item => {
+                const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
+                const itemPelanggan = (item.Nama_Pelanggan || '').toString().trim();
+                const stsMss = (item.Sts_MSS || '').toString().trim().toUpperCase();
+                const caMss = Number(item.CA_MSS || 0);
+                const team = (item.Team || '').toString().trim().toUpperCase();
+                
+                // Basic filters
+                const isSameSalesman = itemSalesmanId === currentSalesmanId;
+                const isSameOutlet = itemPelanggan.toLowerCase() === customerName.toLowerCase();
+                const isMSS = stsMss === 'MSS';
+                const isInactive = caMss === 0;
+                
+                if (!isSameSalesman || !isSameOutlet || !isMSS || !isInactive) {
+                    return false;
+                }
+                
+                // Team-based filter
+                if (salesmanTeam === 'ARJUNA') {
+                    return team === 'ARJUNA';
+                } else if (salesmanTeam === 'BIMA') {
+                    return team === 'BIMA';
+                } else if (salesmanTeam === 'YUDISTIRA') {
+                    return true; // Show all teams
+                }
+                
+                return true;
+            });
+            
+            console.log(`⚠️ MSS Belum Aktif: ${mssInactive.length} SKUs (Team filter: ${salesmanTeam})`);
+            
+            if (mssInactive.length === 0) {
+                mssContainer.innerHTML = `
+                    <div class="mss-empty">
+                        <div class="empty-state-icon">✅</div>
+                        <div>Semua SKU MSS sudah aktif!</div>
+                        <div style="font-size: 11px; margin-top: 8px; color: #059669;">Team: ${salesmanTeam}</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Build grid HTML
+            let html = '';
+            mssInactive.forEach(item => {
+                const sku = item.SKU || 'N/A';
+                const team = item.Team || '-';
+                
+                html += `
+                    <div class="mss-card">
+                        <div class="mss-card-sku">${sku}</div>
+                        <div class="mss-card-team">${team}</div>
+                    </div>
+                `;
+            });
+            
+            mssContainer.innerHTML = html;
+        }
         // ===== SESSION PROTECTION FUNCTIONS =====
         function checkActiveSessionBeforeAction(actionType, targetName = '') {
             if (visitSession.isActive && !visitSession.isPaused) {
@@ -3055,6 +3303,7 @@
                 
                 updateSummaryFromCustomer(selectedPelanggan);
                 showVisitData(selectedPelanggan, selectedHari);
+                showMSSBelumAktif(selectedPelanggan);
                 
                 showVisitStartModal(selectedPelanggan, selectedHari);
                 
@@ -3089,6 +3338,15 @@
                 `;
             }
             
+            const mssContainer = document.getElementById('mssGridContainer');
+            if (mssContainer) {
+                mssContainer.innerHTML = `
+                    <div class="mss-empty">
+                        <div class="empty-state-icon">⚠️</div>
+                        <div>Pilih outlet untuk melihat SKU MSS yang belum aktif</div>
+                    </div>
+                `;
+            }
             document.getElementById('summaryTarget').textContent = '-';
             document.getElementById('summaryActual').textContent = '-';
             document.getElementById('summaryGap').textContent = '-';
@@ -3268,6 +3526,7 @@
             
             let html = '';
             let totalPlan = 0, totalMTD = 0;
+            let mssInactiveCount = 0, mssActiveCount = 0;
             
             data.forEach((item, index) => {
                 const no = index + 1;
@@ -3287,11 +3546,26 @@
                 const gapBadgeClass = gap > 0 ? 'gap-positive' : gap < 0 ? 'gap-negative' : 'gap-neutral';
                 const promoClass = `promo-${promo.toLowerCase().replace(/\s+/g, '')}`;
                 
+                // Check MSS status for SKU coloring
+                let skuClass = 'sku-code';
+                const stsMss = (item.Sts_MSS || '').toString().trim().toUpperCase();
+                const caMss = Number(item.CA_MSS || 0);
+                
+                if (stsMss === 'MSS') {
+                    if (caMss === 0) {
+                        skuClass = 'sku-code sku-mss-inactive'; // Yellow - MSS not active
+                        mssInactiveCount++;
+                    } else if (caMss === 1) {
+                        skuClass = 'sku-code sku-mss-active'; // Green - MSS active
+                        mssActiveCount++;
+                    }
+                }
+                
                 html += `
                     <tr>
                         <td>${no}</td>
                         <td><span class="promo-tag ${promoClass}">${promo}</span></td>
-                        <td><span class="sku-code">${sku}</span></td>
+                        <td><span class="${skuClass}">${sku}</span></td>
                         <td><span class="gap-badge ${gapBadgeClass}">${gap > 0 ? '+' : ''}${formatNumber(gap)}</span></td>
                         <td class="metric-value">${formatNumber(plan)}</td>
                         <td class="metric-value">${formatNumber(mtd)}</td>
@@ -3321,7 +3595,10 @@
             
             tableBody.innerHTML = html;
             
-            console.log(`📊 Table rendered: ${data.length} items with summary row`);
+            console.log(`📊 Table rendered: ${data.length} items with summary row and MSS status coloring`);
+            if (mssInactiveCount > 0 || mssActiveCount > 0) {
+                console.log(`🎨 MSS Status: ${mssActiveCount} active (green), ${mssInactiveCount} inactive (yellow)`);
+            }
         }
 
         function generateRecommendation(gap, plan, mtd) {
@@ -3428,7 +3705,9 @@
                 console.log('🏪 Order status tracking enabled');
                 console.log('💾 Local storage session management active');
                 console.log('🔥 Firebase sync enabled');
-                
+                console.log('📑 Tab system enabled: Data SKU & SKU MSS Belum Aktif'); // ← TAMBAHKAN
+                console.log(`👥 Salesman Team Filter: ${salesmanTeam || 'Not set yet'}`);
+
             } catch (error) {
                 console.error('❌ Critical error in initializeData:', error);
                 showLoading(false);
@@ -3628,6 +3907,8 @@
         console.log('📍 10-minute periodic location sync to Firebase');
         console.log('👥 Admin position monitoring available');
         console.log('🛡️ Improved session protection and data integrity');
+        console.log('🎨 SKU MSS status coloring enabled (Yellow=Inactive, Green=Active)'); // ← TAMBAHKAN
+        console.log('📑 Tab system: Data SKU & SKU MSS Belum Aktif with team filtering'); // ← TAMBAHKAN
     </script>
 </body>
 </html>
