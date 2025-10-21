@@ -1398,6 +1398,7 @@
         let pelangganData = [];
         let detailsData = [];
         let salesmanData = [];
+        let tpomData = [];
         
         // ===== LOCAL STORAGE FOR VISITS =====
         let todayVisitedCustomers = new Set();
@@ -2841,6 +2842,22 @@
                 console.error('Error loading details data:', error);
             }
         }
+        
+        async function loadTPOMData() {
+            try {
+                console.log('🎯 Loading TPOM data...');
+                const response = await fetch('data/d.tpom.json');
+                if (!response.ok) throw new Error('Failed to load TPOM data');
+                
+                const content = await response.text();
+                tpomData = parseJSONL(content);
+                
+                console.log(`✅ TPOM data loaded: ${tpomData.length} records`);
+                
+            } catch (error) {
+                console.error('Error loading TPOM data:', error);
+            }
+        }
 
         function initializeSalesmanFromUrl() {
             currentSalesmanId = getUrlParameter('id') || getUrlParameter('user');
@@ -2985,14 +3002,49 @@
                     const project = detailRecord.Project || 'Unknown';
                     customerTypeText = `${channelGroup} - ${project}`;
                     
-                    // Extract SKU POM with value 0
-                    const skuPomKeys = ['POCO5', 'DCBCO5', 'RICH5', 'OKKIOR20', 'SUC01A', 'PACA5', 'YPCB1', 'PGM7D', 'KUKI2'];
-                    const skuZeroList = skuPomKeys.filter(sku => {
-                        const value = detailRecord[sku];
-                        return value === 0 || value === '0';
+                    // Get target SKU POM for this salesman from d.tpom.json
+                    const targetSkuPom = tpomData
+                        .filter(item => {
+                            const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
+                            return itemSalesmanId === currentSalesmanId;
+                        })
+                        .map(item => (item.SKU || item.SKU_POM || '').toString().trim())
+                        .filter(sku => sku !== '');
+
+                    console.log(`🎯 Target SKU POM for salesman ${currentSalesmanId}:`, targetSkuPom);
+
+                    // Check each target SKU POM against outlet data in d.skupelanggan.json
+                    const skuPomBelumCA = [];
+
+                    targetSkuPom.forEach(skuTarget => {
+                        // Find this SKU for this outlet in pelangganData
+                        const skuRecord = pelangganData.find(item => {
+                            const itemPelanggan = (item.Nama_Pelanggan || '').toString().trim();
+                            const itemSku = (item.SKU || '').toString().trim();
+                            
+                            return itemPelanggan.toLowerCase() === selectedPelanggan.toLowerCase() &&
+                                itemSku === skuTarget;
+                        });
+                        
+                        if (!skuRecord) {
+                            // SKU tidak ada di outlet → Belum CA
+                            skuPomBelumCA.push(skuTarget);
+                            console.log(`❌ SKU ${skuTarget}: Tidak ada di outlet`);
+                        } else {
+                            const caPom = Number(skuRecord.CA_POM || 0);
+                            if (caPom === 0) {
+                                // CA_POM = 0 → Belum CA
+                                skuPomBelumCA.push(skuTarget);
+                                console.log(`❌ SKU ${skuTarget}: CA_POM = 0 (Belum CA)`);
+                            } else {
+                                console.log(`✅ SKU ${skuTarget}: CA_POM = 1 (Sudah aktif)`);
+                            }
+                        }
                     });
-                    
-                    skuZeroText = skuZeroList.length > 0 ? skuZeroList.join(', ') : 'Semua SKU POM aktif';
+
+                    skuZeroText = skuPomBelumCA.length > 0 
+                        ? skuPomBelumCA.join(', ') 
+                        : 'Semua SKU POM sudah aktif';
                     
                     console.log(`📋 Found outlet details: ID=${detailRecord['Id Pelanggan']}, Type=${customerTypeText}, SKU Zero=${skuZeroText}`);
                 }
@@ -3317,6 +3369,9 @@
                 
                 console.log('📊 Loading details data...');
                 await loadDetailsData();
+
+                console.log('🎯 Loading TPOM data...');
+                await loadTPOMData();
                 
                 console.log('✅ All data loaded successfully. Processing hari data...');
                 
