@@ -843,42 +843,47 @@
         }
 
         /* ===== SKU MSS GRID ===== */
-        .mss-grid {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 8px;
+        .mss-container {
             padding: 16px;
         }
 
-        .mss-card {
-            background: linear-gradient(135deg, #fef3c7, #fde68a);
-            border: 1px solid #f59e0b;
+        .mss-team-section {
+            margin-bottom: 16px;
+        }
+
+        .mss-team-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .mss-team-header {
+            display: inline-block;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            padding: 8px 20px;
             border-radius: 8px;
-            padding: 8px;
-            text-align: center;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .mss-card-sku {
-            font-family: 'Courier New', monospace;
-            font-size: 11px;
-            font-weight: 700;
-            color: #78350f;
-            margin-bottom: 2px;
-        }
-
-        .mss-card-team {
-            font-size: 8px;
-            color: #92400e;
+            font-size: 14px;
             font-weight: 600;
-            text-transform: uppercase;
+            margin-bottom: 8px;
+            box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+        }
+
+        .mss-sku-list {
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            font-weight: 700;
+            color: #dc2626;
+            line-height: 1.8;
+            word-wrap: break-word;
         }
 
         .mss-empty {
-            grid-column: 1 / -1;
             text-align: center;
             padding: 40px 20px;
             color: #64748b;
+        }
+
+        .mss-grid {
+            display: none; /* Hide old grid style */
         }
 
         @media (max-width: 400px) {
@@ -1215,7 +1220,7 @@
         <div class="detail-header">
             <a href="dashboard.html" class="back-btn">←</a>
             <div class="detail-title-container">
-                <div class="detail-title">Visit Outlet Enhanced</div>
+                <div class="detail-title">Visit Outlet</div>
                 <div class="salesman-name" id="salesmanName">Loading...</div>
             </div>
             <button class="user-btn" onclick="forceSyncLocation()">📍</button>
@@ -1341,8 +1346,7 @@
                     <!-- Tab Content: SKU MSS Belum Aktif -->
                     <div id="mssBelumAktif" class="tab-content-panel">
                         <div class="table-section">
-                            <div class="section-title">⚠️ SKU MSS Belum Aktif:</div>
-                            <div id="mssGridContainer" class="mss-grid">
+                            <div id="mssGridContainer" class="mss-container">
                                 <div class="mss-empty">
                                     <div class="empty-state-icon">⚠️</div>
                                     <div>Pilih outlet untuk melihat SKU MSS yang belum aktif</div>
@@ -1536,6 +1540,7 @@
         let salesmanData = [];
         let tpomData = [];
         let salesmanTeam = '';
+        let skuData = [];
 
         // ===== LOCAL STORAGE FOR VISITS =====
         let todayVisitedCustomers = new Set();
@@ -2996,6 +3001,22 @@
             }
         }
 
+        async function loadSKUData() {
+            try {
+                console.log('📦 Loading SKU master data...');
+                const response = await fetch('data/d.sku.json');
+                if (!response.ok) throw new Error('Failed to load SKU data');
+                
+                const content = await response.text();
+                skuData = parseJSONL(content);
+                
+                console.log(`✅ SKU master data loaded: ${skuData.length} records`);
+                
+            } catch (error) {
+                console.error('Error loading SKU data:', error);
+            }
+        }
+
         function initializeSalesmanFromUrl() {
             currentSalesmanId = getUrlParameter('id') || getUrlParameter('user');
             
@@ -3004,6 +3025,7 @@
             }
         }
 
+        // Update fungsi updateSalesmanNameFromData untuk deteksi team
         function updateSalesmanNameFromData() {
             if (currentSalesmanId && salesmanData.length > 0) {
                 const salesmanRecord = salesmanData.find(item => item.szEmployeeId.toString() === currentSalesmanId);
@@ -3011,24 +3033,41 @@
                     currentSalesman = salesmanRecord.szname;
                     document.getElementById('salesmanName').textContent = currentSalesman;
                     
-                    // Get salesman team type
-                    const salesmanType = (salesmanRecord.sztype || '').toString().toUpperCase();
-                    if (salesmanType.includes('ARJUNA')) {
+                    // ===== DETECT SALESMAN TEAM FROM "Tipe Salesman" FIELD =====
+                    const tipeSalesman = (salesmanRecord['Tipe Salesman'] || '').toString().toUpperCase();
+                    console.log('🔍 Detecting salesman team...');
+                    console.log('   Salesman ID:', currentSalesmanId);
+                    console.log('   Salesman Name:', currentSalesman);
+                    console.log('   Tipe Salesman (raw):', salesmanRecord['Tipe Salesman']);
+                    console.log('   Tipe Salesman (uppercase):', tipeSalesman);
+                    
+                    if (tipeSalesman.includes('ARJUNA')) {
                         salesmanTeam = 'ARJUNA';
-                    } else if (salesmanType.includes('BIMA')) {
+                    } else if (tipeSalesman.includes('BIMA')) {
                         salesmanTeam = 'BIMA';
-                    } else if (salesmanType.includes('YUDISTIRA')) {
+                    } else if (tipeSalesman.includes('YUDISTIRA')) {
                         salesmanTeam = 'YUDISTIRA';
                     } else {
                         salesmanTeam = 'YUDISTIRA'; // Default to show all
+                        console.warn('   ⚠️ Team not detected from Tipe Salesman, defaulting to YUDISTIRA');
                     }
-                    console.log(`👤 Salesman Team: ${salesmanTeam}`);
+                    
+                    console.log('   ✅ Detected Team:', salesmanTeam);
+                    console.log('   📋 Filter Logic:');
+                    if (salesmanTeam === 'ARJUNA') {
+                        console.log('      → Will show only ARJUNA team SKUs');
+                    } else if (salesmanTeam === 'BIMA') {
+                        console.log('      → Will show only BIMA team SKUs');
+                    } else if (salesmanTeam === 'YUDISTIRA') {
+                        console.log('      → Will show ARJUNA + BIMA team SKUs');
+                    }
                 }
             } else if (currentSalesmanId && pelangganData.length > 0) {
                 const salesmanRecord = pelangganData.find(item => item.szEmployeeId === currentSalesmanId);
                 if (salesmanRecord) {
                     currentSalesman = salesmanRecord.szname;
                     document.getElementById('salesmanName').textContent = currentSalesman;
+                    console.warn('⚠️ Team detection from pelangganData - may not have Tipe Salesman field');
                 }
             }
         }
@@ -3072,15 +3111,18 @@
                 return;
             }
             
-            // Filter SKU MSS yang belum aktif
-            const mssInactive = pelangganData.filter(item => {
+            console.log('🔍 === showMSSBelumAktif Debug ===');
+            console.log('   Outlet:', customerName);
+            console.log('   Salesman Team:', salesmanTeam);
+            
+            // Fase 1: Ambil SKU MSS yang belum aktif dari pelangganData (d.skupelanggan.json)
+            const mssInactiveFromPelanggan = pelangganData.filter(item => {
                 const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
                 const itemPelanggan = (item.Nama_Pelanggan || '').toString().trim();
                 const stsMss = (item.Sts_MSS || '').toString().trim().toUpperCase();
                 const caMss = Number(item.CA_MSS || 0);
-                const team = (item.Team || '').toString().trim().toUpperCase();
+                const team = (item.Team || '').toString().trim(); // ← JANGAN uppercase dulu
                 
-                // Basic filters
                 const isSameSalesman = itemSalesmanId === currentSalesmanId;
                 const isSameOutlet = itemPelanggan.toLowerCase() === customerName.toLowerCase();
                 const isMSS = stsMss === 'MSS';
@@ -3090,21 +3132,132 @@
                     return false;
                 }
                 
-                // Team-based filter
-                if (salesmanTeam === 'ARJUNA') {
-                    return team === 'ARJUNA';
-                } else if (salesmanTeam === 'BIMA') {
-                    return team === 'BIMA';
-                } else if (salesmanTeam === 'YUDISTIRA') {
-                    return true; // Show all teams
+                // ===== TEAM-BASED FILTER - CASE INSENSITIVE =====
+                let teamMatch = false;
+                const teamUpper = team.toUpperCase();
+                const salesmanTeamUpper = salesmanTeam.toUpperCase();
+                
+                if (salesmanTeamUpper === 'ARJUNA') {
+                    teamMatch = teamUpper === 'ARJUNA';
+                } else if (salesmanTeamUpper === 'BIMA') {
+                    teamMatch = teamUpper === 'BIMA';
+                } else if (salesmanTeamUpper === 'YUDISTIRA') {
+                    // Yudistira: show both Arjuna and Bima
+                    teamMatch = teamUpper === 'ARJUNA' || teamUpper === 'BIMA';
+                } else {
+                    teamMatch = true; // Unknown team, show all
                 }
                 
-                return true;
+                if (!teamMatch) {
+                    console.log(`   ❌ Filtered out: ${item.SKU} (Team: "${team}", Required: ${salesmanTeam})`);
+                }
+                
+                return teamMatch;
             });
             
-            console.log(`⚠️ MSS Belum Aktif: ${mssInactive.length} SKUs (Team filter: ${salesmanTeam})`);
+            console.log(`   📊 Phase 1: ${mssInactiveFromPelanggan.length} inactive MSS SKUs from pelangganData`);
             
-            if (mssInactive.length === 0) {
+            // Fase 2: Ambil SKU MSS dari master data (d.sku.json) yang sesuai team
+            const mssFromMasterData = skuData.filter(item => {
+                const skuFokus = (item.SKU_Fokus || '').toString().trim().toUpperCase();
+                const team = (item.Team || '').toString().trim(); // ← JANGAN uppercase dulu
+                
+                const isMSS = skuFokus === 'MSS';
+                
+                if (!isMSS) {
+                    return false;
+                }
+                
+                // ===== TEAM-BASED FILTER - CASE INSENSITIVE =====
+                let teamMatch = false;
+                const teamUpper = team.toUpperCase();
+                const salesmanTeamUpper = salesmanTeam.toUpperCase();
+                
+                if (salesmanTeamUpper === 'ARJUNA') {
+                    teamMatch = teamUpper === 'ARJUNA';
+                } else if (salesmanTeamUpper === 'BIMA') {
+                    teamMatch = teamUpper === 'BIMA';
+                } else if (salesmanTeamUpper === 'YUDISTIRA') {
+                    // Yudistira: show both Arjuna and Bima
+                    teamMatch = teamUpper === 'ARJUNA' || teamUpper === 'BIMA';
+                } else {
+                    teamMatch = true; // Unknown team, show all
+                }
+                
+                return teamMatch;
+            });
+            
+            console.log(`   📊 Phase 2: ${mssFromMasterData.length} MSS SKUs from master data (filtered by team)`);
+            
+            // Log sample of teams in the data
+            const sampleTeams = new Set();
+            pelangganData.forEach(item => {
+                const team = (item.Team || '').toString().trim();
+                if (team) sampleTeams.add(team);
+            });
+            console.log('   📋 Available teams in pelangganData:', Array.from(sampleTeams).join(', '));
+            
+            const sampleMasterTeams = new Set();
+            skuData.forEach(item => {
+                const team = (item.Team || '').toString().trim();
+                if (team) sampleMasterTeams.add(team);
+            });
+            console.log('   📋 Available teams in skuData:', Array.from(sampleMasterTeams).join(', '));
+            
+            // Fase 3: Untuk setiap SKU dari master data, cek apakah sudah aktif di outlet
+            const mssToShow = new Map(); // Gunakan Map untuk menghindari duplikasi
+            
+            // Tambahkan SKU dari pelangganData yang inactive
+            mssInactiveFromPelanggan.forEach(item => {
+                const sku = item.SKU || 'N/A';
+                const team = (item.Team || '').toString().trim();
+                mssToShow.set(sku, { sku, team });
+            });
+            
+            // Cek SKU dari master data
+            mssFromMasterData.forEach(masterItem => {
+                const masterSku = (masterItem.SKU || '').toString().trim();
+                const masterTeam = (masterItem.Team || '').toString().trim();
+                
+                if (!masterSku) return;
+                
+                // Cek apakah SKU ini sudah ada di pelangganData untuk outlet ini
+                const existingInOutlet = pelangganData.find(pelItem => {
+                    const pelSku = (pelItem.SKU || '').toString().trim();
+                    const pelOutlet = (pelItem.Nama_Pelanggan || '').toString().trim();
+                    const pelSalesman = (pelItem.szEmployeeId || '').toString().trim();
+                    
+                    return pelSku === masterSku && 
+                        pelOutlet.toLowerCase() === customerName.toLowerCase() &&
+                        pelSalesman === currentSalesmanId;
+                });
+                
+                if (!existingInOutlet) {
+                    // SKU belum ada di outlet - tampilkan
+                    if (!mssToShow.has(masterSku)) {
+                        mssToShow.set(masterSku, { 
+                            sku: masterSku, 
+                            team: masterTeam
+                        });
+                    }
+                } else {
+                    // SKU ada di outlet - cek apakah sudah aktif
+                    const caMss = Number(existingInOutlet.CA_MSS || 0);
+                    if (caMss === 0) {
+                        // Belum aktif - sudah ditambahkan dari fase 1
+                    }
+                }
+            });
+            
+            const mssArray = Array.from(mssToShow.values());
+            
+            console.log(`   ✅ Final result: ${mssArray.length} SKUs to display`);
+            console.log('   📋 Team distribution:', mssArray.reduce((acc, item) => {
+                acc[item.team] = (acc[item.team] || 0) + 1;
+                return acc;
+            }, {}));
+            
+            if (mssArray.length === 0) {
                 mssContainer.innerHTML = `
                     <div class="mss-empty">
                         <div class="empty-state-icon">✅</div>
@@ -3115,22 +3268,47 @@
                 return;
             }
             
-            // Build grid HTML
+            // Group by team (preserve original case for display)
+            const groupedByTeam = {};
+            mssArray.forEach(item => {
+                const team = item.team || 'Unknown';
+                if (!groupedByTeam[team]) {
+                    groupedByTeam[team] = [];
+                }
+                groupedByTeam[team].push(item.sku);
+            });
+            
+            // Build HTML - Grouped by team with comma-separated SKUs
             let html = '';
-            mssInactive.forEach(item => {
-                const sku = item.SKU || 'N/A';
-                const team = item.Team || '-';
+            
+            // Sort teams: Arjuna, Bima, Yudistira, others
+            const teamOrder = ['Arjuna', 'Bima', 'Yudistira'];
+            const sortedTeams = Object.keys(groupedByTeam).sort((a, b) => {
+                const indexA = teamOrder.indexOf(a);
+                const indexB = teamOrder.indexOf(b);
+                if (indexA === -1 && indexB === -1) return a.localeCompare(b);
+                if (indexA === -1) return 1;
+                if (indexB === -1) return -1;
+                return indexA - indexB;
+            });
+            
+            sortedTeams.forEach(team => {
+                const skus = groupedByTeam[team];
+                const skuList = skus.join(', ');
                 
                 html += `
-                    <div class="mss-card">
-                        <div class="mss-card-sku">${sku}</div>
-                        <div class="mss-card-team">${team}</div>
+                    <div class="mss-team-section">
+                        <div class="mss-team-header">${team.toUpperCase()}</div>
+                        <div class="mss-sku-list">${skuList}</div>
                     </div>
                 `;
             });
             
             mssContainer.innerHTML = html;
+            
+            console.log(`📦 Displayed ${mssArray.length} MSS SKU(s) grouped by team`);
         }
+
         // ===== SESSION PROTECTION FUNCTIONS =====
         function checkActiveSessionBeforeAction(actionType, targetName = '') {
             if (visitSession.isActive && !visitSession.isPaused) {
@@ -3431,17 +3609,43 @@
                 return;
             }
             
+            console.log('🔍 === showVisitData Debug ===');
+            console.log('   Outlet:', customerName);
+            console.log('   Hari JKS:', hariJKS);
+            console.log('   Salesman Team:', salesmanTeam);
+            
             const visitData = pelangganData.filter(item => {
                 const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
                 const itemHari = normalizeHariFormat(item.Hari_Kunjungan);
                 const itemPelanggan = (item.Nama_Pelanggan || '').toString().trim();
+                const team = (item.Team || '').toString().trim(); // ← JANGAN uppercase dulu
                 
-                return itemSalesmanId === currentSalesmanId &&
-                       itemHari === hariJKS &&
-                       itemPelanggan.toLowerCase() === customerName.toLowerCase();
+                const basicMatch = itemSalesmanId === currentSalesmanId &&
+                                itemHari === hariJKS &&
+                                itemPelanggan.toLowerCase() === customerName.toLowerCase();
+                
+                if (!basicMatch) return false;
+                
+                // ===== TEAM-BASED FILTER - CASE INSENSITIVE =====
+                let teamMatch = false;
+                const teamUpper = team.toUpperCase();
+                const salesmanTeamUpper = salesmanTeam.toUpperCase();
+                
+                if (salesmanTeamUpper === 'ARJUNA') {
+                    teamMatch = teamUpper === 'ARJUNA';
+                } else if (salesmanTeamUpper === 'BIMA') {
+                    teamMatch = teamUpper === 'BIMA';
+                } else if (salesmanTeamUpper === 'YUDISTIRA') {
+                    // Yudistira: show all teams
+                    teamMatch = true;
+                } else {
+                    teamMatch = true; // Unknown team, show all
+                }
+                
+                return teamMatch;
             });
             
-            console.log(`📋 Visit data for ${customerName}: ${visitData.length} records`);
+            console.log(`   ✅ Filtered ${visitData.length} records (Team: ${salesmanTeam})`);
             
             if (visitData.length === 0) {
                 tableBody.innerHTML = `
@@ -3450,6 +3654,7 @@
                             <div class="empty-state">
                                 <div class="empty-state-icon">🔭</div>
                                 <div>Tidak ada data visit untuk ${customerName}</div>
+                                <div style="font-size: 11px; margin-top: 8px; color: #64748b;">Team: ${salesmanTeam}</div>
                             </div>
                         </td>
                     </tr>
@@ -3650,6 +3855,9 @@
                 console.log('🎯 Loading TPOM data...');
                 await loadTPOMData();
                 
+                console.log('📦 Loading SKU master data...');
+                await loadSKUData();
+                
                 console.log('✅ All data loaded successfully. Processing hari data...');
                 
                 if (pelangganData.length > 0 && currentSalesmanId) {
@@ -3822,8 +4030,21 @@
 
         // ===== EVENT LISTENERS =====
         document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('hari').addEventListener('change', updatePelangganOptions);
-            document.getElementById('pelanggan').addEventListener('change', handlePelangganSelection);
+            // Add null checks before adding event listeners
+            const hariSelect = document.getElementById('hari');
+            const pelangganSelect = document.getElementById('pelanggan');
+            
+            if (hariSelect) {
+                hariSelect.addEventListener('change', updatePelangganOptions);
+            } else {
+                console.error('❌ Element #hari not found');
+            }
+            
+            if (pelangganSelect) {
+                pelangganSelect.addEventListener('change', handlePelangganSelection);
+            } else {
+                console.error('❌ Element #pelanggan not found');
+            }
 
             updateVisitSessionStatus();
             updateFloatingButtons();
@@ -3907,8 +4128,12 @@
         console.log('📍 10-minute periodic location sync to Firebase');
         console.log('👥 Admin position monitoring available');
         console.log('🛡️ Improved session protection and data integrity');
-        console.log('🎨 SKU MSS status coloring enabled (Yellow=Inactive, Green=Active)'); // ← TAMBAHKAN
-        console.log('📑 Tab system: Data SKU & SKU MSS Belum Aktif with team filtering'); // ← TAMBAHKAN
+        console.log('🎨 SKU MSS status coloring enabled (Yellow=Inactive, Green=Active)');
+        console.log('🔒 Tab system: Data SKU & SKU MSS Belum Aktif with team filtering');
+        console.log('📦 SKU MSS includes both outlet data and master SKU_Fokus=MSS data');
+        console.log('🔍 Smart deduplication: Shows MSS SKU from master if not in outlet or inactive');
+        console.log('👥 Team-based filtering: ARJUNA (Arjuna only), BIMA (Bima only), YUDISTIRA (Arjuna + Bima)');
+
     </script>
 </body>
 </html>
