@@ -158,7 +158,7 @@ class SalesmanDashboardUpdater:
             # 🔧 FIXED: Filter untuk menghitung avg hanya dari nilai > 0
             so_data_positive = [x for x in so_data if x > 0]
             do_data_positive = [x for x in do_data if x > 0]
-            
+
             # Get period
             current_date = datetime.now()
             month_id = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -186,8 +186,8 @@ class SalesmanDashboardUpdater:
                 'labels': labels,
                 'stats': {
                     'avg_target': self.format_currency_indonesia(total_target / len(target_data)) if target_data else "0",
-                    'avg_so': self.format_currency_indonesia(sum(so_data_positive) / len(so_data_positive)) if so_data_positive else "0",  # ✅ Hanya SO > 0
-                    'avg_do': self.format_currency_indonesia(sum(do_data_positive) / len(do_data_positive)) if do_data_positive else "0",  # ✅ Hanya DO > 0
+                    'avg_so': self.format_currency_indonesia(sum(so_data_positive) / len(so_data_positive)) if so_data_positive else "0",
+                    'avg_do': self.format_currency_indonesia(sum(do_data_positive) / len(do_data_positive)) if do_data_positive else "0",
                     'total_hk': len(so_data),
                     'sisa_hk_do': max(0, len([l for l in labels if int(l) > current_date.day]) if labels else 0),
                     'gap_total': gap_total
