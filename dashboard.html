@@ -1172,8 +1172,8 @@
                 const vs3LM = entry['vs 3LM'] ? `${Math.round(entry['vs 3LM'] * 100)}%` : '0%';
                 const vsLY = entry['vs LY'] ? `${Math.round(entry['vs LY'] * 100)}%` : '0%';
                 
-                // Calculate achievement percentage
-                const achievementPercentage = calculateAchievementPercentage(entry.BP || 0, entry.Actual || 0);
+                // 🔧 FIXED: Ambil achievement langsung dari field "vs BP" di JSON (tidak dikalkulasi lagi)
+                const achievementPercentage = entry['vs BP'] ? Math.round(entry['vs BP'] * 100) : 0;
                 const achievement = `${achievementPercentage}%`;
                 
                 if (lobName && lobName.toUpperCase() === 'TOTAL') {
@@ -1413,114 +1413,97 @@
             });
         }
 
-        // Create Total Card function with target=0 logic for first position
-        function createTotalCard(processedLobCards, backendTotalData = null) {
-            const card = document.createElement('div');
-            card.className = 'lob-card total-card-first'; // Special class for first position
-            
-            let totalData;
-            
-            // Use backend data if available, else calculate from frontend with target=0 logic
-            if (backendTotalData) {
-                console.log('✅ Using backend TOTAL data:', backendTotalData);
-                
-                // Apply target=0 logic to backend total data
-                const totalTarget = parseFormattedValue(backendTotalData.target);
-                const totalActual = parseFormattedValue(backendTotalData.actual);
-                const calculatedTotalAchievement = calculateAchievementPercentage(totalTarget, totalActual);
-                const totalHasSpecialCase = totalTarget === 0 && totalActual > 0;
-                
-                if (totalHasSpecialCase) {
-                    console.log(`🌟 Special case detected for TOTAL: Target=0, Actual=${totalActual} → 100% (Green)`);
-                }
-                
-                totalData = {
-                    ...backendTotalData,
-                    achievement: `${calculatedTotalAchievement}%`,
-                    hasSpecialCase: totalHasSpecialCase
-                };
-            } else {
-                console.log('⚠️ Backend TOTAL data not available, calculating from frontend with target=0 logic...');
-                
-                // Calculate total values from individual processed LOB cards
-                let totalActual = 0;
-                let totalTarget = 0;
-                let totalGap = 0;
-                
-                // Parse values from individual LOB cards
-                processedLobCards.forEach(lob => {
-                    const actualValue = parseFormattedValue(lob.actual);
-                    const targetValue = parseFormattedValue(lob.target);
-                    const gapValue = parseFormattedValue(lob.gap);
-                    
-                    totalActual += actualValue;
-                    totalTarget += targetValue;
-                    totalGap += gapValue;
-                });
-                
-                // Apply target=0 logic to calculated total
-                const calculatedTotalAchievement = calculateAchievementPercentage(totalTarget, totalActual);
-                const totalHasSpecialCase = totalTarget === 0 && totalActual > 0;
-                
-                if (totalHasSpecialCase) {
-                    console.log(`🌟 Special case detected for calculated TOTAL: Target=0, Actual=${totalActual} → 100% (Green)`);
-                }
-                
-                // Create calculated total data
-                totalData = {
-                    name: 'TOTAL',
-                    achievement: `${calculatedTotalAchievement}%`,
-                    actual: formatCurrencyIndonesia(totalActual),
-                    target: formatCurrencyIndonesia(totalTarget),
-                    gap: formatCurrencyIndonesia(totalGap),
-                    vs_lm: 'N/A',
-                    vs_3lm: 'N/A',
-                    vs_ly: 'N/A',
-                    hasSpecialCase: totalHasSpecialCase
-                };
-            }
-            
-            // Apply special case styling if needed
-            if (totalData.hasSpecialCase) {
-                card.classList.add('achievement-high');
-                console.log('✅ Applied green styling to TOTAL card for target=0 special case');
-            }
-            
-            card.innerHTML = `
-                <div class="card-layout">
-                    <div class="card-main">
-                        <div class="card-left">
-                            <div class="achievement-percentage">${totalData.achievement}</div>
-                            <div class="achievement-text">Achievement</div>
-                            <div class="lob-name">${totalData.name}</div>
-                            <div class="actual-info">Actual: ${totalData.actual}</div>
-                            <div class="gap-info">Gap: ${totalData.gap}</div>
-                        </div>
-                    </div>
-                    <div class="vs-metrics">
-                        <div class="vs-metric">
-                            <span class="vs-label">vs LM</span>
-                            <span class="vs-value">${totalData.vs_lm || 'N/A'}</span>
-                        </div>
-                        <div class="vs-metric">
-                            <span class="vs-label">vs 3LM</span>
-                            <span class="vs-value">${totalData.vs_3lm || 'N/A'}</span>
-                        </div>
-                        <div class="vs-metric">
-                            <span class="vs-label">vs LY</span>
-                            <span class="vs-value">${totalData.vs_ly || 'N/A'}</span>
-                        </div>
-                    </div>
-                </div>
-            `;
+        // Create Total Card function - FIXED: Langsung ambil achievement dari backend
+		function createTotalCard(processedLobCards, backendTotalData = null) {
+			const card = document.createElement('div');
+			card.className = 'lob-card total-card-first'; // Special class for first position
+			
+			let totalData;
+			
+			// Use backend data if available, else calculate from frontend
+			if (backendTotalData) {
+				console.log('✅ Using backend TOTAL data:', backendTotalData);
+				
+				// 🔧 FIXED: Langsung pakai achievement dari backend (sudah diambil dari "vs BP")
+				// TIDAK perlu recalculate karena sudah benar dari processDashboardJSONL
+				totalData = {
+					...backendTotalData
+					// achievement sudah ada dan sudah benar dari backend
+				};
+				
+				console.log(`📊 TOTAL Achievement from backend: ${backendTotalData.achievement}`);
+			} else {
+				console.log('⚠️ Backend TOTAL data not available, calculating from frontend...');
+				
+				// Calculate total values from individual processed LOB cards
+				let totalActual = 0;
+				let totalTarget = 0;
+				let totalGap = 0;
+				
+				// Parse values from individual LOB cards
+				processedLobCards.forEach(lob => {
+					const actualValue = parseFormattedValue(lob.actual);
+					const targetValue = parseFormattedValue(lob.target);
+					const gapValue = parseFormattedValue(lob.gap);
+					
+					totalActual += actualValue;
+					totalTarget += targetValue;
+					totalGap += gapValue;
+				});
+				
+				// Calculate achievement from summed values
+				const calculatedTotalAchievement = calculateAchievementPercentage(totalTarget, totalActual);
+				
+				// Create calculated total data
+				totalData = {
+					name: 'TOTAL',
+					achievement: `${calculatedTotalAchievement}%`,
+					actual: formatCurrencyIndonesia(totalActual),
+					target: formatCurrencyIndonesia(totalTarget),
+					gap: formatCurrencyIndonesia(totalGap),
+					vs_lm: 'N/A',
+					vs_3lm: 'N/A',
+					vs_ly: 'N/A'
+				};
+				
+				console.log(`📊 Calculated TOTAL Achievement: ${calculatedTotalAchievement}%`);
+			}
+			
+			card.innerHTML = `
+				<div class="card-layout">
+					<div class="card-main">
+						<div class="card-left">
+							<div class="achievement-percentage">${totalData.achievement}</div>
+							<div class="achievement-text">Achievement</div>
+							<div class="lob-name">${totalData.name}</div>
+							<div class="actual-info">Actual: ${totalData.actual}</div>
+							<div class="gap-info">Gap: ${totalData.gap}</div>
+						</div>
+					</div>
+					<div class="vs-metrics">
+						<div class="vs-metric">
+							<span class="vs-label">vs LM</span>
+							<span class="vs-value">${totalData.vs_lm || 'N/A'}</span>
+						</div>
+						<div class="vs-metric">
+							<span class="vs-label">vs 3LM</span>
+							<span class="vs-value">${totalData.vs_3lm || 'N/A'}</span>
+						</div>
+						<div class="vs-metric">
+							<span class="vs-label">vs LY</span>
+							<span class="vs-value">${totalData.vs_ly || 'N/A'}</span>
+						</div>
+					</div>
+				</div>
+			`;
 
-            card.addEventListener('click', () => {
-                console.log('Clicked on TOTAL card');
-                showTotalSummary(totalData);
-            });
+			card.addEventListener('click', () => {
+				console.log('Clicked on TOTAL card');
+				showTotalSummary(totalData);
+			});
 
-            return card;
-        }
+			return card;
+		}
 
         // Show Total Summary (enhanced for first position)
         function showTotalSummary(totalData) {
