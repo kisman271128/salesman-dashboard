@@ -3,11 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#667eea">
-    <meta name="description" content="Sales Performance Dashboard - Login">
-    <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
-    <link rel="apple-touch-icon" href="icon-192.png">
     <title>Login - Salesman Dashboard</title>
     <style>
         /* CSS tetap sama seperti sebelumnya */
@@ -1171,7 +1166,7 @@
             }, 800);
         });
 
-        // ✅ Validate login with device authentication
+        // ✅ Validate login
         function validateLogin(nik, password) {
             console.log(`🔍 Validating login for: ${nik}`);
             console.log(`📋 Available users:`, Object.keys(validUsers));
@@ -1179,39 +1174,29 @@
             const user = validUsers[nik];
             
             if (user && user.password === password) {
-                console.log(`✅ Password correct for: ${user.name} (${user.role})`);
+                console.log(`✅ Login successful for: ${user.name} (${user.role})`);
                 
-                // ===== DEVICE VALIDATION =====
-                // Admin bypass device check
-                if (DeviceAuth.isAdminMode(nik)) {
-                    console.log('👑 Admin mode - bypassing device check');
-                    proceedWithLogin(nik, user);
-                    return;
-                }
-                
-                // Validate device for regular users
-                console.log('🔐 Checking device authentication...');
-                const deviceCheck = DeviceAuth.validateDevice(nik);
-                
-                if (deviceCheck.success) {
-                    console.log('✅ Device validated successfully');
-                    proceedWithLogin(nik, user);
+                // Remember user if checkbox is checked
+                if (rememberMe.checked) {
+                    localStorage.setItem('rememberedUser', nik);
                 } else {
-                    console.warn('❌ Device validation failed:', deviceCheck.message);
-                    
-                    // Show device error
-                    const deviceInfo = deviceCheck.currentDevice ? 
-                        `${deviceCheck.currentDevice.info.device} - ${deviceCheck.currentDevice.info.browser} (${deviceCheck.currentDevice.info.os})` : 
-                        'Unknown';
-                    
-                    showErrorNotification(
-                        `🚫 Device Tidak Terdaftar\n\n` +
-                        `Device Anda: ${deviceInfo}\n\n` +
-                        `Akun Anda sudah terdaftar di device lain. ` +
-                        `Silakan hubungi administrator untuk mendaftarkan device baru ini.`
-                    );
-                    setLoading(false);
+                    localStorage.removeItem('rememberedUser');
                 }
+                
+                // Store login session
+                sessionStorage.setItem('isLoggedIn', 'true');
+                sessionStorage.setItem('currentUser', nik);
+                sessionStorage.setItem('userName', user.name);
+                sessionStorage.setItem('userRole', user.role);
+                
+                // Show success notification
+                showSuccessNotification(user.name);
+                
+                // Show dashboard selection after delay
+                setTimeout(() => {
+                    showDashboardSelection(user.name);
+                    setLoading(false);
+                }, 2000);
                 
             } else {
                 console.log(`❌ Login failed for: ${nik}`);
@@ -1220,31 +1205,6 @@
                 showErrorNotification('Username atau password salah. Periksa kembali data login Anda.');
                 setLoading(false);
             }
-        }
-        
-        // Proceed with successful login
-        function proceedWithLogin(nik, user) {
-            // Remember user if checkbox is checked
-            if (rememberMe.checked) {
-                localStorage.setItem('rememberedUser', nik);
-            } else {
-                localStorage.removeItem('rememberedUser');
-            }
-            
-            // Store login session
-            sessionStorage.setItem('isLoggedIn', 'true');
-            sessionStorage.setItem('currentUser', nik);
-            sessionStorage.setItem('userName', user.name);
-            sessionStorage.setItem('userRole', user.role);
-            
-            // Show success notification
-            showSuccessNotification(user.name);
-            
-            // Show dashboard selection after delay
-            setTimeout(() => {
-                showDashboardSelection(user.name);
-                setLoading(false);
-            }, 2000);
         }
 
         // ✅ UI Functions
@@ -1295,59 +1255,6 @@
         });
 
         console.log('🔧 Sales Dashboard login script loaded with notification frame and new password "tanjung2025"');
-    </script>
-    
-    <!-- Device Authentication System -->
-    <script src="device-auth.js"></script>
-    
-    <!-- PWA Service Worker Registration -->
-    <script>
-        // Register Service Worker for PWA
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/service-worker.js')
-                    .then((registration) => {
-                        console.log('✅ Service Worker registered successfully:', registration.scope);
-                        
-                        // Check for updates
-                        registration.addEventListener('updatefound', () => {
-                            const newWorker = registration.installing;
-                            newWorker.addEventListener('statechange', () => {
-                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                    console.log('🔄 New version available! Refresh to update.');
-                                }
-                            });
-                        });
-                    })
-                    .catch((error) => {
-                        console.warn('⚠️ Service Worker registration failed:', error);
-                    });
-            });
-        }
-        
-        // Show install prompt for PWA
-        let deferredPrompt;
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            console.log('📱 PWA install prompt available');
-            
-            // You can show a custom install button here if needed
-            // For now, we'll just log it
-        });
-        
-        // Track PWA installation
-        window.addEventListener('appinstalled', () => {
-            console.log('✅ PWA installed successfully');
-            deferredPrompt = null;
-        });
-        
-        // Log PWA status
-        if (window.matchMedia('(display-mode: standalone)').matches) {
-            console.log('📱 Running as PWA (standalone mode)');
-        } else {
-            console.log('🌐 Running in browser mode');
-        }
     </script>
 </body>
 </html>

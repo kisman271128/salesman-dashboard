@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Device Management - Admin Panel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 36px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .device-list {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .device-item {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .device-info {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .device-user {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .device-details {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .detail-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 13px;
+            color: #666;
+        }
+
+        .detail-icon {
+            font-size: 16px;
+        }
+
+        .device-id {
+            font-family: 'Courier New', monospace;
+            background: #f0f0f0;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #667eea;
+        }
+
+        .device-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c0392b;
+            transform: translateY(-2px);
+        }
+
+        .btn-info {
+            background: #3498db;
+            color: white;
+        }
+
+        .btn-info:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+
+        .btn-refresh {
+            background: #667eea;
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        .btn-refresh:hover {
+            background: #5568d3;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+        }
+
+        .info-grid {
+            display: grid;
+            gap: 15px;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #666;
+        }
+
+        .info-value {
+            color: #333;
+        }
+
+        @media (max-width: 768px) {
+            .device-item {
+                grid-template-columns: 1fr;
+            }
+            
+            .device-actions {
+                justify-content: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛡️ Device Management</h1>
+        <p class="subtitle">Admin Panel - Kelola device yang terdaftar</p>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-value" id="totalDevices">0</div>
+                <div class="stat-label">Total Devices</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="totalUsers">0</div>
+                <div class="stat-label">Registered Users</div>
+            </div>
+        </div>
+
+        <button class="btn btn-refresh" onclick="refreshDeviceList()">🔄 Refresh</button>
+
+        <div class="device-list" id="deviceList">
+            <!-- Devices will be loaded here -->
+        </div>
+    </div>
+
+    <!-- Modal for device details -->
+    <div class="modal" id="detailModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Device Details</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="info-grid" id="deviceDetailContent">
+                <!-- Details will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="device-auth.js"></script>
+    <script>
+        function loadDeviceList() {
+            const devices = DeviceAuth.getRegisteredDevices();
+            const deviceList = document.getElementById('deviceList');
+            const deviceCount = Object.keys(devices).length;
+
+            // Update stats
+            document.getElementById('totalDevices').textContent = deviceCount;
+            document.getElementById('totalUsers').textContent = deviceCount;
+
+            if (deviceCount === 0) {
+                deviceList.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">📱</div>
+                        <h3>Belum ada device terdaftar</h3>
+                        <p>Device akan muncul di sini setelah user pertama kali login</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            for (const [username, device] of Object.entries(devices)) {
+                const info = device.deviceInfo;
+                const registeredDate = new Date(device.registeredAt).toLocaleString('id-ID');
+                const lastAccessDate = new Date(device.lastAccess).toLocaleString('id-ID');
+
+                html += `
+                    <div class="device-item">
+                        <div class="device-info">
+                            <div class="device-user">👤 ${username}</div>
+                            <div class="device-details">
+                                <div class="detail-item">
+                                    <span class="detail-icon">📱</span>
+                                    ${info.device} (${info.os})
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-icon">🌐</span>
+                                    ${info.browser}
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-icon">📊</span>
+                                    ${info.screen}
+                                </div>
+                            </div>
+                            <div class="device-id">ID: ${device.id}</div>
+                            <div class="detail-item" style="margin-top: 8px;">
+                                <span class="detail-icon">🕐</span>
+                                Last: ${lastAccessDate}
+                            </div>
+                        </div>
+                        <div class="device-actions">
+                            <button class="btn btn-info" onclick="showDeviceDetail('${username}')">
+                                ℹ️ Detail
+                            </button>
+                            <button class="btn btn-danger" onclick="removeDevice('${username}')">
+                                🗑️ Hapus
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            deviceList.innerHTML = html;
+        }
+
+        function removeDevice(username) {
+            if (confirm(`Hapus device untuk user "${username}"?\n\nUser akan diminta mendaftar ulang device saat login berikutnya.`)) {
+                DeviceAuth.unregisterDevice(username);
+                console.log('🗑️ Device removed for:', username);
+                loadDeviceList();
+                alert('Device berhasil dihapus!');
+            }
+        }
+
+        function showDeviceDetail(username) {
+            const devices = DeviceAuth.getRegisteredDevices();
+            const device = devices[username];
+            const modal = document.getElementById('detailModal');
+            const content = document.getElementById('deviceDetailContent');
+
+            const info = device.deviceInfo;
+            const registeredDate = new Date(device.registeredAt).toLocaleString('id-ID');
+            const lastAccessDate = new Date(device.lastAccess).toLocaleString('id-ID');
+
+            content.innerHTML = `
+                <div class="info-item">
+                    <span class="info-label">Username:</span>
+                    <span class="info-value">${username}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Device ID:</span>
+                    <span class="info-value" style="font-family: monospace;">${device.id}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Device Type:</span>
+                    <span class="info-value">${info.device}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Operating System:</span>
+                    <span class="info-value">${info.os}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Browser:</span>
+                    <span class="info-value">${info.browser}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Screen Resolution:</span>
+                    <span class="info-value">${info.screen}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Language:</span>
+                    <span class="info-value">${info.language}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Timezone:</span>
+                    <span class="info-value">${info.timezone}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Registered:</span>
+                    <span class="info-value">${registeredDate}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Last Access:</span>
+                    <span class="info-value">${lastAccessDate}</span>
+                </div>
+            `;
+
+            modal.style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('detailModal').style.display = 'none';
+        }
+
+        function refreshDeviceList() {
+            loadDeviceList();
+            console.log('🔄 Device list refreshed');
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('detailModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+
+        // Load devices on page load
+        document.addEventListener('DOMContentLoaded', loadDeviceList);
+    </script>
+</body>
+</html>
