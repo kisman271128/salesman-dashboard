@@ -962,70 +962,79 @@
             }, 2000);
         }
 
-        // ✅ UPDATED: Load last update info from chart_data.json
-        // Get last date where DO > 0 and combine with period
+        // ✅ UPDATED: Load last update info - DATE ONLY (no time)
         async function loadLastUpdateInfo() {
             try {
-                console.log('📅 Loading last update info from chart_data.json...');
+                console.log('📅 Loading last update info...');
                 
                 // Set loading state
                 document.getElementById('lastUpdateTime').textContent = 'Loading...';
                 
-                const response = await fetch('data/chart_data.json');
-                console.log('📊 Chart data fetch response:', response.status, response.ok);
+                const response = await fetch('data/dashboard.json');
+                console.log('📊 Dashboard fetch response:', response.status, response.ok);
                 
                 if (response.ok) {
-                    const chartData = await response.json();
-                    console.log('📊 Chart data structure:', {
-                        hasPeriod: !!chartData.period,
-                        hasDoData: !!chartData.do_data,
-                        hasLabels: !!chartData.labels,
-                        period: chartData.period
+                    const dashboardData = await response.json();
+                    console.log('📊 Dashboard data structure:', {
+                        hasLastUpdated: !!dashboardData.last_updated,
+                        lastUpdated: dashboardData.last_updated,
+                        keys: Object.keys(dashboardData)
                     });
                     
-                    // Find last date where DO > 0
-                    if (chartData.do_data && chartData.labels && chartData.period) {
-                        const doData = chartData.do_data;
-                        const labels = chartData.labels;
-                        const period = chartData.period;
+                    if (dashboardData.last_updated) {
+                        // Parse the datetime string
+                        const lastUpdate = new Date(dashboardData.last_updated);
+                        console.log('📅 Parsed date:', lastUpdate);
                         
-                        // Loop from end to find last DO > 0
-                        let lastDateLabel = null;
-                        for (let i = doData.length - 1; i >= 0; i--) {
-                            if (doData[i] > 0) {
-                                lastDateLabel = labels[i];
-                                console.log(`📅 Found last DO > 0 at index ${i}: DO=${doData[i]}, Date=${lastDateLabel}`);
-                                break;
-                            }
+                        // Check if date is valid
+                        if (isNaN(lastUpdate.getTime())) {
+                            console.error('❌ Invalid date:', dashboardData.last_updated);
+                            document.getElementById('lastUpdateTime').textContent = 'Invalid date format';
+                            return;
                         }
                         
-                        if (lastDateLabel) {
-                            // Combine date with period
-                            // Example: "25" + "Oktober 2025" = "25 Oktober 2025"
-                            const lastUpdateText = `${lastDateLabel} ${period}`;
-                            
-                            document.getElementById('lastUpdateTime').textContent = lastUpdateText;
-                            console.log('✅ Last update info loaded:', lastUpdateText);
-                        } else {
-                            console.warn('⚠️ No DO data > 0 found');
-                            document.getElementById('lastUpdateTime').textContent = period || 'Data not available';
-                        }
+                        // ✅ UPDATED: Format only date with day name (no time)
+                        const formattedDate = lastUpdate.toLocaleDateString('id-ID', {
+                            weekday: 'long',  // Nama hari (Senin, Selasa, dll)
+                            year: 'numeric',
+                            month: 'long',    // Nama bulan penuh (Januari, Februari, dll)
+                            day: 'numeric'
+                        });
+                        
+                        document.getElementById('lastUpdateTime').textContent = formattedDate;
+                        console.log('✅ Last update info loaded (date only):', formattedDate);
                     } else {
-                        console.warn('⚠️ Missing required fields in chart_data.json');
-                        console.log('📊 Available fields:', Object.keys(chartData));
-                        document.getElementById('lastUpdateTime').textContent = chartData.period || 'Data not available';
+                        console.warn('⚠️ No last_updated field found in dashboard.json');
+                        console.log('📊 Available fields:', Object.keys(dashboardData));
+                        document.getElementById('lastUpdateTime').textContent = 'Data not available';
                     }
                 } else {
-                    console.warn('⚠️ Could not load chart_data.json:', response.status, response.statusText);
+                    console.warn('⚠️ Could not load dashboard.json:', response.status, response.statusText);
                     
-                    // Show fallback
-                    document.getElementById('lastUpdateTime').textContent = 'Data not available';
+                    // Try alternative approach - show current date as fallback
+                    const now = new Date();
+                    const fallbackDate = now.toLocaleDateString('id-ID', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                    });
+                    
+                    document.getElementById('lastUpdateTime').textContent = fallbackDate;
                 }
             } catch (error) {
                 console.error('❌ Error loading last update info:', error);
                 
-                // Show fallback
-                document.getElementById('lastUpdateTime').textContent = 'Data not available';
+                // Show current date as ultimate fallback
+                const now = new Date();
+                const fallbackDate = now.toLocaleDateString('id-ID', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+                
+                document.getElementById('lastUpdateTime').textContent = fallbackDate;
             }
         }
 
