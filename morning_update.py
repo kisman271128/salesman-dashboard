@@ -237,7 +237,18 @@ class SalesmanDashboardUpdater:
                 return True
             
             # Add files
-            files_to_add = ['data/', '*.html', 'morning_update.py', 'morning_update.log']
+            files_to_add = [
+                'data/', 
+                '*.html', 
+                'morning_update.py', 
+                'morning_update.log',
+                # PWA files
+                'manifest.json',
+                'service-worker.js',
+                'device-auth.js',
+                'icon-*.png',
+                'device-admin.html'
+            ]
             for pattern in files_to_add:
                 subprocess.run(['git', 'add', pattern], capture_output=True)
             
