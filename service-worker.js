@@ -1,13 +1,13 @@
 // Service Worker untuk Sales Performance Dashboard
 const CACHE_NAME = 'sales-dashboard-v1';
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/dashboard.html',
-  '/performance_all.html',
-  '/manifest.json',
-  '/icon-192.png',
-  '/icon-512.png'
+  './',
+  './index.html',
+  './dashboard.html',
+  './performance_all.html',
+  './manifest.json',
+  './icon-192.png',
+  './icon-512.png'
 ];
 
 // Install Service Worker
@@ -17,17 +17,21 @@ self.addEventListener('install', (event) => {
     caches.open(CACHE_NAME)
       .then((cache) => {
         console.log('📦 Service Worker: Caching files');
-        return cache.addAll(urlsToCache.map(url => {
-          return new Request(url, { cache: 'reload' });
-        })).catch(err => {
-          console.warn('⚠️ Some files could not be cached:', err);
-          // Don't fail if some files are not available
-          return Promise.resolve();
+        // Cache files one by one to handle failures gracefully
+        const cachePromises = urlsToCache.map(url => {
+          return cache.add(url).catch(err => {
+            console.warn(`⚠️ Could not cache ${url}:`, err.message);
+            return Promise.resolve(); // Continue even if one file fails
+          });
         });
+        return Promise.all(cachePromises);
       })
       .then(() => {
         console.log('✅ Service Worker: Installation complete');
         return self.skipWaiting();
+      })
+      .catch(err => {
+        console.error('❌ Service Worker installation failed:', err);
       })
   );
 });
@@ -92,7 +96,7 @@ self.addEventListener('fetch', (event) => {
             
             // If not in cache, return a custom offline page (optional)
             if (event.request.destination === 'document') {
-              return caches.match('/index.html');
+              return caches.match('./index.html');
             }
           });
       })
