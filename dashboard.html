@@ -6,14 +6,9 @@
     <title>Dashboard - Salesman App</title>
     <!-- Add this line for favicon -->
     <link rel="icon" type="image/x-icon" href="favicon.ico">
-    
-    <!-- Update script sources to use correct CDN URLs -->
-    <script src="https://unpkg.com/react@17/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@17/umd/react-dom.production.min.js"></script>
-    
-    <!-- Replace Nivo scripts with these working versions -->
-    <script src="https://cdn.jsdelivr.net/npm/@nivo/core@0.80.0/dist/nivo-core.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@nivo/radial-bar@0.80.0/dist/nivo-radial-bar.min.js"></script>
+    <!-- ApexCharts for browser-based charting -->
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.44.0/dist/apexcharts.min.js"></script>
+
     <style>
         * {
             margin: 0;
@@ -1103,30 +1098,13 @@
             }
         }
 
-        .chart-container {
-            background: white;
-            border-radius: 8px;
-            padding: 20px;
-            margin: 20px 0;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .chart-container h3 {
-            margin: 0 0 15px 0;
-            color: #2d3748;
-        }
-
-        #channelRadialChart {
-            height: 400px;
-            width: 100%;
-        }
         /* Chart By Channel Radial Bar Styling */
         #channelRadialChart {
             background: #ffffff;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             margin: 20px 0;
-            padding: 16px;
+            padding: 4px;
         }
 
         .error-message {
@@ -1175,9 +1153,8 @@
             </div>
             
             <!-- Chart By Channel Radial Bar -->
-            <div class="chart-container">
-                <h3>Channel Performance</h3>
-                <div id="channelRadialChart"></div>
+            <div class="chart-section">
+                <div id="channelRadialChart" style="height: 400px;"></div>
             </div>
 
             <!-- Modern Chart Section -->
@@ -1748,104 +1725,190 @@
             return card;
         }
 
-        // Fungsi untuk load data channel
         async function loadChannelData() {
             try {
                 const response = await fetch('data/d.channel.json');
-                if (!response.ok) throw new Error('Gagal mengambil data channel');
+                if (!response.ok) throw new Error('Failed to load channel data');
                 
                 const text = await response.text();
-                const lines = text.trim().split('\n')
+                // Parse JSONL format
+                const channelData = text.trim().split('\n')
                     .map(line => {
                         try {
                             return JSON.parse(line);
                         } catch (e) {
-                            console.warn('Baris JSON tidak valid:', line);
+                            console.warn('Invalid JSON line:', line);
                             return null;
                         }
                     })
-                    .filter(Boolean);
+                    .filter(item => item !== null);
 
-                if (!lines.length) throw new Error('Tidak ada data channel yang valid');
-
-                const processedData = processChannelData(lines);
-                renderChannelChart(processedData);
+                if (channelData.length === 0) throw new Error('No valid channel data found');
+                
+                const processedData = processChannelData(channelData);
+                renderRadialChart(processedData);
             } catch (err) {
-                console.error('Gagal memuat data channel:', err);
+                console.error('Channel data load failed:', err);
+                // Add visual feedback
                 const container = document.getElementById('channelRadialChart');
                 if (container) {
-                    container.innerHTML = `<div class="error-message">Error: ${err.message}</div>`;
+                    container.innerHTML = `<div class="error-message">Failed to load channel data: ${err.message}</div>`;
                 }
             }
         }
 
-        // Fungsi untuk memproses data channel
-        function processChannelData(jsonLines) {
-            const groups = {};
-            
-            jsonLines.forEach(line => {
-                const group = line['Channel Group'] || 'Other';
-                if (!groups[group]) {
-                    groups[group] = {
+        function processChannelData(data) {
+            const groupedData = data.reduce((acc, item) => {
+                const group = item['Channel Group'] || 'Other';
+                if (!acc[group]) {
+                    acc[group] = {
                         target: 0,
                         actual: 0,
                         gap: 0
                     };
                 }
-                
-                groups[group].target += parseFloat(line.Target || 0);
-                groups[group].actual += parseFloat(line.Actual || 0);
-                groups[group].gap += parseFloat(line.Gap || 0);
-            });
+                acc[group].target += Number(item[' T.MTD']) || 0;
+                acc[group].actual += Number(item[' A.MTD']) || 0;
+                acc[group].gap += Number(item[' Gap MTD']) || 0;
+                return acc;
+            }, {});
 
-            return Object.entries(groups).map(([name, data]) => ({
-                id: name,
+            return Object.entries(groupedData).map(([group, values]) => ({
+                id: group,
                 data: [
-                    { x: 'Target', y: data.target },
-                    { x: 'Actual', y: data.actual },
-                    { x: 'Gap', y: Math.abs(data.gap) }
+                    {
+                        x: 'Target',
+                        y: values.target
+                    },
+                    {
+                        x: 'Actual',
+                        y: values.actual
+                    },
+                    {
+                        x: 'Gap',
+                        y: Math.abs(values.gap)
+                    }
                 ]
             }));
         }
 
-        // Fungsi untuk me-render chart
-        function renderChannelChart(data) {
+        function renderRadialChart(data) {
             const container = document.getElementById('channelRadialChart');
-            if (!container) return;
-
+            
+            // Clear any existing chart
+            container.innerHTML = '';
+            
+            // Transform data for ApexCharts RadialBar
+            // We'll show the achievement percentage (Actual/Target * 100) for each channel
+            const series = data.map(channel => {
+                const actualValue = channel.data.find(d => d.x === 'Actual')?.y || 0;
+                const targetValue = channel.data.find(d => d.x === 'Target')?.y || 0;
+                const percentage = targetValue > 0 ? (actualValue / targetValue * 100) : 0;
+                return Math.min(Math.round(percentage), 100); // Cap at 100%
+            });
+            
+            const labels = data.map(channel => channel.id);
+            
+            // Create ApexCharts options
             const options = {
-                data: data,
-                width: container.offsetWidth,
-                height: container.offsetHeight,
-                margin: { top: 40, right: 120, bottom: 40, left: 40 },
-                innerRadius: 0.3,
-                padding: 0.4,
-                cornerRadius: 4,
-                colors: { scheme: 'nivo' },
-                borderWidth: 1,
-                enableGridX: true,
-                enableGridY: true,
-                legends: [
-                    {
-                        anchor: 'right',
-                        direction: 'column',
-                        justify: false,
-                        translateX: 80,
-                        translateY: 0,
-                        itemWidth: 100,
-                        itemHeight: 20,
-                        symbolSize: 12,
-                        symbolShape: 'circle'
+                series: series,
+                chart: {
+                    type: 'radialBar',
+                    height: container.offsetHeight || 150,
+                    width: '100%'
+                },
+                plotOptions: {
+                    radialBar: {
+                        offsetY: 0,
+                        startAngle: 0,
+                        endAngle: 270,
+                        hollow: {
+                            margin: 5,
+                            size: '30%',
+                            background: 'transparent',
+                        },
+                        dataLabels: {
+                            name: {
+                                fontSize: '14px',
+                            },
+                            value: {
+                                fontSize: '16px',
+                                formatter: function(val) {
+                                    return val + '%';
+                                }
+                            },
+                            total: {
+                                show: true,
+                                label: 'Achievement',
+                                formatter: function (w) {
+                                    const avg = w.globals.seriesTotals.reduce((a, b) => a + b, 0) / w.globals.seriesTotals.length;
+                                    return Math.round(avg) + '%';
+                                }
+                            }
+                        },
+                        track: {
+                            background: '#f2f2f2',
+                            strokeWidth: '97%'
+                        }
                     }
-                ]
+                },
+                colors: ['#1ab7ea', '#0084ff', '#39539E', '#0077B5', '#FF6B6B'],
+                labels: labels,
+                legend: {
+                    show: true,
+                    floating: true,
+                    fontSize: '11px',
+                    position: 'left',
+                    offsetX: 5,
+                    offsetY: 5,
+                    labels: {
+                        useSeriesColors: true,
+                    },
+                    markers: {
+                        size: 0
+                    },
+                    formatter: function(seriesName, opts) {
+                        const channelData = data[opts.seriesIndex];
+                        const actual = channelData.data.find(d => d.x === 'Actual')?.y || 0;
+                        return seriesName + ": " + formatCurrencyIndonesia(actual);
+                    },
+                    itemMargin: {
+                        vertical: 3
+                    }
+                },
+                tooltip: {
+                    enabled: true,
+                    y: {
+                        formatter: function(val, opts) {
+                            const channelData = data[opts.seriesIndex];
+                            const actual = channelData.data.find(d => d.x === 'Actual')?.y || 0;
+                            const target = channelData.data.find(d => d.x === 'Target')?.y || 0;
+                            const gap = channelData.data.find(d => d.x === 'Gap')?.y || 0;
+                            
+                            return `
+                                <div style="padding: 5px;">
+                                    <div><strong>Target:</strong> ${formatCurrencyIndonesia(target)}</div>
+                                    <div><strong>Actual:</strong> ${formatCurrencyIndonesia(actual)}</div>
+                                    <div><strong>Gap:</strong> ${formatCurrencyIndonesia(gap)}</div>
+                                    <div><strong>Achievement:</strong> ${val}%</div>
+                                </div>
+                            `;
+                        }
+                    }
+                },
+                responsive: [{
+                    breakpoint: 480,
+                    options: {
+                        legend: {
+                            show: false
+                        }
+                    }
+                }]
             };
-
-            try {
-                new window.Nivo.RadialBar(options).render(container);
-            } catch (err) {
-                console.error('Error rendering chart:', err);
-                container.innerHTML = `<div class="error-message">Gagal menampilkan chart: ${err.message}</div>`;
-            }
+            
+            // Render the chart
+            const chart = new ApexCharts(container, options);
+            chart.render();
         }
         
 
@@ -2352,26 +2415,6 @@
                 else startAutoRefresh();
             });
         });
-
-        // Tambahkan handler untuk resize
-        window.addEventListener('resize', debounce(() => {
-            if (window.channelData) {
-                renderChannelChart(window.channelData);
-            }
-        }, 250));
-
-        // Utility function untuk debounce
-        function debounce(func, wait) {
-            let timeout;
-            return function executedFunction(...args) {
-                const later = () => {
-                    clearTimeout(timeout);
-                    func(...args);
-                };
-                clearTimeout(timeout);
-                timeout = setTimeout(later, wait);
-            };
-        }
 
         // Handle offline/online status
         window.addEventListener('online', () => {
