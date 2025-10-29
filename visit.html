@@ -1530,8 +1530,8 @@
                     <!-- SO Amount Input (shown only when "Ada SO" is selected) -->
                     <div class="so-amount-section" id="soAmountSection">
                         <label class="so-amount-label">Nominal Sales Order (Rp):</label>
-                        <input type="number" class="so-amount-input" id="soAmountInput" 
-                               placeholder="Masukkan nominal SO..." min="0" step="1000">
+                        <input type="text" class="so-amount-input" id="soAmountInput" 
+                               placeholder="Masukkan nominal SO..." inputmode="numeric">
                     </div>
                 </div>
                 
@@ -2644,7 +2644,7 @@
 
         function confirmVisitEnd() {
             const orderStatus = document.getElementById('orderStatusSelect').value;
-            const soAmount = document.getElementById('soAmountInput').value;
+            const soAmount = parseInt(unformatRupiah(document.getElementById('soAmountInput').value) || '0');
             
             if (!orderStatus) {
                 alert('❌ Pilih status kunjungan terlebih dahulu!');
@@ -4278,7 +4278,51 @@
             if (!checkActiveSessionBeforeAction('navigate_profile')) return;
             alert('👤 Profile feature coming soon');
         }
+		
+		// Format number dengan pemisah ribuan
+		function formatRupiah(angka) {
+			if (!angka) return '';
+			const number = angka.toString().replace(/[^0-9]/g, '');
+			return number.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+		}
 
+		// Remove format untuk mendapatkan angka asli
+		function unformatRupiah(formatted) {
+			return formatted.replace(/\./g, '');
+		}
+
+		// Auto-format saat user mengetik
+		document.getElementById('soAmountInput').addEventListener('input', function(e) {
+			let val = this.value.replace(/\D/g, '');
+			let cursorPos = this.selectionStart;
+			
+			// Count dots before cursor in old value
+			let oldDotsBeforeCursor = (this.value.substring(0, cursorPos).match(/\./g) || []).length;
+			
+			// Format
+			if (val) {
+				this.value = val.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+			} else {
+				this.value = '';
+			}
+			
+			// Count dots before cursor in new value
+			let newVal = this.value;
+			let newDotsBeforeCursor = 0;
+			let digitsSeen = 0;
+			
+			for (let i = 0; i < newVal.length && digitsSeen < cursorPos - oldDotsBeforeCursor; i++) {
+				if (newVal[i] === '.') {
+					newDotsBeforeCursor++;
+				} else {
+					digitsSeen++;
+				}
+			}
+			
+			// Set cursor
+			let newCursorPos = (cursorPos - oldDotsBeforeCursor) + newDotsBeforeCursor;
+			this.setSelectionRange(newCursorPos, newCursorPos);
+		});
         // ===== CLEANUP AND VISIBILITY HANDLING =====
         window.addEventListener('beforeunload', function (e) {
             if (visitSession.isActive && !visitSession.isPaused) {
