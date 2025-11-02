@@ -1059,6 +1059,194 @@
             }
         }
         
+
+        /* ===== ACTIVITY MENU POP-UP ===== */
+        .activity-menu-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+            animation: fadeIn 0.2s ease-in-out;
+        }
+        
+        .activity-menu-overlay.show {
+            display: flex;
+        }
+        
+        .activity-menu {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            width: 90%;
+            overflow: hidden;
+            animation: slideUp 0.3s ease-out;
+            transform-origin: center;
+        }
+        
+        .activity-menu-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 24px;
+            text-align: center;
+        }
+        
+        .activity-menu-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+            display: block;
+        }
+        
+        .activity-menu-title {
+            font-size: 22px;
+            font-weight: 700;
+            margin: 0;
+        }
+        
+        .activity-menu-body {
+            padding: 20px 24px;
+        }
+        
+        .activity-menu-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px 20px;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, #f8fafc, #ffffff);
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: inherit;
+        }
+        
+        .activity-menu-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .activity-menu-item:hover {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .activity-menu-item:hover .activity-menu-item-icon {
+            transform: scale(1.2);
+        }
+        
+        .activity-menu-item:hover .activity-menu-item-title,
+        .activity-menu-item:hover .activity-menu-item-desc {
+            color: white;
+        }
+        
+        .activity-menu-item:active {
+            transform: translateY(0);
+        }
+        
+        .activity-menu-item-icon {
+            font-size: 32px;
+            transition: transform 0.3s ease;
+            flex-shrink: 0;
+        }
+        
+        .activity-menu-item-content {
+            flex: 1;
+        }
+        
+        .activity-menu-item-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 4px;
+            transition: color 0.3s ease;
+        }
+        
+        .activity-menu-item-desc {
+            font-size: 13px;
+            color: #64748b;
+            line-height: 1.4;
+            transition: color 0.3s ease;
+        }
+        
+        .activity-menu-footer {
+            padding: 0 24px 24px 24px;
+        }
+        
+        .activity-menu-close-btn {
+            width: 100%;
+            padding: 14px 20px;
+            border: 2px solid #e2e8f0;
+            background: #f1f5f9;
+            color: #64748b;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .activity-menu-close-btn:hover {
+            background: #e2e8f0;
+            border-color: #cbd5e1;
+        }
+        
+        .activity-menu-close-btn:active {
+            background: #cbd5e1;
+        }
+        
+        @media (max-width: 480px) {
+            .activity-menu {
+                width: 95%;
+                margin: 0 10px;
+            }
+            
+            .activity-menu-header {
+                padding: 20px;
+            }
+            
+            .activity-menu-icon {
+                font-size: 40px;
+                margin-bottom: 8px;
+            }
+            
+            .activity-menu-title {
+                font-size: 20px;
+            }
+            
+            .activity-menu-body {
+                padding: 16px 20px;
+            }
+            
+            .activity-menu-item {
+                padding: 14px 16px;
+            }
+            
+            .activity-menu-item-icon {
+                font-size: 28px;
+            }
+            
+            .activity-menu-item-title {
+                font-size: 15px;
+            }
+            
+            .activity-menu-item-desc {
+                font-size: 12px;
+            }
+            
+            .activity-menu-footer {
+                padding: 0 20px 20px 20px;
+            }
+        }
         /* Mobile responsive */
         @media (max-width: 480px) {
             .logout-modal {
@@ -2344,15 +2532,52 @@
             }
         });
 
-        // Activity function dengan role-based access
+        // ===== ACTIVITY MENU FUNCTIONS =====
         function showActivity() {
             if (currentUserRole === 'admin') {
-                console.log('✅ Admin user accessing Activity dashboard');
-                window.location.href = 'location-analytics.html';
+                console.log('✅ Admin user accessing Activity menu');
+                showActivityMenu();
             } else {
                 console.log('❌ Non-admin user attempted to access Activity');
                 alert(`🚫 Access Denied\n\nActivity dashboard is restricted to administrators only.\n\nCurrent user: ${sessionStorage.getItem('currentUser') || 'Unknown'}\nRequired role: admin`);
             }
+        }
+
+        function showActivityMenu() {
+            const menu = document.getElementById('activityMenu');
+            if (menu) {
+                menu.classList.add('show');
+                // Prevent body scroll when menu is open
+                document.body.style.overflow = 'hidden';
+                console.log('📊 Activity menu opened');
+            } else {
+                console.error('❌ Activity menu element not found!');
+            }
+        }
+
+        function closeActivityMenu(event) {
+            // Only close if clicking overlay (not the menu itself)
+            if (event && event.target.id !== 'activityMenu') {
+                return;
+            }
+            
+            const menu = document.getElementById('activityMenu');
+            if (menu) {
+                menu.classList.remove('show');
+                // Restore body scroll
+                document.body.style.overflow = '';
+                console.log('📊 Activity menu closed');
+            }
+        }
+
+        function navigateToAnalysis() {
+            console.log('📊 Navigating to Analisis Rute...');
+            window.location.href = 'location-analytics.html';
+        }
+
+        function navigateToLocation() {
+            console.log('📍 Navigating to Location Compliance...');
+            window.location.href = 'mobile-compliance.html';
         }
 
         function showPerformance() {
@@ -2443,6 +2668,37 @@
                 </button>
                 <button class="logout-modal-button confirm" onclick="confirmLogout()">
                     Ya, Logout
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Activity Menu Pop-up -->
+    <div class="activity-menu-overlay" id="activityMenu" onclick="closeActivityMenu(event)">
+        <div class="activity-menu" onclick="event.stopPropagation()">
+            <div class="activity-menu-header">
+                <span class="activity-menu-icon">📊</span>
+                <h2 class="activity-menu-title">Activity Menu</h2>
+            </div>
+            <div class="activity-menu-body">
+                <div class="activity-menu-item" onclick="navigateToAnalysis()">
+                    <div class="activity-menu-item-icon">🗺️</div>
+                    <div class="activity-menu-item-content">
+                        <div class="activity-menu-item-title">Analisis Rute</div>
+                        <div class="activity-menu-item-desc">Pantau rute dan lokasi salesman secara real-time</div>
+                    </div>
+                </div>
+                <div class="activity-menu-item" onclick="navigateToLocation()">
+                    <div class="activity-menu-item-icon">📍</div>
+                    <div class="activity-menu-item-content">
+                        <div class="activity-menu-item-title">Location Compliance</div>
+                        <div class="activity-menu-item-desc">Dashboard kepatuhan lokasi dan tracking visit</div>
+                    </div>
+                </div>
+            </div>
+            <div class="activity-menu-footer">
+                <button class="activity-menu-close-btn" onclick="closeActivityMenu()">
+                    Tutup
                 </button>
             </div>
         </div>
