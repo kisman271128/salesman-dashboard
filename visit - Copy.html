@@ -814,6 +814,7 @@
             color: #64748b;
             cursor: pointer;
             transition: all 0.3s ease;
+            position: relative; /* ✅ DITAMBAHKAN! */
         }
 
         .tab-button.active {
@@ -826,6 +827,82 @@
         .tab-button:hover:not(.active) {
             background: #f8fafc;
             border-color: #cbd5e1;
+        }
+
+        /* ===== BADGE COUNTER FOR TAB ===== */
+        .tab-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 12px;
+            min-width: 20px;
+            text-align: center;
+            box-shadow: 0 2px 6px rgba(245, 158, 11, 0.4);
+            animation: badgePulse 2s ease-in-out infinite;
+        }
+
+        .tab-button.active .tab-badge {
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+        }
+
+        @keyframes badgePulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        /* ===== GAP MSS BADGE ON LEFT ===== */
+        .gap-badge-left {
+            position: absolute;
+            top: -8px;
+            left: -8px;
+            background: #ffffff;                /* ← Background putih */
+            border: 1px solid #ff9800;          /* ← Border orange */
+            font-size: 12px;                    /* ← SAMA dengan .tab-badge */
+            font-weight: 700;                   /* ← SAMA dengan .tab-badge */
+            padding: 4px 8px;                   /* ← SAMA dengan .tab-badge */
+            border-radius: 12px;                /* ← SAMA dengan .tab-badge */
+            min-width: 24px;                    /* ← SAMA dengan .tab-badge */
+            text-align: center;   
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+            animation: badgePulse 2s ease-in-out infinite;
+            z-index: 100;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        }
+
+        .gap-badge-left.negative {
+            color: #dc2626;                     /* ← TEXT MERAH untuk < 0 */
+        }
+
+        .gap-badge-left.positive {
+            color: #059669;                     /* ← TEXT HIJAU untuk >= 0 */
+        }
+
+        .gap-mss-badge {
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 8px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        .gap-mss-badge.negative {
+            background: linear-gradient(135deg, #ef4444, #dc2626); /* 🔴 MERAH */
+        }
+
+        .gap-mss-badge.positive {
+            background: linear-gradient(135deg, #10b981, #059669); /* 🟢 HIJAU */
         }
 
         .tab-content-panel {
@@ -1302,8 +1379,10 @@
                         <button class="tab-button active" onclick="switchTab('dataSku')">
                             📊 Data SKU
                         </button>
-                        <button class="tab-button" onclick="switchTab('mssBelumAktif')">
+                        <button class="tab-button" onclick="switchTab('mssBelumAktif')" id="mssTabButton">
+                            <span class="gap-badge-left" id="gapMssBadge" style="visibility: hidden; opacity: 0;">0</span>
                             ⚠️ SKU MSS Belum Aktif
+                            <span class="tab-badge" id="mssBadge" style="display: none;">0</span>
                         </button>
                     </div>
 
@@ -1451,8 +1530,8 @@
                     <!-- SO Amount Input (shown only when "Ada SO" is selected) -->
                     <div class="so-amount-section" id="soAmountSection">
                         <label class="so-amount-label">Nominal Sales Order (Rp):</label>
-                        <input type="number" class="so-amount-input" id="soAmountInput" 
-                               placeholder="Masukkan nominal SO..." min="0" step="1000">
+                        <input type="text" class="so-amount-input" id="soAmountInput" 
+                               placeholder="Masukkan nominal SO..." inputmode="numeric">
                     </div>
                 </div>
                 
@@ -1541,7 +1620,7 @@
         let tpomData = [];
         let salesmanTeam = '';
         let skuData = [];
-
+        
         // ===== LOCAL STORAGE FOR VISITS =====
         let todayVisitedCustomers = new Set();
 
@@ -2565,7 +2644,7 @@
 
         function confirmVisitEnd() {
             const orderStatus = document.getElementById('orderStatusSelect').value;
-            const soAmount = document.getElementById('soAmountInput').value;
+            const soAmount = parseInt(unformatRupiah(document.getElementById('soAmountInput').value) || '0');
             
             if (!orderStatus) {
                 alert('❌ Pilih status kunjungan terlebih dahulu!');
@@ -3098,6 +3177,51 @@
         // Make switchTab available globally
         window.switchTab = switchTab;
 
+        // ===== UPDATE MSS BADGE COUNTER =====
+        function updateMSSBadge(count) {
+            const badge = document.getElementById('mssBadge');
+            if (badge) {
+                if (count > 0) {
+                    badge.textContent = count;
+                    badge.style.display = 'block';
+                    console.log(`🔢 MSS Badge updated: ${count} SKUs`);
+                } else {
+                    badge.style.display = 'none';
+                    console.log('🔢 MSS Badge hidden (0 SKUs)');
+                }
+            }
+        }
+        // ===== UPDATE GAP MSS BADGE =====
+        function updateGapMSSBadge(gapValue) {
+            const badge = document.getElementById('gapMssBadge');
+            if (badge) {
+                if (gapValue !== null && gapValue !== undefined) {
+                    // Determine class and display
+                    const badgeClass = gapValue < 0 ? 'negative' : 'positive';
+                    const displayValue = gapValue < 0 ? gapValue : `+${gapValue}`;
+                    
+                    // Update badge using visibility (not display)
+                    badge.className = `gap-badge-left ${badgeClass}`;
+                    badge.textContent = displayValue;
+                    badge.style.visibility = 'visible';
+                    badge.style.opacity = '1';
+                    
+                    console.log(`🔢 Gap MSS Badge updated: ${displayValue} (${badgeClass})`);
+                    console.log('   ✅ Badge should be VISIBLE now');
+                } else {
+                    // Hide badge
+                    badge.classList.add('hidden');
+                    badge.style.visibility = 'hidden';
+                    badge.style.opacity = '0';
+                    console.log('🔢 Gap MSS Badge hidden (no data)');
+                }
+            } else {
+                console.error('❌ Gap MSS Badge element not found!');
+            }
+        }
+
+
+
         function showMSSBelumAktif(customerName) {
             const mssContainer = document.getElementById('mssGridContainer');
             
@@ -3108,6 +3232,8 @@
                         <div>Pilih outlet untuk melihat SKU MSS yang belum aktif</div>
                     </div>
                 `;
+                updateMSSBadge(0); // Hide badge when no outlet selected
+                updateGapMSSBadge(null); // Hide gap badge too
                 return;
             }
             
@@ -3115,6 +3241,68 @@
             console.log('   Outlet:', customerName);
             console.log('   Salesman Team:', salesmanTeam);
             
+            let gapMSS = 0;
+            console.log('🔍 === Gap MSS Debug ===');
+            console.log('   detailsData length:', detailsData ? detailsData.length : 0);
+            console.log('   currentSalesmanId:', currentSalesmanId);
+            console.log('   customerName:', customerName);
+            
+            if (detailsData && detailsData.length > 0) {
+                // Enhanced debugging
+                console.log('   🔍 Searching for match in detailsData...');
+                
+                const detailRecord = detailsData.find(item => {
+                    const itemSalesman = (item.szEmployeeId || '').toString().trim();
+                    const itemOutlet = (item['Nama Pelanggan'] || item.Nama_Pelanggan || '').toString().trim();
+                    const itemOutletLower = itemOutlet.toLowerCase();
+                    const customerNameLower = customerName.toLowerCase();
+                    
+                    const salesmanMatch = itemSalesman === currentSalesmanId;
+                    const outletMatch = itemOutletLower === customerNameLower;
+                    
+                    // Debug first few records
+                    if (detailsData.indexOf(item) < 3) {
+                        console.log(`   Record ${detailsData.indexOf(item)}:`, {
+                            szEmployeeId: itemSalesman,
+                            'Nama Pelanggan (space)': item['Nama Pelanggan'],
+                            'Nama_Pelanggan (underscore)': item.Nama_Pelanggan,
+                            outlet: itemOutlet,
+                            GapMSS: item.GapMSS,
+                            salesmanMatch,
+                            outletMatch
+                        });
+                    }
+                    
+                    return salesmanMatch && outletMatch;
+                });
+                
+                if (detailRecord) {
+                    gapMSS = Number(detailRecord.GapMSS || 0);
+                    console.log('   ✅ Gap MSS found:', {
+                        outlet: detailRecord['Nama Pelanggan'] || detailRecord.Nama_Pelanggan,
+                        GapMSS: detailRecord.GapMSS,
+                        parsed: gapMSS
+                    });
+                    updateGapMSSBadge(gapMSS); // Update gap badge with value
+                } else {
+                    console.log('   ❌ No detail record found for this outlet');
+                    // Show matching outlets for debugging
+                    const matchingOutlets = detailsData
+                        .filter(item => (item.szEmployeeId || '').toString().trim() === currentSalesmanId)
+                        .map(item => ({
+                            outlet: (item['Nama Pelanggan'] || item.Nama_Pelanggan || '').toString().trim(),
+                            gapMSS: item.GapMSS
+                        }))
+                        .slice(0, 5);
+                    console.log('   Available outlets for this salesman:', matchingOutlets);
+                    updateGapMSSBadge(0); // No data, show 0
+                }
+            } else {
+                console.log('   ❌ No detailsData available');
+                updateGapMSSBadge(0); // No detailsData, show 0
+            }
+            console.log('🔍 === End Gap MSS Debug ===');
+
             // Fase 1: Ambil SKU MSS yang belum aktif dari pelangganData (d.skupelanggan.json)
             const mssInactiveFromPelanggan = pelangganData.filter(item => {
                 const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
@@ -3267,6 +3455,7 @@
                 `;
                 return;
             }
+                updateMSSBadge(0); // Hide badge when all SKUs active
             
             // Group by team (preserve original case for display)
             const groupedByTeam = {};
@@ -3307,8 +3496,10 @@
             mssContainer.innerHTML = html;
             
             console.log(`📦 Displayed ${mssArray.length} MSS SKU(s) grouped by team`);
+            
+            // Update badge counter
+            updateMSSBadge(mssArray.length);
         }
-
         // ===== SESSION PROTECTION FUNCTIONS =====
         function checkActiveSessionBeforeAction(actionType, targetName = '') {
             if (visitSession.isActive && !visitSession.isPaused) {
@@ -4087,7 +4278,51 @@
             if (!checkActiveSessionBeforeAction('navigate_profile')) return;
             alert('👤 Profile feature coming soon');
         }
+		
+		// Format number dengan pemisah ribuan
+		function formatRupiah(angka) {
+			if (!angka) return '';
+			const number = angka.toString().replace(/[^0-9]/g, '');
+			return number.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+		}
 
+		// Remove format untuk mendapatkan angka asli
+		function unformatRupiah(formatted) {
+			return formatted.replace(/\./g, '');
+		}
+
+		// Auto-format saat user mengetik
+		document.getElementById('soAmountInput').addEventListener('input', function(e) {
+			let val = this.value.replace(/\D/g, '');
+			let cursorPos = this.selectionStart;
+			
+			// Count dots before cursor in old value
+			let oldDotsBeforeCursor = (this.value.substring(0, cursorPos).match(/\./g) || []).length;
+			
+			// Format
+			if (val) {
+				this.value = val.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+			} else {
+				this.value = '';
+			}
+			
+			// Count dots before cursor in new value
+			let newVal = this.value;
+			let newDotsBeforeCursor = 0;
+			let digitsSeen = 0;
+			
+			for (let i = 0; i < newVal.length && digitsSeen < cursorPos - oldDotsBeforeCursor; i++) {
+				if (newVal[i] === '.') {
+					newDotsBeforeCursor++;
+				} else {
+					digitsSeen++;
+				}
+			}
+			
+			// Set cursor
+			let newCursorPos = (cursorPos - oldDotsBeforeCursor) + newDotsBeforeCursor;
+			this.setSelectionRange(newCursorPos, newCursorPos);
+		});
         // ===== CLEANUP AND VISIBILITY HANDLING =====
         window.addEventListener('beforeunload', function (e) {
             if (visitSession.isActive && !visitSession.isPaused) {
