@@ -178,6 +178,10 @@ class SalesmanDashboardUpdater:
             except Exception as e:
                 self.logger.warning(f"Could not get gap total from dashboard: {e}")
             
+            # Calculate sisa_hk_do: total days minus days with DO > 0
+            closed_days = sum(1 for d in do_data if d > 0)
+            sisa_hk_do = len(do_data) - closed_days
+            
             chart_data = {
                 'period': period,
                 'so_data': so_data,
@@ -189,7 +193,7 @@ class SalesmanDashboardUpdater:
                     'avg_so': self.format_currency_indonesia(sum(so_data_positive) / len(so_data_positive)) if so_data_positive else "0",
                     'avg_do': self.format_currency_indonesia(sum(do_data_positive) / len(do_data_positive)) if do_data_positive else "0",
                     'total_hk': len(so_data),
-                    'sisa_hk_do': max(0, len([l for l in labels if int(l) > current_date.day]) if labels else 0),
+                    'sisa_hk_do': sisa_hk_do,
                     'gap_total': gap_total
                 }
             }
