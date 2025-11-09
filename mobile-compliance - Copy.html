@@ -992,42 +992,6 @@
             </div>
         </div>
 
-        <!-- Quick Stats -->
-        <div class="quick-stats">
-            <div class="stat-card">
-                <div class="stat-header">
-                    <span class="stat-icon">✅</span>
-                    <span class="stat-trend">+12%</span>
-                </div>
-                <div class="stat-value" id="compliantVisits">--</div>
-                <div class="stat-label">Compliant</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-header">
-                    <span class="stat-icon">⚠️</span>
-                    <span class="stat-trend negative">-3%</span>
-                </div>
-                <div class="stat-value" id="warningVisits">--</div>
-                <div class="stat-label">Warnings</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-header">
-                    <span class="stat-icon">❌</span>
-                    <span class="stat-trend negative">-2</span>
-                </div>
-                <div class="stat-value" id="violationVisits">--</div>
-                <div class="stat-label">Violations</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-header">
-                    <span class="stat-icon">🎯</span>
-                    <span class="stat-trend">+5%</span>
-                </div>
-                <div class="stat-value" id="accuracyScore">--</div>
-                <div class="stat-label">Accuracy</div>
-            </div>
-        </div>
-
         <!-- Tabs -->
         <div class="tabs-container">
             <button class="tab-btn active" onclick="switchTab('overview')" id="overviewTab">
@@ -1044,6 +1008,42 @@
 
         <!-- Tab Content - Overview -->
         <div class="tab-content active" id="overviewContent">
+            <!-- Quick Stats in Overview -->
+            <div class="quick-stats" style="margin-bottom: 16px;">
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-icon">✅</span>
+                        <span class="stat-trend">+12%</span>
+                    </div>
+                    <div class="stat-value" id="compliantVisits">--</div>
+                    <div class="stat-label">Compliant</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-icon">⚠️</span>
+                        <span class="stat-trend negative">-3%</span>
+                    </div>
+                    <div class="stat-value" id="warningVisits">--</div>
+                    <div class="stat-label">Warnings</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-icon">❌</span>
+                        <span class="stat-trend negative">-2</span>
+                    </div>
+                    <div class="stat-value" id="violationVisits">--</div>
+                    <div class="stat-label">Violations</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-icon">🎯</span>
+                        <span class="stat-trend">+5%</span>
+                    </div>
+                    <div class="stat-value" id="accuracyScore">--</div>
+                    <div class="stat-label">Accuracy</div>
+                </div>
+            </div>
+            
             <!-- Visit History -->
             <div class="history-card">
                 <div class="history-header">
@@ -1789,29 +1789,67 @@
                 return;
             }
             
-            // Show last 5 visits
-            const recentVisits = visits.slice(-5).reverse();
+            // ✅ SHOW ONLY 2 VISITS: FIRST and LAST
+            let visitsToShow = [];
+            
+            if (visits.length === 1) {
+                // Only 1 visit - show it
+                visitsToShow = [visits[0]];
+            } else {
+                // Sort by start_time to get chronological order
+                const sortedVisits = [...visits].sort((a, b) => {
+                    const timeA = new Date(a.start_time || a.created_at).getTime();
+                    const timeB = new Date(b.start_time || b.created_at).getTime();
+                    return timeA - timeB;
+                });
+                
+                // First visit (earliest)
+                const firstVisit = sortedVisits[0];
+                
+                // Last visit (most recent/latest)
+                const lastVisit = sortedVisits[sortedVisits.length - 1];
+                
+                // Show both (latest first, then earliest)
+                visitsToShow = [lastVisit, firstVisit];
+            }
             
             let html = '';
-            recentVisits.forEach(visit => {
-                const startTime = new Date(visit.start_time);
+            visitsToShow.forEach((visit, index) => {
+                const startTime = new Date(visit.start_time || visit.created_at);
                 const timeStr = startTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
                 const isCompliant = visit.visit_status === 'completed';
+                
+                // Label untuk toko pertama atau terakhir
+                const label = visits.length > 1 ? (index === 0 ? '🆕 Latest' : '🏁 First') : '';
                 
                 html += `
                     <div class="history-item">
                         <div class="history-info">
-                            <div class="history-customer">${visit.outlet_name || 'Unknown'}</div>
+                            <div class="history-customer">
+                                ${label ? `<span style="font-size: 10px; background: #667eea; color: white; padding: 2px 6px; border-radius: 4px; margin-right: 6px;">${label}</span>` : ''}
+                                ${visit.outlet_name || 'Unknown'}
+                            </div>
                             <div class="history-time">${timeStr} • ${formatDuration(visit.total_duration_seconds || 0)}</div>
                         </div>
                         <div class="history-status status-${isCompliant ? 'compliant' : 'non-compliant'}">
-                            ${isCompliant ? '✅ Complete' : '⏳ Pending'}
+                            ${isCompliant ? '✅ COMPLETE' : getStatusBadge(visit.visit_status)}
                         </div>
                     </div>
                 `;
             });
             
             container.innerHTML = html;
+        }
+        
+        // Helper function to get status badge
+        function getStatusBadge(status) {
+            const badges = {
+                'started': '🟢 STARTED',
+                'paused': '⏸️ PAUSED',
+                'resumed': '▶️ RESUMED',
+                'completed': '✅ COMPLETE'
+            };
+            return badges[status] || '⏳ Pending';
         }
 
         // ===== JOURNEY MAP =====
