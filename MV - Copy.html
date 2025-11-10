@@ -1,0 +1,2266 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Market Visit</title>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(180deg, #f8f9ff 0%, #e8ecff 100%);
+            min-height: 100vh;
+            color: #2c3e50;
+            padding-bottom: 100px;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        .detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 0 0 30px 30px;
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        .back-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            padding: 10px;
+            border-radius: 12px;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateX(-2px);
+        }
+
+        .detail-title-container {
+            text-align: center;
+            flex: 1;
+        }
+
+        .detail-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            opacity: 0.9;
+            font-weight: 400;
+        }
+
+        .user-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            padding: 10px;
+            border-radius: 12px;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .user-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Loading and Error States */
+        .loading-spinner {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            flex-direction: column;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: rgba(231, 76, 60, 0.1);
+            border: 1px solid rgba(231, 76, 60, 0.3);
+            color: #e74c3c;
+            padding: 16px;
+            border-radius: 12px;
+            margin: 20px;
+            text-align: center;
+        }
+
+        /* Filter Section */
+        .filter-section {
+            padding: 0 16px;
+            margin-bottom: 20px;
+        }
+
+        .filter-frame {
+            background: white;
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .filter-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        .filter-item {
+            position: relative;
+            margin-bottom: 12px;
+        }
+
+        .filter-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .filter-item select, .search-select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 14px;
+            background: white;
+            color: #2d3748;
+            appearance: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .search-select {
+            appearance: menulist;
+            background: white url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") no-repeat right 0.75rem center/1.5em 1.5em;
+        }
+
+        .filter-item select:disabled, .search-select:disabled {
+            background: #f7fafc;
+            color: #a0aec0;
+            cursor: not-allowed;
+            border-color: #e2e8f0;
+        }
+
+        .filter-item select:focus, .search-select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        /* Custom searchable select styling */
+        .searchable-select {
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 14px;
+            background: white;
+            color: #2d3748;
+            transition: all 0.2s ease;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .search-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-top: none;
+            border-radius: 0 0 12px 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+
+        .search-dropdown.show {
+            display: block;
+        }
+
+        .search-option {
+            padding: 10px 16px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            border-bottom: 1px solid #f1f3f4;
+        }
+
+        .search-option:hover {
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .search-option.selected {
+            background: rgba(102, 126, 234, 0.2);
+            font-weight: 600;
+        }
+
+        .search-option:last-child {
+            border-bottom: none;
+        }
+
+        /* Customer Metrics Section */
+        .metrics-section, .project-section {
+            padding: 0 16px;
+            margin-bottom: 16px; /* Reduced from 20px */
+        }
+
+        .metrics-cards, .project-cards {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+
+        .metrics-cards.three-cols {
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .metrics-card, .project-card {
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 8px; /* Reduced from 10px */
+            text-align: center;
+        }
+
+        .metrics-label, .project-label {
+            font-size: 9px;
+            color: #64748b;
+            font-weight: 500;
+            margin-bottom: 2px; /* Reduced from 3px */
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .metrics-value, .project-value {
+            font-size: 11px; /* Reduced from 12px */
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .metrics-value.positive, .project-value.positive {
+            color: #10b981;
+        }
+
+        .metrics-value.negative, .project-value.negative {
+            color: #ef4444;
+        }
+
+        .metrics-value.neutral, .project-value.neutral {
+            color: #64748b;
+        }
+
+        /* Project specific styling - COMPACT VERSION */
+        .project-header {
+            background: linear-gradient(135deg, #0ea5e9, #0284c7);
+            color: white;
+            padding: 6px 10px; /* Reduced from 8px 12px */
+            border-radius: 8px;
+            margin-bottom: 8px; /* Reduced from 12px */
+            text-align: center;
+            font-weight: 600;
+            font-size: 12px; /* Reduced from 13px */
+            box-shadow: 0 2px 4px rgba(14, 165, 233, 0.3);
+        }
+
+        .project-group {
+            margin-bottom: 12px; /* Reduced from 20px */
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 12px; /* Reduced from 16px */
+            background: #fafbfc;
+        }
+
+        .project-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .project-content {
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+
+        .project-content.hidden {
+            max-height: 0;
+            opacity: 0;
+            margin-bottom: 0;
+        }
+
+        .status-badge {
+            padding: 2px 6px; /* Reduced from 3px 8px */
+            border-radius: 6px;
+            font-size: 9px; /* Reduced from 10px */
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-active {
+            background: rgba(16, 185, 129, 0.1);
+            color: #059669;
+            border: 1px solid #10b981;
+        }
+
+        .status-gugur {
+            background: rgba(239, 68, 68, 0.1);
+            color: #dc2626;
+            border: 1px solid #ef4444;
+        }
+
+        .status-pending {
+            background: rgba(245, 158, 11, 0.1);
+            color: #d97706;
+            border: 1px solid #f59e0b;
+        }
+
+        .achievement-badge {
+            padding: 1px 4px; /* Reduced from 2px 6px */
+            border-radius: 4px;
+            font-size: 8px; /* Reduced from 9px */
+            font-weight: 600;
+        }
+
+        .ach-high {
+            background: rgba(16, 185, 129, 0.1);
+            color: #059669;
+        }
+
+        .ach-medium {
+            background: rgba(245, 158, 11, 0.1);
+            color: #d97706;
+        }
+
+        .ach-low {
+            background: rgba(239, 68, 68, 0.1);
+            color: #dc2626;
+        }
+
+        /* Table Section */
+        .table-section {
+            padding: 0 16px;
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .title-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .customer-info {
+            font-size: 12px;
+            font-weight: 600;
+            color: #1e293b;
+            background: #fef08a;
+            padding: 4px 8px;
+            border-radius: 8px;
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .toggle-btn, .map-btn {
+            background: rgba(102, 126, 234, 0.1);
+            border: 2px solid #667eea;
+            padding: 4px 8px;
+            border-radius: 8px;
+            color: #667eea;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            min-width: 32px;
+            text-align: center;
+        }
+
+        .toggle-btn:hover, .map-btn:hover {
+            background: #667eea;
+            color: white;
+            transform: scale(1.05);
+        }
+
+        .map-btn {
+            background: rgba(34, 197, 94, 0.1);
+            border-color: #22c55e;
+            color: #22c55e;
+        }
+
+        .map-btn:hover {
+            background: #22c55e;
+            color: white;
+        }
+
+        .metrics-content {
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+
+        .metrics-content.hidden {
+            max-height: 0;
+            opacity: 0;
+            margin-bottom: 0;
+        }
+
+        .record-count {
+            font-size: 12px;
+            font-weight: 400;
+            color: #64748b;
+            background: #f1f5f9;
+            padding: 4px 8px;
+            border-radius: 8px;
+        }
+
+        .table-wrapper {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        .table-header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 12px 16px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .table-container {
+            max-height: 400px;
+            overflow-y: auto;
+            overflow-x: auto;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 8px 12px;
+            text-align: left;
+            border-bottom: 1px solid #f1f3f4;
+            font-size: 11px;
+            white-space: nowrap;
+            border-right: 1px solid #f1f3f4;
+        }
+
+        .data-table th {
+            background: #f8fafc;
+            font-weight: 600;
+            color: #374151;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            text-align: center;
+        }
+
+        /* Sticky columns styling */
+        .data-table th.sticky-col,
+        .data-table td.sticky-col {
+            position: sticky;
+            background: #ffffff;
+            z-index: 20;
+            border-right: 2px solid #e2e8f0;
+        }
+
+        .data-table th.sticky-col {
+            background: #f8fafc;
+            z-index: 25;
+        }
+
+        .sticky-no {
+            left: 0;
+            min-width: 30px;
+        }
+
+        .sticky-sku {
+            left: 35px;
+            min-width: 80px;
+        }
+
+        /* Gap column color styling */
+        .gap-positive {
+            color: #059669 !important;
+            font-weight: 700;
+            text-align: right !important;
+        }
+
+        .gap-negative {
+            color: #dc2626 !important;
+            font-weight: 700;
+            text-align: right !important;
+        }
+
+        .gap-neutral {
+            color: #64748b !important;
+            text-align: right !important;
+        }
+
+        .col-gap {
+            min-width: 45px;
+            max-width: 55px;
+            text-align: right;
+        }
+
+        .data-table tbody tr:hover {
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .value-currency { 
+            font-family: 'Courier New', monospace; 
+            text-align: right;
+            min-width: 80px;
+            color: #000000 !important;
+        }
+
+        .col-narrow { min-width: 40px; max-width: 50px; text-align: center; }
+        .col-medium { min-width: 60px; max-width: 80px; text-align: center; }
+        .col-wide { min-width: 50px; max-width: 50px; text-align: right; }
+        .col-text { min-width: 120px; max-width: 200px; text-align: left; }
+        .col-sku { min-width: 60px; max-width: 80px; text-align: center; }
+		.col-numeric {
+			text-align: right;
+			font-family: 'Courier New', monospace;
+		}
+
+        /* ===== PROMO TAG STYLING ===== */
+        .promo-tag {
+            font-weight: 600;
+            font-size: 10px;
+            padding: 2px 4px;
+            border-radius: 4px;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+            display: inline-block;
+            min-width: 45px;
+            text-align: center;
+        }
+
+        .promo-biscuit, .promo-bisc { 
+            background: linear-gradient(135deg, #dc2626, #ef4444);
+        }
+        .promo-snack, .promo-snackfood { 
+            background: linear-gradient(135deg, #7c3aed, #8b5cf6);
+        }
+        .promo-bev { 
+            background: linear-gradient(135deg, #059669, #10b981);
+        }
+        .promo-others, .promo-sf, .promo-gen, .promo-go { 
+            background: linear-gradient(135deg, #0369a1, #0284c7);
+        }
+        .promo-gbs { 
+            background: linear-gradient(135deg, #7c2d12, #ea580c);
+        }
+        .promo-solmed { 
+            background: linear-gradient(135deg, #d97706, #f59e0b);
+        }
+        .promo-rans, .promo-gbev, .promo-mbr { 
+            background: linear-gradient(135deg, #23A0AD, #CBE030);
+        }
+        .promo-apd { 
+            background: linear-gradient(135deg, #be123c, #f43f5e);
+        }
+        
+        /* Default fallback for unmatched promo types */
+        .promo-tag:not([class*="promo-"]) {
+            background: linear-gradient(135deg, #64748b, #475569);
+        }
+
+        /* ===== SKU CODE STYLING ===== */
+        .sku-code {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #374151;
+            display: inline-block;
+            min-width: 50px;
+            text-align: center;
+        }
+
+        /* ===== SORTABLE HEADERS ===== */
+        .sortable-header {
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .sortable-header:hover {
+            background: linear-gradient(135deg, #5a67d8, #6b46c1);
+            transform: translateY(-1px);
+        }
+
+        .sortable-header.asc::after {
+            content: ' ↑';
+            font-size: 12px;
+        }
+
+        .sortable-header.desc::after {
+            content: ' ↓';
+            font-size: 12px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #64748b;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        /* ===== MAP POPUP STYLING ===== */
+        .map-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 10000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .map-popup {
+            background: white;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 350px;
+            max-height: 80vh;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            animation: popupSlideIn 0.3s ease;
+        }
+
+        @keyframes popupSlideIn {
+            from {
+                transform: scale(0.8) translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1) translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .map-popup-header {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            color: white;
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .map-popup-title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .map-close-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            font-size: 18px;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .map-close-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .map-popup-content {
+            padding: 16px;
+        }
+
+        .location-info {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 16px;
+        }
+
+        .location-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .location-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .location-icon {
+            width: 20px;
+            height: 20px;
+            margin-right: 8px;
+            text-align: center;
+        }
+
+        .map-container {
+            width: 100%;
+            height: 200px;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 16px;
+            background: #f1f5f9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #64748b;
+        }
+
+        .map-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .map-action-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background: #22c55e;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #16a34a;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: #f1f5f9;
+            color: #374151;
+            border: 2px solid #e2e8f0;
+        }
+
+        .btn-secondary:hover {
+            background: #e2e8f0;
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 400px;
+            background: white;
+            border-top: 1px solid #f1f2f6;
+            padding: 15px 0;
+            display: flex;
+            justify-content: space-around;
+            box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-decoration: none;
+            color: #bdc3c7;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            padding: 8px 6px;
+            border-radius: 12px;
+            min-width: 50px;
+        }
+
+        .nav-item.active {
+            color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .nav-item:hover {
+            color: #667eea;
+            transform: translateY(-2px);
+        }
+
+        .nav-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 4px;
+            font-size: 12px;
+        }
+
+        .nav-icon.home { background: #3b82f6; color: white; }
+        .nav-icon.visit { background: #ef4444; color: white; }
+        .nav-icon.data { background: #10b981; color: white; }
+        .nav-icon.profile { background: #f59e0b; color: white; }
+
+        .nav-label {
+            font-size: 10px;
+            font-weight: 500;
+        }
+
+        /* Responsive */
+        @media (max-width: 380px) {
+            .data-table th, .data-table td { 
+                padding: 6px 8px; 
+                font-size: 10px; 
+            }
+            .project-cards {
+                gap: 4px;
+            }
+            .project-card {
+                padding: 6px;
+            }
+            .project-value, .project-label {
+                font-size: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="detail-header">
+            <a href="dashboard.html" class="back-btn">←</a>
+            <div class="detail-title-container">
+                <div class="detail-title">Market Visit</div>
+                <div class="subtitle">Customer Performance & SKU History</div>
+            </div>
+            <button class="user-btn" onclick="refreshData()">🔄</button>
+        </div>
+
+        <!-- Loading State -->
+        <div class="loading-spinner" id="loadingSpinner">
+            <div class="spinner"></div>
+            <div>Loading customer data...</div>
+        </div>
+
+        <!-- Error State -->
+        <div class="error-message" id="errorMessage" style="display: none;">
+            <h3>🚨 Data Loading Error</h3>
+            <p>Unable to load customer data. Please check your connection.</p>
+            <button onclick="initializeData()" style="margin-top: 10px; padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer;">Retry</button>
+        </div>
+
+        <!-- Map Popup Overlay -->
+        <div class="map-overlay" id="mapOverlay">
+            <div class="map-popup">
+                <div class="map-popup-header">
+                    <div class="map-popup-title">📍 Lokasi Outlet</div>
+                    <button class="map-close-btn" onclick="closeMapPopup()">×</button>
+                </div>
+                <div class="map-popup-content">
+                    <div class="location-info">
+                        <div class="location-item">
+                            <div class="location-icon">🏪</div>
+                            <div>
+                                <strong id="popupCustomerName">-</strong><br>
+                                <small id="popupCustomerAddress">-</small>
+                            </div>
+                        </div>
+                        <div class="location-item">
+                            <div class="location-icon">📍</div>
+                            <div>
+                                <span id="popupCoordinates">Loading coordinates...</span>
+                            </div>
+                        </div>
+                        <div class="location-item">
+                            <div class="location-icon">📏</div>
+                            <div>
+                                Jarak: <span id="popupDistance">Calculating...</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="map-container" id="mapContainer">
+                        <div>🗺️ Map akan ditampilkan di sini</div>
+                    </div>
+                    
+                    <div class="map-actions">
+                        <button class="map-action-btn btn-secondary" onclick="getCurrentLocation()">📍 Lokasi Saya</button>
+                        <button class="map-action-btn btn-primary" onclick="openGoogleMaps()">🗺️ Buka Maps</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div id="mainContent" style="display: none;">
+            <!-- Filter Section -->
+            <div class="filter-section">
+                <div class="filter-frame">
+                    <div class="filter-title">🔍 Select Customer</div>
+                    
+                    <!-- Salesman Selection -->
+                    <div class="filter-item">
+                        <select id="salesmanSelect">
+                            <option value="">👤 Pilih Salesman</option>
+                        </select>
+                    </div>
+
+                    <!-- Customer Selection with Search -->
+                    <div class="filter-item">
+                        <div class="searchable-select">
+                            <input type="text" 
+                                   id="customerSearch" 
+                                   class="search-input" 
+                                   placeholder="🔍 Cari nama pelanggan..." 
+                                   disabled>
+                            <div id="customerDropdown" class="search-dropdown">
+                                <!-- Customer options will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Customer Metrics Section -->
+            <div class="metrics-section" id="metricsSection" style="display: none;">
+                <div class="section-title">
+                    📊 Customer Performance
+                    <div class="title-right">
+                        <span class="customer-info" id="customerCC5">-</span>
+                        <button class="map-btn" id="mapBtn" onclick="showMapPopup()" style="display: none;" title="Show Location">🗺️</button>
+                        <button class="toggle-btn" id="toggleMetrics" onclick="toggleMetricsDisplay()">👁️</button>
+                    </div>
+                </div>
+                
+                <div class="metrics-content" id="metricsContent">
+                    <!-- Row 1: T.MTD, A.MTD, Gap MTD -->
+                    <div class="metrics-cards three-cols">
+                        <div class="metrics-card">
+                            <div class="metrics-label">T.MTD</div>
+                            <div class="metrics-value" id="customerTarget">0</div>
+                        </div>
+                        <div class="metrics-card">
+                            <div class="metrics-label">A.MTD</div>
+                            <div class="metrics-value" id="customerActual">0</div>
+                        </div>
+                        <div class="metrics-card">
+                            <div class="metrics-label">Gap MTD</div>
+                            <div class="metrics-value" id="customerGap">0</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Row 2: LY, 3LM, LM, Max -->
+                    <div class="metrics-cards">
+                        <div class="metrics-card">
+                            <div class="metrics-label">LY</div>
+                            <div class="metrics-value" id="customerLY">0</div>
+                        </div>
+                        <div class="metrics-card">
+                            <div class="metrics-label">3LM</div>
+                            <div class="metrics-value" id="customer3LM">0</div>
+                        </div>
+                        <div class="metrics-card">
+                            <div class="metrics-label">LM</div>
+                            <div class="metrics-value" id="customerLM">0</div>
+                        </div>
+                        <div class="metrics-card">
+                            <div class="metrics-label">Max</div>
+                            <div class="metrics-value" id="customerMax">0</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Row 3: vs LY, vs 3LM, vs LM -->
+                    <div class="metrics-cards three-cols">
+                        <div class="metrics-card">
+                            <div class="metrics-label">vs LY</div>
+                            <div class="metrics-value" id="customerVsLY">0%</div>
+                        </div>
+                        <div class="metrics-card">
+                            <div class="metrics-label">vs 3LM</div>
+                            <div class="metrics-value" id="customerVs3LM">0%</div>
+                        </div>
+                        <div class="metrics-card">
+                            <div class="metrics-label">vs LM</div>
+                            <div class="metrics-value" id="customerVsLM">0%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Customer Project Section -->
+            <div class="project-section" id="projectSection" style="display: none;">
+                <div class="section-title">
+                    🎯 Project Outlet
+                    <div class="title-right">
+                        <button class="toggle-btn" id="toggleProject" onclick="toggleProjectDisplay()">👁️</button>
+                    </div>
+                </div>
+                
+                <div class="project-content" id="projectContent">
+                    <!-- Project data will be dynamically populated here -->
+                </div>
+            </div>
+
+            <!-- SKU Table Section -->
+            <div class="table-section" id="skuTableSection" style="display: none;">
+                <div class="section-title">
+                    🛒 SKU Active
+                    <span class="record-count" id="skuRecordCount">0 SKUs</span>
+                </div>
+                <div class="table-wrapper">
+                    <div class="table-header">🛒 Customer SKU Transaction History</div>
+                    <div class="table-container">
+                        <table class="data-table" id="skuTable">
+                            <thead>
+                                <tr>
+                                    <th class="col-narrow sticky-col sticky-no">No</th>
+                                    <th class="col-sku sticky-col sticky-sku sortable-header" onclick="sortSKUTable('sku')">SKU</th>
+                                    <th class="col-medium sortable-header" onclick="sortSKUTable('promo')">Promo</th>
+                                    <th class="col-gap sortable-header" onclick="sortSKUTable('gap')">Gap</th>
+                                    <th class="col-wide sortable-header" onclick="sortSKUTable('plan')">Plan</th>
+                                    <th class="col-wide sortable-header" onclick="sortSKUTable('mtd')">MTD</th>
+                                    <th class="col-wide sortable-header" onclick="sortSKUTable('3lm')">3LM</th>
+                                    <th class="col-wide sortable-header" onclick="sortSKUTable('lm')">LM</th>
+                                </tr>
+                            </thead>
+                            <tbody id="skuTableBody">
+                                <tr>
+                                    <td colspan="8">
+                                        <div class="empty-state">
+                                            <div class="empty-state-icon">🛒</div>
+                                            <div>Pilih pelanggan untuk melihat history SKU</div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Navigation -->
+        <div class="bottom-nav">
+            <div class="nav-item" onclick="goHome()">
+                <div class="nav-icon home">🏠</div>
+                <div class="nav-label">Home</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== GLOBAL VARIABLES =====
+        let salesmanData = [];
+        let detailsData = [];
+        let skuPelangganData = [];
+        let projectData = [];
+        let currentSalesmanId = null;
+        let currentCustomerName = null;
+        let currentCustomerCC5 = null;
+        let currentCustomerId = null;
+        let currentCustomerCoordinates = null;
+        let userLocation = null;
+        let filteredCustomers = [];
+        let metricsVisible = true;
+        let projectVisible = true;
+        let currentSKUData = [];
+        let skuSortState = { column: null, direction: 'asc' };
+
+        // ===== UTILITY FUNCTIONS =====
+        function parseJSONL(content) {
+            const lines = content.trim().split('\n');
+            const data = [];
+            
+            lines.forEach((line, index) => {
+                try {
+                    if (line.trim()) {
+                        const obj = JSON.parse(line.trim());
+                        data.push(obj);
+                    }
+                } catch (error) {
+                    console.error(`Error parsing line ${index + 1}:`, line, error);
+                }
+            });
+            
+            return data;
+        }
+
+        function formatCurrencyIndonesia(value) {
+            const val = Math.abs(parseFloat(value) || 0);
+            if (val >= 1000000000) return `${(val/1000000000).toFixed(1)}M`;
+            if (val >= 1000000) return `${(val/1000000).toFixed(1)}jt`;
+            if (val >= 1000) return `${(val/1000).toFixed(0)}rb`;
+            return `${val.toFixed(0)}`;
+        }
+
+        function formatPercentage(value) {
+            if (!isFinite(value)) return '0%';
+            return `${value > 0 ? '+' : ''}${value.toFixed(1)}%`;
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return '-';
+            try {
+                const date = new Date(dateString);
+                return date.toLocaleDateString('id-ID');
+            } catch (e) {
+                return dateString;
+            }
+        }
+
+        function formatNumber(value) {
+            if (value % 1 === 0) {
+                // Angka bulat, tidak perlu desimal
+                return value.toString();
+            } else {
+                // Ada desimal, tampilkan 1 digit desimal
+                return value.toFixed(1);
+            }
+        }
+
+        // ===== UPDATED LOCATION & MAP FUNCTIONS =====
+        async function getCustomerCoordinates(customerId, customerName) {
+            try {
+                // Find the customer record in detailsData that matches both customer ID and name
+                const customerRecord = detailsData.find(item => {
+                    return item.szEmployeeId && item.szEmployeeId.toString() === currentSalesmanId.toString() &&
+                           item['Nama Pelanggan'] === customerName &&
+                           item['Id Pelanggan'] === customerId;
+                });
+
+                if (customerRecord) {
+                    // Extract longitude and latitude from the customer record (using correct column names)
+                    const longitude = parseFloat(customerRecord['Longitude']) || null;
+                    const latitude = parseFloat(customerRecord['Latitude']) || null;
+                    
+                    // Check if we have valid coordinates
+                    if (longitude && latitude && !isNaN(longitude) && !isNaN(latitude)) {
+                        console.log(`Found coordinates for ${customerName}: ${latitude}, ${longitude}`);
+                        
+                        return {
+                            lat: latitude,
+                            lng: longitude,
+                            address: customerRecord['CC5'] || customerRecord['Alamat'] || 'Unknown Address'
+                        };
+                    } else {
+                        console.warn(`Invalid or missing coordinates for ${customerName}:`, {
+                            longitude: customerRecord['Longitude'],
+                            latitude: customerRecord['Latitude']
+                        });
+                    }
+                } else {
+                    console.warn(`Customer record not found for ${customerName} (ID: ${customerId})`);
+                }
+
+                // Fallback: generate coordinates around Jakarta if no valid data found
+                const jakartaCenter = { lat: -6.2088, lng: 106.8456 };
+                const randomLat = jakartaCenter.lat + (Math.random() - 0.5) * 0.1;
+                const randomLng = jakartaCenter.lng + (Math.random() - 0.5) * 0.1;
+
+                console.log(`Using fallback coordinates for ${customerName}: ${randomLat}, ${randomLng}`);
+                
+                return {
+                    lat: randomLat,
+                    lng: randomLng,
+                    address: 'Jakarta Area (Estimated)'
+                };
+                
+            } catch (error) {
+                console.error('Error getting customer coordinates:', error);
+                
+                // Return Jakarta center as ultimate fallback
+                return {
+                    lat: -6.2088,
+                    lng: 106.8456,
+                    address: 'Jakarta (Default)'
+                };
+            }
+        }
+
+        function calculateDistance(lat1, lng1, lat2, lng2) {
+            const R = 6371; // Earth's radius in kilometers
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const a = 
+                Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+                Math.sin(dLng/2) * Math.sin(dLng/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c; // Distance in kilometers
+        }
+
+        async function getCurrentLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        userLocation = {
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude
+                        };
+                        console.log('User location obtained:', userLocation);
+                        updateLocationInfo();
+                    },
+                    (error) => {
+                        console.error('Error getting location:', error);
+                        alert('❌ Tidak dapat mengakses lokasi Anda. Pastikan GPS aktif dan izin lokasi diberikan.');
+                    }
+                );
+            } else {
+                alert('❌ Browser Anda tidak mendukung geolocation.');
+            }
+        }
+
+        function updateLocationInfo() {
+            if (userLocation && currentCustomerCoordinates) {
+                const distance = calculateDistance(
+                    userLocation.lat, userLocation.lng,
+                    currentCustomerCoordinates.lat, currentCustomerCoordinates.lng
+                );
+                document.getElementById('popupDistance').textContent = `${distance.toFixed(1)} km`;
+            }
+        }
+
+        async function showMapPopup() {
+            if (!currentCustomerId || !currentCustomerName) {
+                alert('❌ Tidak ada data pelanggan yang dipilih');
+                return;
+            }
+
+            console.log(`Showing map for customer: ${currentCustomerName} (ID: ${currentCustomerId})`);
+
+            // Get customer coordinates from actual data
+            currentCustomerCoordinates = await getCustomerCoordinates(currentCustomerId, currentCustomerName);
+            
+            // Update popup content
+            document.getElementById('popupCustomerName').textContent = currentCustomerName;
+            document.getElementById('popupCustomerAddress').textContent = currentCustomerCoordinates.address;
+            document.getElementById('popupCoordinates').textContent = 
+                `${currentCustomerCoordinates.lat.toFixed(6)}, ${currentCustomerCoordinates.lng.toFixed(6)}`;
+
+            // Try to get user location for distance calculation
+            getCurrentLocation();
+
+            // Show popup
+            document.getElementById('mapOverlay').style.display = 'flex';
+
+            // Initialize map with real coordinates
+            initializeSimpleMap();
+        }
+
+        function initializeSimpleMap() {
+            const mapContainer = document.getElementById('mapContainer');
+            
+            if (currentCustomerCoordinates) {
+                const lat = currentCustomerCoordinates.lat;
+                const lng = currentCustomerCoordinates.lng;
+                
+                console.log(`Initializing map with coordinates: ${lat}, ${lng}`);
+                
+                // Use OpenStreetMap iframe embed with actual coordinates
+                mapContainer.innerHTML = `
+                    <iframe 
+                        width="100%" 
+                        height="100%" 
+                        frameborder="0" 
+                        scrolling="no" 
+                        marginheight="0" 
+                        marginwidth="0" 
+                        style="border-radius: 12px;"
+                        src="https://www.openstreetmap.org/export/embed.html?bbox=${lng-0.005},${lat-0.005},${lng+0.005},${lat+0.005}&amp;layer=mapnik&amp;marker=${lat},${lng}"
+                        >
+                    </iframe>
+                `;
+                
+                // Enhanced fallback if iframe doesn't work
+                setTimeout(() => {
+                    const iframe = mapContainer.querySelector('iframe');
+                    if (!iframe || iframe.offsetHeight === 0) {
+                        // Create enhanced map placeholder with real coordinates
+                        mapContainer.innerHTML = `
+                            <div style="background: linear-gradient(135deg, #10b981, #059669); width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; flex-direction: column; text-align: center; color: white; border-radius: 12px; position: relative;">
+                                <div style="position: absolute; top: 8px; right: 8px; background: rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">
+                                    REAL LOCATION
+                                </div>
+                                <div style="font-size: 32px; margin-bottom: 8px;">📍</div>
+                                <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">${currentCustomerName}</div>
+                                <div style="font-size: 12px; opacity: 0.9; margin-bottom: 8px;">${currentCustomerCoordinates.address}</div>
+                                <div style="font-size: 10px; opacity: 0.8; font-family: monospace; background: rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 8px;">
+                                    ${currentCustomerCoordinates.lat.toFixed(6)}, ${currentCustomerCoordinates.lng.toFixed(6)}
+                                </div>
+                                <div style="font-size: 10px; opacity: 0.7; margin-top: 8px;">
+                                    📱 Klik "Buka Maps" untuk navigasi
+                                </div>
+                            </div>
+                        `;
+                    }
+                }, 3000);
+            } else {
+                // Show error state
+                mapContainer.innerHTML = `
+                    <div style="background: #ef4444; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; flex-direction: column; text-align: center; color: white; border-radius: 12px;">
+                        <div style="font-size: 24px; margin-bottom: 8px;">❌</div>
+                        <div style="font-size: 12px;">Lokasi tidak tersedia</div>
+                    </div>
+                `;
+            }
+        }
+
+        // Updated function to check for coordinate data availability
+        function checkLocationDataAvailability() {
+            if (!currentCustomerId || !currentCustomerName) {
+                return false;
+            }
+
+            const customerRecord = detailsData.find(item => {
+                return item.szEmployeeId && item.szEmployeeId.toString() === currentSalesmanId.toString() &&
+                       item['Nama Pelanggan'] === currentCustomerName &&
+                       item['Id Pelanggan'] === currentCustomerId;
+            });
+
+            if (customerRecord) {
+                const longitude = parseFloat(customerRecord['Longitude']) || null;
+                const latitude = parseFloat(customerRecord['Latitude']) || null;
+                
+                return longitude && latitude && !isNaN(longitude) && !isNaN(latitude);
+            }
+            
+            return false;
+        }
+
+        function closeMapPopup() {
+            document.getElementById('mapOverlay').style.display = 'none';
+        }
+
+        function openGoogleMaps() {
+            if (currentCustomerCoordinates) {
+                const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${currentCustomerCoordinates.lat},${currentCustomerCoordinates.lng}`;
+                window.open(mapsUrl, '_blank');
+            } else {
+                alert('❌ Koordinat lokasi tidak tersedia');
+            }
+        }
+
+        // Close popup when clicking outside
+        document.addEventListener('click', function(e) {
+            if (e.target.id === 'mapOverlay') {
+                closeMapPopup();
+            }
+        });
+
+        // ===== DATA LOADING FUNCTIONS =====
+        async function loadSalesmanData() {
+            try {
+                console.log('Loading salesman data...');
+                const response = await fetch('data/d.salesman.json');
+                if (!response.ok) throw new Error('Failed to load salesman data');
+                
+                const content = await response.text();
+                salesmanData = parseJSONL(content);
+                
+                console.log(`Loaded ${salesmanData.length} salesman records`);
+                
+            } catch (error) {
+                console.error('Error loading salesman data:', error);
+                throw error;
+            }
+        }
+
+        async function loadDetailsData() {
+            try {
+                console.log('Loading details data...');
+                const response = await fetch('data/d.details.json');
+                if (!response.ok) throw new Error('Failed to load details data');
+                
+                const content = await response.text();
+                detailsData = parseJSONL(content);
+                
+                console.log(`Loaded ${detailsData.length} detail records`);
+                
+            } catch (error) {
+                console.error('Error loading details data:', error);
+                throw error;
+            }
+        }
+
+        async function loadProjectData() {
+            try {
+                console.log('Loading project data...');
+                const response = await fetch('data/d.project.json');
+                if (!response.ok) throw new Error('Failed to load project data');
+                
+                const content = await response.text();
+                projectData = parseJSONL(content);
+                
+                console.log(`Loaded ${projectData.length} project records`);
+                
+            } catch (error) {
+                console.error('Error loading project data:', error);
+                // Don't throw error, just set empty array
+                projectData = [];
+            }
+        }
+
+        async function loadSKUPelangganData() {
+            try {
+                console.log('Loading SKU pelanggan data...');
+                const response = await fetch('data/d.skupelanggan.json');
+                if (!response.ok) throw new Error('Failed to load SKU pelanggan data');
+                
+                const content = await response.text();
+                skuPelangganData = parseJSONL(content);
+                
+                console.log(`Loaded ${skuPelangganData.length} SKU records`);
+                
+            } catch (error) {
+                console.error('Error loading SKU pelanggan data:', error);
+                throw error;
+            }
+        }
+
+        // ===== UI POPULATION FUNCTIONS =====
+        function populateSalesmanOptions() {
+            const salesmanSelect = document.getElementById('salesmanSelect');
+            salesmanSelect.innerHTML = '<option value="">👤 Pilih Salesman</option>';
+
+            if (salesmanData.length === 0) {
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = 'No salesman data available';
+                option.disabled = true;
+                salesmanSelect.appendChild(option);
+                return;
+            }
+
+            // Sort salesman by name
+            const sortedSalesman = [...salesmanData].sort((a, b) => {
+                const nameA = (a.szname || '').toLowerCase();
+                const nameB = (b.szname || '').toLowerCase();
+                return nameA.localeCompare(nameB);
+            });
+
+            sortedSalesman.forEach(salesman => {
+                if (salesman.szEmployeeId && salesman.szname) {
+                    const option = document.createElement('option');
+                    option.value = salesman.szEmployeeId;
+                    option.textContent = salesman.szname;
+                    salesmanSelect.appendChild(option);
+                }
+            });
+        }
+
+        function handleSalesmanSelection() {
+            const selectedSalesmanId = document.getElementById('salesmanSelect').value;
+            currentSalesmanId = selectedSalesmanId;
+            
+            // Reset customer selection
+            currentCustomerName = null;
+            currentCustomerId = null;
+            document.getElementById('customerSearch').value = '';
+            document.getElementById('customerSearch').disabled = !selectedSalesmanId;
+            
+            if (!selectedSalesmanId) {
+                hideCustomerData();
+                clearCustomerDropdown();
+                return;
+            }
+
+            console.log(`Selected salesman ID: ${selectedSalesmanId}`);
+            
+            // Get customers for this salesman
+            const salesmanCustomers = detailsData.filter(item => {
+                return item.szEmployeeId && item.szEmployeeId.toString() === selectedSalesmanId.toString();
+            });
+
+            // Get unique customer names
+            const uniqueCustomers = [...new Set(salesmanCustomers
+                .map(item => item['Nama Pelanggan'])
+                .filter(name => name && name.trim() !== '')
+            )].sort();
+
+            filteredCustomers = uniqueCustomers;
+            console.log(`Found ${uniqueCustomers.length} customers for salesman`);
+
+            hideCustomerData();
+        }
+
+        function setupCustomerSearch() {
+            const searchInput = document.getElementById('customerSearch');
+            const dropdown = document.getElementById('customerDropdown');
+
+            searchInput.addEventListener('input', function() {
+                const searchTerm = this.value.toLowerCase();
+                
+                if (searchTerm.length === 0) {
+                    hideCustomerDropdown();
+                    return;
+                }
+
+                if (!currentSalesmanId) {
+                    hideCustomerDropdown();
+                    return;
+                }
+
+                // Filter customers based on search term
+                const matchingCustomers = filteredCustomers.filter(customer =>
+                    customer.toLowerCase().includes(searchTerm)
+                );
+
+                populateCustomerDropdown(matchingCustomers);
+                showCustomerDropdown();
+            });
+
+            searchInput.addEventListener('focus', function() {
+                if (currentSalesmanId && this.value.length > 0) {
+                    const searchTerm = this.value.toLowerCase();
+                    const matchingCustomers = filteredCustomers.filter(customer =>
+                        customer.toLowerCase().includes(searchTerm)
+                    );
+                    populateCustomerDropdown(matchingCustomers);
+                    showCustomerDropdown();
+                }
+            });
+
+            // Close dropdown when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('.searchable-select')) {
+                    hideCustomerDropdown();
+                }
+            });
+        }
+
+        function populateCustomerDropdown(customers) {
+            const dropdown = document.getElementById('customerDropdown');
+            dropdown.innerHTML = '';
+
+            if (customers.length === 0) {
+                const option = document.createElement('div');
+                option.className = 'search-option';
+                option.textContent = 'No customers found';
+                option.style.color = '#64748b';
+                option.style.fontStyle = 'italic';
+                dropdown.appendChild(option);
+                return;
+            }
+
+            customers.forEach(customer => {
+                const option = document.createElement('div');
+                option.className = 'search-option';
+                option.textContent = customer;
+                option.addEventListener('click', function() {
+                    selectCustomer(customer);
+                });
+                dropdown.appendChild(option);
+            });
+        }
+
+        // Updated customer selection to show map button based on coordinate availability
+        function selectCustomer(customerName) {
+            currentCustomerName = customerName;
+            document.getElementById('customerSearch').value = customerName;
+            hideCustomerDropdown();
+            
+            // Get customer ID for location tracking
+            const customerDetailsRecord = detailsData.find(item => {
+                return item.szEmployeeId && item.szEmployeeId.toString() === currentSalesmanId.toString() &&
+                       item['Nama Pelanggan'] === customerName;
+            });
+
+            if (customerDetailsRecord) {
+                currentCustomerId = customerDetailsRecord['Id Pelanggan'];
+                console.log(`Selected customer: ${customerName} (ID: ${currentCustomerId})`);
+                
+                // Check if coordinate data is available
+                const hasCoordinates = checkLocationDataAvailability();
+                console.log(`Coordinate data available for ${customerName}: ${hasCoordinates}`);
+            }
+            
+            // Update customer metrics and project data and SKU history
+            updateCustomerMetrics();
+            updateProjectData();
+            updateSKUHistory();
+            showCustomerData();
+        }
+
+        function showCustomerDropdown() {
+            document.getElementById('customerDropdown').classList.add('show');
+        }
+
+        function hideCustomerDropdown() {
+            document.getElementById('customerDropdown').classList.remove('show');
+        }
+
+        function clearCustomerDropdown() {
+            document.getElementById('customerDropdown').innerHTML = '';
+            hideCustomerDropdown();
+        }
+
+        // ===== PROJECT DATA FUNCTIONS =====
+        function updateProjectData() {
+            if (!currentSalesmanId || !currentCustomerName) {
+                return;
+            }
+
+            console.log(`Updating project data for customer: ${currentCustomerName}`);
+
+            // Find project data for this customer
+            const customerProjectData = projectData.filter(item => {
+                return item.szEmployeeId && item.szEmployeeId.toString() === currentSalesmanId.toString() &&
+                       item['CUST NAME'] === currentCustomerName;
+            });
+
+            console.log(`Found ${customerProjectData.length} project records for customer`);
+
+            if (customerProjectData.length === 0) {
+                hideProjectData();
+                return;
+            }
+
+            // Group projects by ITG
+            const projectsByITG = {};
+            customerProjectData.forEach(item => {
+                const itg = item['ITG'] || 'Unknown Project';
+                if (!projectsByITG[itg]) {
+                    projectsByITG[itg] = [];
+                }
+                projectsByITG[itg].push(item);
+            });
+
+            renderProjectData(projectsByITG);
+            showProjectData();
+        }
+
+        function renderProjectData(projectsByITG) {
+            const projectContent = document.getElementById('projectContent');
+            let html = '';
+
+            Object.entries(projectsByITG).forEach(([itg, projects]) => {
+                // Aggregate data for this ITG
+                let totalTMTD = 0, totalAMTD = 0, totalGapMTD = 0;
+                let totalTQ = 0, totalAQ = 0, totalGapQ = 0;
+                let achMTD = 0, status = 'Unknown';
+
+                projects.forEach(project => {
+                    totalTMTD += Number(project['T.MTD']) || 0;
+                    totalAMTD += Number(project['A.MTD']) || 0;
+                    totalGapMTD += Number(project['Gap MTD']) || 0;
+                    totalTQ += Number(project['T.Qrt']) || 0;
+                    totalAQ += Number(project['A.Qrt']) || 0;
+                    totalGapQ += Number(project['Gap Qrt']) || 0;
+                    
+                    // Use the status from the first project (they should be the same for same ITG)
+                    if (project['Status']) {
+                        status = project['Status'];
+                    }
+                });
+
+                // Calculate achievement percentage
+                achMTD = totalTMTD > 0 ? (totalAMTD / totalTMTD) * 100 : 0;
+
+                // Format numbers without abbreviation - show full numbers with thousand separators
+                const formatITGNumber = (value) => {
+                    const val = Math.abs(parseFloat(value) || 0);
+                    const sign = value < 0 ? '-' : '';
+                    if (val >= 1000000000) return `${sign}${(val/1000000000).toFixed(1)}M`;
+                    if (val >= 1000000) return `${sign}${(val/1000000).toFixed(1)}jt`;
+                    if (val >= 1000) return `${sign}${(val/1000).toFixed(0)}rb`;
+                    return `${sign}${val.toFixed(0)}`;
+                };
+
+                html += `
+                    <div class="project-group">
+                        <div class="project-header">
+                            🎯 ${itg}
+                        </div>
+                        
+                        <!-- Row 1: T.MTD, A.MTD, Gap MTD, Ach MTD -->
+                        <div class="project-cards">
+                            <div class="project-card">
+                                <div class="project-label">T.MTD</div>
+                                <div class="project-value">${formatITGNumber(totalTMTD)}</div>
+                            </div>
+                            <div class="project-card">
+                                <div class="project-label">A.MTD</div>
+                                <div class="project-value">${formatITGNumber(totalAMTD)}</div>
+                            </div>
+                            <div class="project-card">
+                                <div class="project-label">Gap MTD</div>
+                                <div class="project-value ${totalGapMTD > 0 ? 'positive' : totalGapMTD < 0 ? 'negative' : 'neutral'}">${totalGapMTD > 0 ? '+' : ''}${formatITGNumber(totalGapMTD)}</div>
+                            </div>
+                            <div class="project-card">
+                                <div class="project-label">Ach MTD</div>
+                                <div class="project-value">
+                                    <span class="achievement-badge ${getAchievementClass(achMTD)}">${achMTD.toFixed(1)}%</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Row 2: T.Qrt, A.Qrt, Gap Qrt, Status -->
+                        <div class="project-cards">
+                            <div class="project-card">
+                                <div class="project-label">T.Qrt</div>
+                                <div class="project-value">${formatITGNumber(totalTQ)}</div>
+                            </div>
+                            <div class="project-card">
+                                <div class="project-label">A.Qrt</div>
+                                <div class="project-value">${formatITGNumber(totalAQ)}</div>
+                            </div>
+                            <div class="project-card">
+                                <div class="project-label">Gap Qrt</div>
+                                <div class="project-value ${totalGapQ > 0 ? 'positive' : totalGapQ < 0 ? 'negative' : 'neutral'}">${totalGapQ > 0 ? '+' : ''}${formatITGNumber(totalGapQ)}</div>
+                            </div>
+                            <div class="project-card">
+                                <div class="project-label">Status</div>
+                                <div class="project-value">
+                                    <span class="status-badge ${getStatusClass(status)}">${status}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            projectContent.innerHTML = html;
+
+            console.log('Data project ditampilkan:', {
+                projectGroups: Object.keys(projectsByITG).length,
+                totalProjects: Object.values(projectsByITG).reduce((sum, arr) => sum + arr.length, 0)
+            });
+        }
+
+        function getAchievementClass(percentage) {
+            if (percentage >= 80) return 'ach-high';
+            if (percentage >= 50) return 'ach-medium';
+            return 'ach-low';
+        }
+
+        function getStatusClass(status) {
+            const statusLower = status.toLowerCase();
+            if (statusLower.includes('aktif') || statusLower.includes('active')) return 'status-active';
+            if (statusLower.includes('gugur') || statusLower.includes('failed')) return 'status-gugur';
+            return 'status-pending';
+        }
+
+        function toggleProjectDisplay() {
+            const projectContent = document.getElementById('projectContent');
+            const toggleBtn = document.getElementById('toggleProject');
+            
+            projectVisible = !projectVisible;
+            
+            if (projectVisible) {
+                projectContent.classList.remove('hidden');
+                toggleBtn.textContent = '👁️';
+                toggleBtn.title = 'Hide Project';
+            } else {
+                projectContent.classList.add('hidden');
+                toggleBtn.textContent = '👁️‍🗨️';
+                toggleBtn.title = 'Show Project';
+            }
+        }
+
+        function showProjectData() {
+            document.getElementById('projectSection').style.display = 'block';
+        }
+
+        function hideProjectData() {
+            document.getElementById('projectSection').style.display = 'none';
+        }
+
+        // Updated metrics function to properly show/hide map button
+        function updateCustomerMetrics() {
+            if (!currentSalesmanId || !currentCustomerName) {
+                return;
+            }
+
+            console.log(`Updating metrics for customer: ${currentCustomerName}`);
+
+            // Find customer data in details
+            const customerData = detailsData.filter(item => {
+                return item.szEmployeeId && item.szEmployeeId.toString() === currentSalesmanId.toString() &&
+                       item['Nama Pelanggan'] === currentCustomerName;
+            });
+
+            if (customerData.length === 0) {
+                console.warn('No customer data found');
+                return;
+            }
+
+            // Get CC5 data from the first matching record
+            currentCustomerCC5 = customerData[0]['CC5'] || 'No Location Data';
+
+            // Aggregate metrics for this customer
+            let totalTarget = 0, totalActual = 0, totalGap = 0;
+            let totalLY = 0, total3LM = 0, totalLM = 0, totalMax = 0;
+
+            customerData.forEach(item => {
+                totalTarget += Number(item['T.MTD']) || 0;
+                totalActual += Number(item['A.MTD']) || 0;
+                totalGap += Number(item['Gap MTD']) || 0;
+                totalLY += Number(item['LY']) || 0;
+                total3LM += Number(item['3LM']) || 0;
+                totalLM += Number(item['LM']) || 0;
+                totalMax += Number(item['Max']) || 0;
+            });
+
+            // Calculate percentages
+            const vsLYPercent = totalLY !== 0 ? ((totalActual - totalLY) / totalLY) * 100 : 0;
+            const vs3LMPercent = total3LM !== 0 ? ((totalActual - total3LM) / total3LM) * 100 : 0;
+            const vsLMPercent = totalLM !== 0 ? ((totalActual - totalLM) / totalLM) * 100 : 0;
+
+            // Update customer CC5 display
+            document.getElementById('customerCC5').textContent = currentCustomerCC5;
+            
+            // Show map button only if we have valid coordinate data
+            const mapBtn = document.getElementById('mapBtn');
+            if (currentCustomerId && checkLocationDataAvailability()) {
+                mapBtn.style.display = 'inline-block';
+                mapBtn.title = 'Show Real Location';
+            } else {
+                mapBtn.style.display = 'none';
+            }
+
+            // Update metrics - Row 1
+            document.getElementById('customerTarget').textContent = formatCurrencyIndonesia(totalTarget);
+            document.getElementById('customerActual').textContent = formatCurrencyIndonesia(totalActual);
+            
+            const gapElement = document.getElementById('customerGap');
+            gapElement.textContent = formatCurrencyIndonesia(totalGap);
+            gapElement.className = `metrics-value ${totalGap > 0 ? 'positive' : totalGap < 0 ? 'negative' : 'neutral'}`;
+
+            // Update metrics - Row 2
+            document.getElementById('customerLY').textContent = formatCurrencyIndonesia(totalLY);
+            document.getElementById('customer3LM').textContent = formatCurrencyIndonesia(total3LM);
+            document.getElementById('customerLM').textContent = formatCurrencyIndonesia(totalLM);
+            document.getElementById('customerMax').textContent = formatCurrencyIndonesia(totalMax);
+
+            // Update metrics - Row 3
+            const vsLYElement = document.getElementById('customerVsLY');
+            vsLYElement.textContent = formatPercentage(vsLYPercent);
+            vsLYElement.className = `metrics-value ${vsLYPercent > 0 ? 'positive' : vsLYPercent < 0 ? 'negative' : 'neutral'}`;
+
+            const vs3LMElement = document.getElementById('customerVs3LM');
+            vs3LMElement.textContent = formatPercentage(vs3LMPercent);
+            vs3LMElement.className = `metrics-value ${vs3LMPercent > 0 ? 'positive' : vs3LMPercent < 0 ? 'negative' : 'neutral'}`;
+
+            const vsLMElement = document.getElementById('customerVsLM');
+            vsLMElement.textContent = formatPercentage(vsLMPercent);
+            vsLMElement.className = `metrics-value ${vsLMPercent > 0 ? 'positive' : vsLMPercent < 0 ? 'negative' : 'neutral'}`;
+
+            console.log('Customer metrics updated:', {
+                target: totalTarget,
+                actual: totalActual,
+                gap: totalGap,
+                cc5: currentCustomerCC5,
+                customerId: currentCustomerId
+            });
+        }
+
+        function updateSKUHistory() {
+            if (!currentCustomerName) {
+                showEmptySKUState('Pilih pelanggan untuk melihat history SKU');
+                return;
+            }
+
+            console.log(`Loading SKU history for customer: ${currentCustomerName}`);
+
+            // First, find the customer details record to get the customer ID
+            const customerDetailsRecord = detailsData.find(item => {
+                return item.szEmployeeId && item.szEmployeeId.toString() === currentSalesmanId.toString() &&
+                       item['Nama Pelanggan'] === currentCustomerName;
+            });
+
+            if (!customerDetailsRecord) {
+                console.warn(`No customer details found for: ${currentCustomerName}`);
+                showEmptySKUState(`Tidak ada detail pelanggan untuk ${currentCustomerName}`);
+                return;
+            }
+
+            const customerId = customerDetailsRecord['Id Pelanggan'];
+            console.log(`Customer ID found: ${customerId} for ${currentCustomerName}`);
+
+            // Find SKU data using customer ID
+            const customerSKUData = skuPelangganData.filter(item => {
+                // Match by Kode_Pelanggan from skupelanggan with Id Pelanggan from details
+                return item['Kode_Pelanggan'] === customerId;
+            });
+
+            console.log(`Found ${customerSKUData.length} SKU records for customer ID: ${customerId}`);
+
+            if (customerSKUData.length === 0) {
+                showEmptySKUState(`Tidak ada history SKU untuk ${currentCustomerName} (ID: ${customerId})`);
+                return;
+            }
+
+            // Sort by a logical order (by SKU name since there might not be dates in this data)
+            customerSKUData.sort((a, b) => {
+                const skuA = (a.SKU || '').toString();
+                const skuB = (b.SKU || '').toString();
+                return skuA.localeCompare(skuB);
+            });
+
+            renderSKUTable(customerSKUData);
+        }
+
+        function renderSKUTable(skuData) {
+            const tableBody = document.getElementById('skuTableBody');
+            const recordCount = document.getElementById('skuRecordCount');
+            
+            recordCount.textContent = `${skuData.length} SKU`;
+
+            if (skuData.length === 0) {
+                showEmptySKUState('Tidak ada data SKU');
+                return;
+            }
+
+            currentSKUData = [...skuData];
+            let html = '';
+            
+            // Calculate totals
+            let totalPlan = 0;
+            let totalUnitMTD = 0;
+            let totalGap = 0;
+
+            skuData.forEach((item, index) => {
+                const no = index + 1;
+                
+                // Map the actual field names from d.skupelanggan.json
+                const skuName = item['SKU'] || 'N/A';
+                const promo = item['Promo'] || 'Others';
+                const plan = Number(item['Plan']) || 0;
+                const unitMTD = Number(item['UnitMTD']) || 0;
+                const gap = Number(item['Gap']) || 0;
+                const unit3LM = Number(item['Unit3LM']) || 0;
+                const unitLM = Number(item['UnitLM']) || 0;
+
+                totalPlan += plan;
+                totalUnitMTD += unitMTD;
+                totalGap += gap;
+
+                // Get promo class for styling - normalize to lowercase and remove spaces
+                const normalizedPromo = promo.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
+                const promoClass = `promo-${normalizedPromo}`;
+
+                html += `
+                    <tr>
+                        <td class="col-narrow sticky-col sticky-no">${no}</td>
+                        <td class="col-sku sticky-col sticky-sku">
+                            <span class="sku-code">${skuName}</span>
+                        </td>
+                        <td class="col-medium">
+                            <span class="promo-tag ${promoClass}">${promo}</span>
+                        </td>
+                        <td class="col-gap ${gap > 0 ? 'gap-positive' : gap < 0 ? 'gap-negative' : 'gap-neutral'}">${gap > 0 ? '+' : ''}${formatNumber(gap)}</td>
+                        <td class="col-wide col-numeric">${formatNumber(plan)}</td>
+                        <td class="col-wide col-numeric">${formatNumber(unitMTD)}</td>
+                        <td class="col-wide col-numeric">${formatNumber(unit3LM)}</td>
+                        <td class="col-wide col-numeric">${formatNumber(unitLM || 0)}</td>
+                    </tr>
+                `;
+            });
+
+            // Add summary row
+            const totalGapClass = totalGap > 0 ? 'gap-positive' : totalGap < 0 ? 'gap-negative' : 'gap-neutral';
+            html += `
+                <tr class="sku-summary-row">
+                    <td class="col-narrow sticky-col sticky-no"></td>
+                    <td class="col-sku sticky-col sticky-sku"><strong>TOTAL</strong></td>
+                    <td class="col-medium"></td>
+                    <td class="col-gap ${totalGapClass}"><strong>${totalGap > 0 ? '+' : ''}${formatNumber(totalGap)}</strong></td>
+                    <td class="col-wide col-numeric"><strong>${formatNumber(totalPlan)}</strong></td>
+                    <td class="col-wide col-numeric"><strong>${formatNumber(totalUnitMTD)}</strong></td>
+                    <td class="col-wide col-numeric"></td>
+                    <td class="col-wide col-numeric"></td>
+                </tr>
+            `;
+
+            tableBody.innerHTML = html;
+            
+            console.log(`📊 Tabel SKU ditampilkan: ${skuData.length} item dengan warna yang sudah diperbaiki`);
+        }
+
+        // ===== SKU TABLE SORTING FUNCTIONS =====
+        function sortSKUTable(column) {
+            if (!currentSKUData || currentSKUData.length === 0) {
+                return;
+            }
+
+            // Toggle sort direction
+            if (skuSortState.column === column) {
+                skuSortState.direction = skuSortState.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                skuSortState.column = column;
+                skuSortState.direction = 'asc';
+            }
+
+            // Sort the data
+            currentSKUData.sort((a, b) => {
+                let aValue, bValue;
+
+                switch (column) {
+                    case 'sku':
+                        aValue = (a['SKU'] || '').toLowerCase();
+                        bValue = (b['SKU'] || '').toLowerCase();
+                        break;
+                    case 'promo':
+                        aValue = (a['Promo'] || '').toLowerCase();
+                        bValue = (b['Promo'] || '').toLowerCase();
+                        break;
+                    case 'plan':
+                        aValue = Number(a['Plan']) || 0;
+                        bValue = Number(b['Plan']) || 0;
+                        break;
+                    case 'mtd':
+                        aValue = Number(a['UnitMTD']) || 0;
+                        bValue = Number(b['UnitMTD']) || 0;
+                        break;
+                    case 'gap':
+                        aValue = Number(a['Gap']) || 0;
+                        bValue = Number(b['Gap']) || 0;
+                        break;
+                    case '3lm':
+                        aValue = Number(a['Unit3LM']) || 0;
+                        bValue = Number(b['Unit3LM']) || 0;
+                        break;
+                    case 'lm':
+                        aValue = Number(a['UnitLM']) || 0;
+                        bValue = Number(b['UnitLM']) || 0;
+                        break;
+                    default:
+                        return 0;
+                }
+
+                if (typeof aValue === 'string') {
+                    return skuSortState.direction === 'asc' 
+                        ? aValue.localeCompare(bValue)
+                        : bValue.localeCompare(aValue);
+                } else {
+                    return skuSortState.direction === 'asc' 
+                        ? aValue - bValue
+                        : bValue - aValue;
+                }
+            });
+
+            // Update sort headers
+            updateSKUSortHeaders();
+            
+            // Re-render table
+            renderSKUTable(currentSKUData);
+
+            console.log(`🔄 SKU table sorted by ${column} (${skuSortState.direction})`);
+        }
+
+        function updateSKUSortHeaders() {
+            document.querySelectorAll('#skuTable .sortable-header').forEach(header => {
+                header.classList.remove('asc', 'desc');
+            });
+            
+            // Add visual indicator for current sort
+            if (skuSortState.column) {
+                const headers = document.querySelectorAll('#skuTable .sortable-header');
+                const columnIndex = ['sku', 'promo', 'gap', 'plan', 'mtd', '3lm', 'lm'].indexOf(skuSortState.column);
+                if (headers[columnIndex]) {
+                    headers[columnIndex].classList.add(skuSortState.direction);
+                }
+            }
+        }
+
+        function showEmptySKUState(message) {
+            const tableBody = document.getElementById('skuTableBody');
+            const recordCount = document.getElementById('skuRecordCount');
+            
+            recordCount.textContent = '0 SKUs';
+            
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="8">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">🛒</div>
+                            <div>${message}</div>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+
+        // ===== UI STATE FUNCTIONS =====
+        function showLoading(show) {
+            document.getElementById('loadingSpinner').style.display = show ? 'flex' : 'none';
+        }
+
+        function showMainContent(show) {
+            document.getElementById('mainContent').style.display = show ? 'block' : 'none';
+        }
+
+        function showCustomerData() {
+            document.getElementById('metricsSection').style.display = 'block';
+            document.getElementById('skuTableSection').style.display = 'block';
+        }
+
+        function hideCustomerData() {
+            document.getElementById('metricsSection').style.display = 'none';
+            document.getElementById('projectSection').style.display = 'none';
+            document.getElementById('skuTableSection').style.display = 'none';
+            showEmptySKUState('Pilih pelanggan untuk melihat history SKU');
+        }
+
+        function toggleMetricsDisplay() {
+            const metricsContent = document.getElementById('metricsContent');
+            const toggleBtn = document.getElementById('toggleMetrics');
+            
+            metricsVisible = !metricsVisible;
+            
+            if (metricsVisible) {
+                metricsContent.classList.remove('hidden');
+                toggleBtn.textContent = '👁️';
+                toggleBtn.title = 'Hide Metrics';
+            } else {
+                metricsContent.classList.add('hidden');
+                toggleBtn.textContent = '👁️‍🗨️';
+                toggleBtn.title = 'Show Metrics';
+            }
+        }
+
+        function refreshData() {
+            console.log('Refreshing data...');
+            initializeData();
+        }
+
+        // ===== NAVIGATION FUNCTIONS =====
+        function goHome() {
+            window.location.href = 'dashboard.html';
+        }
+
+        function goToVisit() {
+            window.location.href = 'visit.html';
+        }
+
+        function goToData() {
+            window.location.href = 'DAP.html';
+        }
+
+        function showCustomerMetrics() {
+            // Already on customer metrics page
+            console.log('Already on customer metrics page');
+        }
+
+        // ===== INITIALIZATION =====
+        async function initializeData() {
+            try {
+                showLoading(true);
+                
+                console.log('Starting customer metrics dashboard...');
+                
+                // Load all data sequentially
+                await loadSalesmanData();
+                await loadDetailsData();
+                await loadProjectData();
+                await loadSKUPelangganData();
+                
+                // Populate salesman options
+                populateSalesmanOptions();
+                
+                // Setup customer search functionality
+                setupCustomerSearch();
+                
+                showLoading(false);
+                showMainContent(true);
+                
+                console.log('Customer metrics dashboard ready');
+                console.log(`Loaded ${salesmanData.length} salesman, ${detailsData.length} details, ${projectData.length} projects, ${skuPelangganData.length} SKU records`);
+                
+            } catch (error) {
+                console.error('Critical error in initializeData:', error);
+                showLoading(false);
+                document.getElementById('errorMessage').style.display = 'block';
+            }
+        }
+
+        // ===== EVENT LISTENERS =====
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('salesmanSelect').addEventListener('change', handleSalesmanSelection);
+            
+            // Initialize the data asynchronously
+            initializeData().catch(error => {
+                console.error('Failed to initialize data:', error);
+                document.getElementById('errorMessage').style.display = 'block';
+            });
+        });
+
+        console.log('Customer Metrics Dashboard script loaded');
+    </script>
+</body>
+</html>
