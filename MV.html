@@ -631,7 +631,7 @@
         /* ===== SKU CODE STYLING ===== */
         .sku-code {
             font-family: 'Courier New', monospace;
-            /background: linear-gradient(135deg, #f1f5f9, #e2e8f0);/
+            background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
             padding: 2px 4px;
             border-radius: 4px;
             font-size: 14px;
@@ -1711,16 +1711,16 @@
             Object.entries(projectsByITG).forEach(([itg, projects]) => {
                 // Aggregate data for this ITG
                 let totalTMTD = 0, totalAMTD = 0, totalGapMTD = 0;
-                let totalTQ3 = 0, totalAQ3 = 0, totalGapQ3 = 0;
+                let totalTQ = 0, totalAQ = 0, totalGapQ = 0;
                 let achMTD = 0, status = 'Unknown';
 
                 projects.forEach(project => {
                     totalTMTD += Number(project['T.MTD']) || 0;
                     totalAMTD += Number(project['A.MTD']) || 0;
                     totalGapMTD += Number(project['Gap MTD']) || 0;
-                    totalTQ3 += Number(project['T.Q3_2025']) || 0;
-                    totalAQ3 += Number(project['A.Q3_2025']) || 0;
-                    totalGapQ3 += Number(project['Gap Q3']) || 0;
+                    totalTQ += Number(project['T.Qrt']) || 0;
+                    totalAQ += Number(project['A.Qrt']) || 0;
+                    totalGapQ += Number(project['Gap Qrt']) || 0;
                     
                     // Use the status from the first project (they should be the same for same ITG)
                     if (project['Status']) {
@@ -1733,7 +1733,11 @@
 
                 // Format numbers without abbreviation - show full numbers with thousand separators
                 const formatITGNumber = (value) => {
-                    return Math.round(value).toLocaleString('id-ID');
+                    const val = Math.abs(parseFloat(value) || 0);
+                    if (val >= 1000000000) return `${(val/1000000000).toFixed(1)}M`;
+                    if (val >= 1000000) return `${(val/1000000).toFixed(1)}jt`;
+                    if (val >= 1000) return `${(val/1000).toFixed(0)}rb`;
+                    return `${val.toFixed(0)}`;
                 };
 
                 html += `
@@ -1764,19 +1768,19 @@
                             </div>
                         </div>
                         
-                        <!-- Row 2: T.Q3, A.Q3, Gap Q3, Status -->
+                        <!-- Row 2: T.Qrt, A.Qrt, Gap Qrt, Status -->
                         <div class="project-cards">
                             <div class="project-card">
-                                <div class="project-label">T.Q3</div>
-                                <div class="project-value">${formatITGNumber(totalTQ3)}</div>
+                                <div class="project-label">T.Qrt</div>
+                                <div class="project-value">${formatITGNumber(totalTQ)}</div>
                             </div>
                             <div class="project-card">
-                                <div class="project-label">A.Q3</div>
-                                <div class="project-value">${formatITGNumber(totalAQ3)}</div>
+                                <div class="project-label">A.Qrt</div>
+                                <div class="project-value">${formatITGNumber(totalAQ)}</div>
                             </div>
                             <div class="project-card">
-                                <div class="project-label">Gap Q3</div>
-                                <div class="project-value ${totalGapQ3 > 0 ? 'positive' : totalGapQ3 < 0 ? 'negative' : 'neutral'}">${totalGapQ3 > 0 ? '+' : ''}${formatITGNumber(totalGapQ3)}</div>
+                                <div class="project-label">Gap Qrt</div>
+                                <div class="project-value ${totalGapQ > 0 ? 'positive' : totalGapQ < 0 ? 'negative' : 'neutral'}">${totalGapQ > 0 ? '+' : ''}${formatITGNumber(totalGapQ)}</div>
                             </div>
                             <div class="project-card">
                                 <div class="project-label">Status</div>
