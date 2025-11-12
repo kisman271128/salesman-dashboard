@@ -1956,7 +1956,6 @@
             document.getElementById('totalDuration').textContent = formatDurationHours(totalDuration);
             document.getElementById('ordersCount').textContent = ordersCount;
         }
-
         function displayJourneyMap(visits) {
             if (!journeyMap) return;
             
@@ -2006,9 +2005,9 @@
                                 display: flex;
                                 align-items: center;
                                 justify-content: center;
+                                font-size: 14px;
+                                font-weight: bold;
                                 color: white;
-                                font-weight: 700;
-                                font-size: 12px;
                             ">
                                 ${index + 1}
                             </div>
@@ -2017,23 +2016,45 @@
                         iconAnchor: [16, 16]
                     });
                     
+                    // Create popup content
                     const startTime = new Date(visit.start_time);
-                    const endTime = new Date(visit.end_time);
+                    const timeStr = startTime.toLocaleTimeString('id-ID', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
                     
-                    const popupContent = `
+                    let popupContent = `
                         <div style="min-width: 200px;">
                             <div style="font-weight: 600; font-size: 14px; margin-bottom: 8px;">
                                 ${index + 1}. ${visit.outlet_name || 'Unknown'}
                             </div>
-                            <div style="font-size: 12px; color: #64748b; line-height: 1.6;">
-                                <div>⏰ ${startTime.toLocaleTimeString('id-ID')} - ${endTime.toLocaleTimeString('id-ID')}</div>
-                                <div>⏱️ ${formatDuration(visit.total_duration_seconds || 0)}</div>
-                                ${visit.order_status ? `<div style="margin-top: 4px; padding: 4px 8px; background: ${visit.order_status.toLowerCase().includes('ada') ? '#dcfce7' : '#fee2e2'}; border-radius: 4px; color: ${visit.order_status.toLowerCase().includes('ada') ? '#166534' : '#991b1b'}; font-weight: 600;">${visit.order_status}</div>` : ''}
-                                ${visit.so_amount ? `<div style="margin-top: 4px;">💰 Rp ${visit.so_amount.toLocaleString('id-ID')}</div>` : ''}
+                            <div style="font-size: 12px; color: #64748b; margin-bottom: 4px;">
+                                ⏰ ${timeStr}
                             </div>
-                        </div>
+                            <div style="font-size: 12px; color: #64748b;">
+                                ⏱️ ${formatDuration(visit.total_duration_seconds || 0)}
+                            </div>
                     `;
                     
+                    if (visit.order_status) {
+                        const hasOrder = visit.order_status.toLowerCase().includes('ada');
+                        popupContent += `
+                            <div style="margin-top: 8px; padding: 6px; background: ${hasOrder ? '#dcfce7' : '#fee2e2'}; border-radius: 6px;">
+                                <div style="font-size: 11px; color: ${hasOrder ? '#166534' : '#991b1b'}; font-weight: 600;">
+                                    ${visit.order_status}
+                                </div>
+                                ${visit.so_amount ? `
+                                    <div style="font-size: 10px; color: #64748b; margin-top: 2px;">
+                                        💰 Rp ${visit.so_amount.toLocaleString('id-ID')}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `;
+                    }
+                    
+                    popupContent += '</div>';
+                    
+                    // Add marker to map
                     L.marker([lat, lng], { icon: markerIcon })
                         .bindPopup(popupContent)
                         .addTo(journeyMap);
@@ -2081,15 +2102,56 @@
                      visit.order_status.toLowerCase().includes('order'));
                 
                 const startTime = new Date(visit.start_time);
-                const endTime = new Date(visit.end_time);
+                
+                // ✅ IMPROVED: Handle different visit statuses properly
+                let timeDisplay = '';
+                let statusBadge = '';
+                let additionalInfo = '';
+                
+                // Check visit status
+                const isPaused = visit.visit_status === 'paused' || (!visit.end_time && visit.pause_count > 0);
+                const isCompleted = visit.visit_status === 'completed' && visit.end_time;
+                const isStarted = visit.visit_status === 'started' && !visit.end_time && !visit.pause_count;
+                
+                if (isCompleted) {
+                    // ✅ Visit completed normally
+                    const endTime = new Date(visit.end_time);
+                    timeDisplay = `⏰ ${startTime.toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'})} - ${endTime.toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'})}`;
+                    statusBadge = '';
+                    
+                } else if (isPaused) {
+                    // 🟡 Visit paused/ditunda
+                    timeDisplay = `⏰ ${startTime.toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'})} - <span style="color: #f59e0b; font-weight: 600;">Ditunda oleh salesman</span>`;
+                    statusBadge = `<span style="display: inline-block; background: #fef3c7; color: #92400e; border: 1px solid #f59e0b; padding: 3px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; margin-left: 8px; vertical-align: middle;">🟡 DITUNDA</span>`;
+                    
+                    // Additional info for paused visits
+                    if (visit.pause_count > 0) {
+                        additionalInfo = `<div class="timeline-details" style="color: #f59e0b; font-size: 11px; margin-top: 4px;">ℹ️ Kunjungan ditunda ${visit.pause_count} kali | Akan dilanjutkan nanti</div>`;
+                    }
+                    
+                } else if (isStarted) {
+                    // ⚠️ Visit started but not completed
+                    timeDisplay = `⏰ ${startTime.toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'})} - <span style="color: #dc2626; font-weight: 600;">Tidak diselesaikan</span>`;
+                    statusBadge = `<span style="display: inline-block; background: #fee2e2; color: #991b1b; border: 1px solid #dc2626; padding: 3px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; margin-left: 8px; vertical-align: middle;">⚠️ TIDAK SELESAI</span>`;
+                    additionalInfo = `<div class="timeline-details" style="color: #dc2626; font-size: 11px; margin-top: 4px;">⚠️ Salesman tidak menekan "Selesai Kunjungan" atau "Tunda Kunjungan"</div>`;
+                    
+                } else {
+                    // Unknown status - fallback
+                    timeDisplay = `⏰ ${startTime.toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'})} - <span style="color: #64748b;">Status tidak jelas</span>`;
+                    statusBadge = `<span style="display: inline-block; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; padding: 3px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; margin-left: 8px;">❓ UNKNOWN</span>`;
+                }
                 
                 html += `
                     <div class="timeline-item">
                         <div class="timeline-marker ${markerClass}"></div>
                         <div class="timeline-content ${contentClass}">
-                            <div class="timeline-outlet">${index + 1}. ${visit.outlet_name || 'Unknown Outlet'}</div>
-                            <div class="timeline-details">⏰ ${startTime.toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'})} - ${endTime.toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'})}</div>
+                            <div class="timeline-outlet">
+                                ${index + 1}. ${visit.outlet_name || 'Unknown Outlet'}
+                                ${statusBadge}
+                            </div>
+                            <div class="timeline-details">${timeDisplay}</div>
                             <div class="timeline-details">⏱️ Duration: ${formatDuration(visit.total_duration_seconds || 0)}</div>
+                            ${additionalInfo}
                             ${visit.order_status ? `
                                 <span class="timeline-status ${hasOrder ? 'order' : 'no-order'}">
                                     ${visit.order_status}
@@ -2106,6 +2168,7 @@
             html += '</div>';
             container.innerHTML = html;
         }
+
 
         function displayNoJourneyData() {
             const container = document.getElementById('journeyTimelineContainer');
