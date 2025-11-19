@@ -1731,8 +1731,19 @@
                 // Calculate achievement percentage
                 achMTD = totalTMTD > 0 ? (totalAMTD / totalTMTD) * 100 : 0;
 
-                // Format numbers without abbreviation - show full numbers with thousand separators
+                // Format numbers - ITG SC dan ITG LOCK GBS gunakan format number biasa
                 const formatITGNumber = (value) => {
+                    // Khusus ITG SC dan ITG LOCK GBS: gunakan format number biasa
+                    if (itg === 'ITG SC' || itg === 'ITG LOCK GBS') {
+                        const val = parseFloat(value) || 0;
+                        // Tampilkan dengan pemisah ribuan
+                        return val.toLocaleString('id-ID', {
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 0
+                        });
+                    }
+                    
+                    // ITG lainnya: gunakan format currency (rb/jt/M)
                     const val = Math.abs(parseFloat(value) || 0);
                     if (val >= 1000000000) return `${(val/1000000000).toFixed(1)}M`;
                     if (val >= 1000000) return `${(val/1000000).toFixed(1)}jt`;
@@ -1768,7 +1779,8 @@
                             </div>
                         </div>
                         
-                        <!-- Row 2: T.Qrt, A.Qrt, Gap Qrt, Status -->
+                        <!-- Row 2: T.Qrt, A.Qrt, Gap Qrt, Status (hanya untuk ITG selain LOCK GBS dan CLBK) -->
+                        ${itg !== 'ITG LOCK GBS' && itg !== 'ITG CLBK' ? `
                         <div class="project-cards">
                             <div class="project-card">
                                 <div class="project-label">T.Qrt</div>
@@ -1789,6 +1801,7 @@
                                 </div>
                             </div>
                         </div>
+                        ` : ''}
                     </div>
                 `;
             });

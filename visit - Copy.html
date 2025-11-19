@@ -1658,7 +1658,8 @@
             soAmount: null,
             pendingOutlet: null,
             pendingHari: null,
-            pauseHistory: [] // Track all pause/resume events
+            pauseHistory: [], // Track all pause/resume events
+            firebaseKey: null // Store Firebase key for updates
         };
 
         let sessionTimer = null;
@@ -2062,6 +2063,50 @@
             }
         }
 
+        // ✅ NEW FUNCTION: Update existing visit in Firebase
+        async function updateVisitInFirebase(firebaseKey, updateData) {
+            if (!window.firebaseDB || !currentSalesmanId || !firebaseKey) {
+                console.warn('🔥 Cannot update - missing Firebase DB, salesman ID, or Firebase key');
+                return false;
+            }
+
+            try {
+                updateFirebaseStatus('syncing', '🔄 Updating Firebase...');
+                
+                const visitRef = window.firebaseRef(window.firebaseDB, `visits/${currentSalesmanId}/${firebaseKey}`);
+                
+                const updateDataWithTimestamp = {
+                    ...updateData,
+                    firebase_updated_at: window.firebaseServerTimestamp(),
+                    firebase_sync_version: '1.1'
+                };
+                
+                // Get existing data first
+                const snapshot = await window.firebaseGet(visitRef);
+                if (snapshot.exists()) {
+                    const existingData = snapshot.val();
+                    // Merge with existing data
+                    const mergedData = {
+                        ...existingData,
+                        ...updateDataWithTimestamp
+                    };
+                    await window.firebaseSet(visitRef, mergedData);
+                    console.log('🔥 Visit updated in Firebase:', firebaseKey);
+                    updateFirebaseStatus('success', '✅ Updated in Firebase');
+                    return true;
+                } else {
+                    console.warn('🔥 Visit not found in Firebase, creating new');
+                    await window.firebaseSet(visitRef, updateDataWithTimestamp);
+                    return true;
+                }
+                
+            } catch (error) {
+                console.error('🔥 Firebase update error:', error);
+                updateFirebaseStatus('error', '❌ Firebase update failed');
+                return false;
+            }
+        }
+
         async function syncDailySummaryToFirebase(visitData) {
             try {
                 const today = new Date().toISOString().split('T')[0];
@@ -2177,7 +2222,7 @@
             console.log('❌ Pause cancelled, continuing visit');
         }
 
-        function confirmPauseVisit() {
+        async function confirmPauseVisit() {
             if (!visitSession.isActive || visitSession.isPaused) {
                 console.warn('🚫 Cannot pause - invalid session state');
                 return;
@@ -2234,6 +2279,44 @@
             
             // Save pause event to localStorage
             savePauseEventToLocal('pause', pausedVisitData);
+            
+            // ✅ UPDATE STATUS TO 'PAUSED' IN FIREBASE
+            if (visitSession.firebaseKey) {
+                const pauseUpdateData = {
+                    visit_status: 'paused',
+                    paused_at: new Date().toISOString(),
+                    pause_count: visitSession.pauseHistory.filter(e => e.type === 'pause').length,
+                    total_pause_duration: calculateTotalPauseDuration(visitSession.pauseHistory),
+                    pause_history: visitSession.pauseHistory,
+                    pause_location: { ...currentLocation },
+                    accumulated_duration: visitSession.accumulatedDuration
+                };
+                
+                const updated = await updateVisitInFirebase(visitSession.firebaseKey, pauseUpdateData);
+                if (updated) {
+                    console.log('🔥 Visit status updated to PAUSED in Firebase');
+                } else {
+                    console.log('⏳ Pause update will be synced later');
+                }
+            } else {
+                console.warn('⚠️ No Firebase key found for this visit, cannot update pause status');
+            }
+        }
+        
+        // Helper function to calculate total pause duration
+        function calculateTotalPauseDuration(pauseHistory) {
+            let totalPauseDuration = 0;
+            for (let i = 0; i < pauseHistory.length - 1; i += 2) {
+                const pauseEvent = pauseHistory[i];
+                const resumeEvent = pauseHistory[i + 1];
+                
+                if (pauseEvent && pauseEvent.type === 'pause' && resumeEvent && resumeEvent.type === 'resume') {
+                    const pauseTime = new Date(pauseEvent.timestamp).getTime();
+                    const resumeTime = new Date(resumeEvent.timestamp).getTime();
+                    totalPauseDuration += (resumeTime - pauseTime) / 1000;
+                }
+            }
+            return totalPauseDuration;
         }
 
         function showResumeVisitModal(outletName) {
@@ -2279,7 +2362,7 @@
             console.log(`🆕 Starting new visit for: ${outletName}`);
         }
 
-        function confirmResumeVisit() {
+        async function confirmResumeVisit() {
             const outletName = visitSession.pendingOutlet;
             const pausedVisit = pausedVisits.get(outletName.toLowerCase());
             
@@ -2301,6 +2384,7 @@
             visitSession.startLocation = pausedVisit.startLocation;
             visitSession.pauseHistory = pausedVisit.pauseHistory || [];
             visitSession.resumeTime = Date.now();
+            visitSession.firebaseKey = pausedVisit.firebaseKey || null; // ✅ Restore Firebase key
             
             // Add resume event to history
             visitSession.pauseHistory.push({
@@ -2325,6 +2409,28 @@
             
             // Save resume event to localStorage
             savePauseEventToLocal('resume', visitSession);
+            
+            // ✅ UPDATE STATUS TO 'RESUMED' IN FIREBASE
+            if (visitSession.firebaseKey) {
+                const resumeUpdateData = {
+                    visit_status: 'resumed',
+                    resumed_at: new Date().toISOString(),
+                    pause_count: visitSession.pauseHistory.filter(e => e.type === 'pause').length,
+                    resume_count: visitSession.pauseHistory.filter(e => e.type === 'resume').length,
+                    total_pause_duration: calculateTotalPauseDuration(visitSession.pauseHistory),
+                    pause_history: visitSession.pauseHistory,
+                    resume_location: { ...currentLocation }
+                };
+                
+                const updated = await updateVisitInFirebase(visitSession.firebaseKey, resumeUpdateData);
+                if (updated) {
+                    console.log('🔥 Visit status updated to RESUMED in Firebase');
+                } else {
+                    console.log('⏳ Resume update will be synced later');
+                }
+            } else {
+                console.warn('⚠️ No Firebase key found for this visit, cannot update resume status');
+            }
         }
 
         // ===== LOCAL STORAGE FOR PAUSED VISITS =====
@@ -2663,9 +2769,9 @@
             endVisitSession();
         }
 
-        function startVisitSession(outletName, hariJKS) {
+        async function startVisitSession(outletName, hariJKS) {
             if (visitSession.isActive) {
-                endVisitSession();
+                await endVisitSession();
             }
             
             const outletRecord = detailsData.find(item => {
@@ -2697,6 +2803,7 @@
             visitSession.orderStatus = null;
             visitSession.soAmount = null;
             visitSession.pauseHistory = [];
+            visitSession.firebaseKey = null; // Store Firebase key for updates
             
             // Mark as started but NOT completed yet
             markCustomerAsVisited(outletName, sessionId, false);
@@ -2707,17 +2814,37 @@
             
             console.log(`✅ Visit session started: ${outletName} (ID: ${outletId})`);
             
-            saveVisitSessionToLocal('session_start', {
+            // Prepare data for Firebase
+            const visitDataForFirebase = {
                 outlet_id: outletId,
                 outlet_name: outletName,
                 hari_jks: hariJKS,
                 session_id: sessionId,
                 start_time: new Date().toISOString(),
                 start_location: startLocation,
-                visit_status: 'started',
+                visit_status: 'started', // ✅ CRITICAL: Track started status
+                pause_count: 0,
+                total_pause_duration: 0,
+                pause_history: [],
                 salesman_id: currentSalesmanId,
-                salesman_name: currentSalesman
-            });
+                salesman_name: currentSalesman,
+                created_at: new Date().toISOString(),
+                local_id: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+            };
+            
+            // Save to localStorage
+            saveVisitSessionToLocal('session_start', visitDataForFirebase);
+            
+            // ✅ SAVE TO FIREBASE IMMEDIATELY (status: started)
+            const firebaseKey = await syncVisitToFirebase(visitDataForFirebase);
+            
+            if (firebaseKey) {
+                visitSession.firebaseKey = firebaseKey; // Store key for future updates
+                console.log(`🔥 Visit started and saved to Firebase: ${firebaseKey}`);
+            } else {
+                console.log('⏳ Visit will be synced to Firebase later');
+                saveToPendingFirebaseQueue(visitDataForFirebase);
+            }
         }
 
         async function endVisitSession() {
@@ -2790,15 +2917,33 @@
             
             saveVisitSessionToLocal('session_end', visitDataForFirebase);
             
-            const firebaseKey = await syncVisitToFirebase(visitDataForFirebase);
+            // ✅ UPDATE OR CREATE IN FIREBASE
+            let firebaseSuccess = false;
+            if (visitSession.firebaseKey) {
+                // Update existing visit
+                console.log(`🔥 Updating existing visit in Firebase: ${visitSession.firebaseKey}`);
+                firebaseSuccess = await updateVisitInFirebase(visitSession.firebaseKey, visitDataForFirebase);
+            } else {
+                // Create new visit (fallback for visits without initial sync)
+                console.log('🔥 Creating new visit in Firebase (no initial key)');
+                const firebaseKey = await syncVisitToFirebase(visitDataForFirebase);
+                firebaseSuccess = !!firebaseKey;
+            }
             
-            if (!firebaseKey) {
+            if (!firebaseSuccess) {
                 console.log('⏳ Adding visit to pending Firebase sync queue...');
                 saveToPendingFirebaseQueue(visitDataForFirebase);
             }
             
+            // Also update daily summary
+            if (firebaseSuccess) {
+                await syncDailySummaryToFirebase(visitDataForFirebase);
+            }
+            
             // Reset session
             const endedOutlet = visitSession.outletName;
+            const endedFirebaseKey = visitSession.firebaseKey; // Save for logging
+            
             visitSession.isActive = false;
             visitSession.isPaused = false;
             visitSession.outletId = null;
@@ -2813,6 +2958,7 @@
             visitSession.orderStatus = null;
             visitSession.soAmount = null;
             visitSession.pauseHistory = [];
+            visitSession.firebaseKey = null;
             
             updateVisitSessionStatus();
             stopSessionTimer();
@@ -2821,6 +2967,9 @@
             updateCustomerListVisitStatus();
             
             console.log(`✅ Visit session ended successfully: ${endedOutlet}, total duration: ${formatDuration(totalDuration)}`);
+            if (endedFirebaseKey) {
+                console.log(`🔥 Firebase key: ${endedFirebaseKey} - Status updated to COMPLETED`);
+            }
         }
 
         function saveToPendingFirebaseQueue(visitData) {
