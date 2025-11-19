@@ -1256,6 +1256,181 @@
             margin-bottom: 16px;
             opacity: 0.5;
         }
+
+        /* Project Cards Styling */
+        .project-cards {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+
+        .project-card {
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 8px;
+            text-align: center;
+        }
+
+        .project-label {
+            font-size: 9px;
+            color: #64748b;
+            font-weight: 500;
+            margin-bottom: 2px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .project-value {
+            font-size: 11px;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .project-value.positive {
+            color: #10b981;
+        }
+
+        .project-value.negative {
+            color: #ef4444;
+        }
+
+        .project-value.neutral {
+            color: #64748b;
+        }
+
+        .project-header {
+            background: linear-gradient(135deg, #0ea5e9, #0284c7);
+            color: white;
+            padding: 6px 10px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 12px;
+            box-shadow: 0 2px 4px rgba(14, 165, 233, 0.3);
+        }
+
+        .project-group {
+            margin-bottom: 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 12px;
+            background: #fafbfc;
+        }
+
+        .project-section {
+            margin-top: 16px;
+            padding: 0;
+            background: #f8fafc;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+        }
+
+        .project-section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 16px;
+            cursor: pointer;
+            background: linear-gradient(135deg, #0ea5e9, #0284c7);
+            transition: all 0.2s ease;
+            border-radius: 12px 12px 0 0;
+        }
+
+        .project-section-header:hover {
+            background: linear-gradient(135deg, #0284c7, #0369a1);
+            transform: translateY(-1px);
+        }
+
+        .project-section-header:active {
+            transform: translateY(0);
+        }
+
+        .project-section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0;
+        }
+
+        .project-toggle-icon {
+            font-size: 14px;
+            font-weight: bold;
+            color: white;
+            transition: transform 0.3s ease;
+            user-select: none;
+        }
+
+        .project-toggle-icon.collapsed {
+            transform: rotate(-90deg);
+        }
+
+        .project-content-collapsible {
+            padding: 0 12px 12px 12px;
+            max-height: 2000px;
+            overflow: hidden;
+            transition: max-height 0.3s ease, padding 0.3s ease;
+        }
+
+        .project-content-collapsible.collapsed {
+            max-height: 0;
+            padding: 0 12px;
+        }
+
+        .achievement-badge {
+            padding: 1px 4px;
+            border-radius: 4px;
+            font-size: 8px;
+            font-weight: 600;
+        }
+
+        .ach-high {
+            background: rgba(16, 185, 129, 0.1);
+            color: #059669;
+        }
+
+        .ach-medium {
+            background: rgba(245, 158, 11, 0.1);
+            color: #d97706;
+        }
+
+        .ach-low {
+            background: rgba(239, 68, 68, 0.1);
+            color: #dc2626;
+        }
+
+        .status-badge {
+            padding: 2px 6px;
+            border-radius: 6px;
+            font-size: 9px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-lanjut {
+            background: rgba(16, 185, 129, 0.1);
+            color: #059669;
+            border: 1px solid #10b981;
+        }
+
+        .status-gugur {
+            background: rgba(239, 68, 68, 0.1);
+            color: #dc2626;
+            border: 1px solid #ef4444;
+        }
+
+        .status-unknown {
+            background: rgba(245, 158, 11, 0.1);
+            color: #d97706;
+            border: 1px solid #f59e0b;
+        }
+
     </style>
 </head>
 <body>
@@ -1369,9 +1544,23 @@
                                 </div>
                             </div>
                         </div>
+                        
                     </div>
                 </div>
 
+                <!-- Project Info Display (shown only for project outlets) -->
+                            <div id="projectInfo" class="project-section" style="display: none;">
+                                <div class="project-section-header" onclick="toggleProjectInfo()">
+                                    <div class="project-section-title">
+                                        🎯 Project Information
+                                    </div>
+                                    <div class="project-toggle-icon" id="projectToggleIcon">
+                                        ▼
+                                    </div>
+                                </div>
+                                <div id="projectContent" class="project-content-collapsible"></div>
+                            </div>
+                            
                 <!-- Visit Data Table -->
                 <div class="content-section">
                     <!-- Tab Navigation -->
@@ -1617,6 +1806,7 @@
         let pelangganData = [];
         let detailsData = [];
         let salesmanData = [];
+        let projectData = [];
         let tpomData = [];
         let salesmanTeam = '';
         let skuData = [];
@@ -2109,22 +2299,43 @@
 
         async function syncDailySummaryToFirebase(visitData) {
             try {
+                // Skip summary update for started visits (only update on completion)
+                if (visitData.visit_status === 'started') {
+                    console.log('🔥 Skipping daily summary update for started visit');
+                    return;
+                }
+                
                 const today = new Date().toISOString().split('T')[0];
                 const summaryRef = window.firebaseRef(window.firebaseDB, `daily_summary/${currentSalesmanId}/${today}`);
                 
                 const snapshot = await window.firebaseGet(summaryRef);
                 const existingSummary = snapshot.exists() ? snapshot.val() : {};
                 
+                // Validate and sanitize duration value
+                const visitDuration = Number(visitData.total_duration_seconds) || 0;
+                const existingDuration = Number(existingSummary.total_duration_seconds) || 0;
+                const newTotalDuration = existingDuration + visitDuration;
+                
+                // Validate final value
+                if (isNaN(newTotalDuration)) {
+                    console.error('🔥 Invalid duration calculation:', {
+                        visitDuration,
+                        existingDuration,
+                        newTotalDuration
+                    });
+                    return;
+                }
+                
                 const updatedSummary = {
                     salesman_id: currentSalesmanId,
                     salesman_name: currentSalesman,
                     date: today,
                     total_visits: (existingSummary.total_visits || 0) + 1,
-                    total_duration_seconds: (existingSummary.total_duration_seconds || 0) + visitData.total_duration_seconds,
+                    total_duration_seconds: newTotalDuration,
                     visits_with_so: (existingSummary.visits_with_so || 0) + (visitData.order_status === 'ada_so' ? 1 : 0),
-                    total_so_amount: (existingSummary.total_so_amount || 0) + (visitData.so_amount || 0),
+                    total_so_amount: (existingSummary.total_so_amount || 0) + (Number(visitData.so_amount) || 0),
                     visits_with_pauses: (existingSummary.visits_with_pauses || 0) + (visitData.pause_count > 0 ? 1 : 0),
-                    total_pause_time: (existingSummary.total_pause_time || 0) + (visitData.total_pause_duration || 0),
+                    total_pause_time: (existingSummary.total_pause_time || 0) + (Number(visitData.total_pause_duration) || 0),
                     last_updated: window.firebaseServerTimestamp()
                 };
                 
@@ -3245,6 +3456,237 @@
             }
         }
 
+        async function loadProjectData() {
+            try {
+                console.log('🎯 Loading project data...');
+                const response = await fetch('data/d.project.json');
+                if (!response.ok) throw new Error('Failed to load project data');
+                
+                const content = await response.text();
+                projectData = parseJSONL(content);
+                
+                console.log(`✅ Project data loaded: ${projectData.length} records`);
+                
+                // Debug: Show sample data
+                if (projectData.length > 0) {
+                    console.log('   Sample record:', {
+                        'CUST NAME': projectData[0]['CUST NAME'],
+                        'ITG': projectData[0]['ITG'],
+                        'T.MTD': projectData[0]['T.MTD'],
+                        'A.MTD': projectData[0]['A.MTD']
+                    });
+                }
+                
+            } catch (error) {
+                console.error('Error loading project data:', error);
+            }
+        }
+        function getAchievementClass(percentage) {
+            if (percentage >= 70) return 'ach-high';
+            if (percentage >= 40) return 'ach-medium';
+            return 'ach-low';
+        }
+
+        function getStatusClass(status) {
+            const statusLower = (status || '').toLowerCase();
+            if (statusLower === 'lanjut') return 'status-lanjut';
+            if (statusLower === 'gugur') return 'status-gugur';
+            return 'status-unknown';
+        }
+
+        function toggleProjectInfo() {
+            const projectContent = document.getElementById('projectContent');
+            const toggleIcon = document.getElementById('projectToggleIcon');
+            
+            if (!projectContent || !toggleIcon) {
+                console.warn('Project info elements not found');
+                return;
+            }
+            
+            const isCollapsed = projectContent.classList.contains('collapsed');
+            
+            if (isCollapsed) {
+                // Expand
+                projectContent.classList.remove('collapsed');
+                toggleIcon.classList.remove('collapsed');
+                console.log('🎯 Project info expanded');
+            } else {
+                // Collapse
+                projectContent.classList.add('collapsed');
+                toggleIcon.classList.add('collapsed');
+                console.log('🎯 Project info collapsed');
+            }
+        }
+
+        function displayProjectInfo(customerName) {
+            console.log('🎯 === displayProjectInfo Debug ===');
+            console.log('   Customer:', customerName);
+            console.log('   Project data loaded:', projectData.length, 'records');
+            
+            const projectInfoSection = document.getElementById('projectInfo');
+            const projectContent = document.getElementById('projectContent');
+            
+            if (!projectInfoSection || !projectContent) {
+                console.error('❌ Project info elements not found in DOM');
+                return;
+            }
+            
+            if (!projectData || projectData.length === 0) {
+                console.log('   No project data available');
+                projectInfoSection.style.display = 'none';
+                return;
+            }
+
+            // Debug: Show first few customer names in project data
+            const sampleNames = projectData.slice(0, 5).map(item => item['CUST NAME']);
+            console.log('   Sample project customer names:', sampleNames);
+
+            // Find project data for this customer
+            const customerProjectData = projectData.filter(item => {
+                const itemCustName = (item['CUST NAME'] || '').toString().trim();
+                const matches = itemCustName.toLowerCase() === customerName.toLowerCase();
+                if (matches) {
+                    console.log('   ✓ Match found:', itemCustName);
+                }
+                return matches;
+            });
+
+            console.log('   Filtered project records:', customerProjectData.length);
+
+            if (customerProjectData.length === 0) {
+                // Not a project outlet
+                console.log('   This is not a project outlet');
+                projectInfoSection.style.display = 'none';
+                return;
+            }
+
+            console.log(`🎯 Project outlet detected: ${customerName}, records: ${customerProjectData.length}`);
+
+            // Group projects by ITG
+            const projectsByITG = {};
+            customerProjectData.forEach(item => {
+                const itg = item['ITG'] || 'Unknown Project';
+                if (!projectsByITG[itg]) {
+                    projectsByITG[itg] = [];
+                }
+                projectsByITG[itg].push(item);
+            });
+
+            // Render project data
+            let html = '';
+
+            Object.entries(projectsByITG).forEach(([itg, projects]) => {
+                // Aggregate data for this ITG
+                let totalTMTD = 0, totalAMTD = 0, totalGapMTD = 0;
+                let totalTQ = 0, totalAQ = 0, totalGapQ = 0;
+                let achMTD = 0, status = 'Unknown';
+
+                projects.forEach(project => {
+                    totalTMTD += Number(project['T.MTD']) || 0;
+                    totalAMTD += Number(project['A.MTD']) || 0;
+                    totalGapMTD += Number(project['Gap MTD']) || 0;
+                    totalTQ += Number(project['T.Qrt']) || 0;
+                    totalAQ += Number(project['A.Qrt']) || 0;
+                    totalGapQ += Number(project['Gap Qrt']) || 0;
+                    
+                    // Use the status from the first project
+                    if (project['Status']) {
+                        status = project['Status'];
+                    }
+                });
+
+                // Calculate achievement percentage
+                achMTD = totalTMTD > 0 ? (totalAMTD / totalTMTD) * 100 : 0;
+
+                // Format numbers - ITG SC dan ITG LOCK GBS gunakan format number biasa
+                const formatITGNumber = (value) => {
+                    // Khusus ITG SC dan ITG LOCK GBS: gunakan format number biasa
+                    if (itg === 'ITG SC' || itg === 'ITG LOCK GBS') {
+                        const val = parseFloat(value) || 0;
+                        // Tampilkan dengan pemisah ribuan
+                        return val.toLocaleString('id-ID', {
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 0
+                        });
+                    }
+                    
+                    // ITG lainnya: gunakan format currency (rb/jt/M)
+                    const val = Math.abs(parseFloat(value) || 0);
+                    if (val >= 1000000000) return `${(val/1000000000).toFixed(1)}M`;
+                    if (val >= 1000000) return `${(val/1000000).toFixed(1)}jt`;
+                    if (val >= 1000) return `${(val/1000).toFixed(0)}rb`;
+                    return `${val.toFixed(0)}`;
+                };
+
+                html += `
+                    <div class="project-group">
+                        <div class="project-header">
+                            🎯 ${itg}
+                        </div>
+                        
+                        <!-- Row 1: T.MTD, A.MTD, Gap MTD, Ach MTD -->
+                        <div class="project-cards">
+                            <div class="project-card">
+                                <div class="project-label">T.MTD</div>
+                                <div class="project-value">${formatITGNumber(totalTMTD)}</div>
+                            </div>
+                            <div class="project-card">
+                                <div class="project-label">A.MTD</div>
+                                <div class="project-value">${formatITGNumber(totalAMTD)}</div>
+                            </div>
+                            <div class="project-card">
+                                <div class="project-label">Gap MTD</div>
+                                <div class="project-value ${totalGapMTD > 0 ? 'positive' : totalGapMTD < 0 ? 'negative' : 'neutral'}">${totalGapMTD > 0 ? '+' : ''}${formatITGNumber(totalGapMTD)}</div>
+                            </div>
+                            <div class="project-card">
+                                <div class="project-label">Ach MTD</div>
+                                <div class="project-value">
+                                    <span class="achievement-badge ${getAchievementClass(achMTD)}">${achMTD.toFixed(1)}%</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Row 2: T.Qrt, A.Qrt, Gap Qrt, Status (hanya untuk ITG selain LOCK GBS dan CLBK) -->
+                        ${itg !== 'ITG LOCK GBS' && itg !== 'ITG CLBK' ? `
+                        <div class="project-cards">
+                            <div class="project-card">
+                                <div class="project-label">T.Qrt</div>
+                                <div class="project-value">${formatITGNumber(totalTQ)}</div>
+                            </div>
+                            <div class="project-card">
+                                <div class="project-label">A.Qrt</div>
+                                <div class="project-value">${formatITGNumber(totalAQ)}</div>
+                            </div>
+                            <div class="project-card">
+                                <div class="project-label">Gap Qrt</div>
+                                <div class="project-value ${totalGapQ > 0 ? 'positive' : totalGapQ < 0 ? 'negative' : 'neutral'}">${totalGapQ > 0 ? '+' : ''}${formatITGNumber(totalGapQ)}</div>
+                            </div>
+                            <div class="project-card">
+                                <div class="project-label">Status</div>
+                                <div class="project-value">
+                                    <span class="status-badge ${getStatusClass(status)}">${status}</span>
+                                </div>
+                            </div>
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+            });
+
+            projectContent.innerHTML = html;
+            
+            // Ensure expanded state (remove collapsed class if present)
+            projectContent.classList.remove('collapsed');
+            const toggleIcon = document.getElementById('projectToggleIcon');
+            if (toggleIcon) {
+                toggleIcon.classList.remove('collapsed');
+            }
+            
+            projectInfoSection.style.display = 'block';
+            console.log('✅ Project info displayed (expanded)');
+        }
+
+
         function initializeSalesmanFromUrl() {
             currentSalesmanId = getUrlParameter('id') || getUrlParameter('user');
             
@@ -3822,6 +4264,7 @@
                 updateSummaryFromCustomer(selectedPelanggan);
                 showVisitData(selectedPelanggan, selectedHari);
                 showMSSBelumAktif(selectedPelanggan);
+                displayProjectInfo(selectedPelanggan);
                 
                 showVisitStartModal(selectedPelanggan, selectedHari);
                 
@@ -3873,6 +4316,20 @@
             const customerInfo = document.getElementById('customerInfo');
             if (customerInfo) {
                 customerInfo.style.display = 'none';
+            }
+            
+            const projectInfo = document.getElementById('projectInfo');
+            if (projectInfo) {
+                projectInfo.style.display = 'none';
+                // Reset to expanded state for next display
+                const projectContent = document.getElementById('projectContent');
+                const toggleIcon = document.getElementById('projectToggleIcon');
+                if (projectContent) {
+                    projectContent.classList.remove('collapsed');
+                }
+                if (toggleIcon) {
+                    toggleIcon.classList.remove('collapsed');
+                }
             }
             
             window.currentFilteredData = [];
@@ -4197,6 +4654,9 @@
                 
                 console.log('📦 Loading SKU master data...');
                 await loadSKUData();
+                
+                console.log('🎯 Loading project data...');
+                await loadProjectData();
                 
                 console.log('✅ All data loaded successfully. Processing hari data...');
                 
