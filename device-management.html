@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Device Management - Admin</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .header {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header-left {
+            flex: 1;
+        }
+        h1 {
+            color: #1e293b;
+            margin-bottom: 6px;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .admin-badge {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 6px;
+            letter-spacing: 0.5px;
+        }
+        .subtitle {
+            color: #64748b;
+            font-size: 14px;
+        }
+        .back-btn {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .back-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .card h2 {
+            color: #1e293b;
+            margin-bottom: 16px;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .search-box {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .search-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .search-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+        }
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        }
+        .btn-success {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+        .user-card {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            transition: all 0.2s;
+        }
+        .user-card:hover {
+            border-color: #3b82f6;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+        }
+        .user-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .user-info {
+            flex: 1;
+        }
+        .user-name {
+            font-weight: 700;
+            color: #1e293b;
+            font-size: 15px;
+            margin-bottom: 4px;
+        }
+        .user-nik {
+            color: #64748b;
+            font-size: 13px;
+            font-family: 'Courier New', monospace;
+        }
+        .device-status {
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .device-registered {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .device-clear {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .device-details {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 12px;
+            font-size: 12px;
+            display: none;
+        }
+        .device-details.show {
+            display: block;
+        }
+        .device-details-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .device-details-item:last-child {
+            border-bottom: none;
+        }
+        .device-details-label {
+            color: #64748b;
+        }
+        .device-details-value {
+            color: #1e293b;
+            font-weight: 600;
+            font-family: 'Courier New', monospace;
+        }
+        .user-actions {
+            display: flex;
+            gap: 8px;
+        }
+        .btn-sm {
+            padding: 8px 16px;
+            font-size: 13px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+        .stat-label {
+            font-size: 13px;
+            color: #64748b;
+            font-weight: 600;
+        }
+        .alert {
+            padding: 16px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .alert-info {
+            background: #dbeafe;
+            border: 2px solid #3b82f6;
+            color: #1e40af;
+        }
+        .alert-success {
+            background: #d1fae5;
+            border: 2px solid #10b981;
+            color: #065f46;
+        }
+        .alert-error {
+            background: #fee2e2;
+            border: 2px solid #ef4444;
+            color: #991b1b;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #94a3b8;
+        }
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 12px;
+            }
+            .header {
+                flex-direction: column;
+                gap: 16px;
+                align-items: flex-start;
+            }
+            .user-card-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+            .user-actions {
+                width: 100%;
+            }
+            .btn-sm {
+                flex: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-left">
+                <h1>🔧 Device Management <span class="admin-badge">ADMIN</span></h1>
+                <p class="subtitle">Kelola device registration untuk semua user</p>
+            </div>
+            <button class="back-btn" onclick="goBack()">
+                ← Kembali
+            </button>
+        </div>
+
+        <div class="card">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalUsers">0</div>
+                    <div class="stat-label">Total Users</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="deviceRegistered">0</div>
+                    <div class="stat-label">Device Terdaftar</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="deviceClear">0</div>
+                    <div class="stat-label">Device Clear</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>🔍 Cari User</h2>
+            <div class="search-box">
+                <input type="text" id="searchInput" class="search-input" 
+                       placeholder="Masukkan NIK atau nama user..." 
+                       onkeyup="searchUsers()">
+                <button class="btn btn-primary" onclick="loadAllUsers()">
+                    🔄 Refresh
+                </button>
+            </div>
+
+            <div style="display: flex; gap: 8px; margin-bottom: 20px;">
+                <button class="btn btn-danger" onclick="clearAllDevices()">
+                    🗑️ Clear All Devices
+                </button>
+                <button class="btn btn-success" onclick="checkAllDevices()">
+                    ✅ Check All Status
+                </button>
+            </div>
+
+            <div id="alertBox"></div>
+
+            <div id="usersList">
+                <div class="empty-state">
+                    <div class="empty-state-icon">📱</div>
+                    <p>Klik "Refresh" untuk load user data</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let usersData = [];
+        let deviceRegistrations = {};
+
+        // Load data on page load
+        window.addEventListener('load', function() {
+            checkAdminAccess();
+            loadDeviceData();
+            loadAllUsers();
+        });
+
+        function checkAdminAccess() {
+            const currentUser = sessionStorage.getItem('currentUser');
+            const userRole = currentUser ? currentUser.toLowerCase() : null;
+            
+            if (userRole !== 'admin') {
+                alert('⚠️ Akses Ditolak\n\nFitur ini hanya untuk administrator.');
+                window.location.href = 'dashboard.html';
+            }
+        }
+
+        function goBack() {
+            window.location.href = 'dashboard.html';
+        }
+
+        function loadDeviceData() {
+            try {
+                const stored = localStorage.getItem('deviceRegistrations');
+                deviceRegistrations = stored ? JSON.parse(stored) : {};
+                console.log('Device registrations loaded:', deviceRegistrations);
+            } catch (e) {
+                console.error('Error loading device data:', e);
+                deviceRegistrations = {};
+            }
+        }
+
+        async function loadAllUsers() {
+            showAlert('info', '🔄 Loading user data...');
+            
+            try {
+                // Try to load from salesman_list.json
+                const response = await fetch('d.salesman_list.json');
+                if (response.ok) {
+                    const data = await response.json();
+                    usersData = data.map(salesman => ({
+                        nik: salesman.id,
+                        name: salesman.name,
+                        role: 'salesman'
+                    }));
+                } else {
+                    // Fallback users
+                    usersData = [
+                        { nik: '17210032876', name: 'Asman', role: 'salesman' },
+                        { nik: '17210036369', name: 'Muhammad Tamrin', role: 'salesman' },
+                        { nik: '17210037632', name: 'Robianor', role: 'salesman' },
+                        { nik: '17210037897', name: 'Hindra', role: 'salesman' },
+                        { nik: '17210041467', name: 'Doli Purnama Sari', role: 'salesman' },
+                        { nik: '17210041060', name: 'Bahrudin Rahman', role: 'salesman' }
+                    ];
+                }
+
+                // Add admin users
+                usersData.push({ nik: 'admin', name: 'Administrator', role: 'admin' });
+
+                displayUsers(usersData);
+                updateStats();
+                clearAlert();
+                
+            } catch (error) {
+                console.error('Error loading users:', error);
+                showAlert('error', '❌ Gagal load user data. Menggunakan data fallback.');
+                // Use fallback data
+                usersData = [
+                    { nik: '17210032876', name: 'Asman', role: 'salesman' },
+                    { nik: '17210036369', name: 'Muhammad Tamrin', role: 'salesman' },
+                    { nik: '17210037632', name: 'Robianor', role: 'salesman' },
+                    { nik: '17210037897', name: 'Hindra', role: 'salesman' },
+                    { nik: '17210041467', name: 'Doli Purnama Sari', role: 'salesman' },
+                    { nik: '17210041060', name: 'Bahrudin Rahman', role: 'salesman' },
+                    { nik: 'admin', name: 'Administrator', role: 'admin' }
+                ];
+                displayUsers(usersData);
+                updateStats();
+            }
+        }
+
+        function displayUsers(users) {
+            const container = document.getElementById('usersList');
+            
+            if (users.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🔍</div>
+                        <p>Tidak ada user ditemukan</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = users.map(user => {
+                const hasDevice = deviceRegistrations[user.nik];
+                const statusClass = hasDevice ? 'device-registered' : 'device-clear';
+                const statusText = hasDevice ? '📱 Terdaftar' : '✅ Clear';
+                
+                let deviceInfo = '';
+                if (hasDevice) {
+                    try {
+                        const device = deviceRegistrations[user.nik];
+                        deviceInfo = `
+                            <div class="device-details" id="details-${user.nik}">
+                                <div class="device-details-item">
+                                    <span class="device-details-label">Device ID:</span>
+                                    <span class="device-details-value">${device.deviceId || 'N/A'}</span>
+                                </div>
+                                <div class="device-details-item">
+                                    <span class="device-details-label">Registered:</span>
+                                    <span class="device-details-value">${device.timestamp ? new Date(device.timestamp).toLocaleString('id-ID') : 'N/A'}</span>
+                                </div>
+                                <div class="device-details-item">
+                                    <span class="device-details-label">Browser:</span>
+                                    <span class="device-details-value">${device.browser || 'N/A'}</span>
+                                </div>
+                            </div>
+                        `;
+                    } catch (e) {
+                        console.error('Error parsing device info:', e);
+                    }
+                }
+
+                return `
+                    <div class="user-card">
+                        <div class="user-card-header">
+                            <div class="user-info">
+                                <div class="user-name">${user.name}</div>
+                                <div class="user-nik">NIK: ${user.nik}</div>
+                            </div>
+                            <div class="device-status ${statusClass}">${statusText}</div>
+                        </div>
+                        ${deviceInfo}
+                        <div class="user-actions">
+                            ${hasDevice ? `
+                                <button class="btn btn-sm btn-primary" onclick="toggleDeviceDetails('${user.nik}')">
+                                    📋 Details
+                                </button>
+                            ` : ''}
+                            <button class="btn btn-sm btn-danger" onclick="clearUserDevice('${user.nik}', '${user.name}')">
+                                🗑️ Clear Device
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function toggleDeviceDetails(nik) {
+            const details = document.getElementById(`details-${nik}`);
+            if (details) {
+                details.classList.toggle('show');
+            }
+        }
+
+        function searchUsers() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            
+            if (query === '') {
+                displayUsers(usersData);
+            } else {
+                const filtered = usersData.filter(user => 
+                    user.nik.toLowerCase().includes(query) || 
+                    user.name.toLowerCase().includes(query)
+                );
+                displayUsers(filtered);
+            }
+            
+            updateStats();
+        }
+
+        function clearUserDevice(nik, name) {
+            if (!confirm(`⚠️ Clear device untuk user?\n\nNIK: ${nik}\nNama: ${name}\n\nUser akan bisa login dari device baru setelah device di-clear.`)) {
+                return;
+            }
+
+            if (deviceRegistrations[nik]) {
+                delete deviceRegistrations[nik];
+                localStorage.setItem('deviceRegistrations', JSON.stringify(deviceRegistrations));
+                showAlert('success', `✅ Device berhasil di-clear untuk ${name} (${nik})`);
+            } else {
+                showAlert('info', `ℹ️ User ${name} tidak memiliki device registration`);
+            }
+
+            // Refresh display
+            loadDeviceData();
+            const query = document.getElementById('searchInput').value;
+            if (query) {
+                searchUsers();
+            } else {
+                displayUsers(usersData);
+            }
+            updateStats();
+        }
+
+        function clearAllDevices() {
+            if (!confirm('⚠️ PERINGATAN!\n\nClear ALL device registrations?\n\nSemua user akan bisa login dari device baru. Tindakan ini tidak bisa di-undo.')) {
+                return;
+            }
+
+            const count = Object.keys(deviceRegistrations).length;
+            deviceRegistrations = {};
+            localStorage.setItem('deviceRegistrations', JSON.stringify(deviceRegistrations));
+            
+            showAlert('success', `✅ Berhasil clear ${count} device registrations`);
+            
+            // Refresh display
+            loadDeviceData();
+            displayUsers(usersData);
+            updateStats();
+        }
+
+        function checkAllDevices() {
+            showAlert('info', '🔍 Checking all device registrations...');
+            
+            setTimeout(() => {
+                const registered = usersData.filter(user => deviceRegistrations[user.nik]).length;
+                const clear = usersData.length - registered;
+                
+                showAlert('info', 
+                    `📊 Status Summary:\n\n` +
+                    `Total Users: ${usersData.length}\n` +
+                    `Device Terdaftar: ${registered}\n` +
+                    `Device Clear: ${clear}\n\n` +
+                    `${registered > 0 ? '⚠️ Ada user dengan device terdaftar yang mungkin tidak bisa login dari device baru.' : '✅ Semua user bisa login dari device mana saja.'}`
+                );
+            }, 500);
+        }
+
+        function updateStats() {
+            const registered = usersData.filter(user => deviceRegistrations[user.nik]).length;
+            const clear = usersData.length - registered;
+            
+            document.getElementById('totalUsers').textContent = usersData.length;
+            document.getElementById('deviceRegistered').textContent = registered;
+            document.getElementById('deviceClear').textContent = clear;
+        }
+
+        function showAlert(type, message) {
+            const alertBox = document.getElementById('alertBox');
+            alertBox.className = `alert alert-${type}`;
+            alertBox.textContent = message;
+            alertBox.style.display = 'block';
+        }
+
+        function clearAlert() {
+            const alertBox = document.getElementById('alertBox');
+            alertBox.style.display = 'none';
+        }
+    </script>
+</body>
+</html>
