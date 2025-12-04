@@ -1909,6 +1909,143 @@
                 font-size: 12px;
             }
         }
+
+        /* ===== PLAN DAP POPUP ===== */
+        .plan-dap-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            backdrop-filter: blur(4px);
+        }
+
+        .plan-dap-overlay.show {
+            display: flex;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .plan-dap-modal {
+            background: white;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 420px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+            animation: slideUp 0.3s ease;
+            overflow: hidden;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(30px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .plan-dap-header {
+            background: linear-gradient(135deg, #10b981, #059669);
+            padding: 24px;
+            text-align: center;
+            color: white;
+        }
+
+        .plan-dap-header h3 {
+            font-size: 20px;
+            font-weight: 700;
+            margin: 0 0 6px 0;
+        }
+
+        .plan-dap-subtitle {
+            font-size: 13px;
+            opacity: 0.9;
+            margin: 0;
+        }
+
+        .plan-dap-body {
+            padding: 24px;
+        }
+
+        .plan-dap-body .input-group {
+            margin-bottom: 16px;
+        }
+
+        .plan-dap-body label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: #334155;
+            margin-bottom: 8px;
+        }
+
+        .plan-dap-body input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.2s;
+            font-weight: 600;
+        }
+
+        .plan-dap-body input:focus {
+            outline: none;
+            border-color: #10b981;
+            box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+        }
+
+        .plan-dap-note {
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            border: 2px solid #fbbf24;
+            padding: 14px;
+            border-radius: 10px;
+            font-size: 13px;
+            color: #92400e;
+            line-height: 1.6;
+        }
+
+        .plan-dap-note strong {
+            display: block;
+            margin-bottom: 4px;
+            color: #78350f;
+        }
+
+        .plan-dap-footer {
+            padding: 20px 24px;
+            border-top: 2px solid #f1f5f9;
+            background: #f8fafc;
+        }
+
+        .btn-submit-plan {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-submit-plan:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-submit-plan:active {
+            transform: translateY(0);
+        }
     </style>
 </head>
 <body>
@@ -2282,6 +2419,31 @@
             </div>
         </div>
 
+    <!-- Plan DAP Popup -->
+    <div class="plan-dap-overlay" id="planDapOverlay" onclick="event.target === this && (function(){})()">
+        <div class="plan-dap-modal">
+            <div class="plan-dap-header">
+                <h3>📊 Plan DAP Hari Ini</h3>
+                <p class="plan-dap-subtitle">Target penjualan untuk kunjungan hari ini</p>
+            </div>
+            <div class="plan-dap-body">
+                <div class="input-group">
+                    <label>Plan DAP (Rp)</label>
+                    <input type="text" id="planDapInput" placeholder="Contoh: 5.000.000" autocomplete="off">
+                </div>
+                <div class="plan-dap-note">
+                    <strong>⚠️ Wajib Diisi</strong><br>
+                    Anda harus mengisi Plan DAP sebelum memulai kunjungan hari ini
+                </div>
+            </div>
+            <div class="plan-dap-footer">
+                <button class="btn-submit-plan" onclick="submitPlanDAP()">
+                    ✅ Simpan Plan DAP
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // HASIL VISIT - GLOBAL FUNCTIONS
         (function() {
@@ -2357,54 +2519,169 @@
                     year: 'numeric'
                 });
                 var todayYMD = fmtDate(today);
+                var todayDay = getDayOfWeekIndo();
+                var weekNum = getWeekOfMonth();
                 
-                // Calculate metrics
+                console.log('📊 Generating Hasil Visit Report');
+                console.log('   Date:', todayYMD, '(' + todayDay + ', Week ' + weekNum + ')');
+                console.log('   Salesman:', window.currentSalesman, '(' + window.currentSalesmanId + ')');
+                
+                // ========================================
+                // 1. PC CALCULATION (Weekly + Biweekly)
+                // ========================================
                 var uniqueOutlets = new Set();
-                var visited = new Set();
-                var ordered = new Set();
-                var gap = 0, dap = 0, actual = 0, target = 0, tidakOrder = 0;
+                var pcOutlets = []; // Store for Gap calculation
                 
-                // PC calculation
                 if (window.pelangganData && window.pelangganData.length > 0) {
                     window.pelangganData.forEach(function(item) {
                         if (item.szname === window.currentSalesman && item.Nama_Pelanggan) {
-                            uniqueOutlets.add(item.Nama_Pelanggan);
-                        }
-                    });
-                }
-                
-                // AC, EC, Gap, DAP, Actual, Target
-                var tokoTidakOrderList = [];
-                if (window.detailsData && window.detailsData.length > 0) {
-                    window.detailsData.forEach(function(item) {
-                        if (item.szname === window.currentSalesman && item.Tanggal === todayYMD) {
-                            var outlet = item['Nama Pelanggan'];
-                            if (outlet) {
-                                visited.add(outlet);
-                                var a = Number(item.Actual || 0);
-                                var t = Number(item.Target || 0);
-                                if (a > 0) {
-                                    ordered.add(outlet);
-                                } else if (t > 0) {
-                                    tidakOrder++;
-                                    tokoTidakOrderList.push(outlet);
-                                }
+                            var hariKunjungan = (item.Hari_Kunjungan || '').toUpperCase().trim();
+                            var outletName = item.Nama_Pelanggan;
+                            var isMatch = false;
+                            
+                            // Match weekly (exact day)
+                            if (hariKunjungan === todayDay) {
+                                isMatch = true;
                             }
-                            gap += Number(item.Gap || 0);
-							dap += Number(item.DAP || 0);
-                            actual += Number(item.Actual || 0);
-                            target += Number(item.Target || 0);
+                            // Match biweekly (include ALL biweekly for this day, regardless of week)
+                            else if (hariKunjungan.includes('2&4') && hariKunjungan.includes(todayDay)) {
+                                isMatch = true;
+                            }
+                            
+                            if (isMatch) {
+                                uniqueOutlets.add(outletName);
+                                pcOutlets.push(outletName);
+                            }
                         }
                     });
                 }
                 
                 var PC = uniqueOutlets.size;
+                console.log('   PC (Weekly + Biweekly for ' + todayDay + '):', PC);
+                
+                // ========================================
+                // 2. AC, EC, TOKO TUTUP, TOKO TIDAK ORDER
+                // ========================================
+                var visited = new Set();
+                var ordered = new Set(); // EC = orderStatus === 'ada_so'
+                var tokoTutupList = [];
+                var tokoTidakOrderList = [];
+                var actual = 0;
+                
+                // Load from localStorage
+                var visitKey = 'visited_' + window.currentSalesmanId + '_' + todayYMD;
+                var storedVisits = localStorage.getItem(visitKey);
+                
+                console.log('   Loading visits from localStorage...');
+                console.log('   Key:', visitKey);
+                
+                if (storedVisits) {
+                    try {
+                        var visits = JSON.parse(storedVisits);
+                        console.log('   Found visits in localStorage:', visits.length);
+                        
+                        // Debug: Show all visits
+                        visits.forEach(function(visit, index) {
+                            console.log('   Visit', index + 1, ':', {
+                                outlet: visit.outlet_name,
+                                completed: visit.visit_completed,
+                                status: visit.order_status,
+                                amount: visit.so_amount
+                            });
+                        });
+                        
+                        visits.forEach(function(visit) {
+                            if (visit.outlet_name && visit.visit_completed) {
+                                visited.add(visit.outlet_name);
+                                
+                                var orderStatus = visit.order_status;
+                                var soAmount = Number(visit.so_amount || 0);
+                                
+                                if (orderStatus === 'ada_so') {
+                                    ordered.add(visit.outlet_name);
+                                    actual += soAmount;
+                                    console.log('   ✓ EC outlet:', visit.outlet_name, '→ Rp', soAmount);
+                                } else if (orderStatus === 'toko_tutup') {
+                                    tokoTutupList.push(visit.outlet_name);
+                                } else if (orderStatus === 'toko_tidak_order') {
+                                    tokoTidakOrderList.push(visit.outlet_name);
+                                }
+                            }
+                        });
+                    } catch (e) {
+                        console.error('   ❌ Error parsing visits:', e);
+                    }
+                } else {
+                    console.log('   ⚠️ No visits found in localStorage for key:', visitKey);
+                }
+                
                 var AC = visited.size;
                 var EC = ordered.size;
-                var ECvsPC = PC > 0 ? Math.round((EC/PC)*100) : 0;
-                var ach = target > 0 ? Math.round((actual/target)*100) : 0;
                 
-                // Get SKU POM data
+                console.log('   AC (Actual Call):', AC);
+                console.log('   EC (Ada SO only):', EC);
+                console.log('   Toko Tutup:', tokoTutupList.length);
+                console.log('   Toko Tidak Order:', tokoTidakOrderList.length);
+                console.log('   Actual SO:', actual);
+                
+                // ========================================
+                // 3. TOTAL GAP JKS (Gap MTD for PC outlets only)
+                // ========================================
+                var gap = 0;
+                var dap = 0;
+                
+                if (window.detailsData && window.detailsData.length > 0) {
+                    window.detailsData.forEach(function(item) {
+                        if (item.szname === window.currentSalesman) {
+                            var outlet = item['Nama Pelanggan'];
+                            
+                            // Only sum Gap MTD if outlet is in PC list
+                            if (pcOutlets.includes(outlet)) {
+                                // Safe parsing - handle both string and number
+                                var gapValue = item['Gap MTD'] || item.Gap || 0;
+                                var dapValue = item.DAP || item.Plan || 0;
+                                
+                                // Clean and parse Gap value
+                                if (typeof gapValue === 'string') {
+                                    // Remove Rp, dots, commas, spaces
+                                    gapValue = gapValue.replace(/[Rp\s\.,]/g, '');
+                                }
+                                var gapMTD = parseFloat(gapValue) || 0;
+                                
+                                // Clean and parse DAP value
+                                if (typeof dapValue === 'string') {
+                                    dapValue = dapValue.replace(/[Rp\s\.,]/g, '');
+                                }
+                                var dapNum = parseFloat(dapValue) || 0;
+                                
+                                gap += gapMTD;
+                                dap += dapNum;
+                            }
+                        }
+                    });
+                }
+                
+                console.log('   Total Gap JKS (from PC outlets only):', gap);
+                console.log('   Total DAP:', dap);
+                
+                // ========================================
+                // 4. PLAN DAP
+                // ========================================
+                var planDAP = getPlanDAP();
+                console.log('   Plan DAP:', planDAP);
+                
+                // ========================================
+                // 5. CALCULATIONS
+                // ========================================
+                var ECvsPC = PC > 0 ? Math.round((EC / PC) * 100) : 0;
+                var achSO = planDAP > 0 ? Math.round((actual / planDAP) * 100) : (actual > 0 ? 100 : 0);
+                
+                console.log('   EC vs PC:', ECvsPC + '%');
+                console.log('   Ach SO:', achSO + '%');
+                
+                // ========================================
+                // 6. SKU POM BREAKDOWN
+                // ========================================
                 var skuPomData = {};
                 visited.forEach(function(outletName) {
                     try {
@@ -2426,45 +2703,59 @@
                     }
                 });
                 
-                // Get salesman type
+                console.log('   SKU POM items:', Object.keys(skuPomData).length);
+                
+                // ========================================
+                // 7. SALESMAN TYPE
+                // ========================================
                 var salesmanType = '-';
-                if (window.pelangganData && window.pelangganData.length > 0) {
-                    var salesmanRecord = window.pelangganData.find(function(item) {
-                        return item.szname === window.currentSalesman;
+                
+                // Try to get from window (already exposed during initialization)
+                if (window.currentSalesmanType) {
+                    salesmanType = window.currentSalesmanType;
+                    console.log('   Tipe Salesman (from window):', salesmanType);
+                }
+                // Fallback: Get from salesmanData
+                else if (window.salesmanData && window.salesmanData.length > 0) {
+                    var salesmanRecord = window.salesmanData.find(function(item) {
+                        return item.szEmployeeId && item.szEmployeeId.toString() === window.currentSalesmanId;
                     });
-                    if (salesmanRecord && salesmanRecord.szSalesman_Category) {
-                        salesmanType = salesmanRecord.szSalesman_Category;
+                    if (salesmanRecord && salesmanRecord['Tipe Salesman']) {
+                        salesmanType = salesmanRecord['Tipe Salesman'];
+                        console.log('   Tipe Salesman (from salesmanData):', salesmanType);
+                    } else {
+                        console.log('   ⚠️ Tipe Salesman not found in salesmanData');
                     }
+                } else {
+                    console.log('   ⚠️ salesmanData not available');
                 }
                 
-                // Build report text
+                // ========================================
+                // 8. BUILD REPORT TEXT
+                // ========================================
                 var report = '';
-                report += 'REPORT VISIT SALESMAN\n';
-                report += '='.repeat(35) + '\n';
+                report += 'REPORT VISIT SALESMAN : \n';
+                report += '='.repeat(21) + '\n';
                 report += 'Tanggal Visit : ' + dateStr + '\n';
                 report += 'Nama Salesman : ' + (window.currentSalesman || '-') + '\n';
-                report += 'Tipe Salesman : ' + salesmanType + '\n';
+                report += 'Tipe Salesman : ' + salesmanType + '\n\n';
                 
+                report += 'HASIL KUNJUNGAN : \n';
+                report += '-'.repeat(15) + '\n';
+                report += 'PC (Plan Call): ' + PC + '\n';
+                report += 'AC (Act Call) : ' + AC + '\n';
+                report += 'EC (Eff Call) : ' + EC + '\n';
+                report += 'EC vs PC      : ' + ECvsPC + '%\n\n';
                 
-                report += 'HASIL KUNJUNGAN\n';
-                report += '-'.repeat(35) + '\n';
-                report += 'PC (Plan Call)     : ' + PC + '\n';
-                report += 'AC (Actual Call)   : ' + AC + '\n';
-                report += 'EC (Effective Call): ' + EC + '\n';
-                report += 'EC vs PC           : ' + ECvsPC + '%\n';
-                
-                
-                report += 'PERFORMA PENJUALAN\n';
-                report += '-'.repeat(35) + '\n';
+                report += 'PERFORMA PENJUALAN : \n';
+                report += '-'.repeat(18) + '\n';
                 report += 'Total Gap JKS : ' + formatRp(gap) + '\n';
-				report += 'Plan DAP      : ' + formatRp(dap) + '\n';
+                report += 'Plan DAP      : ' + formatRp(planDAP) + '\n';
                 report += 'Actual SO     : ' + formatRp(actual) + '\n';
-                report += 'Ach SO        : ' + ach + '%\n';
+                report += 'Ach SO        : ' + achSO + '%\n\n';
                 
-                
-                // SKU POM Section
-                report += 'SKU POM YANG DIPESAN\n';
-                report += '-'.repeat(35) + '\n';
+                report += 'CA POM : \n';
+                report += '-'.repeat(20) + '\n';
                 var skuList = Object.keys(skuPomData);
                 if (skuList.length > 0) {
                     skuList.sort(function(a, b) {
@@ -2476,26 +2767,29 @@
                 } else {
                     report += '(Belum ada SKU POM yang dipesan)\n';
                 }
+                report += '\n';
                 
-                
-                // Reason Outlet Tidak Order
-                report += 'REASON OUTLET TIDAK ORDER\n';
-                report += '-'.repeat(35) + '\n';
+                report += 'REASON TIDAK EC : \n';
+                report += '-'.repeat(25) + '\n';
                 report += '1. Toko Tutup :\n';
-                report += '   (Tidak ada)\n';
+                if (tokoTutupList.length > 0) {
+                    report += '   ' + tokoTutupList.join(', ') + '\n';
+                } else {
+                    report += '   (Tidak ada)\n';
+                }
+                report += '\n';
                 
                 report += '2. Toko Tidak Order :\n';
                 if (tokoTidakOrderList.length > 0) {
-                    tokoTidakOrderList.forEach(function(toko) {
-                        report += '   - ' + toko + '\n';
-                    });
+                    report += '   ' + tokoTidakOrderList.join(', ') + '\n';
                 } else {
                     report += '   (Tidak ada)\n';
                 }
                 
-                report += '='.repeat(35) + '\n';
+                report += '\n' + '='.repeat(38) + '\n';
                 report += 'Report otomatis Sales Dashboard WebApp\n';
                 
+                console.log('✅ Report generated successfully');
                 return report;
             }
             
@@ -2523,11 +2817,165 @@
             }
             
             function formatRp(value) {
-                if (!value || value === 0) return 'Rp 0';
-                var abs = Math.abs(value);
+                // Handle null, undefined, empty
+                if (!value && value !== 0) return 'Rp 0';
+                
+                // Convert to number if string
+                var num = value;
+                if (typeof value === 'string') {
+                    // Remove any existing formatting
+                    num = value.replace(/[Rp\s\.,\(\)]/g, '');
+                    // Handle negative in parentheses: "(123)" -> -123
+                    if (value.includes('(') && value.includes(')')) {
+                        num = '-' + num;
+                    }
+                    num = parseFloat(num);
+                }
+                
+                // Validate number
+                if (isNaN(num) || !isFinite(num)) return 'Rp 0';
+                
+                // Round to avoid floating point issues
+                num = Math.round(num);
+                
+                // Format
+                var abs = Math.abs(num);
                 var formatted = abs.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-                return (value < 0 ? '-' : '') + 'Rp ' + formatted;
+                
+                // Return with proper negative format: Rp (xxx) instead of -Rp xxx
+                return num < 0 ? 'Rp (' + formatted + ')' : 'Rp ' + formatted;
             }
+            
+            // ===== HELPER FUNCTIONS FOR REQUIREMENT IMPLEMENTATION =====
+            function getDayOfWeekIndo() {
+                var days = ['MINGGU', 'SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
+                return days[new Date().getDay()];
+            }
+
+            function getWeekOfMonth() {
+                var d = new Date();
+                var date = d.getDate();
+                return Math.ceil(date / 7);
+            }
+
+            function formatRupiah(angka) {
+                if (!angka || angka === 0) return '0';
+                var number = angka.toString().replace(/[^0-9]/g, '');
+                return number.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            }
+
+            function getPlanDAP() {
+                var todayYMD = new Date().toISOString().split('T')[0];
+                var planKey = 'plan_dap_' + window.currentSalesmanId + '_' + todayYMD;
+                var planData = localStorage.getItem(planKey);
+                
+                if (planData) {
+                    try {
+                        var plan = JSON.parse(planData);
+                        return Number(plan.amount || 0);
+                    } catch (e) {
+                        return 0;
+                    }
+                }
+                return 0;
+            }
+
+            function checkPlanDAP() {
+                return getPlanDAP() > 0;
+            }
+
+            function showPlanDAPPopup() {
+                document.getElementById('planDapOverlay').classList.add('show');
+                document.getElementById('planDapInput').focus();
+            }
+
+            function submitPlanDAP() {
+                var amountInput = document.getElementById('planDapInput').value;
+                
+                // Remove dots to get pure number
+                var amount = amountInput.replace(/\./g, '');
+                
+                if (!amount || parseFloat(amount) <= 0) {
+                    alert('⚠️ Masukkan Plan DAP yang valid!\n\nContoh: 5.000.000');
+                    return;
+                }
+                
+                var todayYMD = new Date().toISOString().split('T')[0];
+                var planKey = 'plan_dap_' + window.currentSalesmanId + '_' + todayYMD;
+                
+                var planData = {
+                    amount: parseFloat(amount),
+                    timestamp: new Date().toISOString(),
+                    salesman_id: window.currentSalesmanId,
+                    salesman_name: window.currentSalesman
+                };
+                
+                localStorage.setItem(planKey, JSON.stringify(planData));
+                
+                console.log('✅ Plan DAP saved:', amount, '(Rp ' + formatRupiah(amount) + ')');
+                
+                // Close modal first
+                document.getElementById('planDapOverlay').classList.remove('show');
+                document.getElementById('planDapInput').value = '';
+                
+                // Start pending visit immediately (no blocking alert)
+                if (window.pendingVisit) {
+                    console.log('🚀 Starting pending visit:', window.pendingVisit.outletName);
+                    
+                    // Use setTimeout to ensure modal is fully closed
+                    setTimeout(function() {
+                        startVisitSession(window.pendingVisit.outletName, window.pendingVisit.hariJKS);
+                        window.pendingVisit = null;
+                    }, 100);
+                }
+            }
+
+            // Make functions global
+            window.getDayOfWeekIndo = getDayOfWeekIndo;
+            window.getWeekOfMonth = getWeekOfMonth;
+            window.formatRupiah = formatRupiah;
+            window.getPlanDAP = getPlanDAP;
+            window.checkPlanDAP = checkPlanDAP;
+            window.showPlanDAPPopup = showPlanDAPPopup;
+            window.submitPlanDAP = submitPlanDAP;
+
+            // ===== FORMAT CURRENCY INPUT FOR PLAN DAP =====
+            document.addEventListener('DOMContentLoaded', function() {
+                var planDapInput = document.getElementById('planDapInput');
+                
+                if (planDapInput) {
+                    // Format on input (real-time)
+                    planDapInput.addEventListener('input', function(e) {
+                        var value = e.target.value;
+                        
+                        // Remove non-digits
+                        var numbers = value.replace(/\D/g, '');
+                        
+                        // Format with dots
+                        if (numbers) {
+                            var formatted = numbers.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+                            e.target.value = formatted;
+                        }
+                    });
+                    
+                    // Remove formatting on focus (easier to edit)
+                    planDapInput.addEventListener('focus', function(e) {
+                        var value = e.target.value;
+                        if (value) {
+                            e.target.value = value.replace(/\./g, '');
+                        }
+                    });
+                    
+                    // Re-format on blur
+                    planDapInput.addEventListener('blur', function(e) {
+                        var value = e.target.value;
+                        var numbers = value.replace(/\D/g, '');
+                        if (numbers) {
+                            e.target.value = numbers.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+                        }
+                    });
+                }
+            });
     </script>
 
     <!-- html2canvas for screenshot -->
@@ -3535,13 +3983,16 @@
                         session_id: sessionId,
                         visit_time: new Date().toISOString(),
                         visit_completed: true,
+                        order_status: visitSession.orderStatus || 'toko_tidak_order',  // ✅ ADDED
+                        so_amount: visitSession.soAmount || 0,  // ✅ ADDED
                         salesman_id: currentSalesmanId,
                         salesman_name: currentSalesman
                     };
                     
+                    console.log(`📋 Outlet ${outletName} marked as completed visit locally`);
+                    console.log(`   Status: ${visitRecord.order_status}, SO Amount: ${visitRecord.so_amount}`);
                     existingVisits.push(visitRecord);
                     localStorage.setItem(visitKey, JSON.stringify(existingVisits));
-                    console.log(`📋 Outlet ${outletName} marked as completed visit locally`);
                     
                 } catch (error) {
                     console.error('❌ Error saving to localStorage:', error);
@@ -3668,6 +4119,21 @@
             if (isCustomerAlreadyVisited(outletName)) {
                 alert(`❌ Error: Outlet "${outletName}" sudah dikunjungi hari ini!\n\nSistem mencegah duplikasi kunjungan.`);
                 cancelVisitStart();
+                return;
+            }
+
+
+            // ===== CHECK PLAN DAP BEFORE STARTING VISIT =====
+            if (!checkPlanDAP()) {
+                console.log('⚠️ Plan DAP not entered - showing popup');
+                // Store pending visit
+                window.pendingVisit = {
+                    outletName: outletName,
+                    hariJKS: hariJKS
+                };
+                showPlanDAPPopup();
+                visitSession.pendingOutlet = null;
+                visitSession.pendingHari = null;
                 return;
             }
 
@@ -4153,6 +4619,7 @@
                 
                 const content = await response.text();
                 salesmanData = parseJSONL(content);
+                window.salesmanData = salesmanData; // Expose to window for Hasil Visit
                 
                 updateSalesmanNameFromData();
                 
@@ -4169,6 +4636,7 @@
                 
                 const content = await response.text();
                 pelangganData = parseJSONL(content);
+                window.pelangganData = pelangganData; // Expose to window for Hasil Visit
                 
             } catch (error) {
                 console.error('Error loading pelanggan data:', error);
@@ -4183,6 +4651,7 @@
                 
                 const content = await response.text();
                 detailsData = parseJSONL(content);
+                window.detailsData = detailsData; // Expose to window for Hasil Visit
                 
             } catch (error) {
                 console.error('Error loading details data:', error);
@@ -4197,6 +4666,7 @@
                 
                 const content = await response.text();
                 tpomData = parseJSONL(content);
+                window.tpomData = tpomData; // Expose to window for Hasil Visit
                 
                 console.log(`✅ TPOM data loaded: ${tpomData.length} records`);
                 
@@ -4454,10 +4924,72 @@
 
         function initializeSalesmanFromUrl() {
             currentSalesmanId = getUrlParameter('id') || getUrlParameter('user');
+            window.currentSalesmanId = currentSalesmanId; // Expose to window for Hasil Visit
             
             if (currentSalesmanId) {
                 console.log('🆔 Current Salesman ID: ' + currentSalesmanId);
             }
+        }
+
+        // ===== CLEAR OLD VISIT DATA WHEN LOGIN ON NEW DAY =====
+        function clearOldVisitData() {
+            if (!currentSalesmanId) {
+                console.log('⚠️ No salesman ID, skipping old visit data cleanup');
+                return;
+            }
+            
+            const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+            const lastLoginKey = 'last_login_date_' + currentSalesmanId;
+            const lastLoginDate = localStorage.getItem(lastLoginKey);
+            
+            console.log('🗓️ Checking for old visit data...');
+            console.log('   Today:', today);
+            console.log('   Last login:', lastLoginDate || 'Never');
+            
+            // If last login was on a different day, clear old visit data
+            if (lastLoginDate && lastLoginDate !== today) {
+                console.log('🧹 Clearing visit data from previous days...');
+                
+                let keysCleared = 0;
+                const keysToRemove = [];
+                
+                // Find all keys in localStorage
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    
+                    if (key) {
+                        // Clear visited_* keys for this salesman (but not today's)
+                        if (key.startsWith('visited_' + currentSalesmanId + '_') && !key.endsWith(today)) {
+                            keysToRemove.push(key);
+                        }
+                        // Clear sku_pom_checklist_* keys for this salesman (but not today's)
+                        else if (key.startsWith('sku_pom_checklist_' + currentSalesmanId + '_') && !key.includes('_' + today)) {
+                            keysToRemove.push(key);
+                        }
+                        // Clear old plan_dap_* keys (but not today's)
+                        else if (key.startsWith('plan_dap_' + currentSalesmanId + '_') && !key.endsWith(today)) {
+                            keysToRemove.push(key);
+                        }
+                    }
+                }
+                
+                // Remove the keys
+                keysToRemove.forEach(function(key) {
+                    localStorage.removeItem(key);
+                    keysCleared++;
+                    console.log('   ✓ Removed:', key);
+                });
+                
+                console.log('✅ Cleared ' + keysCleared + ' old visit data keys');
+            } else if (!lastLoginDate) {
+                console.log('📝 First login detected, no old data to clear');
+            } else {
+                console.log('✓ Same day login, keeping existing visit data');
+            }
+            
+            // Update last login date to today
+            localStorage.setItem(lastLoginKey, today);
+            console.log('📅 Last login date updated to:', today);
         }
 
         // Update fungsi updateSalesmanNameFromData untuk deteksi team
@@ -4466,6 +4998,11 @@
                 const salesmanRecord = salesmanData.find(item => item.szEmployeeId.toString() === currentSalesmanId);
                 if (salesmanRecord) {
                     currentSalesman = salesmanRecord.szname;
+                    window.currentSalesman = currentSalesman; // Expose to window for Hasil Visit
+                    
+                    // Expose Tipe Salesman to window for Hasil Visit
+                    window.currentSalesmanType = salesmanRecord['Tipe Salesman'] || '-';
+                    console.log('   📋 Tipe Salesman exposed to window:', window.currentSalesmanType);
                     document.getElementById('salesmanName').textContent = currentSalesman;
                     
                     // ===== DETECT SALESMAN TEAM FROM "Tipe Salesman" FIELD =====
@@ -4501,6 +5038,7 @@
                 const salesmanRecord = pelangganData.find(item => item.szEmployeeId === currentSalesmanId);
                 if (salesmanRecord) {
                     currentSalesman = salesmanRecord.szname;
+                    window.currentSalesman = currentSalesman; // Expose to window for Hasil Visit
                     document.getElementById('salesmanName').textContent = currentSalesman;
                     console.warn('⚠️ Team detection from pelangganData - may not have Tipe Salesman field');
                 }
@@ -5561,6 +6099,7 @@
                 
                 if (currentSalesmanId) {
                     cleanupCorruptedLocalStorage();
+                    clearOldVisitData();
                     loadPausedVisitsFromLocal();
                 }
                 

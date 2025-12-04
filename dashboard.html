@@ -799,6 +799,19 @@
 
         /* NEW: Admin badge for Activity menu */
         .nav-item.admin-only::after {
+        .admin-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            font-size: 9px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 6px;
+            vertical-align: middle;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3);
+        }
             content: '👑';
             position: absolute;
             top: -2px;
@@ -2546,10 +2559,16 @@
         function showActivityMenu() {
             const menu = document.getElementById('activityMenu');
             if (menu) {
+                // Show/hide Device Management based on role
+                const deviceMgmtItem = document.getElementById('deviceManagementItem');
+                if (deviceMgmtItem) {
+                    deviceMgmtItem.style.display = currentUserRole === 'admin' ? 'flex' : 'none';
+                }
+                
                 menu.classList.add('show');
                 // Prevent body scroll when menu is open
                 document.body.style.overflow = 'hidden';
-                console.log('📊 Activity menu opened');
+                console.log('📊 Activity menu opened' + (currentUserRole === 'admin' ? ' (with Device Management)' : ''));
             } else {
                 console.error('❌ Activity menu element not found!');
             }
@@ -2578,6 +2597,15 @@
         function navigateToLocation() {
             console.log('📍 Navigating to Location Compliance...');
             window.location.href = 'mobile-compliance.html';
+        }
+
+        function navigateToDeviceManagement() {
+            if (currentUserRole === 'admin') {
+                console.log('🔧 Admin accessing Device Management...');
+                window.location.href = 'device-management.html';
+            } else {
+                alert('⚠️ Akses Ditolak\n\nFitur ini hanya untuk administrator.');
+            }
         }
 
         function showPerformance() {
@@ -2693,6 +2721,13 @@
                     <div class="activity-menu-item-content">
                         <div class="activity-menu-item-title">Location Compliance</div>
                         <div class="activity-menu-item-desc">Dashboard kepatuhan lokasi dan tracking visit</div>
+                    </div>
+                </div>
+                <div class="activity-menu-item admin-only" id="deviceManagementItem" onclick="navigateToDeviceManagement()" style="display: none;">
+                    <div class="activity-menu-item-icon">🔧</div>
+                    <div class="activity-menu-item-content">
+                        <div class="activity-menu-item-title">Device Management <span class="admin-badge">ADMIN</span></div>
+                        <div class="activity-menu-item-desc">Reset device registration untuk semua user</div>
                     </div>
                 </div>
             </div>
