@@ -2046,6 +2046,18 @@
         .btn-submit-plan:active {
             transform: translateY(0);
         }
+
+        /* ===== PELANGGAN TIDAK AKTIF STYLES ===== */
+        .customer-inactive-option {
+            color: #dc2626 !important;
+            background-color: #fee2e2 !important;
+            font-weight: 600 !important;
+        }
+
+        #pelanggan option.customer-inactive-option {
+            color: #dc2626 !important;
+            background-color: #fee2e2 !important;
+        }
     </style>
 </head>
 <body>
@@ -2927,20 +2939,14 @@
                 
                 console.log('✅ Plan DAP saved:', amount, '(Rp ' + formatRupiah(amount) + ')');
                 
-                // Close modal first
+                // Close modal
                 document.getElementById('planDapOverlay').classList.remove('show');
                 document.getElementById('planDapInput').value = '';
                 
-                // Start pending visit immediately (no blocking alert)
-                if (window.pendingVisit) {
-                    console.log('🚀 Starting pending visit:', window.pendingVisit.outletName);
-                    
-                    // Use setTimeout to ensure modal is fully closed
-                    setTimeout(function() {
-                        startVisitSession(window.pendingVisit.outletName, window.pendingVisit.hariJKS);
-                        window.pendingVisit = null;
-                    }, 100);
-                }
+                // After saving Plan DAP, trigger updatePelangganOptions again to show outlets
+                setTimeout(function() {
+                    updatePelangganOptions();
+                }, 100);
             }
 
             // Make functions global
@@ -3944,6 +3950,89 @@
             return pausedVisits.has(customerName.toLowerCase());
         }
 
+        // ===== PELANGGAN TIDAK AKTIF MANAGEMENT =====
+        function getInactiveCustomers() {
+            try {
+                const data = localStorage.getItem('inactiveCustomers');
+                return data ? JSON.parse(data) : [];
+            } catch (error) {
+                console.error('❌ Error loading inactive customers:', error);
+                return [];
+            }
+        }
+
+        function saveInactiveCustomer(customerId, customerName, reason) {
+            let inactiveCustomers = getInactiveCustomers();
+            let exists = inactiveCustomers.find(c => c.id === customerId || c.name === customerName);
+            if (!exists) {
+                inactiveCustomers.push({
+                    id: customerId,
+                    name: customerName,
+                    reason: reason,
+                    date: new Date().toISOString(),
+                    salesman_id: currentSalesmanId
+                });
+                try {
+                    localStorage.setItem('inactiveCustomers', JSON.stringify(inactiveCustomers));
+                    console.log('🔴 Customer marked as INACTIVE: ' + customerName + ' (Reason: ' + reason + ')');
+                    return true;
+                } catch (error) {
+                    console.error('❌ Error saving inactive customer:', error);
+                    return false;
+                }
+            }
+            return false;
+        }
+
+        function removeInactiveCustomer(customerName) {
+            let inactiveCustomers = getInactiveCustomers();
+            inactiveCustomers = inactiveCustomers.filter(c => c.name !== customerName && c.name.toLowerCase() !== customerName.toLowerCase());
+            try {
+                localStorage.setItem('inactiveCustomers', JSON.stringify(inactiveCustomers));
+                console.log('✅ Customer removed from inactive list: ' + customerName);
+                updateCustomerListInactiveStatus();
+                return true;
+            } catch (error) {
+                console.error('❌ Error removing inactive customer:', error);
+                return false;
+            }
+        }
+
+        function updateCustomerListInactiveStatus() {
+            const pelangganSelect = document.getElementById('pelanggan');
+            if (!pelangganSelect) return;
+            const inactiveCustomers = getInactiveCustomers();
+            const inactiveNames = inactiveCustomers.map(c => c.name.toLowerCase());
+            Array.from(pelangganSelect.options).forEach(option => {
+                option.classList.remove('customer-inactive-option');
+                if (option.textContent.includes(' 🔴 [TIDAK AKTIF]')) {
+                    option.textContent = option.textContent.replace(' 🔴 [TIDAK AKTIF]', '');
+                }
+            });
+            Array.from(pelangganSelect.options).forEach(option => {
+                if (option.value && inactiveNames.includes(option.value.toLowerCase())) {
+                    option.classList.add('customer-inactive-option');
+                    option.style.color = '#dc2626';
+                    option.style.backgroundColor = '#fee2e2';
+                    option.style.fontWeight = '600';
+                    if (!option.textContent.includes(' 🔴 [TIDAK AKTIF]')) {
+                        option.textContent = option.value + ' 🔴 [TIDAK AKTIF]';
+                    }
+                }
+            });
+            console.log('🔴 Updated inactive status for ' + inactiveNames.length + ' customers');
+        }
+
+        function isCustomerInactive(customerName) {
+            const inactiveCustomers = getInactiveCustomers();
+            return inactiveCustomers.some(c => c.name.toLowerCase() === customerName.toLowerCase());
+        }
+
+        function getInactiveCustomerInfo(customerName) {
+            const inactiveCustomers = getInactiveCustomers();
+            return inactiveCustomers.find(c => c.name.toLowerCase() === customerName.toLowerCase());
+        }
+
         // ===== VISIT SESSION MANAGEMENT =====
         function loadTodayVisitedCustomers() {
             const today = new Date().toISOString().split('T')[0];
@@ -4135,21 +4224,6 @@
                 return;
             }
 
-
-            // ===== CHECK PLAN DAP BEFORE STARTING VISIT =====
-            if (!checkPlanDAP()) {
-                console.log('⚠️ Plan DAP not entered - showing popup');
-                // Store pending visit
-                window.pendingVisit = {
-                    outletName: outletName,
-                    hariJKS: hariJKS
-                };
-                showPlanDAPPopup();
-                visitSession.pendingOutlet = null;
-                visitSession.pendingHari = null;
-                return;
-            }
-
             document.getElementById('visitStartModal').classList.remove('show');
             startVisitSession(outletName, hariJKS);
             
@@ -4219,6 +4293,16 @@
             
             visitSession.orderStatus = orderStatus;
             visitSession.soAmount = orderStatus === 'ada_so' ? parseFloat(soAmount) : 0;
+            
+            // ✅ TANDAI PELANGGAN TIDAK AKTIF
+            if (orderStatus === 'toko_tutup' || orderStatus === 'toko_tidak_order') {
+                const outletName = visitSession.outletName;
+                const outletId = visitSession.outletId;
+                if (outletName) {
+                    const reasonText = orderStatus === 'toko_tutup' ? 'Toko Tutup' : 'Toko Tidak Order';
+                    saveInactiveCustomer(outletId, outletName, reasonText);
+                }
+            }
             
             document.getElementById('visitEndModal').classList.remove('show');
             endVisitSession();
@@ -4420,6 +4504,7 @@
             updateFloatingButtons();
             updateCustomerListPauseStatus();
             updateCustomerListVisitStatus();
+            updateCustomerListInactiveStatus();
             
             console.log(`✅ Visit session ended successfully: ${endedOutlet}, total duration: ${formatDuration(totalDuration)}`);
             if (endedFirebaseKey) {
@@ -5448,6 +5533,15 @@
             if (pelangganData.length > 0 && currentSalesmanId && hariSelect.value) {
                 const selectedHari = hariSelect.value.trim().toUpperCase();
                 
+                // ===== CHECK PLAN DAP WHEN SELECTING JKS DAY =====
+                if (!checkPlanDAP()) {
+                    console.log('⚠️ Plan DAP not entered yet - showing popup');
+                    showPlanDAPPopup();
+                    // Reset hari selection
+                    hariSelect.value = '';
+                    return;
+                }
+                
                 console.log(`🔍 Filtering outlets for Salesman: ${currentSalesmanId}, Hari: ${selectedHari}`);
                 
                 const filteredPelanggan = [...new Set(pelangganData
@@ -5483,6 +5577,7 @@
                 
                 updateCustomerListVisitStatus();
                 updateCustomerListPauseStatus();
+                updateCustomerListInactiveStatus();
             }
         }
 
@@ -6173,6 +6268,7 @@
                 });
                 
                 loadTodayVisitedCustomers();
+                updateCustomerListInactiveStatus();
                 
                 if (window.firebaseDB) {
                     setTimeout(syncPendingVisitsToFirebase, 2000);
@@ -6189,6 +6285,7 @@
                 console.log('🏪 Order status tracking enabled');
                 console.log('💾 Local storage session management active');
                 console.log('🔥 Firebase sync enabled');
+                console.log('🔴 Inactive customer marking system enabled');
                 console.log('📑 Tab system enabled: Data SKU & SKU MSS Belum Aktif'); // ← TAMBAHKAN
                 console.log(`👥 Salesman Team Filter: ${salesmanTeam || 'Not set yet'}`);
 
