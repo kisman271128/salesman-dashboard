@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Visit Outlet - Enhanced with Pause/Resume & Location Tracking</title>
+	
+	<script src="html2canvas.min.js"></script>
     
     <style>
         * {
@@ -2058,6 +2060,37 @@
             color: #dc2626 !important;
             background-color: #fee2e2 !important;
         }
+		
+		/* Style WAJIB untuk Report/Preview Laporan agar mudah dikonversi ke gambar */
+        #reportPreview {
+            white-space: pre-wrap; /* Penting untuk menjaga format baris/spasi */
+            font-family: 'Courier New', Consolas, monospace; /* Font monospasi membuat alignment lurus */
+            font-size: 13px;
+            padding: 15px;
+            border: 1px solid #ccc;
+            background-color: #f9f9f9;
+            margin-top: 10px;
+            border-radius: 8px;
+            text-align: left;
+            overflow-x: auto;
+            /* Pastikan kontainer ini visible saat Anda klik tombol endVisitSession */
+        }
+        
+        /* Style untuk tombol-tombol Anda */
+        .action-btn {
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            flex: 1;
+            margin: 0 5px;
+        }
+
+        .whatsapp-image-btn {
+            background-color: #25d366;
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -2425,9 +2458,9 @@
                 <button class="action-btn copy-btn" onclick="window.copyReportText()">
                     📋 Copy Report Text
                 </button>
-                <button class="action-btn whatsapp-btn" onclick="window.shareReportWhatsApp()">
-                    📱 Share via WhatsApp
-                </button>
+                <button class="action-btn whatsapp-image-btn" onclick="window.shareReportImageWhatsApp()">
+					🖼️ Share Gambar WhatsApp
+				</button>
             </div>
         </div>
 
@@ -2818,6 +2851,66 @@
                 return report;
             }
             
+			function shareReportImageWhatsApp() {
+				// *** PERUBAHAN UTAMA: Target diubah ke ID yang ada di Full Screen View Anda ***
+				const reportElement = document.getElementById('reportTextContent'); 
+				
+				// Teks caption untuk WhatsApp
+				const selectedPelanggan = 'Outlet Kunjungan'; // Ganti jika Anda memiliki logic untuk mengambil nama pelanggan
+				const whatsappCaption = `📝 Laporan Kunjungan Salesman ${window.currentSalesman || 'Salesman'} (${selectedPelanggan}) pada ${new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}.`;
+				
+				if (typeof html2canvas === 'undefined') {
+					alert('⚠️ ERROR: Library html2canvas tidak ditemukan! Pastikan file html2canvas.min.js sudah berada di folder yang sama.');
+					return;
+				}
+
+				const shareButton = document.querySelector('.whatsapp-image-btn');
+				const originalButtonText = shareButton.innerHTML;
+				shareButton.innerHTML = '⏳ Mengkonversi...';
+				shareButton.disabled = true;
+
+				// html2canvas akan memotret elemen reportElement (reportTextContent)
+				html2canvas(reportElement, {
+					scale: 2, 
+					useCORS: true,
+					allowTaint: true,
+					backgroundColor: '#f9f9f9' // Gunakan warna background dari elemen Anda
+				}).then(canvas => {
+					shareButton.innerHTML = originalButtonText;
+					shareButton.disabled = false;
+					
+					canvas.toBlob((blob) => {
+						const file = new File([blob], 'report_visit.png', { type: 'image/png' });
+						
+						if (navigator.canShare && navigator.canShare({ files: [file] })) {
+							navigator.share({
+								files: [file],
+								title: 'Laporan Kunjungan Salesman',
+								text: whatsappCaption
+							}).then(() => {
+								console.log('✅ Berbagi gambar berhasil');
+							}).catch((error) => {
+								// Fallback jika Share API gagal
+								const reportText = generateReportText();
+								window.open('whatsapp://send?text=' + encodeURIComponent(reportText), '_blank');
+							});
+						} else {
+							// Fallback jika browser tidak mendukung Web Share API
+							const reportText = generateReportText();
+							alert('⚠️ Browser tidak mendukung fitur Share Gambar langsung.\n\nLaporan akan dibagikan sebagai TEKS.');
+							window.open('whatsapp://send?text=' + encodeURIComponent(reportText), '_blank');
+						}
+					}, 'image/png');
+				}).catch(error => {
+					shareButton.innerHTML = originalButtonText;
+					shareButton.disabled = false;
+					console.error('❌ html2canvas gagal:', error);
+					alert('❌ Gagal mengkonversi laporan ke gambar. Akan dibagikan sebagai TEKS.');
+					const reportText = generateReportText();
+					window.open('whatsapp://send?text=' + encodeURIComponent(reportText), '_blank');
+				});
+			}
+			
             function fallbackCopy(text) {
                 var textarea = document.createElement('textarea');
                 textarea.value = text;
