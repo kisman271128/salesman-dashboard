@@ -503,10 +503,17 @@
             <div class="info-box">
                 <div class="info-box-title">ℹ️ Cara Menggunakan</div>
                 <div class="info-box-text">
-                    1. Pilih collection/table yang ingin dibersihkan<br>
+                    1. Pilih collection yang ingin dibersihkan<br>
                     2. Tentukan range tanggal<br>
                     3. Preview data yang akan dihapus<br>
-                    4. Konfirmasi penghapusan
+                    4. Konfirmasi penghapusan<br>
+                    <br>
+                    <strong>📂 Struktur Data (Nested):</strong><br>
+                    • <strong>daily_summary</strong>: {NIK}/{YYYY-MM-DD}<br>
+                    • <strong>visits</strong>: {NIK}/{randomID}/created_at<br>
+                    • <strong>sku_pom_checklist</strong>: {NIK}/{YYYY-MM-DD}<br>
+                    <br>
+                    System akan scan semua NIK dan menghapus children yang sesuai range tanggal.
                 </div>
             </div>
 
@@ -521,11 +528,9 @@
                     <label class="form-label">Collection / Table</label>
                     <select class="form-select" id="collectionSelect" onchange="updateCollectionInfo()">
                         <option value="">-- Pilih Collection --</option>
-                        <option value="visits">🏪 Visits (Kunjungan Outlet)</option>
                         <option value="daily_summary">📊 Daily Summary (Ringkasan Harian)</option>
-                        <option value="current_positions">📍 Current Positions (Posisi Terkini)</option>
+                        <option value="visits">🏪 Visits (Kunjungan Outlet)</option>
                         <option value="sku_pom_checklist">✅ SKU POM Checklist</option>
-                        <option value="connection_test">🔌 Connection Test</option>
                     </select>
                     
                     <div class="collection-info" id="collectionInfo">
@@ -653,13 +658,11 @@
         let selectedStartDate = '';
         let selectedEndDate = '';
 
-        // Collection descriptions
+        // Collection descriptions dengan struktur nested
         const collectionDescriptions = {
-            'visits': 'Data kunjungan salesman ke outlet (termasuk foto, koordinat, checklist)',
-            'daily_summary': 'Ringkasan performa harian setiap salesman',
-            'current_positions': 'Posisi real-time salesman (diupdate otomatis)',
-            'sku_pom_checklist': 'Data checklist produk SKU POM',
-            'connection_test': 'Log testing koneksi perangkat'
+            'daily_summary': 'Struktur: daily_summary/{NIK}/{YYYY-MM-DD} - Delete berdasarkan tanggal (child key)',
+            'visits': 'Struktur: visits/{NIK}/{randomID}/created_at - Delete berdasarkan field created_at',
+            'sku_pom_checklist': 'Struktur: sku_pom_checklist/{NIK}/{YYYY-MM-DD} - Delete berdasarkan tanggal (child key)'
         };
 
         // Check authentication and role
@@ -739,39 +742,94 @@
             try {
                 const dbRef = window.ref(window.database, selectedCollection);
                 
-                // Convert dates to timestamps
-                const startTimestamp = new Date(selectedStartDate).setHours(0, 0, 0, 0);
-                const endTimestamp = new Date(selectedEndDate).setHours(23, 59, 59, 999);
+                console.log('🔍 Preview Delete Parameters:');
+                console.log('Collection:', selectedCollection);
+                console.log('Date Range:', selectedStartDate, 'to', selectedEndDate);
 
-                // Query data based on timestamp
+                // Get all data from collection
                 const snapshot = await window.get(dbRef);
                 
                 previewData = [];
-                if (snapshot.exists()) {
-                    snapshot.forEach((childSnapshot) => {
-                        const data = childSnapshot.val();
-                        const key = childSnapshot.key;
-                        
-                        // Check if data has timestamp field
-                        let dataTimestamp = null;
-                        if (data.timestamp) {
-                            dataTimestamp = data.timestamp;
-                        } else if (data.date) {
-                            dataTimestamp = new Date(data.date).getTime();
-                        } else if (data.visitDate) {
-                            dataTimestamp = new Date(data.visitDate).getTime();
-                        }
+                let totalNIK = 0;
+                let totalChildren = 0;
+                let matchedChildren = 0;
+                
+                if (!snapshot.exists()) {
+                    showLoading(false);
+                    alert('ℹ️ Collection kosong - tidak ada data.');
+                    return;
+                }
 
-                        // Filter by date range
-                        if (dataTimestamp && dataTimestamp >= startTimestamp && dataTimestamp <= endTimestamp) {
+                const data = snapshot.val();
+                console.log('📊 Collection data structure:', Object.keys(data));
+
+                // Iterate through each NIK (parent level)
+                for (const [nik, nikData] of Object.entries(data)) {
+                    totalNIK++;
+                    
+                    if (!nikData || typeof nikData !== 'object') {
+                        console.warn(`⚠️ NIK ${nik} has invalid data structure`);
+                        continue;
+                    }
+
+                    console.log(`\n👤 Processing NIK: ${nik}`);
+                    
+                    // Iterate through children under this NIK
+                    for (const [childKey, childData] of Object.entries(nikData)) {
+                        totalChildren++;
+                        
+                        let shouldDelete = false;
+                        let dateToCheck = null;
+                        
+                        // Determine how to check date based on collection type
+                        if (selectedCollection === 'visits') {
+                            // For visits: check created_at field inside the random ID
+                            if (childData && childData.created_at) {
+                                // Handle timestamp (number) or date string
+                                if (typeof childData.created_at === 'number') {
+                                    dateToCheck = new Date(childData.created_at);
+                                } else if (typeof childData.created_at === 'string') {
+                                    dateToCheck = new Date(childData.created_at);
+                                }
+                                
+                                if (dateToCheck && !isNaN(dateToCheck.getTime())) {
+                                    const dateStr = dateToCheck.toISOString().split('T')[0];
+                                    shouldDelete = dateStr >= selectedStartDate && dateStr <= selectedEndDate;
+                                    
+                                    if (shouldDelete) {
+                                        console.log(`  ✅ Match: ${nik}/${childKey} - created_at: ${dateStr}`);
+                                    }
+                                }
+                            }
+                        } else {
+                            // For daily_summary and sku_pom_checklist: childKey is the date (YYYY-MM-DD)
+                            // Validate if childKey is a valid date format
+                            const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+                            if (datePattern.test(childKey)) {
+                                shouldDelete = childKey >= selectedStartDate && childKey <= selectedEndDate;
+                                
+                                if (shouldDelete) {
+                                    console.log(`  ✅ Match: ${nik}/${childKey}`);
+                                }
+                            }
+                        }
+                        
+                        if (shouldDelete) {
+                            matchedChildren++;
                             previewData.push({
-                                key: key,
-                                data: data,
-                                timestamp: dataTimestamp
+                                nik: nik,
+                                childKey: childKey,
+                                childData: childData,
+                                path: `${selectedCollection}/${nik}/${childKey}`
                             });
                         }
-                    });
+                    }
                 }
+
+                console.log(`\n📊 Scan Results:`);
+                console.log(`- Total NIKs: ${totalNIK}`);
+                console.log(`- Total children: ${totalChildren}`);
+                console.log(`- Matched children in date range: ${matchedChildren}`);
 
                 // Display preview
                 displayPreview();
@@ -805,23 +863,52 @@
             recordCount.textContent = previewData.length.toLocaleString();
             dateRange.textContent = daysDiff;
 
-            // Display preview items
-            let html = '';
-            previewData.slice(0, 10).forEach(item => {
-                const date = new Date(item.timestamp).toLocaleString('id-ID');
-                const info = getItemInfo(item.data);
-                html += `
-                    <div class="preview-item">
-                        <strong>${item.key}</strong><br>
-                        📅 ${date}<br>
-                        ${info}
-                    </div>
-                `;
+            // Group by NIK for better display
+            const groupedByNIK = {};
+            previewData.forEach(item => {
+                if (!groupedByNIK[item.nik]) {
+                    groupedByNIK[item.nik] = [];
+                }
+                groupedByNIK[item.nik].push(item);
             });
 
-            if (previewData.length > 10) {
+            // Display preview items
+            let html = '';
+            let displayedCount = 0;
+            const maxDisplay = 20; // Show max 20 items
+            
+            for (const [nik, items] of Object.entries(groupedByNIK)) {
+                if (displayedCount >= maxDisplay) break;
+                
+                html += `<div class="preview-item">
+                    <strong>👤 NIK: ${nik}</strong> (${items.length} records)<br>`;
+                
+                items.slice(0, 5).forEach(item => {
+                    if (displayedCount >= maxDisplay) return;
+                    
+                    let dateInfo = '';
+                    if (selectedCollection === 'visits') {
+                        const createdAt = item.childData.created_at;
+                        const dateObj = new Date(createdAt);
+                        dateInfo = `📅 ${dateObj.toISOString().split('T')[0]} ${dateObj.toLocaleTimeString('id-ID')}`;
+                    } else {
+                        dateInfo = `📅 ${item.childKey}`;
+                    }
+                    
+                    html += `&nbsp;&nbsp;├─ ${item.childKey.substring(0, 20)}... - ${dateInfo}<br>`;
+                    displayedCount++;
+                });
+                
+                if (items.length > 5) {
+                    html += `&nbsp;&nbsp;└─ ... dan ${items.length - 5} data lainnya<br>`;
+                }
+                
+                html += `</div>`;
+            }
+
+            if (previewData.length > maxDisplay) {
                 html += `<div class="preview-item" style="text-align: center; color: #999;">
-                    ... dan ${previewData.length - 10} data lainnya
+                    ... dan ${previewData.length - maxDisplay} data lainnya dari NIK yang berbeda
                 </div>`;
             }
 
@@ -853,15 +940,23 @@
 
             try {
                 let deletedCount = 0;
-                const batchSize = 50; // Delete in batches to avoid timeout
+                const batchSize = 20; // Delete in batches
 
                 for (let i = 0; i < previewData.length; i += batchSize) {
                     const batch = previewData.slice(i, i + batchSize);
                     
                     await Promise.all(batch.map(async (item) => {
-                        const itemRef = window.ref(window.database, `${selectedCollection}/${item.key}`);
-                        await window.remove(itemRef);
-                        deletedCount++;
+                        // Delete the specific child under NIK
+                        const itemPath = `${selectedCollection}/${item.nik}/${item.childKey}`;
+                        const itemRef = window.ref(window.database, itemPath);
+                        
+                        try {
+                            await window.remove(itemRef);
+                            deletedCount++;
+                            console.log(`✅ Deleted: ${itemPath}`);
+                        } catch (err) {
+                            console.error(`❌ Failed to delete ${itemPath}:`, err);
+                        }
                     }));
 
                     // Update progress
@@ -877,7 +972,7 @@
                        `Date range: ${selectedStartDate} to ${selectedEndDate}`);
 
                 // Show success
-                alert(`✅ Berhasil!\n\n${deletedCount} data telah dihapus dari collection "${selectedCollection}".`);
+                alert(`✅ Berhasil!\n\n${deletedCount} data telah dihapus dari collection "${selectedCollection}".\n\nData yang dihapus adalah children dari berbagai NIK dalam range tanggal yang dipilih.`);
 
                 // Reset form
                 document.getElementById('previewSection').classList.remove('show');

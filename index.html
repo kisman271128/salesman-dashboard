@@ -1032,53 +1032,91 @@
         // ✅ UPDATED: Load valid users with new password "tanjung2025"
         async function loadValidUsers() {
             try {
-                console.log('🔄 Loading valid users...');
+                console.log('🔄 Loading valid users from Firebase...');
                 
-                // Set default users first (fallback) with new password
-                validUsers = {
-                    'admin': { password: 'rastamania271128', name: 'Administrator', role: 'admin' }
-                };
-
-                try {
-                    // Try to load salesman data
-                    const response = await fetch('data/salesman_list.json');
-                    if (response.ok) {
-                        const salesmanList = await response.json();
+                // Try to load from Firebase "users" collection first
+                let usersFromFirebase = null;
+                
+                if (window.firebaseDB && window.firebaseRef && window.firebaseGet) {
+                    try {
+                        const usersRef = window.firebaseRef(window.firebaseDB, 'users');
+                        const snapshot = await window.firebaseGet(usersRef);
                         
-                        // Add all salesman from JSON with new password
-                        salesmanList.forEach(salesman => {
-                            validUsers[salesman.id] = {
-                                password: 'tanjung2025',
-                                name: salesman.name,
-                                role: 'salesman'
+                        if (snapshot.exists()) {
+                            usersFromFirebase = snapshot.val();
+                            console.log('✅ Users loaded from Firebase:', Object.keys(usersFromFirebase));
+                            
+                            // Convert Firebase data to validUsers format
+                            validUsers = {};
+                            for (const [userId, userData] of Object.entries(usersFromFirebase)) {
+                                validUsers[userId] = {
+                                    password: userData.password || 'tanjung2025',
+                                    name: userData.name || userData.nama || userId,
+                                    role: userData.role || 'salesman'
+                                };
+                            }
+                            
+                            console.log('✅ Users processed from Firebase:', Object.keys(validUsers).length, 'users');
+                        } else {
+                            console.warn('⚠️ Firebase "users" collection is empty, using fallback');
+                        }
+                    } catch (firebaseError) {
+                        console.warn('⚠️ Firebase fetch error, using fallback:', firebaseError.message);
+                    }
+                } else {
+                    console.warn('⚠️ Firebase not initialized yet, using fallback');
+                }
+                
+                // If Firebase failed or empty, use fallback hardcoded users
+                if (!usersFromFirebase || Object.keys(validUsers).length === 0) {
+                    console.log('📋 Using fallback hardcoded users...');
+                    
+                    // Set default users first (fallback)
+                    validUsers = {
+                        'admin': { password: 'rastamania271128', name: 'Administrator', role: 'admin' }
+                    };
+
+                    try {
+                        // Try to load salesman data from JSON
+                        const response = await fetch('data/salesman_list.json');
+                        if (response.ok) {
+                            const salesmanList = await response.json();
+                            
+                            // Add all salesman from JSON
+                            salesmanList.forEach(salesman => {
+                                validUsers[salesman.id] = {
+                                    password: 'tanjung2025',
+                                    name: salesman.name,
+                                    role: 'salesman'
+                                };
+                            });
+                            console.log('✅ Salesman data loaded from JSON');
+                        } else {
+                            console.warn('⚠️ Could not load salesman_list.json, using minimal fallback');
+                            // Add minimal fallback salesman users
+                            const fallbackSalesman = {
+                                '17210032876': { password: 'tanjung2025', name: 'Asman', role: 'salesman' },
+                                '17210036369': { password: 'tanjung2025', name: 'Muhammad Tamrin', role: 'salesman' },
+                                '17210037632': { password: 'tanjung2025', name: 'Robianor', role: 'salesman' },
+                                '17210037897': { password: 'tanjung2025', name: 'Hindra', role: 'salesman' },
+                                '17210041467': { password: 'tanjung2025', name: 'Doli Purnama Sari', role: 'salesman' },
+                                '17210041060': { password: 'tanjung2025', name: 'Bahrudin Rahman', role: 'salesman' }
                             };
-                        });
-                        console.log('✅ Salesman data loaded from JSON');
-                    } else {
-                        console.warn('⚠️ Could not load salesman_list.json, using fallback data');
-                        // Add fallback salesman users with new password
+                            Object.assign(validUsers, fallbackSalesman);
+                        }
+                    } catch (fetchError) {
+                        console.warn('⚠️ Fetch error, using minimal fallback:', fetchError);
+                        // Add minimal fallback salesman users
                         const fallbackSalesman = {
                             '17210032876': { password: 'tanjung2025', name: 'Asman', role: 'salesman' },
                             '17210036369': { password: 'tanjung2025', name: 'Muhammad Tamrin', role: 'salesman' },
                             '17210037632': { password: 'tanjung2025', name: 'Robianor', role: 'salesman' },
+                            '17210041467': { password: 'tanjung2025', name: 'Doli Purnama Sari', role: 'salesman' },
                             '17210037897': { password: 'tanjung2025', name: 'Hindra', role: 'salesman' },
-							'17210041467': { password: 'tanjung2025', name: 'Doli Purnama Sari', role: 'salesman' },
-							'17210041060': { password: 'tanjung2025', name: 'Bahrudin Rahman', role: 'salesman' }
+                            '17210041060': { password: 'tanjung2025', name: 'Bahrudin Rahman', role: 'salesman' }
                         };
                         Object.assign(validUsers, fallbackSalesman);
                     }
-                } catch (fetchError) {
-                    console.warn('⚠️ Fetch error, using fallback data:', fetchError);
-                    // Add fallback salesman users with new password
-                    const fallbackSalesman = {
-                        '17210032876': { password: 'tanjung2025', name: 'Asman', role: 'salesman' },
-                        '17210036369': { password: 'tanjung2025', name: 'Muhammad Tamrin', role: 'salesman' },
-                        '17210037632': { password: 'tanjung2025', name: 'Robianor', role: 'salesman' },
-                        '17210041467': { password: 'tanjung2025', name: 'Doli Purnama Sari', role: 'salesman' },
-                        '17210037897': { password: 'tanjung2025', name: 'Hindra', role: 'salesman' },
-                        '17210041060': { password: 'tanjung2025', name: 'Bahrudin Rahman', role: 'salesman' }
-                    };
-                    Object.assign(validUsers, fallbackSalesman);
                 }
 
                 // Load saved passwords from localStorage (if any custom passwords were set)
@@ -1091,7 +1129,9 @@
                 
                 usersLoaded = true;
                 loginButton.disabled = false;
-                console.log('✅ Valid users loaded with new password "tanjung2025":', Object.keys(validUsers));
+                
+                console.log('✅ Valid users loaded:', Object.keys(validUsers).length, 'total users');
+                console.log('📋 User IDs:', Object.keys(validUsers).slice(0, 10).join(', '), '...');
                 
             } catch (error) {
                 console.error('❌ Error loading valid users:', error);
@@ -1388,6 +1428,32 @@
         } else {
             console.log('🌐 Running in browser mode');
         }
+    </script>
+    
+    <!-- Firebase SDK for User Authentication -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+        import { getDatabase, ref, get } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBLGwid71jAnsh4DrivbBYSTsuDAP0Zjuw",
+            authDomain: "salesman-route-tracker-default-rtdb.asia-southeast1.firebasedatabase.app",
+            databaseURL: "https://salesman-route-tracker-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "salesman-route-tracker",
+            storageBucket: "salesman-route-tracker.appspot.com",
+            messagingSenderId: "288785787565",
+            appId: "1:288785787565:web:9e4f8e1e1e1e1e1e1e1e1e"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+
+        // Make functions globally available for loadValidUsers
+        window.firebaseDB = database;
+        window.firebaseRef = ref;
+        window.firebaseGet = get;
+        
+        console.log('🔥 Firebase initialized for user authentication');
     </script>
 </body>
 </html>
