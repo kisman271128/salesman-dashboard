@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Database - Admin</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(180deg, #f8f9ff 0%, #e8ecff 100%);
+            min-height: 100vh;
+            color: #2c3e50;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+            position: relative;
+            padding-bottom: 80px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+            padding: 20px 16px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .back-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .header-title {
+            flex: 1;
+        }
+
+        .header-title h1 {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+
+        .header-title p {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .admin-badge {
+            background: rgba(255, 255, 255, 0.25);
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .warning-banner {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            color: white;
+            padding: 16px;
+            margin: 16px;
+            border-radius: 12px;
+            display: flex;
+            align-items: start;
+            gap: 12px;
+            box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+        }
+
+        .warning-icon {
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+
+        .warning-content h3 {
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .warning-content p {
+            font-size: 12px;
+            opacity: 0.95;
+            line-height: 1.4;
+        }
+
+        .main-content {
+            padding: 0 16px 16px;
+        }
+
+        .section {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-icon {
+            font-size: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #34495e;
+            margin-bottom: 8px;
+        }
+
+        .form-select, .form-input {
+            width: 100%;
+            padding: 12px 14px;
+            border: 2px solid #e8ecff;
+            border-radius: 10px;
+            font-size: 14px;
+            color: #2c3e50;
+            background: #f8f9ff;
+            transition: all 0.3s;
+        }
+
+        .form-select:focus, .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+        }
+
+        .date-range-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(231, 76, 60, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .preview-section {
+            display: none;
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 16px;
+        }
+
+        .preview-section.show {
+            display: block;
+        }
+
+        .preview-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .preview-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #856404;
+        }
+
+        .preview-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .preview-stat {
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .preview-stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #e74c3c;
+        }
+
+        .preview-stat-label {
+            font-size: 11px;
+            color: #856404;
+            margin-top: 4px;
+        }
+
+        .preview-list {
+            max-height: 200px;
+            overflow-y: auto;
+            background: white;
+            border-radius: 8px;
+            padding: 12px;
+        }
+
+        .preview-item {
+            padding: 8px;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 12px;
+            color: #555;
+        }
+
+        .preview-item:last-child {
+            border-bottom: none;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .loading-overlay.show {
+            display: flex;
+        }
+
+        .loading-content {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            text-align: center;
+            max-width: 300px;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #e74c3c;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 14px;
+            color: #2c3e50;
+            margin-bottom: 8px;
+        }
+
+        .loading-subtext {
+            font-size: 12px;
+            color: #7f8c8d;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9998;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 340px;
+            width: 90%;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 8px;
+        }
+
+        .modal-message {
+            font-size: 14px;
+            color: #7f8c8d;
+            line-height: 1.5;
+        }
+
+        .modal-footer {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .modal-btn {
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .modal-btn-cancel {
+            background: #ecf0f1;
+            color: #7f8c8d;
+        }
+
+        .modal-btn-confirm {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+
+        .info-box-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #1976d2;
+            margin-bottom: 4px;
+        }
+
+        .info-box-text {
+            font-size: 12px;
+            color: #555;
+            line-height: 1.4;
+        }
+
+        .collection-info {
+            display: none;
+            background: #f8f9ff;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 8px;
+            font-size: 12px;
+            color: #555;
+        }
+
+        .collection-info.show {
+            display: block;
+        }
+
+        .log-section {
+            margin-top: 16px;
+        }
+
+        .log-item {
+            background: #f8f9ff;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+
+        .log-time {
+            color: #7f8c8d;
+            font-size: 11px;
+            margin-bottom: 4px;
+        }
+
+        .log-action {
+            color: #e74c3c;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-content">
+                <button class="back-btn" onclick="goBack()">←</button>
+                <div class="header-title">
+                    <h1>🗑️ Manage Database</h1>
+                    <p>Hapus data berdasarkan tanggal</p>
+                </div>
+                <span class="admin-badge">ADMIN</span>
+            </div>
+        </div>
+
+        <!-- Warning Banner -->
+        <div class="warning-banner">
+            <div class="warning-icon">⚠️</div>
+            <div class="warning-content">
+                <h3>PERHATIAN!</h3>
+                <p>Penghapusan data bersifat permanen dan tidak dapat dikembalikan. Pastikan Anda yakin sebelum melanjutkan.</p>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Info Box -->
+            <div class="info-box">
+                <div class="info-box-title">ℹ️ Cara Menggunakan</div>
+                <div class="info-box-text">
+                    1. Pilih collection/table yang ingin dibersihkan<br>
+                    2. Tentukan range tanggal<br>
+                    3. Preview data yang akan dihapus<br>
+                    4. Konfirmasi penghapusan
+                </div>
+            </div>
+
+            <!-- Form Section -->
+            <div class="section">
+                <div class="section-title">
+                    <span class="section-icon">📋</span>
+                    Pilih Data
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Collection / Table</label>
+                    <select class="form-select" id="collectionSelect" onchange="updateCollectionInfo()">
+                        <option value="">-- Pilih Collection --</option>
+                        <option value="visits">🏪 Visits (Kunjungan Outlet)</option>
+                        <option value="daily_summary">📊 Daily Summary (Ringkasan Harian)</option>
+                        <option value="current_positions">📍 Current Positions (Posisi Terkini)</option>
+                        <option value="sku_pom_checklist">✅ SKU POM Checklist</option>
+                        <option value="connection_test">🔌 Connection Test</option>
+                    </select>
+                    
+                    <div class="collection-info" id="collectionInfo">
+                        <strong>Deskripsi:</strong> <span id="collectionDesc"></span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Range Tanggal</label>
+                    <div class="date-range-group">
+                        <div>
+                            <input type="date" class="form-input" id="startDate" max="">
+                            <small style="font-size: 11px; color: #7f8c8d;">Dari tanggal</small>
+                        </div>
+                        <div>
+                            <input type="date" class="form-input" id="endDate" max="">
+                            <small style="font-size: 11px; color: #7f8c8d;">Sampai tanggal</small>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" onclick="previewDelete()">
+                    🔍 Preview Data
+                </button>
+            </div>
+
+            <!-- Preview Section -->
+            <div class="preview-section" id="previewSection">
+                <div class="preview-header">
+                    <span>⚠️</span>
+                    <div class="preview-title">Data yang Akan Dihapus</div>
+                </div>
+
+                <div class="preview-stats">
+                    <div class="preview-stat">
+                        <div class="preview-stat-value" id="recordCount">0</div>
+                        <div class="preview-stat-label">Total Records</div>
+                    </div>
+                    <div class="preview-stat">
+                        <div class="preview-stat-value" id="dateRange">-</div>
+                        <div class="preview-stat-label">Range Hari</div>
+                    </div>
+                </div>
+
+                <div class="preview-list" id="previewList">
+                    <div style="text-align: center; color: #999;">Loading preview...</div>
+                </div>
+
+                <button class="btn btn-danger" onclick="confirmDelete()" style="margin-top: 12px;">
+                    🗑️ Hapus Data Ini
+                </button>
+            </div>
+
+            <!-- Activity Log -->
+            <div class="section log-section" id="logSection" style="display: none;">
+                <div class="section-title">
+                    <span class="section-icon">📝</span>
+                    Activity Log
+                </div>
+                <div id="logContainer"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <div class="loading-text" id="loadingText">Memproses...</div>
+            <div class="loading-subtext" id="loadingSubtext">Mohon tunggu</div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div class="modal-overlay" id="confirmModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-icon">🚨</div>
+                <div class="modal-title">Konfirmasi Penghapusan</div>
+                <div class="modal-message" id="confirmMessage">
+                    Apakah Anda yakin ingin menghapus data ini? Tindakan ini tidak dapat dibatalkan!
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn modal-btn-cancel" onclick="closeModal()">Batal</button>
+                <button class="modal-btn modal-btn-confirm" onclick="executeDelete()">Ya, Hapus</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase Configuration -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+        import { getDatabase, ref, query, orderByChild, startAt, endAt, get, remove } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBLGwid71jAnsh4DrivbBYSTsuDAP0Zjuw",
+            authDomain: "salesman-route-tracker-default-rtdb.asia-southeast1.firebasedatabase.app",
+            databaseURL: "https://salesman-route-tracker-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "salesman-route-tracker",
+            storageBucket: "salesman-route-tracker.appspot.com",
+            messagingSenderId: "288785787565",
+            appId: "1:288785787565:web:9e4f8e1e1e1e1e1e1e1e1e"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+
+        // Make functions globally available
+        window.database = database;
+        window.ref = ref;
+        window.query = query;
+        window.orderByChild = orderByChild;
+        window.startAt = startAt;
+        window.endAt = endAt;
+        window.get = get;
+        window.remove = remove;
+    </script>
+
+    <script>
+        let currentUserRole = 'user';
+        let currentUser = 'Unknown';
+        let previewData = [];
+        let selectedCollection = '';
+        let selectedStartDate = '';
+        let selectedEndDate = '';
+
+        // Collection descriptions
+        const collectionDescriptions = {
+            'visits': 'Data kunjungan salesman ke outlet (termasuk foto, koordinat, checklist)',
+            'daily_summary': 'Ringkasan performa harian setiap salesman',
+            'current_positions': 'Posisi real-time salesman (diupdate otomatis)',
+            'sku_pom_checklist': 'Data checklist produk SKU POM',
+            'connection_test': 'Log testing koneksi perangkat'
+        };
+
+        // Check authentication and role
+        function checkAccess() {
+            const isLoggedIn = sessionStorage.getItem('isLoggedIn');
+            currentUser = sessionStorage.getItem('currentUser') || 'Unknown';
+            currentUserRole = sessionStorage.getItem('userRole') || 'user';
+
+            if (!isLoggedIn || currentUserRole !== 'admin') {
+                alert('⛔ Akses Ditolak!\n\nHalaman ini hanya untuk Administrator.\nAnda akan diarahkan kembali ke dashboard.');
+                window.location.href = 'dashboard.html';
+                return false;
+            }
+            return true;
+        }
+
+        function goBack() {
+            window.location.href = 'dashboard.html';
+        }
+
+        function updateCollectionInfo() {
+            const select = document.getElementById('collectionSelect');
+            const info = document.getElementById('collectionInfo');
+            const desc = document.getElementById('collectionDesc');
+            
+            if (select.value) {
+                desc.textContent = collectionDescriptions[select.value];
+                info.classList.add('show');
+            } else {
+                info.classList.remove('show');
+            }
+        }
+
+        function showLoading(show, text = 'Memproses...', subtext = 'Mohon tunggu') {
+            const overlay = document.getElementById('loadingOverlay');
+            document.getElementById('loadingText').textContent = text;
+            document.getElementById('loadingSubtext').textContent = subtext;
+            
+            if (show) {
+                overlay.classList.add('show');
+            } else {
+                overlay.classList.remove('show');
+            }
+        }
+
+        function showModal() {
+            document.getElementById('confirmModal').classList.add('show');
+        }
+
+        function closeModal() {
+            document.getElementById('confirmModal').classList.remove('show');
+        }
+
+        async function previewDelete() {
+            selectedCollection = document.getElementById('collectionSelect').value;
+            selectedStartDate = document.getElementById('startDate').value;
+            selectedEndDate = document.getElementById('endDate').value;
+
+            // Validation
+            if (!selectedCollection) {
+                alert('⚠️ Pilih collection terlebih dahulu!');
+                return;
+            }
+
+            if (!selectedStartDate || !selectedEndDate) {
+                alert('⚠️ Tentukan range tanggal!');
+                return;
+            }
+
+            if (new Date(selectedStartDate) > new Date(selectedEndDate)) {
+                alert('⚠️ Tanggal mulai tidak boleh lebih besar dari tanggal akhir!');
+                return;
+            }
+
+            showLoading(true, 'Mengambil data...', 'Memuat preview data yang akan dihapus');
+
+            try {
+                const dbRef = window.ref(window.database, selectedCollection);
+                
+                // Convert dates to timestamps
+                const startTimestamp = new Date(selectedStartDate).setHours(0, 0, 0, 0);
+                const endTimestamp = new Date(selectedEndDate).setHours(23, 59, 59, 999);
+
+                // Query data based on timestamp
+                const snapshot = await window.get(dbRef);
+                
+                previewData = [];
+                if (snapshot.exists()) {
+                    snapshot.forEach((childSnapshot) => {
+                        const data = childSnapshot.val();
+                        const key = childSnapshot.key;
+                        
+                        // Check if data has timestamp field
+                        let dataTimestamp = null;
+                        if (data.timestamp) {
+                            dataTimestamp = data.timestamp;
+                        } else if (data.date) {
+                            dataTimestamp = new Date(data.date).getTime();
+                        } else if (data.visitDate) {
+                            dataTimestamp = new Date(data.visitDate).getTime();
+                        }
+
+                        // Filter by date range
+                        if (dataTimestamp && dataTimestamp >= startTimestamp && dataTimestamp <= endTimestamp) {
+                            previewData.push({
+                                key: key,
+                                data: data,
+                                timestamp: dataTimestamp
+                            });
+                        }
+                    });
+                }
+
+                // Display preview
+                displayPreview();
+                showLoading(false);
+
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                alert('❌ Gagal mengambil data: ' + error.message);
+                showLoading(false);
+            }
+        }
+
+        function displayPreview() {
+            const previewSection = document.getElementById('previewSection');
+            const recordCount = document.getElementById('recordCount');
+            const dateRange = document.getElementById('dateRange');
+            const previewList = document.getElementById('previewList');
+
+            if (previewData.length === 0) {
+                alert('ℹ️ Tidak ada data yang ditemukan pada range tanggal tersebut.');
+                previewSection.classList.remove('show');
+                return;
+            }
+
+            // Calculate date range
+            const start = new Date(selectedStartDate);
+            const end = new Date(selectedEndDate);
+            const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+
+            // Update stats
+            recordCount.textContent = previewData.length.toLocaleString();
+            dateRange.textContent = daysDiff;
+
+            // Display preview items
+            let html = '';
+            previewData.slice(0, 10).forEach(item => {
+                const date = new Date(item.timestamp).toLocaleString('id-ID');
+                const info = getItemInfo(item.data);
+                html += `
+                    <div class="preview-item">
+                        <strong>${item.key}</strong><br>
+                        📅 ${date}<br>
+                        ${info}
+                    </div>
+                `;
+            });
+
+            if (previewData.length > 10) {
+                html += `<div class="preview-item" style="text-align: center; color: #999;">
+                    ... dan ${previewData.length - 10} data lainnya
+                </div>`;
+            }
+
+            previewList.innerHTML = html;
+            previewSection.classList.add('show');
+        }
+
+        function getItemInfo(data) {
+            // Extract relevant info based on collection type
+            let info = [];
+            
+            if (data.salesmanName) info.push(`👤 ${data.salesmanName}`);
+            if (data.outletName) info.push(`🏪 ${data.outletName}`);
+            if (data.nama_outlet) info.push(`🏪 ${data.nama_outlet}`);
+            if (data.totalOutlets) info.push(`📊 ${data.totalOutlets} outlets`);
+            
+            return info.length > 0 ? info.join(' • ') : '📄 Data record';
+        }
+
+        function confirmDelete() {
+            const message = `Anda akan menghapus ${previewData.length.toLocaleString()} records dari collection "${selectedCollection}".\n\nRange: ${selectedStartDate} s/d ${selectedEndDate}\n\nApakah Anda yakin?`;
+            document.getElementById('confirmMessage').textContent = message;
+            showModal();
+        }
+
+        async function executeDelete() {
+            closeModal();
+            showLoading(true, 'Menghapus data...', `Menghapus ${previewData.length} records`);
+
+            try {
+                let deletedCount = 0;
+                const batchSize = 50; // Delete in batches to avoid timeout
+
+                for (let i = 0; i < previewData.length; i += batchSize) {
+                    const batch = previewData.slice(i, i + batchSize);
+                    
+                    await Promise.all(batch.map(async (item) => {
+                        const itemRef = window.ref(window.database, `${selectedCollection}/${item.key}`);
+                        await window.remove(itemRef);
+                        deletedCount++;
+                    }));
+
+                    // Update progress
+                    const progress = Math.round((deletedCount / previewData.length) * 100);
+                    document.getElementById('loadingSubtext').textContent = 
+                        `${deletedCount}/${previewData.length} (${progress}%)`;
+                }
+
+                showLoading(false);
+
+                // Log the activity
+                addLog(`Deleted ${deletedCount} records from ${selectedCollection}`, 
+                       `Date range: ${selectedStartDate} to ${selectedEndDate}`);
+
+                // Show success
+                alert(`✅ Berhasil!\n\n${deletedCount} data telah dihapus dari collection "${selectedCollection}".`);
+
+                // Reset form
+                document.getElementById('previewSection').classList.remove('show');
+                previewData = [];
+
+            } catch (error) {
+                console.error('Error deleting data:', error);
+                showLoading(false);
+                alert('❌ Gagal menghapus data: ' + error.message);
+            }
+        }
+
+        function addLog(action, details) {
+            const logSection = document.getElementById('logSection');
+            const logContainer = document.getElementById('logContainer');
+            
+            const now = new Date().toLocaleString('id-ID');
+            const logHtml = `
+                <div class="log-item">
+                    <div class="log-time">⏰ ${now}</div>
+                    <div class="log-action">${action}</div>
+                    <div style="font-size: 11px; color: #7f8c8d; margin-top: 4px;">${details}</div>
+                    <div style="font-size: 11px; color: #7f8c8d;">👤 By: ${currentUser}</div>
+                </div>
+            `;
+            
+            logContainer.insertAdjacentHTML('afterbegin', logHtml);
+            logSection.style.display = 'block';
+
+            // Keep only last 5 logs
+            const logs = logContainer.querySelectorAll('.log-item');
+            if (logs.length > 5) {
+                logs[logs.length - 1].remove();
+            }
+        }
+
+        // Set max date to today
+        function setMaxDate() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('startDate').max = today;
+            document.getElementById('endDate').max = today;
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!checkAccess()) return;
+            setMaxDate();
+            console.log('🗑️ Manage Database initialized');
+            console.log('👤 Admin:', currentUser);
+        });
+    </script>
+</body>
+</html>

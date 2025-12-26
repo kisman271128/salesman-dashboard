@@ -1173,31 +1173,42 @@
                 console.log(`✅ Password correct for: ${user.name} (${user.role})`);
                 
                 // ===== DEVICE VALIDATION =====
-                // REMOVED: Admin bypass - now ALL users must pass device check
-                // Security: Even admin must use registered device
-                
-                // Validate device for ALL users (including admin)
-                console.log('🔐 Checking device authentication...');
-                const deviceCheck = DeviceAuth.validateDevice(nik);
-                
-                if (deviceCheck.success) {
-                    console.log('✅ Device validated successfully');
+                // Check if DeviceAuth is available
+                if (typeof DeviceAuth === 'undefined') {
+                    console.warn('⚠️ DeviceAuth not loaded, skipping device validation');
+                    console.log('🔓 Proceeding with login without device check (fallback mode)');
                     proceedWithLogin(nik, user);
-                } else {
-                    console.warn('❌ Device validation failed:', deviceCheck.message);
+                    return;
+                }
+                
+                try {
+                    // Validate device for ALL users (including admin)
+                    console.log('🔐 Checking device authentication...');
+                    const deviceCheck = DeviceAuth.validateDevice(nik);
                     
-                    // Show device error
-                    const deviceInfo = deviceCheck.currentDevice ? 
-                        `${deviceCheck.currentDevice.info.device} - ${deviceCheck.currentDevice.info.browser} (${deviceCheck.currentDevice.info.os})` : 
-                        'Unknown';
-                    
-                    showErrorNotification(
-                        `🚫 Device Tidak Terdaftar\n\n` +
-                        `Device Anda: ${deviceInfo}\n\n` +
-                        `Akun Anda sudah terdaftar di device lain. ` +
-                        `Silakan hubungi administrator untuk mendaftarkan device baru ini.`
-                    );
-                    setLoading(false);
+                    if (deviceCheck.success) {
+                        console.log('✅ Device validated successfully');
+                        proceedWithLogin(nik, user);
+                    } else {
+                        console.warn('❌ Device validation failed:', deviceCheck.message);
+                        
+                        // Show device error
+                        const deviceInfo = deviceCheck.currentDevice ? 
+                            `${deviceCheck.currentDevice.info.device} - ${deviceCheck.currentDevice.info.browser} (${deviceCheck.currentDevice.info.os})` : 
+                            'Unknown';
+                        
+                        showErrorNotification(
+                            `🚫 Device Tidak Terdaftar\n\n` +
+                            `Device Anda: ${deviceInfo}\n\n` +
+                            `Akun Anda sudah terdaftar di device lain. ` +
+                            `Silakan hubungi administrator untuk mendaftarkan device baru ini.`
+                        );
+                        setLoading(false);
+                    }
+                } catch (error) {
+                    console.error('❌ Device validation error:', error);
+                    console.log('🔓 Proceeding with login despite error (fail-open)');
+                    proceedWithLogin(nik, user);
                 }
                 
             } else {
@@ -1235,11 +1246,39 @@
         }
 
         // ✅ UI Functions
+        let loadingTimeout;
         function setLoading(loading) {
             isLoading = loading;
             loginButton.disabled = loading;
             buttonText.style.display = loading ? 'none' : 'block';
             document.getElementById('loading').style.display = loading ? 'block' : 'none';
+            
+            // Clear any existing timeout
+            if (loadingTimeout) {
+                clearTimeout(loadingTimeout);
+                loadingTimeout = null;
+            }
+            
+            // Set timeout to detect stuck loading (10 seconds)
+            if (loading) {
+                loadingTimeout = setTimeout(() => {
+                    console.error('⏱️ Loading timeout - stuck for 10 seconds!');
+                    console.log('🔧 Forcing reset...');
+                    
+                    // Force reset loading state
+                    isLoading = false;
+                    loginButton.disabled = false;
+                    buttonText.style.display = 'block';
+                    document.getElementById('loading').style.display = 'none';
+                    
+                    // Show error notification
+                    showErrorNotification(
+                        '⚠️ Login Timeout\n\n' +
+                        'Proses login terlalu lama. Kemungkinan ada masalah dengan koneksi atau sistem.\n\n' +
+                        'Silakan coba lagi atau hubungi administrator jika masalah berlanjut.'
+                    );
+                }, 10000); // 10 seconds timeout
+            }
         }
 
         // ✅ Input field enhancements
@@ -1285,7 +1324,18 @@
     </script>
     
     <!-- Device Authentication System -->
-    <script src="device-auth.js"></script>
+    <script src="device-auth.js" onerror="console.error('❌ Failed to load device-auth.js'); window.deviceAuthLoadError = true;"></script>
+    <script>
+        // Check if device-auth.js loaded successfully
+        setTimeout(() => {
+            if (typeof DeviceAuth === 'undefined') {
+                console.warn('⚠️ DeviceAuth not available - device validation will be skipped');
+                console.log('💡 Login will proceed without device restrictions (fallback mode)');
+            } else {
+                console.log('✅ DeviceAuth module loaded and ready');
+            }
+        }, 100);
+    </script>
     
     <!-- PWA Service Worker Registration -->
     <script>
