@@ -1222,12 +1222,16 @@
                 }
                 
                 try {
-                    // Validate device for ALL users (including admin)
+                    // Validate device (admin bypass enabled)
                     console.log('🔐 Checking device authentication...');
-                    const deviceCheck = DeviceAuth.validateDevice(nik);
+                    const deviceCheck = DeviceAuth.validateDevice(nik, user.role);
                     
                     if (deviceCheck.success) {
-                        console.log('✅ Device validated successfully');
+                        if (deviceCheck.isBypass) {
+                            console.log(`👑 Device authentication bypassed: ${deviceCheck.bypassReason}`);
+                        } else {
+                            console.log('✅ Device validated successfully');
+                        }
                         proceedWithLogin(nik, user);
                     } else {
                         console.warn('❌ Device validation failed:', deviceCheck.message);

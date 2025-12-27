@@ -377,11 +377,44 @@
 
         function loadDeviceData() {
             try {
-                const stored = localStorage.getItem('deviceRegistrations');
-                deviceRegistrations = stored ? JSON.parse(stored) : {};
-                console.log('Device registrations loaded:', deviceRegistrations);
+                deviceRegistrations = {};
+                
+                // Scan localStorage for device_${userId} keys
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    
+                    // Check if key matches device_${userId} pattern
+                    if (key && key.startsWith('device_')) {
+                        const userId = key.replace('device_', '');
+                        const deviceData = localStorage.getItem(key);
+                        
+                        if (deviceData) {
+                            try {
+                                const parsed = JSON.parse(deviceData);
+                                deviceRegistrations[userId] = parsed;
+                                console.log(`✅ Device found for ${userId}:`, {
+                                    fingerprint: parsed.fingerprint?.substring(0, 20) + '...',
+                                    lastUsed: parsed.lastUsed ? new Date(parsed.lastUsed).toLocaleString() : 'Never'
+                                });
+                            } catch (parseError) {
+                                console.warn(`⚠️ Invalid device data for ${userId}`);
+                            }
+                        }
+                    }
+                }
+                
+                console.log('📱 Total devices loaded:', Object.keys(deviceRegistrations).length);
+                console.log('📋 Device registrations:', deviceRegistrations);
+                
+                // Fallback: also check old format (deviceRegistrations key)
+                const oldFormat = localStorage.getItem('deviceRegistrations');
+                if (oldFormat && Object.keys(deviceRegistrations).length === 0) {
+                    console.log('⚠️ Using old deviceRegistrations format');
+                    deviceRegistrations = JSON.parse(oldFormat);
+                }
+                
             } catch (e) {
-                console.error('Error loading device data:', e);
+                console.error('❌ Error loading device data:', e);
                 deviceRegistrations = {};
             }
         }
@@ -533,8 +566,14 @@
             }
 
             if (deviceRegistrations[nik]) {
+                // Delete from deviceRegistrations object
                 delete deviceRegistrations[nik];
-                localStorage.setItem('deviceRegistrations', JSON.stringify(deviceRegistrations));
+                
+                // Delete from localStorage with correct key
+                const deviceKey = `device_${nik}`;
+                localStorage.removeItem(deviceKey);
+                
+                console.log(`🗑️ Device cleared for ${nik} (key: ${deviceKey})`);
                 showAlert('success', `✅ Device berhasil di-clear untuk ${name} (${nik})`);
             } else {
                 showAlert('info', `ℹ️ User ${name} tidak memiliki device registration`);
@@ -557,9 +596,21 @@
             }
 
             const count = Object.keys(deviceRegistrations).length;
-            deviceRegistrations = {};
-            localStorage.setItem('deviceRegistrations', JSON.stringify(deviceRegistrations));
             
+            // Clear all device_${nik} keys from localStorage
+            for (const nik in deviceRegistrations) {
+                const deviceKey = `device_${nik}`;
+                localStorage.removeItem(deviceKey);
+                console.log(`🗑️ Cleared device for ${nik} (key: ${deviceKey})`);
+            }
+            
+            // Clear object
+            deviceRegistrations = {};
+            
+            // Also remove old format if exists
+            localStorage.removeItem('deviceRegistrations');
+            
+            console.log(`✅ Total ${count} devices cleared`);
             showAlert('success', `✅ Berhasil clear ${count} device registrations`);
             
             // Refresh display

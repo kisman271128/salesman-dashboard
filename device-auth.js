@@ -57,8 +57,20 @@ const DeviceAuth = {
     },
     
     // Validate device for a user
-    validateDevice(userId) {
-        console.log(`🔐 DeviceAuth: Validating device for user: ${userId}`);
+    validateDevice(userId, userRole = null) {
+        console.log(`🔐 DeviceAuth: Validating device for user: ${userId} (role: ${userRole})`);
+        
+        // BYPASS device authentication for admin
+        if (userId === 'admin' || userRole === 'admin') {
+            console.log('👑 Admin user detected - bypassing device authentication');
+            return {
+                success: true,
+                message: 'Admin access - device authentication bypassed',
+                isNewRegistration: false,
+                isBypass: true,
+                bypassReason: 'Admin role'
+            };
+        }
         
         try {
             const currentFingerprint = this.getDeviceFingerprint();
