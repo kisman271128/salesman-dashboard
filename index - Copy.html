@@ -1203,7 +1203,7 @@
         });
 
         // ✅ Validate login with device authentication
-        async function validateLogin(nik, password) {
+        function validateLogin(nik, password) {
             console.log(`🔍 Validating login for: ${nik}`);
             console.log(`📋 Available users:`, Object.keys(validUsers));
             
@@ -1224,9 +1224,9 @@
                 try {
                     // Validate device (admin bypass enabled)
                     console.log('🔐 Checking device authentication...');
-                    const deviceCheck = await DeviceAuth.validateDevice(nik, user.role);
+                    const deviceCheck = DeviceAuth.validateDevice(nik, user.role);
                     
-                    if (deviceCheck && deviceCheck.success === true) {
+                    if (!deviceCheck || deviceCheck.success !== true) {
                         if (deviceCheck.isBypass) {
                             console.log(`👑 Device authentication bypassed: ${deviceCheck.bypassReason}`);
                         } else {
@@ -1234,10 +1234,10 @@
                         }
                         proceedWithLogin(nik, user);
                     } else {
-                        console.warn('❌ Device validation failed:', deviceCheck?.message || 'Unknown error');
+                        console.warn('❌ Device validation failed:', deviceCheck.message);
                         
                         // Show device error
-                        const deviceInfo = deviceCheck?.currentDevice ? 
+                        const deviceInfo = deviceCheck.currentDevice ? 
                             `${deviceCheck.currentDevice.info.device} - ${deviceCheck.currentDevice.info.browser} (${deviceCheck.currentDevice.info.os})` : 
                             'Unknown';
                         
@@ -1435,12 +1435,6 @@
     </script>
     
     <!-- Firebase SDK for User Authentication -->
-    
-    <!-- Firebase v8 (for DeviceAuth compatibility) -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-    
-    <!-- Firebase v9 (modular) -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
         import { getDatabase, ref, get } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js';
@@ -1464,24 +1458,6 @@
         window.firebaseGet = get;
         
         console.log('🔥 Firebase initialized for user authentication');
-        
-        // Initialize DeviceAuth with Firebase v8
-        if (typeof firebase !== 'undefined' && typeof DeviceAuth !== 'undefined') {
-            try {
-                // Initialize Firebase v8 app if not already initialized
-                if (!firebase.apps.length) {
-                    firebase.initializeApp(firebaseConfig);
-                }
-                
-                // Initialize DeviceAuth with Firebase v8 database
-                DeviceAuth.init(firebase.database());
-                console.log('✅ DeviceAuth initialized with Firebase');
-            } catch (error) {
-                console.warn('⚠️ DeviceAuth initialization error:', error);
-            }
-        } else {
-            console.warn('⚠️ DeviceAuth not loaded or Firebase v8 not available');
-        }
     </script>
 </body>
 </html>
