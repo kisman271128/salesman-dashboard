@@ -640,50 +640,47 @@
         }
 
         async function loadAllUsers() {
-            showAlert('info', '🔄 Loading user data...');
+            showAlert('info', '🔄 Loading user data from Firebase...');
             
             try {
-                // Try to load from salesman_list.json
-                const response = await fetch('d.salesman_list.json');
-                if (response.ok) {
-                    const data = await response.json();
-                    usersData = data.map(salesman => ({
-                        nik: salesman.id,
-                        name: salesman.name,
-                        role: 'salesman'
-                    }));
+                // Load users directly from Firebase
+                if (typeof database !== 'undefined' && database) {
+                    const usersRef = database.ref('users');
+                    const snapshot = await usersRef.once('value');
+                    const firebaseUsers = snapshot.val();
+                    
+                    if (firebaseUsers) {
+                        usersData = [];
+                        
+                        // Loop through all users in Firebase
+                        for (const nik in firebaseUsers) {
+                            const user = firebaseUsers[nik];
+                            usersData.push({
+                                nik: nik,
+                                name: user.name || 'Unknown',
+                                role: user.role || 'salesman'
+                            });
+                        }
+                        
+                        console.log(`✅ Loaded ${usersData.length} users from Firebase`);
+                    } else {
+                        console.warn('⚠️ No users found in Firebase');
+                        usersData = [];
+                    }
                 } else {
-                    // Fallback users
-                    usersData = [
-                        { nik: '17210032876', name: 'Asman', role: 'salesman' },
-                        { nik: '17210036369', name: 'Muhammad Tamrin', role: 'salesman' },
-                        { nik: '17210037632', name: 'Robianor', role: 'salesman' },
-                        { nik: '17210037897', name: 'Hindra', role: 'salesman' },
-                        { nik: '17210041467', name: 'Doli Purnama Sari', role: 'salesman' },
-                        { nik: '17210041060', name: 'Bahrudin Rahman', role: 'salesman' }
-                    ];
+                    throw new Error('Firebase database not available');
                 }
-
-                // Add admin users
-                usersData.push({ nik: 'admin', name: 'Administrator', role: 'admin' });
 
                 displayUsers(usersData);
                 updateStats();
                 clearAlert();
                 
             } catch (error) {
-                console.error('Error loading users:', error);
-                showAlert('error', '❌ Gagal load user data. Menggunakan data fallback.');
-                // Use fallback data
-                usersData = [
-                    { nik: '17210032876', name: 'Asman', role: 'salesman' },
-                    { nik: '17210036369', name: 'Muhammad Tamrin', role: 'salesman' },
-                    { nik: '17210037632', name: 'Robianor', role: 'salesman' },
-                    { nik: '17210037897', name: 'Hindra', role: 'salesman' },
-                    { nik: '17210041467', name: 'Doli Purnama Sari', role: 'salesman' },
-                    { nik: '17210041060', name: 'Bahrudin Rahman', role: 'salesman' },
-                    { nik: 'admin', name: 'Administrator', role: 'admin' }
-                ];
+                console.error('❌ Error loading users from Firebase:', error);
+                showAlert('error', '❌ Gagal load user data dari Firebase.');
+                
+                // Fallback: empty array
+                usersData = [];
                 displayUsers(usersData);
                 updateStats();
             }
