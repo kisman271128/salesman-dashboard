@@ -1,7 +1,16 @@
-// Device Authentication System
-// Manages device registration and validation
+// Device Authentication System - Firebase Version
+// Manages device registration and validation using Firebase Realtime Database
 
 const DeviceAuth = {
+    // Firebase reference (will be initialized from index.html)
+    firebase: null,
+    
+    // Initialize Firebase reference
+    init(firebaseRef) {
+        this.firebase = firebaseRef;
+        console.log('🔐 DeviceAuth: Firebase initialized');
+    },
+    
     // Generate unique device fingerprint
     getDeviceFingerprint() {
         const userAgent = navigator.userAgent;
@@ -56,8 +65,8 @@ const DeviceAuth = {
         return { device, browser, os };
     },
     
-    // Validate device for a user
-    validateDevice(userId, userRole = null) {
+    // Validate device for a user (Firebase version)
+    async validateDevice(userId, userRole = null) {
         console.log(`🔐 DeviceAuth: Validating device for user: ${userId} (role: ${userRole})`);
         
         // BYPASS device authentication for admin
@@ -72,20 +81,106 @@ const DeviceAuth = {
             };
         }
         
+        if (!this.firebase) {
+            console.warn('⚠️ Firebase not initialized, falling back to localStorage');
+            return this.validateDeviceLocalStorage(userId);
+        }
+        
+        try {
+            const currentFingerprint = this.getDeviceFingerprint();
+            const deviceInfo = this.getDeviceInfo();
+            
+            console.log(`🔑 Current device fingerprint: ${currentFingerprint}`);
+            console.log(`📱 Device info:`, deviceInfo);
+            
+            // Get user data from Firebase
+            const userRef = this.firebase.ref(`users/${userId}`);
+            const snapshot = await userRef.once('value');
+            const userData = snapshot.val();
+            
+            if (!userData) {
+                console.error('❌ User not found in Firebase');
+                return {
+                    success: false,
+                    message: 'User not found'
+                };
+            }
+            
+            const registeredDevice = userData.device;
+            
+            if (!registeredDevice || registeredDevice === null) {
+                // No device registered yet - register this device
+                console.log('📝 No device registered, registering current device in Firebase...');
+                const deviceData = {
+                    fingerprint: currentFingerprint,
+                    info: deviceInfo,
+                    registeredAt: new Date().toISOString(),
+                    lastUsed: new Date().toISOString()
+                };
+                
+                // Save to Firebase
+                await userRef.update({ device: deviceData });
+                console.log('✅ Device registered in Firebase successfully');
+                
+                return {
+                    success: true,
+                    message: 'Device registered successfully',
+                    isNewRegistration: true,
+                    currentDevice: deviceData
+                };
+            }
+            
+            console.log(`📋 Registered device fingerprint: ${registeredDevice.fingerprint}`);
+            
+            // Check if fingerprints match
+            if (registeredDevice.fingerprint === currentFingerprint) {
+                // Update last used time in Firebase
+                const updatedDevice = {
+                    ...registeredDevice,
+                    lastUsed: new Date().toISOString()
+                };
+                await userRef.update({ device: updatedDevice });
+                
+                console.log('✅ Device validated successfully (Firebase)');
+                return {
+                    success: true,
+                    message: 'Device validated successfully',
+                    isNewRegistration: false,
+                    currentDevice: updatedDevice
+                };
+            } else {
+                // Different device detected
+                console.warn('❌ Device mismatch detected');
+                return {
+                    success: false,
+                    message: 'Device not registered. This account is registered on another device.',
+                    registeredDevice: registeredDevice,
+                    currentDevice: {
+                        fingerprint: currentFingerprint,
+                        info: deviceInfo
+                    }
+                };
+            }
+            
+        } catch (error) {
+            console.error('❌ DeviceAuth Firebase error:', error);
+            
+            // On error, fallback to localStorage
+            console.log('⚠️ Falling back to localStorage validation');
+            return this.validateDeviceLocalStorage(userId);
+        }
+    },
+    
+    // Fallback: localStorage validation (for backward compatibility)
+    validateDeviceLocalStorage(userId) {
         try {
             const currentFingerprint = this.getDeviceFingerprint();
             const deviceInfo = this.getDeviceInfo();
             const storageKey = `device_${userId}`;
             
-            console.log(`🔑 Current device fingerprint: ${currentFingerprint}`);
-            console.log(`📱 Device info:`, deviceInfo);
-            
-            // Get registered device from localStorage
             const registeredDevice = localStorage.getItem(storageKey);
             
             if (!registeredDevice) {
-                // No device registered yet - register this device
-                console.log('📝 No device registered, registering current device...');
                 const deviceData = {
                     fingerprint: currentFingerprint,
                     info: deviceInfo,
@@ -97,32 +192,25 @@ const DeviceAuth = {
                 
                 return {
                     success: true,
-                    message: 'Device registered successfully',
+                    message: 'Device registered successfully (localStorage)',
                     isNewRegistration: true,
                     currentDevice: deviceData
                 };
             }
             
-            // Parse registered device
             const deviceData = JSON.parse(registeredDevice);
-            console.log(`📋 Registered device fingerprint: ${deviceData.fingerprint}`);
             
-            // Check if fingerprints match
             if (deviceData.fingerprint === currentFingerprint) {
-                // Update last used time
                 deviceData.lastUsed = new Date().toISOString();
                 localStorage.setItem(storageKey, JSON.stringify(deviceData));
                 
-                console.log('✅ Device validated successfully');
                 return {
                     success: true,
-                    message: 'Device validated successfully',
+                    message: 'Device validated successfully (localStorage)',
                     isNewRegistration: false,
                     currentDevice: deviceData
                 };
             } else {
-                // Different device detected
-                console.warn('❌ Device mismatch detected');
                 return {
                     success: false,
                     message: 'Device not registered. This account is registered on another device.',
@@ -135,9 +223,7 @@ const DeviceAuth = {
             }
             
         } catch (error) {
-            console.error('❌ DeviceAuth error:', error);
-            
-            // On error, allow login (fail-open for better UX)
+            console.error('❌ DeviceAuth localStorage error:', error);
             return {
                 success: true,
                 message: 'Device validation skipped due to error',
@@ -146,30 +232,52 @@ const DeviceAuth = {
         }
     },
     
-    // Reset device registration (for admin)
-    resetDevice(userId) {
-        const storageKey = `device_${userId}`;
-        localStorage.removeItem(storageKey);
-        console.log(`🗑️ Device registration reset for user: ${userId}`);
-        return { success: true, message: 'Device registration reset successfully' };
-    },
-    
-    // Get registered device info
-    getRegisteredDevice(userId) {
-        const storageKey = `device_${userId}`;
-        const registeredDevice = localStorage.getItem(storageKey);
-        
-        if (!registeredDevice) {
-            return null;
+    // Reset device registration in Firebase
+    async resetDevice(userId) {
+        if (!this.firebase) {
+            console.warn('⚠️ Firebase not initialized, using localStorage');
+            const storageKey = `device_${userId}`;
+            localStorage.removeItem(storageKey);
+            console.log(`🗑️ Device registration reset for user: ${userId} (localStorage)`);
+            return { success: true, message: 'Device registration reset successfully (localStorage)' };
         }
         
-        return JSON.parse(registeredDevice);
+        try {
+            const userRef = this.firebase.ref(`users/${userId}`);
+            await userRef.update({ device: null });
+            
+            console.log(`🗑️ Device registration reset for user: ${userId} (Firebase)`);
+            return { success: true, message: 'Device registration reset successfully (Firebase)' };
+        } catch (error) {
+            console.error('❌ Error resetting device:', error);
+            return { success: false, message: 'Failed to reset device', error: error.message };
+        }
     },
     
-    // Check if device is registered
-    isDeviceRegistered(userId) {
-        const storageKey = `device_${userId}`;
-        return localStorage.getItem(storageKey) !== null;
+    // Get registered device info from Firebase
+    async getRegisteredDevice(userId) {
+        if (!this.firebase) {
+            const storageKey = `device_${userId}`;
+            const registeredDevice = localStorage.getItem(storageKey);
+            return registeredDevice ? JSON.parse(registeredDevice) : null;
+        }
+        
+        try {
+            const userRef = this.firebase.ref(`users/${userId}`);
+            const snapshot = await userRef.once('value');
+            const userData = snapshot.val();
+            
+            return userData ? userData.device : null;
+        } catch (error) {
+            console.error('❌ Error getting registered device:', error);
+            return null;
+        }
+    },
+    
+    // Check if device is registered in Firebase
+    async isDeviceRegistered(userId) {
+        const device = await this.getRegisteredDevice(userId);
+        return device !== null && device !== undefined;
     }
 };
 
@@ -178,4 +286,4 @@ if (typeof module !== 'undefined' && module.exports) {
     module.exports = DeviceAuth;
 }
 
-console.log('🔐 DeviceAuth module loaded successfully');
+console.log('🔐 DeviceAuth module loaded successfully (Firebase version)');
