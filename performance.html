@@ -1142,11 +1142,12 @@
                 totalTarget += parseFloat(item[' T.MTD'] || 0);
                 totalActual += parseFloat(item[' A.MTD'] || 0);
                 totalGap += parseFloat(item[' Gap MTD'] || 0);
-                totalVsLM += parseFloat(item[' vs LM'] || 0);
+                totalVsLM += parseFloat(item[' LM'] || 0); // Akumulasi LM untuk perhitungan
             });
 
             const totalAchPercentage = calculateAchievementPercentage(totalTarget, totalActual);
-            const avgVsLM = Math.round(totalVsLM / salesmanJKSData.length * 100);
+            // Hitung vs LM dari (totalActual - totalVsLM) / totalVsLM * 100
+            const avgVsLM = totalVsLM > 0 ? Math.round(((totalActual - totalVsLM) / totalVsLM) * 100) : 0;
 
             let html = `
                 <tr class="total-row">
@@ -1161,9 +1162,17 @@
             `;
 
             salesmanJKSData.forEach(item => {
-                const achPercentage = Math.round((item[' Ach'] || 0) * 100);
+                const target = parseFloat(item[' T.MTD'] || 0);
+                const actual = parseFloat(item[' A.MTD'] || 0);
+                const lm = parseFloat(item[' LM'] || 0);
+                
+                // Hitung Ach% dari A.MTD / T.MTD
+                const achPercentage = calculateAchievementPercentage(target, actual);
+                
                 const gap = parseFloat(item[' Gap MTD'] || 0);
-                const vsLM = Math.round((item[' vs LM'] || 0) * 100);
+                
+                // Hitung vs LM dari (A.MTD - LM) / LM * 100
+                const vsLM = lm > 0 ? Math.round(((actual - lm) / lm) * 100) : 0;
                 
                 html += `
                     <tr>
