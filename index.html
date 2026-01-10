@@ -1229,6 +1229,13 @@
                     if (deviceCheck && deviceCheck.success === true) {
                         if (deviceCheck.isBypass) {
                             console.log(`👑 Device authentication bypassed: ${deviceCheck.bypassReason}`);
+                        } else if (deviceCheck.isNewRegistration) {
+                            console.log(`🆕 New device registered (${deviceCheck.deviceNumber}/${deviceCheck.totalDevices})`);
+                            // Show brief notification for new device
+                            const deviceInfo = deviceCheck.currentDevice?.info ? 
+                                `${deviceCheck.currentDevice.info.device} - ${deviceCheck.currentDevice.info.browser}` : 
+                                'Device baru';
+                            console.log(`✅ ${deviceInfo} berhasil didaftarkan sebagai device #${deviceCheck.deviceNumber}`);
                         } else {
                             console.log('✅ Device validated successfully');
                         }
@@ -1236,17 +1243,38 @@
                     } else {
                         console.warn('❌ Device validation failed:', deviceCheck?.message || 'Unknown error');
                         
-                        // Show device error
-                        const deviceInfo = deviceCheck?.currentDevice ? 
+                        // Show device error with details
+                        const currentDeviceInfo = deviceCheck?.currentDevice?.info ? 
                             `${deviceCheck.currentDevice.info.device} - ${deviceCheck.currentDevice.info.browser} (${deviceCheck.currentDevice.info.os})` : 
                             'Unknown';
                         
-                        showErrorNotification(
-                            `🚫 Device Tidak Terdaftar\n\n` +
-                            `Device Anda: ${deviceInfo}\n\n` +
-                            `Akun Anda sudah terdaftar di device lain. ` +
-                            `Silakan hubungi administrator untuk mendaftarkan device baru ini.`
-                        );
+                        let errorMessage = `🚫 Batas Device Tercapai\n\n`;
+                        errorMessage += `Device Anda saat ini:\n${currentDeviceInfo}\n\n`;
+                        
+                        if (deviceCheck?.maxDevices) {
+                            errorMessage += `Akun Anda sudah terdaftar di ${deviceCheck.maxDevices} device:\n\n`;
+                            
+                            if (deviceCheck.registeredDevices && deviceCheck.registeredDevices.length > 0) {
+                                deviceCheck.registeredDevices.forEach((dev, idx) => {
+                                    const devInfo = `${dev.info.device} - ${dev.info.browser} (${dev.info.os})`;
+                                    const regDate = new Date(dev.registeredAt).toLocaleDateString('id-ID', {
+                                        day: '2-digit',
+                                        month: 'short',
+                                        year: 'numeric'
+                                    });
+                                    errorMessage += `${idx + 1}. ${devInfo}\n   Terdaftar: ${regDate}\n\n`;
+                                });
+                            }
+                            
+                            errorMessage += `Silakan hubungi administrator untuk:\n`;
+                            errorMessage += `• Menghapus salah satu device yang terdaftar, atau\n`;
+                            errorMessage += `• Mendaftarkan device baru ini`;
+                        } else {
+                            errorMessage += `Akun Anda sudah terdaftar di device lain.\n`;
+                            errorMessage += `Silakan hubungi administrator untuk mendaftarkan device baru ini.`;
+                        }
+                        
+                        showErrorNotification(errorMessage);
                         setLoading(false);
                     }
                 } catch (error) {

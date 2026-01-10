@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Device Management - Admin</title>
+    <title>Device Management - Admin (2 Devices Support)</title>
     
     <!-- Firebase Scripts -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -22,7 +22,7 @@
             padding: 20px;
         }
         .container {
-            max-width: 900px;
+            max-width: 1200px;
             margin: 0 auto;
         }
         .header {
@@ -74,6 +74,35 @@
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
         }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .stat-card h3 {
+            color: #64748b;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
         .card {
             background: white;
             border-radius: 16px;
@@ -108,7 +137,7 @@
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
         .btn {
-            padding: 12px 24px;
+            padding: 10px 20px;
             border: none;
             border-radius: 10px;
             font-size: 14px;
@@ -116,24 +145,35 @@
             cursor: pointer;
             transition: all 0.2s;
         }
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
         .btn-primary {
             background: linear-gradient(135deg, #3b82f6, #2563eb);
             color: white;
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
         }
         .btn-primary:hover {
             transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
         }
         .btn-danger {
             background: linear-gradient(135deg, #ef4444, #dc2626);
             color: white;
+        }
+        .btn-danger:hover {
+            transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
         }
-        .btn-success {
-            background: linear-gradient(135deg, #10b981, #059669);
+        .btn-warning {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
             color: white;
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
         }
+        .btn-warning:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+        }
+        
         .user-card {
             background: #f8fafc;
             border: 2px solid #e2e8f0;
@@ -151,39 +191,37 @@
             bottom: 0;
             width: 4px;
             border-radius: 12px 0 0 12px;
-            transition: all 0.3s;
         }
-        .user-card.has-device {
+        .user-card.has-devices {
             background: linear-gradient(135deg, #fef2f2 0%, #ffffff 100%);
             border-color: #fca5a5;
-            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.1);
         }
-        .user-card.has-device::before {
+        .user-card.has-devices::before {
             background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
         }
-        .user-card.no-device {
+        .user-card.partial-devices {
+            background: linear-gradient(135deg, #fef9c3 0%, #ffffff 100%);
+            border-color: #fde047;
+        }
+        .user-card.partial-devices::before {
+            background: linear-gradient(180deg, #f59e0b 0%, #d97706 100%);
+        }
+        .user-card.no-devices {
             background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
             border-color: #86efac;
         }
-        .user-card.no-device::before {
+        .user-card.no-devices::before {
             background: linear-gradient(180deg, #10b981 0%, #059669 100%);
         }
         .user-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 16px rgba(0,0,0,0.1);
         }
-        .user-card.has-device:hover {
-            border-color: #f87171;
-            box-shadow: 0 4px 16px rgba(239, 68, 68, 0.15);
-        }
-        .user-card.no-device:hover {
-            border-color: #4ade80;
-            box-shadow: 0 4px 16px rgba(16, 185, 129, 0.15);
-        }
+        
         .user-card-header {
             display: flex;
             justify-content: space-between;
-            align-items: center;
+            align-items: flex-start;
             margin-bottom: 12px;
         }
         .user-info {
@@ -200,534 +238,342 @@
             font-size: 13px;
             font-family: 'Courier New', monospace;
         }
-        .device-status {
+        
+        .device-count-badge {
             padding: 8px 16px;
             border-radius: 20px;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        .device-status::before {
-            content: '';
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            display: inline-block;
-        }
-        .device-registered {
-            background: linear-gradient(135deg, #fecaca 0%, #fee2e2 100%);
-            color: #991b1b;
-            border: 2px solid #f87171;
-        }
-        .device-registered::before {
-            background: #dc2626;
-            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
-            animation: pulse-red 2s infinite;
-        }
-        .device-clear {
-            background: linear-gradient(135deg, #d1fae5 0%, #ecfdf5 100%);
+        .device-count-badge.count-0 {
+            background: #d1fae5;
             color: #065f46;
-            border: 2px solid #86efac;
         }
-        .device-clear::before {
-            background: #10b981;
-            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+        .device-count-badge.count-1 {
+            background: #fef3c7;
+            color: #92400e;
         }
-        @keyframes pulse-red {
-            0%, 100% {
-                box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
-            }
-            50% {
-                box-shadow: 0 0 0 6px rgba(239, 68, 68, 0.1);
-            }
+        .device-count-badge.count-2 {
+            background: #fee2e2;
+            color: #991b1b;
         }
-        .device-details {
+        
+        .devices-list {
+            margin: 12px 0;
+        }
+        .device-item {
             background: white;
             border: 1px solid #e2e8f0;
             border-radius: 8px;
             padding: 12px;
-            margin-top: 12px;
-            font-size: 12px;
-            display: none;
+            margin-bottom: 8px;
         }
-        .device-details.show {
-            display: block;
-        }
-        .device-details-item {
+        .device-item-header {
             display: flex;
             justify-content: space-between;
-            padding: 6px 0;
-            border-bottom: 1px solid #f1f5f9;
+            align-items: center;
+            margin-bottom: 8px;
         }
-        .device-details-item:last-child {
-            border-bottom: none;
+        .device-number {
+            font-weight: 700;
+            color: #667eea;
+            font-size: 13px;
         }
-        .device-details-label {
+        .device-info-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
             color: #64748b;
+            margin-bottom: 4px;
         }
-        .device-details-value {
-            color: #1e293b;
+        .device-info-label {
             font-weight: 600;
-            font-family: 'Courier New', monospace;
         }
+        .fingerprint {
+            font-family: monospace;
+            background: #f1f5f9;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+        
         .user-actions {
             display: flex;
             gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 12px;
         }
-        .btn-sm {
-            padding: 8px 16px;
-            font-size: 13px;
-        }
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
-            margin-bottom: 20px;
-        }
-        .stat-card {
-            background: linear-gradient(135deg, #f8fafc, #e2e8f0);
-            border: 2px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 20px;
-            text-align: center;
-            transition: all 0.3s;
-            position: relative;
-            overflow: hidden;
-        }
-        .stat-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-        }
-        .stat-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-        }
-        .stat-card.stat-total {
-            background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%);
-            border-color: #93c5fd;
-        }
-        .stat-card.stat-total::before {
-            background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
-        }
-        .stat-card.stat-total .stat-value {
-            color: #1e3a8a;
-        }
-        .stat-card.stat-registered {
-            background: linear-gradient(135deg, #fee2e2 0%, #fef2f2 100%);
-            border-color: #fca5a5;
-        }
-        .stat-card.stat-registered::before {
-            background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
-        }
-        .stat-card.stat-registered .stat-value {
-            color: #991b1b;
-        }
-        .stat-card.stat-clear {
-            background: linear-gradient(135deg, #d1fae5 0%, #ecfdf5 100%);
-            border-color: #86efac;
-        }
-        .stat-card.stat-clear::before {
-            background: linear-gradient(90deg, #10b981 0%, #059669 100%);
-        }
-        .stat-card.stat-clear .stat-value {
-            color: #065f46;
-        }
-        .stat-value {
-            font-size: 36px;
-            font-weight: 800;
-            color: #1e293b;
-            margin-bottom: 4px;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .stat-label {
-            font-size: 13px;
-            color: #64748b;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
+        
         .alert {
             padding: 16px;
             border-radius: 10px;
             margin-bottom: 20px;
-            font-size: 14px;
-            line-height: 1.6;
-        }
-        .alert-info {
-            background: #dbeafe;
-            border: 2px solid #3b82f6;
-            color: #1e40af;
+            display: none;
         }
         .alert-success {
             background: #d1fae5;
-            border: 2px solid #10b981;
             color: #065f46;
+            border: 1px solid #6ee7b7;
         }
         .alert-error {
             background: #fee2e2;
-            border: 2px solid #ef4444;
             color: #991b1b;
+            border: 1px solid #fca5a5;
         }
-        .empty-state {
+        .alert-info {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #93c5fd;
+        }
+        
+        .loading {
             text-align: center;
-            padding: 40px 20px;
-            color: #94a3b8;
+            padding: 40px;
+            color: #64748b;
         }
-        .empty-state-icon {
-            font-size: 48px;
-            margin-bottom: 16px;
+        .spinner {
+            border: 3px solid #e2e8f0;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
         }
-        @media (max-width: 768px) {
-            .container {
-                padding: 0 12px;
-            }
-            .header {
-                flex-direction: column;
-                gap: 16px;
-                align-items: flex-start;
-            }
-            .user-card-header {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 12px;
-            }
-            .user-actions {
-                width: 100%;
-            }
-            .btn-sm {
-                flex: 1;
-            }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
 <body>
     <div class="container">
+        <!-- Header -->
         <div class="header">
             <div class="header-left">
-                <h1>🔧 Device Management <span class="admin-badge">ADMIN</span></h1>
-                <p class="subtitle">
-                    Kelola device registration untuk semua user
-                    <span id="dataSourceBadge" style="margin-left: 10px; padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; background: #dbeafe; color: #1e3a8a;">
-                        🔄 Loading...
-                    </span>
-                </p>
+                <h1>
+                    🔐 Device Management
+                    <span class="admin-badge">ADMIN</span>
+                </h1>
+                <div class="subtitle">Kelola registrasi device (Maksimal 2 device per user)</div>
             </div>
-            <button class="back-btn" onclick="goBack()">
-                ← Kembali
-            </button>
+            <button class="back-btn" onclick="window.history.back()">← Kembali</button>
         </div>
 
-        <div class="card">
-            <div class="stats-grid">
-                <div class="stat-card stat-total">
-                    <div class="stat-value" id="totalUsers">0</div>
-                    <div class="stat-label">Total Users</div>
-                </div>
-                <div class="stat-card stat-registered">
-                    <div class="stat-value" id="deviceRegistered">0</div>
-                    <div class="stat-label">Device Terdaftar</div>
-                </div>
-                <div class="stat-card stat-clear">
-                    <div class="stat-value" id="deviceClear">0</div>
-                    <div class="stat-label">Device Clear</div>
-                </div>
+        <!-- Stats -->
+        <div class="stats">
+            <div class="stat-card">
+                <h3>Total Users</h3>
+                <div class="stat-value" id="totalUsers">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>2 Devices (Full)</h3>
+                <div class="stat-value" id="fullDevices">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>1 Device (Partial)</h3>
+                <div class="stat-value" id="partialDevices">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>No Devices</h3>
+                <div class="stat-value" id="noDevices">0</div>
             </div>
         </div>
 
+        <!-- Alert -->
+        <div id="alertBox" class="alert"></div>
+
+        <!-- User List -->
         <div class="card">
-            <h2>🔍 Cari User</h2>
+            <h2>👥 Daftar User & Devices</h2>
+            
             <div class="search-box">
-                <input type="text" id="searchInput" class="search-input" 
-                       placeholder="Masukkan NIK atau nama user..." 
-                       onkeyup="searchUsers()">
-                <button class="btn btn-primary" onclick="loadAllUsers()">
-                    🔄 Refresh
-                </button>
+                <input 
+                    type="text" 
+                    id="searchInput" 
+                    class="search-input" 
+                    placeholder="Cari user (NIK atau Nama)..."
+                    oninput="searchUsers()"
+                >
+                <button class="btn btn-primary" onclick="loadAll()">🔄 Refresh</button>
+                <button class="btn btn-warning" onclick="checkAllDevices()">📊 Check All</button>
+                <button class="btn btn-danger" onclick="clearAllDevices()">🗑️ Clear All</button>
             </div>
 
-            <div style="display: flex; gap: 8px; margin-bottom: 20px;">
-                <button class="btn btn-danger" onclick="clearAllDevices()">
-                    🗑️ Clear All Devices
-                </button>
-                <button class="btn btn-success" onclick="checkAllDevices()">
-                    ✅ Check All Status
-                </button>
+            <div id="loadingIndicator" class="loading">
+                <div class="spinner"></div>
+                <div>Memuat data...</div>
             </div>
 
-            <div id="alertBox"></div>
-
-            <div id="usersList">
-                <div class="empty-state">
-                    <div class="empty-state-icon">📱</div>
-                    <p>Klik "Refresh" untuk load user data</p>
-                </div>
-            </div>
+            <div id="usersList"></div>
         </div>
     </div>
 
     <script>
-        // ===================================================================
-        // Firebase Configuration & Initialization
-        // ===================================================================
-        
-        // Firebase configuration (from index.html)
+        // Firebase Configuration
         const firebaseConfig = {
-            apiKey: "AIzaSyDEb2gJIPz2s3lP71Xx2_BkzfUy8d51ysU",
+            apiKey: "AIzaSyBLGwid71jAnsh4DrivbBYSTsuDAP0Zjuw",
             authDomain: "salesman-route-tracker-default-rtdb.asia-southeast1.firebasedatabase.app",
             databaseURL: "https://salesman-route-tracker-default-rtdb.asia-southeast1.firebasedatabase.app",
             projectId: "salesman-route-tracker",
             storageBucket: "salesman-route-tracker.appspot.com",
-            messagingSenderId: "588280740150",
-            appId: "1:588280740150:web:b9e4c8f4a0e6c8f4c8f4c8"
+            messagingSenderId: "288785787565",
+            appId: "1:288785787565:web:9e4f8e1e1e1e1e1e1e1e1e"
         };
 
         // Initialize Firebase
-        let database;
-        try {
-            if (!firebase.apps.length) {
-                firebase.initializeApp(firebaseConfig);
-            }
-            database = firebase.database();
-            console.log('🔥 Firebase initialized successfully in Device Management');
-        } catch (error) {
-            console.error('❌ Firebase initialization error:', error);
-            console.warn('📱 Will use localStorage fallback mode');
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
         }
-        
-        // ===================================================================
-        // Device Management - Firebase Integration Version
-        // Version: 4.0
-        // Last Updated: 2024-12-27
-        // 
-        // Features:
-        // - Read device registrations from Firebase (users/{nik}/device)
-        // - Clear device by setting Firebase field to null
-        // - Backward compatible with localStorage
-        // - Visual color-coding (red=registered, green=clear)
-        // ===================================================================
-        
+        const database = firebase.database();
+
+        // Data storage
         let usersData = [];
-        let deviceRegistrations = {};
+        let userDevices = {}; // Format: { nik: [device1, device2, ...] }
 
-        // Check Firebase availability
-        if (typeof database === 'undefined' || !database) {
-            console.warn('⚠️ Firebase database not available. Make sure Firebase is initialized.');
-            console.warn('📱 Device management will fall back to localStorage mode.');
-        } else {
-            console.log('✅ Firebase database detected. Using Firebase for device management.');
-        }
-
-        // Load data on page load
-        window.addEventListener('load', async function() {
-            checkAdminAccess();
-            await loadDeviceData();
-            await loadAllUsers();
-        });
-
-        function checkAdminAccess() {
-            const currentUser = sessionStorage.getItem('currentUser');
-            const userRole = currentUser ? currentUser.toLowerCase() : null;
-            
-            if (userRole !== 'admin') {
-                alert('⚠️ Akses Ditolak\n\nFitur ini hanya untuk administrator.');
-                window.location.href = 'dashboard.html';
-            }
-        }
-
-        function goBack() {
-            window.location.href = 'dashboard.html';
-        }
-
-        async function loadDeviceData() {
-            console.log('📱 Loading device data from Firebase...');
+        // Load all data
+        async function loadAll() {
+            document.getElementById('loadingIndicator').style.display = 'block';
+            document.getElementById('usersList').innerHTML = '';
             
             try {
-                deviceRegistrations = {};
+                await loadUsers();
+                await loadDeviceData();
+                displayUsers(usersData);
+                updateStats();
+                document.getElementById('loadingIndicator').style.display = 'none';
+            } catch (error) {
+                console.error('Error loading data:', error);
+                showAlert('error', '❌ Error loading data: ' + error.message);
+                document.getElementById('loadingIndicator').style.display = 'none';
+            }
+        }
+
+        // Load users from Firebase
+        async function loadUsers() {
+            try {
+                const snapshot = await database.ref('users').once('value');
+                const data = snapshot.val();
                 
-                // Check if Firebase database is available
-                if (typeof database !== 'undefined' && database) {
-                    // Load from Firebase users collection
-                    const usersRef = database.ref('users');
-                    const snapshot = await usersRef.once('value');
-                    const usersData = snapshot.val();
-                    
-                    if (usersData) {
-                        // Loop through all users and extract device info
-                        for (const nik in usersData) {
-                            const user = usersData[nik];
-                            
-                            // Check if user has device field and it's not null
-                            if (user.device && user.device !== null) {
-                                deviceRegistrations[nik] = user.device;
-                                console.log(`✅ Device found for ${nik} (Firebase):`, {
-                                    fingerprint: user.device.fingerprint?.substring(0, 20) + '...',
-                                    lastUsed: user.device.lastUsed ? new Date(user.device.lastUsed).toLocaleString() : 'Never'
-                                });
-                            } else {
-                                console.log(`ℹ️ No device registered for ${nik}`);
-                            }
-                        }
-                    }
-                    
-                    console.log('📊 Total devices loaded from Firebase:', Object.keys(deviceRegistrations).length);
-                } else {
-                    console.warn('⚠️ Firebase not available, falling back to localStorage');
+                usersData = [];
+                if (data) {
+                    Object.keys(data).forEach(nik => {
+                        usersData.push({
+                            nik: nik,
+                            name: data[nik].name || 'Unknown',
+                            role: data[nik].role || 'salesman'
+                        });
+                    });
                 }
                 
-                // Fallback: also check localStorage for backward compatibility
-                if (Object.keys(deviceRegistrations).length === 0) {
-                    console.log('⚠️ No devices found in Firebase, checking localStorage...');
-                    
-                    // Scan localStorage for device_${userId} keys
-                    for (let i = 0; i < localStorage.length; i++) {
-                        const key = localStorage.key(i);
+                console.log('✅ Loaded', usersData.length, 'users');
+            } catch (error) {
+                console.error('❌ Error loading users:', error);
+                throw error;
+            }
+        }
+
+        // Load device data from Firebase
+        async function loadDeviceData() {
+            try {
+                const snapshot = await database.ref('users').once('value');
+                const data = snapshot.val();
+                
+                userDevices = {};
+                
+                if (data) {
+                    for (const nik in data) {
+                        const userData = data[nik];
                         
-                        // Check if key matches device_${userId} pattern
-                        if (key && key.startsWith('device_')) {
-                            const userId = key.replace('device_', '');
-                            const deviceData = localStorage.getItem(key);
-                            
-                            if (deviceData) {
-                                try {
-                                    const parsed = JSON.parse(deviceData);
-                                    deviceRegistrations[userId] = parsed;
-                                    console.log(`✅ Device found for ${userId} (localStorage fallback)`);
-                                } catch (parseError) {
-                                    console.warn(`⚠️ Invalid device data for ${userId}`);
-                                }
-                            }
+                        // Handle new format (devices array)
+                        if (userData.devices && Array.isArray(userData.devices)) {
+                            userDevices[nik] = userData.devices;
+                        }
+                        // Handle old format (single device) - convert to array
+                        else if (userData.device && typeof userData.device === 'object') {
+                            userDevices[nik] = [userData.device];
+                            console.log(`🔄 Converted old format for ${nik}`);
+                        }
+                        else {
+                            userDevices[nik] = [];
                         }
                     }
                 }
                 
-                console.log('📋 Device registrations:', deviceRegistrations);
-                
-                // Update data source badge
-                const badge = document.getElementById('dataSourceBadge');
-                if (badge) {
-                    if (typeof database !== 'undefined' && database) {
-                        badge.innerHTML = '🔥 Firebase';
-                        badge.style.background = '#d1fae5';
-                        badge.style.color = '#065f46';
-                    } else {
-                        badge.innerHTML = '💾 localStorage';
-                        badge.style.background = '#fef3c7';
-                        badge.style.color = '#92400e';
-                    }
-                }
-                
+                const totalDevices = Object.values(userDevices).reduce((sum, devices) => sum + devices.length, 0);
+                console.log('✅ Loaded device data:', totalDevices, 'total devices registered');
             } catch (error) {
                 console.error('❌ Error loading device data:', error);
-                deviceRegistrations = {};
-                
-                // Update badge for error state
-                const badge = document.getElementById('dataSourceBadge');
-                if (badge) {
-                    badge.innerHTML = '❌ Error';
-                    badge.style.background = '#fee2e2';
-                    badge.style.color = '#991b1b';
-                }
+                throw error;
             }
         }
 
-        async function loadAllUsers() {
-            showAlert('info', '🔄 Loading user data from Firebase...');
-            
-            try {
-                // Load users directly from Firebase
-                if (typeof database !== 'undefined' && database) {
-                    const usersRef = database.ref('users');
-                    const snapshot = await usersRef.once('value');
-                    const firebaseUsers = snapshot.val();
-                    
-                    if (firebaseUsers) {
-                        usersData = [];
-                        
-                        // Loop through all users in Firebase
-                        for (const nik in firebaseUsers) {
-                            const user = firebaseUsers[nik];
-                            usersData.push({
-                                nik: nik,
-                                name: user.name || 'Unknown',
-                                role: user.role || 'salesman'
-                            });
-                        }
-                        
-                        console.log(`✅ Loaded ${usersData.length} users from Firebase`);
-                    } else {
-                        console.warn('⚠️ No users found in Firebase');
-                        usersData = [];
-                    }
-                } else {
-                    throw new Error('Firebase database not available');
-                }
-
-                displayUsers(usersData);
-                updateStats();
-                clearAlert();
-                
-            } catch (error) {
-                console.error('❌ Error loading users from Firebase:', error);
-                showAlert('error', '❌ Gagal load user data dari Firebase.');
-                
-                // Fallback: empty array
-                usersData = [];
-                displayUsers(usersData);
-                updateStats();
-            }
-        }
-
+        // Display users
         function displayUsers(users) {
             const container = document.getElementById('usersList');
             
             if (users.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-state-icon">🔍</div>
-                        <p>Tidak ada user ditemukan</p>
-                    </div>
-                `;
+                container.innerHTML = '<div class="loading">Tidak ada data user</div>';
                 return;
             }
 
             container.innerHTML = users.map(user => {
-                const hasDevice = deviceRegistrations[user.nik];
-                const statusClass = hasDevice ? 'device-registered' : 'device-clear';
-                const statusText = hasDevice ? '📱 TERDAFTAR' : '✅ CLEAR';
-                const cardClass = hasDevice ? 'has-device' : 'no-device';
+                const devices = userDevices[user.nik] || [];
+                const deviceCount = devices.length;
                 
-                let deviceInfo = '';
-                if (hasDevice) {
-                    try {
-                        const device = deviceRegistrations[user.nik];
-                        deviceInfo = `
-                            <div class="device-details" id="details-${user.nik}">
-                                <div class="device-details-item">
-                                    <span class="device-details-label">Device ID:</span>
-                                    <span class="device-details-value">${device.deviceId || 'N/A'}</span>
+                let cardClass = 'no-devices';
+                let badgeClass = 'count-0';
+                let badgeText = 'No Devices';
+                
+                if (deviceCount === 2) {
+                    cardClass = 'has-devices';
+                    badgeClass = 'count-2';
+                    badgeText = '2/2 Devices (Full)';
+                } else if (deviceCount === 1) {
+                    cardClass = 'partial-devices';
+                    badgeClass = 'count-1';
+                    badgeText = '1/2 Device';
+                }
+                
+                let devicesHTML = '';
+                if (deviceCount > 0) {
+                    devicesHTML = `
+                        <div class="devices-list">
+                            ${devices.map((device, idx) => `
+                                <div class="device-item">
+                                    <div class="device-item-header">
+                                        <div class="device-number">📱 Device #${idx + 1}</div>
+                                        <button class="btn btn-sm btn-danger" onclick="removeSpecificDevice('${user.nik}', '${device.fingerprint}', '${user.name}', ${idx + 1})">
+                                            🗑️ Hapus
+                                        </button>
+                                    </div>
+                                    <div class="device-info-row">
+                                        <span class="device-info-label">Type:</span>
+                                        <span>${device.info?.device || 'Unknown'}</span>
+                                    </div>
+                                    <div class="device-info-row">
+                                        <span class="device-info-label">Browser:</span>
+                                        <span>${device.info?.browser || 'Unknown'} (${device.info?.os || 'Unknown'})</span>
+                                    </div>
+                                    <div class="device-info-row">
+                                        <span class="device-info-label">Registered:</span>
+                                        <span>${device.registeredAt ? new Date(device.registeredAt).toLocaleString('id-ID') : 'N/A'}</span>
+                                    </div>
+                                    <div class="device-info-row">
+                                        <span class="device-info-label">Last Used:</span>
+                                        <span>${device.lastUsed ? new Date(device.lastUsed).toLocaleString('id-ID') : 'N/A'}</span>
+                                    </div>
+                                    <div class="device-info-row">
+                                        <span class="device-info-label">Fingerprint:</span>
+                                        <span class="fingerprint">${device.fingerprint}</span>
+                                    </div>
                                 </div>
-                                <div class="device-details-item">
-                                    <span class="device-details-label">Registered:</span>
-                                    <span class="device-details-value">${device.timestamp ? new Date(device.timestamp).toLocaleString('id-ID') : 'N/A'}</span>
-                                </div>
-                                <div class="device-details-item">
-                                    <span class="device-details-label">Browser:</span>
-                                    <span class="device-details-value">${device.browser || 'N/A'}</span>
-                                </div>
-                            </div>
-                        `;
-                    } catch (e) {
-                        console.error('Error parsing device info:', e);
-                    }
+                            `).join('')}
+                        </div>
+                    `;
                 }
 
                 return `
@@ -737,31 +583,102 @@
                                 <div class="user-name">${user.name}</div>
                                 <div class="user-nik">NIK: ${user.nik}</div>
                             </div>
-                            <div class="device-status ${statusClass}">${statusText}</div>
+                            <div class="device-count-badge ${badgeClass}">${badgeText}</div>
                         </div>
-                        ${deviceInfo}
+                        ${devicesHTML}
                         <div class="user-actions">
-                            ${hasDevice ? `
-                                <button class="btn btn-sm btn-primary" onclick="toggleDeviceDetails('${user.nik}')">
-                                    📋 Details
+                            ${deviceCount > 0 ? `
+                                <button class="btn btn-sm btn-warning" onclick="clearAllUserDevices('${user.nik}', '${user.name}')">
+                                    🗑️ Clear All Devices (${deviceCount})
                                 </button>
-                            ` : ''}
-                            <button class="btn btn-sm btn-danger" onclick="clearUserDevice('${user.nik}', '${user.name}')">
-                                🗑️ Clear Device
-                            </button>
+                            ` : `
+                                <span style="color: #10b981; font-size: 13px;">✅ User bisa login dari device baru</span>
+                            `}
                         </div>
                     </div>
                 `;
             }).join('');
         }
 
-        function toggleDeviceDetails(nik) {
-            const details = document.getElementById(`details-${nik}`);
-            if (details) {
-                details.classList.toggle('show');
+        // Remove specific device
+        async function removeSpecificDevice(nik, fingerprint, name, deviceNumber) {
+            if (!confirm(`Hapus Device #${deviceNumber} untuk user?\n\nNIK: ${nik}\nNama: ${name}\n\nUser masih bisa login dari device lainnya (jika ada).`)) {
+                return;
+            }
+
+            try {
+                const devices = userDevices[nik] || [];
+                const updatedDevices = devices.filter(d => d.fingerprint !== fingerprint);
+                
+                await database.ref(`users/${nik}/devices`).set(updatedDevices);
+                userDevices[nik] = updatedDevices;
+                
+                showAlert('success', `✅ Device #${deviceNumber} berhasil dihapus untuk ${name}`);
+                displayUsers(usersData);
+                updateStats();
+            } catch (error) {
+                console.error('❌ Error removing device:', error);
+                showAlert('error', `❌ Gagal hapus device: ${error.message}`);
             }
         }
 
+        // Clear all devices for a user
+        async function clearAllUserDevices(nik, name) {
+            const devices = userDevices[nik] || [];
+            if (!confirm(`Clear SEMUA devices (${devices.length}) untuk user?\n\nNIK: ${nik}\nNama: ${name}\n\nUser akan bisa login dari device baru.`)) {
+                return;
+            }
+
+            try {
+                await database.ref(`users/${nik}`).update({ 
+                    devices: [],
+                    device: null // Also clear old format
+                });
+                userDevices[nik] = [];
+                
+                showAlert('success', `✅ Semua devices berhasil di-clear untuk ${name}`);
+                displayUsers(usersData);
+                updateStats();
+            } catch (error) {
+                console.error('❌ Error clearing devices:', error);
+                showAlert('error', `❌ Gagal clear devices: ${error.message}`);
+            }
+        }
+
+        // Clear all devices for all users
+        async function clearAllDevices() {
+            const totalDevices = Object.values(userDevices).reduce((sum, d) => sum + d.length, 0);
+            
+            if (!confirm(`⚠️ PERINGATAN!\n\nClear ALL device registrations?\n\nTotal ${totalDevices} devices akan dihapus.\nSemua user akan bisa login dari device baru.\n\nTindakan ini tidak bisa di-undo!`)) {
+                return;
+            }
+
+            try {
+                const updates = {};
+                for (const nik in userDevices) {
+                    if (userDevices[nik].length > 0) {
+                        updates[`${nik}/devices`] = [];
+                        updates[`${nik}/device`] = null;
+                    }
+                }
+                
+                await database.ref('users').update(updates);
+                
+                // Clear local data
+                for (const nik in userDevices) {
+                    userDevices[nik] = [];
+                }
+                
+                showAlert('success', `✅ Berhasil clear ${totalDevices} device registrations`);
+                displayUsers(usersData);
+                updateStats();
+            } catch (error) {
+                console.error('❌ Error clearing all devices:', error);
+                showAlert('error', `❌ Gagal clear devices: ${error.message}`);
+            }
+        }
+
+        // Search users
         function searchUsers() {
             const query = document.getElementById('searchInput').value.toLowerCase();
             
@@ -774,147 +691,52 @@
                 );
                 displayUsers(filtered);
             }
-            
-            updateStats();
         }
 
-        async function clearUserDevice(nik, name) {
-            if (!confirm(`⚠️ Clear device untuk user?\n\nNIK: ${nik}\nNama: ${name}\n\nUser akan bisa login dari device baru setelah device di-clear.`)) {
-                return;
-            }
-
-            try {
-                // Clear from Firebase
-                if (typeof database !== 'undefined' && database) {
-                    const userRef = database.ref(`users/${nik}`);
-                    await userRef.update({ device: null });
-                    console.log(`🗑️ Device cleared for ${nik} in Firebase`);
-                } else {
-                    console.warn('⚠️ Firebase not available, clearing from localStorage only');
-                }
-                
-                // Also clear from deviceRegistrations object
-                if (deviceRegistrations[nik]) {
-                    delete deviceRegistrations[nik];
-                }
-                
-                // Also clear from localStorage (backward compatibility)
-                const deviceKey = `device_${nik}`;
-                localStorage.removeItem(deviceKey);
-                
-                showAlert('success', `✅ Device berhasil di-clear untuk ${name} (${nik})`);
-                
-            } catch (error) {
-                console.error('❌ Error clearing device:', error);
-                showAlert('error', `❌ Gagal clear device: ${error.message}`);
-            }
-
-            // Refresh display
-            await loadDeviceData();
-            const query = document.getElementById('searchInput').value;
-            if (query) {
-                searchUsers();
-            } else {
-                displayUsers(usersData);
-            }
-            updateStats();
-        }
-
-        async function clearAllDevices() {
-            if (!confirm('⚠️ PERINGATAN!\n\nClear ALL device registrations?\n\nSemua user akan bisa login dari device baru. Tindakan ini tidak bisa di-undo.')) {
-                return;
-            }
-
-            try {
-                const count = Object.keys(deviceRegistrations).length;
-                
-                // Clear all devices in Firebase
-                if (typeof database !== 'undefined' && database) {
-                    const usersRef = database.ref('users');
-                    const snapshot = await usersRef.once('value');
-                    const usersData = snapshot.val();
-                    
-                    if (usersData) {
-                        const updates = {};
-                        for (const nik in usersData) {
-                            if (deviceRegistrations[nik]) {
-                                updates[`${nik}/device`] = null;
-                                console.log(`🗑️ Cleared device for ${nik} in Firebase`);
-                            }
-                        }
-                        
-                        // Apply all updates at once
-                        await usersRef.update(updates);
-                    }
-                } else {
-                    console.warn('⚠️ Firebase not available, clearing from localStorage only');
-                }
-                
-                // Clear object
-                deviceRegistrations = {};
-                
-                // Also clear localStorage (backward compatibility)
-                for (let i = localStorage.length - 1; i >= 0; i--) {
-                    const key = localStorage.key(i);
-                    if (key && key.startsWith('device_')) {
-                        localStorage.removeItem(key);
-                    }
-                }
-                
-                // Also remove old format if exists
-                localStorage.removeItem('deviceRegistrations');
-                
-                console.log(`✅ Total ${count} devices cleared from Firebase`);
-                showAlert('success', `✅ Berhasil clear ${count} device registrations`);
-                
-            } catch (error) {
-                console.error('❌ Error clearing all devices:', error);
-                showAlert('error', `❌ Gagal clear devices: ${error.message}`);
-            }
-            
-            // Refresh display
-            await loadDeviceData();
-            displayUsers(usersData);
-            updateStats();
-        }
-
+        // Check all devices
         function checkAllDevices() {
-            showAlert('info', '🔍 Checking all device registrations...');
+            const full = usersData.filter(u => (userDevices[u.nik] || []).length === 2).length;
+            const partial = usersData.filter(u => (userDevices[u.nik] || []).length === 1).length;
+            const none = usersData.filter(u => (userDevices[u.nik] || []).length === 0).length;
+            const totalDevices = Object.values(userDevices).reduce((sum, d) => sum + d.length, 0);
             
-            setTimeout(() => {
-                const registered = usersData.filter(user => deviceRegistrations[user.nik]).length;
-                const clear = usersData.length - registered;
-                
-                showAlert('info', 
-                    `📊 Status Summary:\n\n` +
-                    `Total Users: ${usersData.length}\n` +
-                    `Device Terdaftar: ${registered}\n` +
-                    `Device Clear: ${clear}\n\n` +
-                    `${registered > 0 ? '⚠️ Ada user dengan device terdaftar yang mungkin tidak bisa login dari device baru.' : '✅ Semua user bisa login dari device mana saja.'}`
-                );
-            }, 500);
+            showAlert('info', 
+                `📊 Device Status Summary:\n\n` +
+                `Total Users: ${usersData.length}\n` +
+                `Full (2 devices): ${full} users\n` +
+                `Partial (1 device): ${partial} users\n` +
+                `No devices: ${none} users\n\n` +
+                `Total Devices Registered: ${totalDevices}\n\n` +
+                `${full > 0 ? '⚠️ Ada user yang sudah full 2 devices.' : '✅ Semua user masih bisa tambah device.'}`
+            );
         }
 
+        // Update stats
         function updateStats() {
-            const registered = usersData.filter(user => deviceRegistrations[user.nik]).length;
-            const clear = usersData.length - registered;
+            const full = usersData.filter(u => (userDevices[u.nik] || []).length === 2).length;
+            const partial = usersData.filter(u => (userDevices[u.nik] || []).length === 1).length;
+            const none = usersData.filter(u => (userDevices[u.nik] || []).length === 0).length;
             
             document.getElementById('totalUsers').textContent = usersData.length;
-            document.getElementById('deviceRegistered').textContent = registered;
-            document.getElementById('deviceClear').textContent = clear;
+            document.getElementById('fullDevices').textContent = full;
+            document.getElementById('partialDevices').textContent = partial;
+            document.getElementById('noDevices').textContent = none;
         }
 
+        // Show alert
         function showAlert(type, message) {
             const alertBox = document.getElementById('alertBox');
             alertBox.className = `alert alert-${type}`;
             alertBox.textContent = message;
             alertBox.style.display = 'block';
+            
+            setTimeout(() => {
+                alertBox.style.display = 'none';
+            }, 5000);
         }
 
-        function clearAlert() {
-            const alertBox = document.getElementById('alertBox');
-            alertBox.style.display = 'none';
-        }
+        // Initialize on load
+        window.addEventListener('load', loadAll);
     </script>
 </body>
 </html>
