@@ -61,11 +61,11 @@
           <p class="text-blue-600 font-bold text-lg" id="insentifProsesTotal">Rp 0</p>
         </div>
 
-        <div class="bg-white shadow rounded-xl p-3 flex flex-col">
-          <p class="text-sm text-red-600 font-medium flex items-center gap-1">
-            <span>⚠️</span> Penalti AR
+        <div class="bg-white shadow rounded-xl p-3 flex flex-col" id="arCard">
+          <p class="text-sm font-medium flex items-center gap-1" id="arLabel">
+            <span id="arIcon">⚠️</span> <span id="arLabelText">Penalti AR</span>
           </p>
-          <p class="text-red-600 font-bold text-lg" id="penaltiARTotal">Rp 0</p>
+          <p class="font-bold text-lg" id="penaltiARTotal">Rp 0</p>
         </div>
 
         <div class="bg-white shadow rounded-xl p-3 flex flex-col">
@@ -94,11 +94,11 @@
         </div>
       </section>
 
-      <!-- Penalti AR -->
+      <!-- Penalti AR / Insentif AR -->
       <section class="mb-6" id="penaltiARSection" style="display: none;">
-        <div class="bg-red-100 border border-red-300 p-3 rounded-xl">
-          <p class="text-xs font-semibold text-red-700" id="penaltiARText">⚠️ AR saat ini hanya 87%</p>
-          <p class="text-xs text-red-700" id="penaltiARDesc">Penalti dikenakan sebesar Rp 150.000</p>
+        <div id="arSectionBox" class="bg-red-100 border border-red-300 p-3 rounded-xl">
+          <p class="text-xs font-semibold" id="penaltiARText">⚠️ AR saat ini hanya 87%</p>
+          <p class="text-xs" id="penaltiARDesc">Penalti dikenakan sebesar Rp 150.000</p>
         </div>
       </section>
 
@@ -511,6 +511,9 @@
         document.getElementById('penaltiARTotal').textContent = formatCurrencyIDR(penaltiAR);
         document.getElementById('totalBersih').textContent = formatCurrencyIDR(totalBersih);
         
+        // Update AR card appearance based on value
+        updateARCard(penaltiAR);
+        
         // Debug logging
         console.log(`✅ Summary updated - Sales: ${insentifSales}, Proses: ${insentifProses}, Penalti: ${penaltiAR}, Total: ${totalBersih}`);
       }
@@ -625,18 +628,18 @@
         let html = '';
         
         if (typeCategory === 'bima') {
-          // Bima: Avg SKU and POM available, GP not available (silver with dash)
+          // Bima: Green Outlet and POM available, EC not available (silver with dash)
           html = `
             <div class="grid grid-cols-3 gap-2">
               <div class="bg-blue-100 p-3 shadow rounded-xl">
                 <p class="text-xs font-medium flex items-center gap-1">
-                  <span>📊</span> Avg SKU
+                  <span>📊</span> Green Outlet
                 </p>
-                <p class="text-blue-700 font-bold text-sm">${formatCurrencyIDR(incentiveData["Avg SKU"] || 0)}</p>
+                <p class="text-blue-700 font-bold text-sm">${formatCurrencyIDR(incentiveData["Green Outlet"] || 0)}</p>
               </div>
               <div class="bg-gray-200 p-3 shadow rounded-xl">
                 <p class="text-xs font-medium flex items-center gap-1 text-gray-500">
-                  <span>📈</span> GP
+                  <span>📈</span> EC
                 </p>
                 <p class="text-gray-500 font-bold text-sm">-</p>
               </div>
@@ -651,8 +654,8 @@
         } else {
           // 🔧 FIXED: Other types - ALWAYS show all metrics including zeros
           const processDetails = [
-            { name: 'Avg SKU', value: incentiveData["Avg SKU"] || 0, icon: '📊', color: 'blue' },
-            { name: 'GP', value: incentiveData.GP || 0, icon: '📈', color: 'green' },
+            { name: 'Green Store', value: incentiveData["Green Store"] || 0, icon: '📊', color: 'blue' },
+            { name: 'EC', value: incentiveData.EC || 0, icon: '📈', color: 'green' },
             { name: 'POM', value: incentiveData.POM || 0, icon: '🎯', color: 'purple' }
           ];
 
@@ -682,9 +685,37 @@
         console.log(`✅ Process detail updated for ${typeCategory} type with all metrics shown (including zeros)`);
       }
 
+      // Update AR Card appearance based on value
+      function updateARCard(penaltiAR) {
+        const arCard = document.getElementById('arCard');
+        const arLabel = document.getElementById('arLabel');
+        const arIcon = document.getElementById('arIcon');
+        const arLabelText = document.getElementById('arLabelText');
+        const arTotal = document.getElementById('penaltiARTotal');
+        
+        if (penaltiAR > 0) {
+          // Insentif AR (positive value) - Green
+          arIcon.textContent = '💰';
+          arLabelText.textContent = 'Insentif AR';
+          arLabel.className = 'text-sm text-green-700 font-medium flex items-center gap-1';
+          arTotal.className = 'text-green-700 font-bold text-lg';
+          console.log('✅ AR Card set to Insentif AR (Green)');
+        } else {
+          // Penalti AR (negative or zero) - Red
+          arIcon.textContent = '⚠️';
+          arLabelText.textContent = 'Penalti AR';
+          arLabel.className = 'text-sm text-red-600 font-medium flex items-center gap-1';
+          arTotal.className = 'text-red-600 font-bold text-lg';
+          console.log('✅ AR Card set to Penalti AR (Red)');
+        }
+      }
+
       // Update penalty AR section
       function updatePenaltySection(incentiveData) {
         const penaltiSection = document.getElementById('penaltiARSection');
+        const arSectionBox = document.getElementById('arSectionBox');
+        const penaltiARText = document.getElementById('penaltiARText');
+        const penaltiARDesc = document.getElementById('penaltiARDesc');
         
         if (!incentiveData) {
           console.log('⚠️ No incentive data for penalty section');
@@ -694,20 +725,36 @@
         
         const penaltiAR = incentiveData["AR Coll"] || 0;
         
-        console.log(`🔍 Penalty check - AR Coll: ${penaltiAR}`);
+        console.log(`🔍 AR check - AR Coll: ${penaltiAR}`);
         
-        // Show penalty section if there's AR collection penalty
+        // Show AR section if there's AR collection penalty or incentive
         if (penaltiAR != 0) {
-          document.getElementById('penaltiARText').textContent = `⚠️ AR Collection Issue Detected`;
-          document.getElementById('penaltiARDesc').textContent = 
-            penaltiAR < 0 
-              ? `Penalti dikenakan sebesar ${formatCurrencyIDR(Math.abs(penaltiAR))}`
-              : `Adjustment sebesar ${formatCurrencyIDR(penaltiAR)}`;
+          if (penaltiAR > 0) {
+            // Insentif AR (positive) - Green theme
+            arSectionBox.className = 'bg-green-50 border border-green-300 p-3 rounded-xl';
+            penaltiARText.className = 'text-xs font-semibold text-green-700';
+            penaltiARDesc.className = 'text-xs text-green-700';
+            
+            penaltiARText.textContent = `💰 Insentif AR`;
+            penaltiARDesc.textContent = `Insentif AR hanya untuk Salesman Wholesaler, Mix dan MT jika AR Coll >= 95%`;
+            
+            console.log(`✅ Insentif AR section shown (Green) - AR Coll: ${formatCurrencyIDR(penaltiAR)}`);
+          } else {
+            // Penalti AR (negative) - Red theme
+            arSectionBox.className = 'bg-red-100 border border-red-300 p-3 rounded-xl';
+            penaltiARText.className = 'text-xs font-semibold text-red-700';
+            penaltiARDesc.className = 'text-xs text-red-700';
+            
+            penaltiARText.textContent = `⚠️ AR Collection Issue Detected`;
+            penaltiARDesc.textContent = `Adjustment sebesar ${formatCurrencyIDR(Math.abs(penaltiAR))}`;
+            
+            console.log(`✅ Penalty section shown (Red) - AR Coll: ${formatCurrencyIDR(penaltiAR)}`);
+          }
+          
           penaltiSection.style.display = 'block';
-          console.log(`✅ Penalty section shown - AR Coll: ${formatCurrencyIDR(penaltiAR)}`);
         } else {
           penaltiSection.style.display = 'none';
-          console.log(`✅ No AR penalty - AR Coll: ${penaltiAR} (Good performance)`);
+          console.log(`✅ No AR penalty/incentive - AR Coll: ${penaltiAR}`);
         }
       }
 
