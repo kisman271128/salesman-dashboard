@@ -692,6 +692,25 @@
                 max-width: calc(100vw - 20px) !important;
                 margin: 0 10px !important;
             }
+
+        /* DAP Table Styles */
+        .dap-table tbody tr {
+            transition: all 0.2s ease;
+        }
+        
+        .dap-table tbody tr:hover {
+            transform: scale(1.01);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .dap-filter-section button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .dap-filter-section button:active {
+            transform: translateY(0);
+        }
         }
     </style>
 </head>
@@ -771,6 +790,7 @@
                     <button class="tab-btn" onclick="switchTab('project')">Per Project</button>
                     <button class="tab-btn" onclick="switchTab('pareto')">30 Pareto</button>
                     <button class="tab-btn" onclick="switchTab('pom')">CA POM</button>
+                    <button class="tab-btn" onclick="switchTab('dap')">📊 Plan DAP</button>
                 </div>
             </div>
 
@@ -890,6 +910,65 @@
                                 </tr>
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="dapContent">
+                <div class="table-container">
+                    <div class="dap-filter-section" style="padding: 12px; background: #f8f9fa; margin-bottom: 12px; border-radius: 8px;">
+                        <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                            <input type="date" id="dapStartDate" class="dap-date-input" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 12px;">
+                            <input type="date" id="dapEndDate" class="dap-date-input" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 12px;">
+                        </div>
+                        <button onclick="loadDAPData()" style="width: 100%; padding: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;">
+                            🔍 Filter Data DAP
+                        </button>
+                    </div>
+                    
+                    <div class="table-header">📊 Monitoring Plan DAP</div>
+                    <div class="table-wrapper">
+                        <table class="data-table dap-table">
+                            <thead>
+                                <tr>
+                                    <th style="min-width: 80px;">Tanggal</th>
+                                    <th style="min-width: 70px;">Plan DAP</th>
+                                    <th style="min-width: 70px;">Actual SO</th>
+                                    <th style="min-width: 50px;">Ach%</th>
+                                    <th style="min-width: 60px;">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dapTableBody">
+                                <tr>
+                                    <td colspan="5" class="empty-state">
+                                        <div class="icon">📊</div>
+                                        <div>Pilih rentang tanggal dan klik Filter</div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div id="dapSummary" style="padding: 12px; background: #f8f9fa; margin-top: 12px; border-radius: 8px; display: none;">
+                        <div style="font-weight: 600; margin-bottom: 8px; color: #1e293b;">📈 Summary</div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;">
+                            <div>
+                                <div style="color: #64748b;">Total Plan DAP:</div>
+                                <div style="font-weight: 600; color: #1e293b;" id="dapSummaryPlan">Rp 0</div>
+                            </div>
+                            <div>
+                                <div style="color: #64748b;">Total Actual SO:</div>
+                                <div style="font-weight: 600; color: #1e293b;" id="dapSummaryActual">Rp 0</div>
+                            </div>
+                            <div>
+                                <div style="color: #64748b;">Avg Achievement:</div>
+                                <div style="font-weight: 600; color: #1e293b;" id="dapSummaryAch">0%</div>
+                            </div>
+                            <div>
+                                <div style="color: #64748b;">Days with Plan:</div>
+                                <div style="font-weight: 600; color: #1e293b;" id="dapSummaryDays">0 hari</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1637,6 +1716,176 @@
             if (checkLoginStatus()) {
                 loadPerformanceData();
             }
+
+        // ===== DAP MONITORING FUNCTIONS =====
+        async function loadDAPData() {
+            const startDate = document.getElementById('dapStartDate').value;
+            const endDate = document.getElementById('dapEndDate').value;
+            
+            if (!startDate || !endDate) {
+                alert('⚠️ Pilih rentang tanggal terlebih dahulu!');
+                return;
+            }
+            
+            if (new Date(startDate) > new Date(endDate)) {
+                alert('⚠️ Tanggal mulai harus lebih kecil dari tanggal akhir!');
+                return;
+            }
+            
+            const salesmanId = localStorage.getItem('selected_salesman_id');
+            if (!salesmanId) {
+                alert('⚠️ Salesman ID tidak ditemukan!');
+                return;
+            }
+            
+            try {
+                const tableBody = document.getElementById('dapTableBody');
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: 20px;">
+                            <div class="spinner" style="margin: 0 auto 10px;"></div>
+                            <div>Memuat data DAP...</div>
+                        </td>
+                    </tr>
+                `;
+                
+                // Get Plan DAP data
+                const planRef = window.firebaseRef(window.firebaseDB, `plan_dap/${salesmanId}`);
+                const planSnapshot = await window.firebaseGet(planRef);
+                const planData = planSnapshot.exists() ? planSnapshot.val() : {};
+                
+                // Get Daily Summary data
+                const summaryRef = window.firebaseRef(window.firebaseDB, `daily_summary/${salesmanId}`);
+                const summarySnapshot = await window.firebaseGet(summaryRef);
+                const summaryData = summarySnapshot.exists() ? summarySnapshot.val() : {};
+                
+                // Filter dates in range
+                const datesInRange = [];
+                let currentDate = new Date(startDate);
+                const end = new Date(endDate);
+                
+                while (currentDate <= end) {
+                    datesInRange.push(currentDate.toISOString().split('T')[0]);
+                    currentDate.setDate(currentDate.getDate() + 1);
+                }
+                
+                // Build table data
+                let html = '';
+                let totalPlan = 0;
+                let totalActual = 0;
+                let daysWithPlan = 0;
+                let totalAchievement = 0;
+                
+                datesInRange.forEach(date => {
+                    const plan = planData[date];
+                    const summary = summaryData[date];
+                    
+                    const planAmount = plan ? (plan.amount || 0) : 0;
+                    const actualAmount = summary ? (summary.total_so_amount || 0) : 0;
+                    
+                    if (planAmount > 0) {
+                        daysWithPlan++;
+                        totalPlan += planAmount;
+                    }
+                    totalActual += actualAmount;
+                    
+                    const achievement = planAmount > 0 ? Math.round((actualAmount / planAmount) * 100) : (actualAmount > 0 ? 100 : 0);
+                    
+                    if (planAmount > 0) {
+                        totalAchievement += achievement;
+                    }
+                    
+                    let statusBadge = '';
+                    let rowClass = '';
+                    
+                    if (planAmount === 0) {
+                        statusBadge = '<span style="background: #94a3b8; color: white; padding: 3px 8px; border-radius: 4px; font-size: 10px;">No Plan</span>';
+                        rowClass = 'style="opacity: 0.6;"';
+                    } else if (achievement >= 100) {
+                        statusBadge = '<span style="background: #10b981; color: white; padding: 3px 8px; border-radius: 4px; font-size: 10px;">✅ Tercapai</span>';
+                        rowClass = 'style="background: #d1fae5;"';
+                    } else if (achievement >= 80) {
+                        statusBadge = '<span style="background: #f59e0b; color: white; padding: 3px 8px; border-radius: 4px; font-size: 10px;">⚠️ Hampir</span>';
+                        rowClass = 'style="background: #fef3c7;"';
+                    } else {
+                        statusBadge = '<span style="background: #ef4444; color: white; padding: 3px 8px; border-radius: 4px; font-size: 10px;">❌ Belum</span>';
+                        rowClass = 'style="background: #fee2e2;"';
+                    }
+                    
+                    html += `
+                        <tr ${rowClass}>
+                            <td style="font-size: 11px;">${formatDateIndo(date)}</td>
+                            <td style="text-align: right; font-size: 11px;">${formatCurrency(planAmount)}</td>
+                            <td style="text-align: right; font-size: 11px;">${formatCurrency(actualAmount)}</td>
+                            <td style="text-align: center; font-weight: 600; font-size: 11px;">${achievement}%</td>
+                            <td style="text-align: center;">${statusBadge}</td>
+                        </tr>
+                    `;
+                });
+                
+                if (html === '') {
+                    html = `
+                        <tr>
+                            <td colspan="5" class="empty-state">
+                                <div class="icon">📭</div>
+                                <div>Tidak ada data untuk rentang tanggal ini</div>
+                            </td>
+                        </tr>
+                    `;
+                }
+                
+                tableBody.innerHTML = html;
+                
+                // Update summary
+                const avgAchievement = daysWithPlan > 0 ? Math.round(totalAchievement / daysWithPlan) : 0;
+                document.getElementById('dapSummaryPlan').textContent = formatCurrency(totalPlan);
+                document.getElementById('dapSummaryActual').textContent = formatCurrency(totalActual);
+                document.getElementById('dapSummaryAch').textContent = avgAchievement + '%';
+                document.getElementById('dapSummaryDays').textContent = daysWithPlan + ' hari';
+                document.getElementById('dapSummary').style.display = 'block';
+                
+            } catch (error) {
+                console.error('Error loading DAP data:', error);
+                document.getElementById('dapTableBody').innerHTML = `
+                    <tr>
+                        <td colspan="5" class="empty-state">
+                            <div class="icon">🚨</div>
+                            <div>Error memuat data: ${error.message}</div>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+        
+        function formatDateIndo(dateStr) {
+            const date = new Date(dateStr);
+            const days = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+            
+            return `${days[date.getDay()]}, ${date.getDate()} ${months[date.getMonth()]}`;
+        }
+        
+        function formatCurrency(value) {
+            if (value === 0) return '-';
+            if (value >= 1000000000) {
+                return 'Rp ' + (value / 1000000000).toFixed(1) + 'B';
+            } else if (value >= 1000000) {
+                return 'Rp ' + (value / 1000000).toFixed(1) + 'M';
+            } else if (value >= 1000) {
+                return 'Rp ' + (value / 1000).toFixed(0) + 'K';
+            }
+            return 'Rp ' + value.toLocaleString('id-ID');
+        }
+        
+        // Initialize default dates (last 7 days)
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date();
+            const sevenDaysAgo = new Date(today);
+            sevenDaysAgo.setDate(today.getDate() - 7);
+            
+            document.getElementById('dapEndDate').valueAsDate = today;
+            document.getElementById('dapStartDate').valueAsDate = sevenDaysAgo;
+        });
         });
     </script>
 </body>

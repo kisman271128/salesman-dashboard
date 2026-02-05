@@ -3171,7 +3171,7 @@
                 document.getElementById('planDapInput').focus();
             }
 
-            function submitPlanDAP() {
+            async function submitPlanDAP() {
                 var amountInput = document.getElementById('planDapInput').value;
                 
                 // Remove dots to get pure number
@@ -3195,6 +3195,26 @@
                 localStorage.setItem(planKey, JSON.stringify(planData));
                 
                 console.log('✅ Plan DAP saved:', amount, '(Rp ' + formatRupiah(amount) + ')');
+                
+                // ✅ SAVE TO FIREBASE
+                if (window.firebaseDB && currentSalesmanId) {
+                    try {
+                        planData.date = todayYMD;
+                        const planRef = window.firebaseRef(
+                            window.firebaseDB, 
+                            `plan_dap/${currentSalesmanId}/${todayYMD}`
+                        );
+                        
+                        await window.firebaseSet(planRef, {
+                            ...planData,
+                            firebase_synced_at: window.firebaseServerTimestamp()
+                        });
+                        
+                        console.log('🔥 Plan DAP synced to Firebase:', amount);
+                    } catch (error) {
+                        console.error('❌ Firebase Plan DAP sync error:', error);
+                    }
+                }
                 
                 // Close modal
                 document.getElementById('planDapOverlay').classList.remove('show');
@@ -3816,10 +3836,17 @@
                     return;
                 }
                 
+                
+                // Get Plan DAP for today
+                const planDAP = getPlanDAP() || 0;
+                const newTotalSO = (existingSummary.total_so_amount || 0) + (Number(visitData.so_amount) || 0);
+                const achievementPct = planDAP > 0 ? Math.round((newTotalSO / planDAP) * 100) : (newTotalSO > 0 ? 100 : 0);
                 const updatedSummary = {
                     salesman_id: currentSalesmanId,
                     salesman_name: currentSalesman,
                     date: today,
+                    plan_dap: planDAP,
+                    achievement_percentage: achievementPct,
                     total_visits: (existingSummary.total_visits || 0) + 1,
                     total_duration_seconds: newTotalDuration,
                     visits_with_so: (existingSummary.visits_with_so || 0) + (visitData.order_status === 'ada_so' ? 1 : 0),
@@ -6051,6 +6078,8 @@
                     salesman_name: currentSalesman,
                     outlet_name: outletName,
                     date: today,
+                    plan_dap: planDAP,
+                    achievement_percentage: achievementPct,
                     checklist: checklistStatus,
                     last_updated: window.firebaseServerTimestamp()
                 };
