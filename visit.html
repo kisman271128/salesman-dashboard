@@ -1979,6 +1979,18 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             margin: 0 auto;
             max-width: 800px;
+            font-weight: 700; /* Bold untuk semua text */
+        }
+        
+        /* Styling untuk report items */
+        .report-line-green {
+            color: #16a34a;
+            font-weight: 900;
+        }
+        
+        .report-line-red {
+            color: #dc2626;
+            font-weight: 900;
         }
         
         .hasil-text-actions {
@@ -2611,13 +2623,10 @@
             </div>
             
             <div class="hasil-text-content">
-                <pre id="reportTextContent" class="report-preview">Loading...</pre>
+                <div id="reportTextContent" class="report-preview">Loading...</div>
             </div>
             
             <div class="hasil-text-actions">
-                <button class="action-btn copy-btn" onclick="window.copyReportText()">
-                    📋 Copy Report Text
-                </button>
                 <button class="action-btn whatsapp-image-btn" onclick="window.shareReportImageWhatsApp()">
 					🖼️ Share Gambar WhatsApp
 				</button>
@@ -2656,16 +2665,16 @@
             window.showHasilVisit = async function() {
                 try {
                     // Generate report text from Firebase (with localStorage fallback)
-                    var reportText = await generateReportFromFirebase();
+                    var reportHTML = await generateReportFromFirebase();
                     
                     // Display in preview
                     var previewEl = document.getElementById('reportTextContent');
                     if (previewEl) {
-                        previewEl.textContent = reportText;
+                        previewEl.innerHTML = reportHTML; // Changed from textContent to innerHTML
                     }
                     
                     // Store for later use
-                    window.currentReportText = reportText;
+                    window.currentReportText = reportHTML;
                     
                     // Show text view
                     var view = document.getElementById('hasilTextView');
@@ -2684,36 +2693,6 @@
                 if (view) {
                     view.classList.remove('active');
                 }
-            };
-            
-            window.copyReportText = function() {
-                var text = window.currentReportText;
-                if (!text) {
-                    alert('Report tidak tersedia');
-                    return;
-                }
-                
-                if (navigator.clipboard && navigator.clipboard.writeText) {
-                    navigator.clipboard.writeText(text).then(function() {
-                        alert('✅ Report berhasil di-copy!\n\nSilakan paste di WhatsApp atau aplikasi lain.');
-                    }).catch(function(err) {
-                        fallbackCopy(text);
-                    });
-                } else {
-                    fallbackCopy(text);
-                }
-            };
-            
-            window.shareReportWhatsApp = function() {
-                var text = window.currentReportText;
-                if (!text) {
-                    alert('Report tidak tersedia');
-                    return;
-                }
-                
-                // Share via WhatsApp with text
-                var url = 'https://wa.me/?text=' + encodeURIComponent(text);
-                window.open(url, '_blank');
             };
             
             
@@ -2927,47 +2906,59 @@
                     }
                     
                     // ========================================
-                    // 6. BUILD REPORT TEXT
+                    // 6. BUILD REPORT HTML (with styling)
                     // ========================================
                     var report = '';
-                    report += 'REPORT VISIT SALESMAN\n';
-                    report += '='.repeat(21) + '\n';
-                    report += 'Tanggal Visit : ' + dateStr + '\n';
-                    report += 'Nama Salesman : ' + (window.currentSalesman || '-') + '\n';
-                    report += 'Tipe Salesman : ' + salesmanType + '\n';
-                    report += 'Data Source   : Firebase (Real-time)\n\n'; // NEW: Indicator
+                    report += 'REPORT VISIT SALESMAN<br>';
+                    report += '='.repeat(21) + '<br>';
+                    report += 'Tanggal Visit : ' + dateStr + '<br>';
+                    report += 'Nama Salesman : ' + (window.currentSalesman || '-') + '<br>';
+                    report += 'Tipe Salesman : ' + salesmanType + '<br>';
+                    report += 'Data Source   : Firebase (Real-time)<br><br>';
                     
-                    report += 'HASIL KUNJUNGAN\n';
-                    report += '-'.repeat(15) + '\n';
-                    report += 'PC (Plan Call)     : ' + PC + '\n';
-                    report += 'AC (Actual Call)   : ' + AC + '\n';
-                    report += 'EC (Effective Call): ' + EC + '\n';
-                    report += 'EC vs PC           : ' + ECvsPC + '%\n\n';
+                    report += 'HASIL KUNJUNGAN<br>';
+                    report += '-'.repeat(15) + '<br>';
+                    report += 'PC (Plan Call)     : ' + PC + '<br>';
+                    report += 'AC (Actual Call)   : ' + AC + '<br>';
+                    report += 'EC (Effective Call): ' + EC + '<br>';
                     
-                    report += 'PERFORMA PENJUALAN\n';
-                    report += '-'.repeat(18) + '\n';
-                    report += 'Total Gap JKS : ' + formatRp(gap) + '\n';
-                    report += 'Plan DAP      : ' + formatRp(planDAP) + '\n';
-                    report += 'Actual SO     : ' + formatRp(actual) + '\n';
-                    report += 'Ach SO        : ' + achSO + '%\n\n';
+                    // EC vs PC dengan warna hijau jika >= 75%
+                    if (ECvsPC >= 75) {
+                        report += 'EC vs PC           : <span class="report-line-green">' + ECvsPC + '%</span><br><br>';
+                    } else {
+                        report += 'EC vs PC           : ' + ECvsPC + '%<br><br>';
+                    }
                     
-                    report += 'SKU POM YANG DIPESAN\n';
-                    report += '-'.repeat(20) + '\n';
+                    report += 'PERFORMA PENJUALAN<br>';
+                    report += '-'.repeat(18) + '<br>';
+                    report += 'Total Gap JKS : ' + formatRp(gap) + '<br>';
+                    report += 'Plan DAP      : ' + formatRp(planDAP) + '<br>';
+                    report += 'Actual SO     : ' + formatRp(actual) + '<br>';
+                    
+                    // Ach SO dengan warna hijau jika > 100%
+                    if (achSO > 100) {
+                        report += 'Ach SO        : <span class="report-line-green">' + achSO + '%</span><br><br>';
+                    } else {
+                        report += 'Ach SO        : ' + achSO + '%<br><br>';
+                    }
+                    
+                    report += 'SKU POM YANG DIPESAN<br>';
+                    report += '-'.repeat(20) + '<br>';
                     var skuList = Object.keys(skuPomData);
                     if (skuList.length > 0) {
                         skuList.sort(function(a, b) {
                             return skuPomData[b] - skuPomData[a];
                         });
                         skuList.forEach(function(sku) {
-                            report += sku + ' : ' + skuPomData[sku] + ' outlet\n';
+                            report += sku + ' : ' + skuPomData[sku] + ' outlet<br>';
                         });
                     } else {
-                        report += '(Belum ada SKU POM yang dipesan)\n';
+                        report += '(Belum ada SKU POM yang dipesan)<br>';
                     }
-                    report += '\n';
+                    report += '<br>';
                     
                     // ========================================
-                    // 7. REASON OUTLET TIDAK ORDER
+                    // 7. REASON OUTLET TIDAK ORDER (with styling)
                     // ========================================
                     var tokoTutupCount = tokoTutupList.length;
                     var tokoTutupPct = PC > 0 ? Math.round((tokoTutupCount / PC) * 100) : 0;
@@ -2976,34 +2967,35 @@
                     var tokoTidakSelesaiCount = tokoTidakSelesaiList.length;
                     var tokoTidakSelesaiPct = PC > 0 ? Math.round((tokoTidakSelesaiCount / PC) * 100) : 0;
                     
-                    report += 'REASON OUTLET TIDAK ORDER\n';
-                    report += '-'.repeat(25) + '\n';
+                    report += 'REASON OUTLET TIDAK ORDER<br>';
+                    report += '-'.repeat(25) + '<br>';
                     
-                    report += '1. Toko Tutup : ' + tokoTutupCount + ' outlet - ' + tokoTutupPct + '%\n';
+                    report += '1. Toko Tutup : ' + tokoTutupCount + ' outlet - ' + tokoTutupPct + '%<br>';
                     if (tokoTutupList.length > 0) {
-                        report += '   ' + tokoTutupList.join(', ') + '\n';
+                        report += '   ' + tokoTutupList.join(', ') + '<br>';
                     } else {
-                        report += '   (Tidak ada)\n';
+                        report += '   (Tidak ada)<br>';
                     }
-                    report += '\n';
+                    report += '<br>';
                     
-                    report += '2. Toko Tidak Order : ' + tokoTidakOrderCount + ' outlet - ' + tokoTidakOrderPct + '%\n';
+                    report += '2. Toko Tidak Order : ' + tokoTidakOrderCount + ' outlet - ' + tokoTidakOrderPct + '%<br>';
                     if (tokoTidakOrderList.length > 0) {
-                        report += '   ' + tokoTidakOrderList.join(', ') + '\n';
+                        report += '   ' + tokoTidakOrderList.join(', ') + '<br>';
                     } else {
-                        report += '   (Tidak ada)\n';
+                        report += '   (Tidak ada)<br>';
                     }
-                    report += '\n';
+                    report += '<br>';
                     
-                    report += '3. Toko Tidak Selesai/Ditunda : ' + tokoTidakSelesaiCount + ' outlet - ' + tokoTidakSelesaiPct + '%\n';
+                    // Toko Tidak Selesai/Ditunda dengan warna MERAH dan BOLD
+                    report += '<span class="report-line-red">3. Toko Tidak Selesai/Ditunda : ' + tokoTidakSelesaiCount + ' outlet - ' + tokoTidakSelesaiPct + '%</span><br>';
                     if (tokoTidakSelesaiList.length > 0) {
-                        report += '   ' + tokoTidakSelesaiList.join(', ') + '\n';
+                        report += '   ' + tokoTidakSelesaiList.join(', ') + '<br>';
                     } else {
-                        report += '   (Tidak ada)\n';
+                        report += '   (Tidak ada)<br>';
                     }
                     
-                    report += '\n' + '='.repeat(35) + '\n';
-                    report += 'Report otomatis Sales Dashboard WebApp\n';
+                    report += '<br>' + '='.repeat(35) + '<br>';
+                    report += 'Report otomatis Sales Dashboard WebApp<br>';
                     
                     console.log('✅ Report generated successfully from Firebase');
                     return report;
@@ -3245,47 +3237,59 @@
                 }
                 
                 // ========================================
-                // 8. BUILD REPORT TEXT
+                // 8. BUILD REPORT HTML (with styling)
                 // ========================================
                 var report = '';
-                report += 'REPORT VISIT SALESMAN\n';
-                report += '='.repeat(21) + '\n';
-                report += 'Tanggal Visit : ' + dateStr + '\n';
-                report += 'Nama Salesman : ' + (window.currentSalesman || '-') + '\n';
-                report += 'Tipe Salesman : ' + salesmanType + '\n';
-                report += 'Data Source   : localStorage (Device)\n\n';
+                report += 'REPORT VISIT SALESMAN<br>';
+                report += '='.repeat(21) + '<br>';
+                report += 'Tanggal Visit : ' + dateStr + '<br>';
+                report += 'Nama Salesman : ' + (window.currentSalesman || '-') + '<br>';
+                report += 'Tipe Salesman : ' + salesmanType + '<br>';
+                report += 'Data Source   : localStorage (Device)<br><br>';
                 
-                report += 'HASIL KUNJUNGAN\n';
-                report += '-'.repeat(15) + '\n';
-                report += 'PC (Plan Call)     : ' + PC + '\n';
-                report += 'AC (Actual Call)   : ' + AC + '\n';
-                report += 'EC (Effective Call): ' + EC + '\n';
-                report += 'EC vs PC           : ' + ECvsPC + '%\n\n';
+                report += 'HASIL KUNJUNGAN<br>';
+                report += '-'.repeat(15) + '<br>';
+                report += 'PC (Plan Call)     : ' + PC + '<br>';
+                report += 'AC (Actual Call)   : ' + AC + '<br>';
+                report += 'EC (Effective Call): ' + EC + '<br>';
                 
-                report += 'PERFORMA PENJUALAN\n';
-                report += '-'.repeat(18) + '\n';
-                report += 'Total Gap JKS : ' + formatRp(gap) + '\n';
-                report += 'Plan DAP      : ' + formatRp(planDAP) + '\n';
-                report += 'Actual SO     : ' + formatRp(actual) + '\n';
-                report += 'Ach SO        : ' + achSO + '%\n\n';
+                // EC vs PC dengan warna hijau jika >= 75%
+                if (ECvsPC >= 75) {
+                    report += 'EC vs PC           : <span class="report-line-green">' + ECvsPC + '%</span><br><br>';
+                } else {
+                    report += 'EC vs PC           : ' + ECvsPC + '%<br><br>';
+                }
                 
-                report += 'SKU POM YANG DIPESAN\n';
-                report += '-'.repeat(20) + '\n';
+                report += 'PERFORMA PENJUALAN<br>';
+                report += '-'.repeat(18) + '<br>';
+                report += 'Total Gap JKS : ' + formatRp(gap) + '<br>';
+                report += 'Plan DAP      : ' + formatRp(planDAP) + '<br>';
+                report += 'Actual SO     : ' + formatRp(actual) + '<br>';
+                
+                // Ach SO dengan warna hijau jika > 100%
+                if (achSO > 100) {
+                    report += 'Ach SO        : <span class="report-line-green">' + achSO + '%</span><br><br>';
+                } else {
+                    report += 'Ach SO        : ' + achSO + '%<br><br>';
+                }
+                
+                report += 'SKU POM YANG DIPESAN<br>';
+                report += '-'.repeat(20) + '<br>';
                 var skuList = Object.keys(skuPomData);
                 if (skuList.length > 0) {
                     skuList.sort(function(a, b) {
                         return skuPomData[b] - skuPomData[a];
                     });
                     skuList.forEach(function(sku) {
-                        report += sku + ' : ' + skuPomData[sku] + ' outlet\n';
+                        report += sku + ' : ' + skuPomData[sku] + ' outlet<br>';
                     });
                 } else {
-                    report += '(Belum ada SKU POM yang dipesan)\n';
+                    report += '(Belum ada SKU POM yang dipesan)<br>';
                 }
-                report += '\n';
+                report += '<br>';
                 
                 // ========================================
-                // 9. REASON OUTLET TIDAK ORDER (with statistics)
+                // 9. REASON OUTLET TIDAK ORDER (with styling)
                 // ========================================
                 
                 // Calculate counts and percentages
@@ -3296,37 +3300,37 @@
                 var tokoTidakSelesaiCount = tokoTidakSelesaiList.length;
                 var tokoTidakSelesaiPct = PC > 0 ? Math.round((tokoTidakSelesaiCount / PC) * 100) : 0;
                 
-                report += 'REASON OUTLET TIDAK ORDER\n';
-                report += '-'.repeat(25) + '\n';
+                report += 'REASON OUTLET TIDAK ORDER<br>';
+                report += '-'.repeat(25) + '<br>';
                 
                 // Toko Tutup with count and percentage
-                report += '1. Toko Tutup : ' + tokoTutupCount + ' outlet - ' + tokoTutupPct + '%\n';
+                report += '1. Toko Tutup : ' + tokoTutupCount + ' outlet - ' + tokoTutupPct + '%<br>';
                 if (tokoTutupList.length > 0) {
-                    report += '   ' + tokoTutupList.join(', ') + '\n';
+                    report += '   ' + tokoTutupList.join(', ') + '<br>';
                 } else {
-                    report += '   (Tidak ada)\n';
+                    report += '   (Tidak ada)<br>';
                 }
-                report += '\n';
+                report += '<br>';
                 
                 // Toko Tidak Order with count and percentage
-                report += '2. Toko Tidak Order : ' + tokoTidakOrderCount + ' outlet - ' + tokoTidakOrderPct + '%\n';
+                report += '2. Toko Tidak Order : ' + tokoTidakOrderCount + ' outlet - ' + tokoTidakOrderPct + '%<br>';
                 if (tokoTidakOrderList.length > 0) {
-                    report += '   ' + tokoTidakOrderList.join(', ') + '\n';
+                    report += '   ' + tokoTidakOrderList.join(', ') + '<br>';
                 } else {
-                    report += '   (Tidak ada)\n';
+                    report += '   (Tidak ada)<br>';
                 }
-                report += '\n';
+                report += '<br>';
                 
-                // NEW: Toko Tidak Selesai/Ditunda with count and percentage
-                report += '3. Toko Tidak Selesai/Ditunda : ' + tokoTidakSelesaiCount + ' outlet - ' + tokoTidakSelesaiPct + '%\n';
+                // Toko Tidak Selesai/Ditunda dengan warna MERAH dan BOLD
+                report += '<span class="report-line-red">3. Toko Tidak Selesai/Ditunda : ' + tokoTidakSelesaiCount + ' outlet - ' + tokoTidakSelesaiPct + '%</span><br>';
                 if (tokoTidakSelesaiList.length > 0) {
-                    report += '   ' + tokoTidakSelesaiList.join(', ') + '\n';
+                    report += '   ' + tokoTidakSelesaiList.join(', ') + '<br>';
                 } else {
-                    report += '   (Tidak ada)\n';
+                    report += '   (Tidak ada)<br>';
                 }
                 
-                report += '\n' + '='.repeat(35) + '\n';
-                report += 'Report otomatis Sales Dashboard WebApp\n';
+                report += '<br>' + '='.repeat(35) + '<br>';
+                report += 'Report otomatis Sales Dashboard WebApp<br>';
                 
                 console.log('✅ Report generated successfully');
                 return report;
@@ -3392,22 +3396,6 @@
 				});
 			}
 			
-            function fallbackCopy(text) {
-                var textarea = document.createElement('textarea');
-                textarea.value = text;
-                textarea.style.position = 'fixed';
-                textarea.style.opacity = '0';
-                document.body.appendChild(textarea);
-                textarea.select();
-                try {
-                    document.execCommand('copy');
-                    alert('✅ Report berhasil di-copy!\n\nSilakan paste di WhatsApp atau aplikasi lain.');
-                } catch (err) {
-                    alert('Gagal copy. Silakan copy manual.');
-                }
-                document.body.removeChild(textarea);
-            }
-            
             function fmtDate(d) {
                 var y = d.getFullYear();
                 var m = String(d.getMonth()+1).padStart(2,'0');
