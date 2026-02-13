@@ -2653,10 +2653,10 @@
         // HASIL VISIT - GLOBAL FUNCTIONS
         (function() {
         })();
-            window.showHasilVisit = function() {
+            window.showHasilVisit = async function() {
                 try {
-                    // Generate report text
-                    var reportText = generateReportText();
+                    // Generate report text from Firebase (with localStorage fallback)
+                    var reportText = await generateReportFromFirebase();
                     
                     // Display in preview
                     var previewEl = document.getElementById('reportTextContent');
@@ -2716,6 +2716,305 @@
                 window.open(url, '_blank');
             };
             
+            
+            // ========================================
+            // NEW: ASYNC FUNCTION TO GENERATE REPORT FROM FIREBASE (ADMIN MONITORING)
+            // ========================================
+            async function generateReportFromFirebase() {
+                try {
+                    console.log('🔥 Attempting to generate report from Firebase...');
+                    
+                    if (!window.firebaseDB || !currentSalesmanId) {
+                        console.log('⚠️ Firebase not available, using localStorage');
+                        return generateReportText(); // Fallback to localStorage
+                    }
+                    
+                    var today = new Date();
+                    var dateStr = today.toLocaleDateString('id-ID', { 
+                        day: 'numeric',
+                        month: 'long', 
+                        year: 'numeric'
+                    });
+                    var todayYMD = fmtDate(today);
+                    var todayDay = getDayOfWeekIndo();
+                    
+                    console.log('📊 Generating Report from Firebase');
+                    console.log('   Date:', todayYMD, '(' + todayDay + ')');
+                    console.log('   Salesman:', window.currentSalesman, '(' + currentSalesmanId + ')');
+                    
+                    // ========================================
+                    // 1. PC CALCULATION (Same as localStorage version)
+                    // ========================================
+                    var uniqueOutlets = new Set();
+                    var pcOutlets = [];
+                    
+                    if (window.pelangganData && window.pelangganData.length > 0) {
+                        window.pelangganData.forEach(function(item) {
+                            if (item.szname === window.currentSalesman && item.Nama_Pelanggan) {
+                                var hariKunjungan = (item.Hari_Kunjungan || '').toUpperCase().trim();
+                                var outletName = item.Nama_Pelanggan;
+                                var isMatch = false;
+                                
+                                if (hariKunjungan === todayDay) {
+                                    isMatch = true;
+                                } else if (hariKunjungan.includes('2&4') && hariKunjungan.includes(todayDay)) {
+                                    isMatch = true;
+                                }
+                                
+                                if (isMatch) {
+                                    uniqueOutlets.add(outletName);
+                                    pcOutlets.push(outletName);
+                                }
+                            }
+                        });
+                    }
+                    
+                    var PC = uniqueOutlets.size;
+                    console.log('   PC:', PC);
+                    
+                    // ========================================
+                    // 2. LOAD VISITS FROM FIREBASE
+                    // ========================================
+                    var visited = new Set();
+                    var ordered = new Set();
+                    var tokoTutupList = [];
+                    var tokoTidakOrderList = [];
+                    var tokoTidakSelesaiList = [];
+                    var actual = 0;
+                    
+                    console.log('🔥 Loading visits from Firebase...');
+                    
+                    const visitsRef = window.firebaseRef(window.firebaseDB, `visits/${currentSalesmanId}`);
+                    const snapshot = await window.firebaseGet(visitsRef);
+                    
+                    if (snapshot.exists()) {
+                        const allVisits = snapshot.val();
+                        var visitCount = 0;
+                        
+                        Object.keys(allVisits).forEach(function(key) {
+                            const visit = allVisits[key];
+                            
+                            // Filter by today's date
+                            if (visit.start_time) {
+                                const visitDate = visit.start_time.split('T')[0];
+                                
+                                if (visitDate === todayYMD) {
+                                    visitCount++;
+                                    const outletName = visit.outlet_name;
+                                    const visitStatus = visit.visit_status;
+                                    const orderStatus = visit.order_status;
+                                    const soAmount = Number(visit.so_amount || 0);
+                                    
+                                    console.log(`   Visit: ${outletName}, status: ${visitStatus}, order: ${orderStatus}`);
+                                    
+                                    // COMPLETED VISITS
+                                    if (visitStatus === 'completed') {
+                                        visited.add(outletName);
+                                        
+                                        if (orderStatus === 'ada_so') {
+                                            ordered.add(outletName);
+                                            actual += soAmount;
+                                            console.log('   ✓ EC outlet:', outletName, '→ Rp', soAmount);
+                                        } else if (orderStatus === 'toko_tutup') {
+                                            tokoTutupList.push(outletName);
+                                        } else if (orderStatus === 'toko_tidak_order') {
+                                            tokoTidakOrderList.push(outletName);
+                                        }
+                                    } 
+                                    // INCOMPLETE VISITS (started/paused/resumed but not completed)
+                                    else if (visitStatus === 'started' || visitStatus === 'paused' || visitStatus === 'resumed') {
+                                        if (!tokoTidakSelesaiList.includes(outletName)) {
+                                            tokoTidakSelesaiList.push(outletName);
+                                            console.log('   ⚠️ Tidak selesai:', outletName, '(status:', visitStatus + ')');
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                        
+                        console.log(`🔥 Loaded ${visitCount} visits from Firebase for today`);
+                    } else {
+                        console.log('🔥 No visits found in Firebase for today');
+                    }
+                    
+                    var AC = visited.size;
+                    var EC = ordered.size;
+                    
+                    console.log('   AC (Actual Call):', AC);
+                    console.log('   EC (Effective Call):', EC);
+                    console.log('   Toko Tutup:', tokoTutupList.length);
+                    console.log('   Toko Tidak Order:', tokoTidakOrderList.length);
+                    console.log('   Toko Tidak Selesai/Ditunda:', tokoTidakSelesaiList.length);
+                    console.log('   Actual SO:', actual);
+                    
+                    // Continue with rest of report (same as localStorage version)
+                    // This part is identical to generateReportText(), so we reuse the code
+                    
+                    // ========================================
+                    // 3. TOTAL GAP JKS
+                    // ========================================
+                    var gap = 0;
+                    var dap = 0;
+                    
+                    if (window.detailsData && window.detailsData.length > 0) {
+                        window.detailsData.forEach(function(item) {
+                            if (item.szname === window.currentSalesman) {
+                                var outlet = item['Nama Pelanggan'];
+                                
+                                if (pcOutlets.includes(outlet)) {
+                                    var gapValue = item['Gap MTD'] || item.Gap || 0;
+                                    var dapValue = item.DAP || item.Plan || 0;
+                                    
+                                    if (typeof gapValue === 'string') {
+                                        gapValue = gapValue.replace(/[Rp\s\.,]/g, '');
+                                    }
+                                    var gapMTD = parseFloat(gapValue) || 0;
+                                    
+                                    if (typeof dapValue === 'string') {
+                                        dapValue = dapValue.replace(/[Rp\s\.,]/g, '');
+                                    }
+                                    var dapNum = parseFloat(dapValue) || 0;
+                                    
+                                    gap += gapMTD;
+                                    dap += dapNum;
+                                }
+                            }
+                        });
+                    }
+                    
+                    var planDAP = getPlanDAP();
+                    var ECvsPC = PC > 0 ? Math.round((EC / PC) * 100) : 0;
+                    var achSO = planDAP > 0 ? Math.round((actual / planDAP) * 100) : (actual > 0 ? 100 : 0);
+                    
+                    // ========================================
+                    // 4. SKU POM BREAKDOWN (from localStorage)
+                    // ========================================
+                    var skuPomData = {};
+                    visited.forEach(function(outletName) {
+                        try {
+                            var storageKey = 'sku_pom_checklist_' + currentSalesmanId + '_' + outletName + '_' + todayYMD;
+                            var saved = localStorage.getItem(storageKey);
+                            if (saved) {
+                                var checklist = JSON.parse(saved);
+                                Object.keys(checklist).forEach(function(rawSku) {
+                                    var sku = rawSku.split('/')[0].trim();
+                                    if (checklist[rawSku] === true) {
+                                        if (!skuPomData[sku]) {
+                                            skuPomData[sku] = 0;
+                                        }
+                                        skuPomData[sku]++;
+                                    }
+                                });
+                            }
+                        } catch (e) {
+                            console.error('Error loading SKU for ' + outletName, e);
+                        }
+                    });
+                    
+                    // ========================================
+                    // 5. SALESMAN TYPE
+                    // ========================================
+                    var salesmanType = '-';
+                    if (window.currentSalesmanType) {
+                        salesmanType = window.currentSalesmanType;
+                    } else if (window.salesmanData && window.salesmanData.length > 0) {
+                        var salesmanRecord = window.salesmanData.find(function(item) {
+                            return item.szEmployeeId && item.szEmployeeId.toString() === currentSalesmanId;
+                        });
+                        if (salesmanRecord && salesmanRecord['Tipe Salesman']) {
+                            salesmanType = salesmanRecord['Tipe Salesman'];
+                        }
+                    }
+                    
+                    // ========================================
+                    // 6. BUILD REPORT TEXT
+                    // ========================================
+                    var report = '';
+                    report += 'REPORT VISIT SALESMAN\n';
+                    report += '='.repeat(21) + '\n';
+                    report += 'Tanggal Visit : ' + dateStr + '\n';
+                    report += 'Nama Salesman : ' + (window.currentSalesman || '-') + '\n';
+                    report += 'Tipe Salesman : ' + salesmanType + '\n';
+                    report += 'Data Source   : Firebase (Real-time)\n\n'; // NEW: Indicator
+                    
+                    report += 'HASIL KUNJUNGAN\n';
+                    report += '-'.repeat(15) + '\n';
+                    report += 'PC (Plan Call)     : ' + PC + '\n';
+                    report += 'AC (Actual Call)   : ' + AC + '\n';
+                    report += 'EC (Effective Call): ' + EC + '\n';
+                    report += 'EC vs PC           : ' + ECvsPC + '%\n\n';
+                    
+                    report += 'PERFORMA PENJUALAN\n';
+                    report += '-'.repeat(18) + '\n';
+                    report += 'Total Gap JKS : ' + formatRp(gap) + '\n';
+                    report += 'Plan DAP      : ' + formatRp(planDAP) + '\n';
+                    report += 'Actual SO     : ' + formatRp(actual) + '\n';
+                    report += 'Ach SO        : ' + achSO + '%\n\n';
+                    
+                    report += 'SKU POM YANG DIPESAN\n';
+                    report += '-'.repeat(20) + '\n';
+                    var skuList = Object.keys(skuPomData);
+                    if (skuList.length > 0) {
+                        skuList.sort(function(a, b) {
+                            return skuPomData[b] - skuPomData[a];
+                        });
+                        skuList.forEach(function(sku) {
+                            report += sku + ' : ' + skuPomData[sku] + ' outlet\n';
+                        });
+                    } else {
+                        report += '(Belum ada SKU POM yang dipesan)\n';
+                    }
+                    report += '\n';
+                    
+                    // ========================================
+                    // 7. REASON OUTLET TIDAK ORDER
+                    // ========================================
+                    var tokoTutupCount = tokoTutupList.length;
+                    var tokoTutupPct = PC > 0 ? Math.round((tokoTutupCount / PC) * 100) : 0;
+                    var tokoTidakOrderCount = tokoTidakOrderList.length;
+                    var tokoTidakOrderPct = PC > 0 ? Math.round((tokoTidakOrderCount / PC) * 100) : 0;
+                    var tokoTidakSelesaiCount = tokoTidakSelesaiList.length;
+                    var tokoTidakSelesaiPct = PC > 0 ? Math.round((tokoTidakSelesaiCount / PC) * 100) : 0;
+                    
+                    report += 'REASON OUTLET TIDAK ORDER\n';
+                    report += '-'.repeat(25) + '\n';
+                    
+                    report += '1. Toko Tutup : ' + tokoTutupCount + ' outlet - ' + tokoTutupPct + '%\n';
+                    if (tokoTutupList.length > 0) {
+                        report += '   ' + tokoTutupList.join(', ') + '\n';
+                    } else {
+                        report += '   (Tidak ada)\n';
+                    }
+                    report += '\n';
+                    
+                    report += '2. Toko Tidak Order : ' + tokoTidakOrderCount + ' outlet - ' + tokoTidakOrderPct + '%\n';
+                    if (tokoTidakOrderList.length > 0) {
+                        report += '   ' + tokoTidakOrderList.join(', ') + '\n';
+                    } else {
+                        report += '   (Tidak ada)\n';
+                    }
+                    report += '\n';
+                    
+                    report += '3. Toko Tidak Selesai/Ditunda : ' + tokoTidakSelesaiCount + ' outlet - ' + tokoTidakSelesaiPct + '%\n';
+                    if (tokoTidakSelesaiList.length > 0) {
+                        report += '   ' + tokoTidakSelesaiList.join(', ') + '\n';
+                    } else {
+                        report += '   (Tidak ada)\n';
+                    }
+                    
+                    report += '\n' + '='.repeat(35) + '\n';
+                    report += 'Report otomatis Sales Dashboard WebApp\n';
+                    
+                    console.log('✅ Report generated successfully from Firebase');
+                    return report;
+                    
+                } catch (error) {
+                    console.error('❌ Error generating report from Firebase:', error);
+                    console.log('⚠️ Falling back to localStorage');
+                    return generateReportText(); // Fallback to localStorage version
+                }
+            }
+            
             function generateReportText() {
                 var today = new Date();
                 var dateStr = today.toLocaleDateString('id-ID', { 
@@ -2771,6 +3070,7 @@
                 var ordered = new Set(); // EC = orderStatus === 'ada_so'
                 var tokoTutupList = [];
                 var tokoTidakOrderList = [];
+                var tokoTidakSelesaiList = []; // NEW: List untuk toko tidak selesai/ditunda
                 var actual = 0;
                 
                 // Load from localStorage
@@ -2811,6 +3111,10 @@
                                 } else if (orderStatus === 'toko_tidak_order') {
                                     tokoTidakOrderList.push(visit.outlet_name);
                                 }
+                            } else if (visit.outlet_name && !visit.visit_completed) {
+                                // NEW: Track visits that were started but not completed
+                                tokoTidakSelesaiList.push(visit.outlet_name);
+                                console.log('   ⚠️ Tidak selesai:', visit.outlet_name);
                             }
                         });
                     } catch (e) {
@@ -2827,6 +3131,7 @@
                 console.log('   EC (Ada SO only):', EC);
                 console.log('   Toko Tutup:', tokoTutupList.length);
                 console.log('   Toko Tidak Order:', tokoTidakOrderList.length);
+                console.log('   Toko Tidak Selesai/Ditunda:', tokoTidakSelesaiList.length);
                 console.log('   Actual SO:', actual);
                 
                 // ========================================
@@ -2947,7 +3252,8 @@
                 report += '='.repeat(21) + '\n';
                 report += 'Tanggal Visit : ' + dateStr + '\n';
                 report += 'Nama Salesman : ' + (window.currentSalesman || '-') + '\n';
-                report += 'Tipe Salesman : ' + salesmanType + '\n\n';
+                report += 'Tipe Salesman : ' + salesmanType + '\n';
+                report += 'Data Source   : localStorage (Device)\n\n';
                 
                 report += 'HASIL KUNJUNGAN\n';
                 report += '-'.repeat(15) + '\n';
@@ -2987,6 +3293,8 @@
                 var tokoTutupPct = PC > 0 ? Math.round((tokoTutupCount / PC) * 100) : 0;
                 var tokoTidakOrderCount = tokoTidakOrderList.length;
                 var tokoTidakOrderPct = PC > 0 ? Math.round((tokoTidakOrderCount / PC) * 100) : 0;
+                var tokoTidakSelesaiCount = tokoTidakSelesaiList.length;
+                var tokoTidakSelesaiPct = PC > 0 ? Math.round((tokoTidakSelesaiCount / PC) * 100) : 0;
                 
                 report += 'REASON OUTLET TIDAK ORDER\n';
                 report += '-'.repeat(25) + '\n';
@@ -3007,6 +3315,15 @@
                 } else {
                     report += '   (Tidak ada)\n';
                 }
+                report += '\n';
+                
+                // NEW: Toko Tidak Selesai/Ditunda with count and percentage
+                report += '3. Toko Tidak Selesai/Ditunda : ' + tokoTidakSelesaiCount + ' outlet - ' + tokoTidakSelesaiPct + '%\n';
+                if (tokoTidakSelesaiList.length > 0) {
+                    report += '   ' + tokoTidakSelesaiList.join(', ') + '\n';
+                } else {
+                    report += '   (Tidak ada)\n';
+                }
                 
                 report += '\n' + '='.repeat(35) + '\n';
                 report += 'Report otomatis Sales Dashboard WebApp\n';
@@ -3015,7 +3332,7 @@
                 return report;
             }
             
-			function shareReportImageWhatsApp() {
+			async function shareReportImageWhatsApp() {
 				// *** PERUBAHAN UTAMA: Target diubah ke ID yang ada di Full Screen View Anda ***
 				const reportElement = document.getElementById('reportTextContent'); 
 				
@@ -3043,7 +3360,7 @@
 					shareButton.innerHTML = originalButtonText;
 					shareButton.disabled = false;
 					
-					canvas.toBlob((blob) => {
+					canvas.toBlob(async (blob) => {
 						const file = new File([blob], 'report_visit.png', { type: 'image/png' });
 						
 						if (navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -3053,24 +3370,24 @@
 								text: whatsappCaption
 							}).then(() => {
 								console.log('✅ Berbagi gambar berhasil');
-							}).catch((error) => {
+							}).catch(async (error) => {
 								// Fallback jika Share API gagal
-								const reportText = generateReportText();
+								const reportText = await generateReportFromFirebase();
 								window.open('whatsapp://send?text=' + encodeURIComponent(reportText), '_blank');
 							});
 						} else {
 							// Fallback jika browser tidak mendukung Web Share API
-							const reportText = generateReportText();
+							const reportText = await generateReportFromFirebase();
 							alert('⚠️ Browser tidak mendukung fitur Share Gambar langsung.\n\nLaporan akan dibagikan sebagai TEKS.');
 							window.open('whatsapp://send?text=' + encodeURIComponent(reportText), '_blank');
 						}
 					}, 'image/png');
-				}).catch(error => {
+				}).catch(async error => {
 					shareButton.innerHTML = originalButtonText;
 					shareButton.disabled = false;
 					console.error('❌ html2canvas gagal:', error);
 					alert('❌ Gagal mengkonversi laporan ke gambar. Akan dibagikan sebagai TEKS.');
-					const reportText = generateReportText();
+					const reportText = await generateReportFromFirebase();
 					window.open('whatsapp://send?text=' + encodeURIComponent(reportText), '_blank');
 				});
 			}
