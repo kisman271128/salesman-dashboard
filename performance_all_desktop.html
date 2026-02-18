@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performance Summary All Salesman - Desktop</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f8fafc;
+            min-height: 100vh;
+            color: #2c3e50;
+            overflow: hidden;
+        }
+
+        .desktop-container { display: flex; height: 100vh; }
+
+        /* ===== SIDEBAR ===== */
+        .sidebar {
+            width: 240px;
+            background: linear-gradient(180deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            position: fixed;
+            height: 100vh;
+            z-index: 1000;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 4px 0 20px rgba(0,0,0,0.1);
+        }
+
+        .sidebar-header {
+            padding: 20px 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .sidebar-header .company-logo { font-size: 16px; font-weight: 800; margin-bottom: 4px; }
+        .sidebar-header .company-subtitle { font-size: 11px; opacity: 0.9; }
+
+        .nav-section-title {
+            padding: 14px 16px 6px;
+            font-size: 10px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.8px;
+            color: rgba(255,255,255,0.4);
+        }
+
+        .nav-item {
+            display: flex; align-items: center;
+            padding: 11px 16px;
+            color: rgba(255,255,255,0.75);
+            cursor: pointer;
+            border-left: 3px solid transparent;
+            transition: all 0.2s ease;
+            font-size: 13px;
+            text-decoration: none;
+        }
+        .nav-item:hover { background: rgba(255,255,255,0.08); color: white; border-left-color: #667eea; }
+        .nav-item.active { background: rgba(102,126,234,0.25); color: white; border-left-color: #667eea; font-weight: 600; }
+
+        .nav-icon { font-size: 16px; margin-right: 10px; width: 20px; text-align: center; }
+
+        .sidebar-footer {
+            margin-top: auto;
+            padding: 16px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        .logout-btn {
+            width: 100%; padding: 10px;
+            background: rgba(239,68,68,0.2);
+            border: 1px solid rgba(239,68,68,0.3);
+            color: #fca5a5; border-radius: 8px;
+            font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+        }
+        .logout-btn:hover { background: rgba(239,68,68,0.35); color: #fff; }
+
+        /* ===== MAIN CONTENT ===== */
+        .main-content {
+            flex: 1; margin-left: 240px;
+            height: 100vh; overflow: hidden;
+            display: flex; flex-direction: column;
+        }
+
+        .top-header {
+            background: white; padding: 16px 28px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            display: flex; justify-content: space-between;
+            align-items: center; border-bottom: 1px solid #e2e8f0;
+            flex-shrink: 0;
+        }
+        .header-left h1 { font-size: 20px; font-weight: 700; color: #1e293b; margin-bottom: 2px; }
+        .header-left p { font-size: 12px; color: #64748b; }
+
+        /* ===== METRICS BAR ===== */
+        .metrics-bar {
+            background: white; padding: 14px 28px;
+            border-bottom: 1px solid #e2e8f0; flex-shrink: 0;
+        }
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+        }
+        .metric-card {
+            background: #f8fafc; border: 1px solid #e2e8f0;
+            border-radius: 10px; padding: 14px 16px;
+            position: relative; overflow: hidden; transition: transform 0.2s;
+        }
+        .metric-card:hover { transform: translateY(-1px); }
+        .metric-card::before {
+            content: ''; position: absolute;
+            top: 0; left: 0; right: 0; height: 3px;
+            background: var(--card-color, #e2e8f0);
+        }
+        .metric-card.total  { --card-color: linear-gradient(90deg,#667eea,#764ba2); }
+        .metric-card.ws     { --card-color: #10b981; }
+        .metric-card.retail { --card-color: #f59e0b; }
+        .metric-card.mti    { --card-color: #ef4444; }
+
+        .metric-label { font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+        .metric-value { font-size: 22px; font-weight: 700; color: #1e293b; margin-bottom: 4px; }
+        .metric-sub { font-size: 11px; color: #94a3b8; display: flex; justify-content: space-between; }
+
+        .ach-badge { padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; }
+        .ach-high   { background: rgba(16,185,129,0.1); color: #059669; }
+        .ach-medium { background: rgba(245,158,11,0.1);  color: #d97706; }
+        .ach-low    { background: rgba(239,68,68,0.1);   color: #dc2626; }
+
+        /* ===== PAGE CONTENT ===== */
+        .page-content { flex: 1; overflow-y: auto; padding: 24px 28px; background: #f8fafc; }
+
+        .section-panel { display: none; }
+        .section-panel.active { display: block; }
+
+        /* ===== SECTION CARD ===== */
+        .section-card {
+            background: white; border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04); overflow: hidden;
+        }
+        .section-card-header {
+            padding: 16px 20px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white; font-size: 15px; font-weight: 700;
+            display: flex; align-items: center; gap: 8px;
+        }
+
+        /* ===== DATA TABLE ===== */
+        .table-scroll { overflow-x: auto; overflow-y: auto; max-height: calc(100vh - 290px); }
+
+        .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .data-table th {
+            background: #f8fafc; color: #475569;
+            padding: 11px 14px; text-align: left;
+            font-weight: 600; font-size: 12px;
+            text-transform: uppercase; letter-spacing: 0.4px;
+            border-bottom: 2px solid #e2e8f0;
+            position: sticky; top: 0; z-index: 10; white-space: nowrap;
+        }
+        .data-table td { padding: 10px 14px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; white-space: nowrap; }
+        .data-table tr:hover td { background: #f8faff; }
+
+        .total-row td { background: #f1f5f9 !important; font-weight: 700; border-top: 2px solid #667eea; border-bottom: 2px solid #667eea; color: #1e293b; }
+
+        /* Channel grouping */
+        .channel-group-row td { background: #eef2ff !important; font-weight: 700; color: #3730a3; border-top: 2px solid #c7d2fe; }
+        .channel-group-row:hover td { background: #e0e7ff !important; }
+        .project-sub-row td { background: #fafbff !important; color: #374151; }
+        .project-sub-row:hover td { background: #f0f4ff !important; }
+
+        .val-num { text-align: right; font-family: 'Courier New', monospace; }
+        .val-center { text-align: center; }
+        .gap-neg { color: #dc2626; font-weight: 600; }
+        .gap-pos { color: #059669; font-weight: 600; }
+        .ach-h { background: rgba(16,185,129,0.1); color: #059669; padding: 2px 8px; border-radius: 6px; font-weight: 600; display: inline-block; }
+        .ach-m { background: rgba(245,158,11,0.1);  color: #d97706; padding: 2px 8px; border-radius: 6px; font-weight: 600; display: inline-block; }
+        .ach-l { background: rgba(239,68,68,0.1);   color: #dc2626; padding: 2px 8px; border-radius: 6px; font-weight: 600; display: inline-block; }
+
+        .rank-badge { background: linear-gradient(135deg,#667eea,#764ba2); color: white; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; }
+
+        /* Salesman avatar */
+        .sm-avatar {
+            width: 32px; height: 32px; border-radius: 50%;
+            background: linear-gradient(135deg,#667eea,#764ba2);
+            color: white; display: inline-flex; align-items: center;
+            justify-content: center; font-weight: 700; font-size: 12px;
+            margin-right: 10px; flex-shrink: 0; vertical-align: middle;
+        }
+        .sm-name-cell { display: flex; align-items: center; cursor: pointer; }
+        .sm-name-cell:hover strong { color: #667eea; text-decoration: underline; }
+
+        /* Loading & Error */
+        .loading-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; color: #64748b; }
+        .spinner { width: 40px; height: 40px; border: 3px solid #f1f5f9; border-top: 3px solid #667eea; border-radius: 50%; animation: spin 0.9s linear infinite; margin-bottom: 16px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .error-state { background: rgba(239,68,68,0.05); border: 1px solid rgba(239,68,68,0.2); color: #dc2626; padding: 24px; border-radius: 10px; text-align: center; }
+        .empty-state { text-align: center; padding: 48px 20px; color: #94a3b8; }
+        .empty-state .icon { font-size: 48px; margin-bottom: 12px; opacity: 0.5; }
+
+        /* Scrollbar */
+        .table-scroll::-webkit-scrollbar, .page-content::-webkit-scrollbar { width: 6px; height: 6px; }
+        .table-scroll::-webkit-scrollbar-track, .page-content::-webkit-scrollbar-track { background: #f1f5f9; }
+        .table-scroll::-webkit-scrollbar-thumb, .page-content::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    </style>
+</head>
+<body>
+<div class="desktop-container">
+
+<!-- ===== SIDEBAR ===== -->
+<div class="sidebar">
+    <div class="sidebar-header">
+        <div class="company-logo">SALESMAN APP</div>
+        <div class="company-subtitle">Performance Summary</div>
+    </div>
+
+    <div class="nav-section-title">Laporan</div>
+
+    <div class="nav-item active" data-section="ranking" onclick="switchSection('ranking', this)">
+        <span class="nav-icon">🏆</span>Top Ranking
+    </div>
+    <div class="nav-item" data-section="channel" onclick="switchSection('channel', this)">
+        <span class="nav-icon">📈</span>By Channel
+    </div>
+    <div class="nav-item" data-section="pareto" onclick="switchSection('pareto', this)">
+        <span class="nav-icon">🎯</span>30 Pareto (Depo)
+    </div>
+    <div class="nav-item" data-section="project" onclick="switchSection('project', this)">
+        <span class="nav-icon">📋</span>Top Projects
+    </div>
+    <div class="nav-item" data-section="pom" onclick="switchSection('pom', this)">
+        <span class="nav-icon">📊</span>CA POM Depo
+    </div>
+
+    <div class="nav-section-title">Navigasi</div>
+    <div class="nav-item" onclick="window.location.href='dashboard-desktop.html'">
+        <span class="nav-icon">🏠</span>Dashboard
+    </div>
+
+    <div class="sidebar-footer">
+        <button class="logout-btn" onclick="logout()">🚪 Keluar</button>
+    </div>
+</div>
+
+<!-- ===== MAIN CONTENT ===== -->
+<div class="main-content">
+    <div class="top-header">
+        <div class="header-left">
+            <h1>📊 Performance Summary — All Salesman</h1>
+            <p id="headerSubtitle">Ringkasan kinerja seluruh salesman MTD</p>
+        </div>
+    </div>
+
+    <!-- Metrics Bar -->
+    <div class="metrics-bar">
+        <div class="metrics-grid">
+            <div class="metric-card total">
+                <div class="metric-label">Total Aktual</div>
+                <div class="metric-value" id="mc_totalVal">—</div>
+                <div class="metric-sub">
+                    <span>Target: <strong id="mc_totalTgt">—</strong></span>
+                    <span class="ach-badge ach-low" id="mc_totalAch">0%</span>
+                </div>
+            </div>
+            <div class="metric-card ws">
+                <div class="metric-label">Wholesaler</div>
+                <div class="metric-value" id="mc_wsVal">—</div>
+                <div class="metric-sub">
+                    <span>Target: <strong id="mc_wsTgt">—</strong></span>
+                    <span class="ach-badge ach-low" id="mc_wsAch">0%</span>
+                </div>
+            </div>
+            <div class="metric-card retail">
+                <div class="metric-label">Retail</div>
+                <div class="metric-value" id="mc_retailVal">—</div>
+                <div class="metric-sub">
+                    <span>Target: <strong id="mc_retailTgt">—</strong></span>
+                    <span class="ach-badge ach-low" id="mc_retailAch">0%</span>
+                </div>
+            </div>
+            <div class="metric-card mti">
+                <div class="metric-label">MTI</div>
+                <div class="metric-value" id="mc_mtiVal">—</div>
+                <div class="metric-sub">
+                    <span>Target: <strong id="mc_mtiTgt">—</strong></span>
+                    <span class="ach-badge ach-low" id="mc_mtiAch">0%</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading -->
+    <div class="page-content" id="loadingPanel">
+        <div class="loading-state">
+            <div class="spinner"></div>
+            <div>Memuat data...</div>
+        </div>
+    </div>
+
+    <!-- Error -->
+    <div class="page-content" id="errorPanel" style="display:none;">
+        <div class="error-state">
+            <h3>🚨 Error Memuat Data</h3>
+            <p id="errorMsg">Terjadi kesalahan.</p>
+            <button onclick="loadData()" style="margin-top:12px;padding:8px 20px;background:#667eea;color:white;border:none;border-radius:8px;cursor:pointer;">Coba Lagi</button>
+        </div>
+    </div>
+
+    <!-- Main page content -->
+    <div class="page-content" id="mainPanel" style="display:none;">
+
+        <!-- TOP RANKING -->
+        <div class="section-panel active" id="sec_ranking">
+            <div class="section-card">
+                <div class="section-card-header">🏆 Top Performance Ranking — Per Salesman</div>
+                <div class="table-scroll">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th style="width:60px;">Rank</th>
+                                <th style="min-width:200px;">Salesman</th>
+                                <th class="val-center">Ach%</th>
+                                <th class="val-num">Aktual MTD</th>
+                                <th class="val-num">Target MTD</th>
+                                <th class="val-num">Gap MTD</th>
+                                <th class="val-num">Last Month</th>
+                                <th class="val-center">vs LM</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rankingBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- BY CHANNEL -->
+        <div class="section-panel" id="sec_channel">
+            <div class="section-card">
+                <div class="section-card-header">📈 Performa by Channel & Project — Total Depo</div>
+                <div class="table-scroll">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th style="min-width:200px;">Channel / Project</th>
+                                <th class="val-num">Target MTD</th>
+                                <th class="val-num">Aktual MTD</th>
+                                <th class="val-num">Gap MTD</th>
+                                <th class="val-center">Ach%</th>
+                                <th class="val-num">Last Year</th>
+                                <th class="val-num">Last Month</th>
+                            </tr>
+                        </thead>
+                        <tbody id="channelBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 30 PARETO -->
+        <div class="section-panel" id="sec_pareto">
+            <div class="section-card">
+                <div class="section-card-header">🎯 Top 30 Pareto Outlet — Total Depo</div>
+                <div class="table-scroll">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th style="width:60px;">Rank</th>
+                                <th style="min-width:200px;">Pelanggan</th>
+                                <th class="val-num">Target</th>
+                                <th class="val-num">Aktual MTD</th>
+                                <th class="val-num">Gap MTD</th>
+                                <th class="val-center">Ach%</th>
+                                <th class="val-num">Last Month</th>
+                                <th style="min-width:120px;">Salesman</th>
+                            </tr>
+                        </thead>
+                        <tbody id="paretoBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TOP PROJECTS -->
+        <div class="section-panel" id="sec_project">
+            <div class="section-card">
+                <div class="section-card-header">📋 Top Projects — Total Depo</div>
+                <div class="table-scroll">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th style="min-width:200px;">Customer</th>
+                                <th>ITG</th>
+                                <th class="val-num">Target</th>
+                                <th class="val-num">Aktual</th>
+                                <th class="val-num">Gap</th>
+                                <th class="val-center">Ach%</th>
+                                <th style="min-width:120px;">Salesman</th>
+                            </tr>
+                        </thead>
+                        <tbody id="projectBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- CA POM -->
+        <div class="section-panel" id="sec_pom">
+            <div class="section-card">
+                <div class="section-card-header">📊 CA POM Performance — Total Depo</div>
+                <div class="table-scroll">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th style="min-width:180px;">SKU</th>
+                                <th class="val-num">Target POM</th>
+                                <th class="val-num">Aktual POM</th>
+                                <th class="val-center">Ach%</th>
+                                <th class="val-num">Gap</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pomBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- end mainPanel -->
+</div><!-- end main-content -->
+</div><!-- end desktop-container -->
+
+<script>
+    // ===== GLOBAL =====
+    let channelProjData=[], paretoData=[], projectData=[], pomData=[];
+
+    // ===== UTILS =====
+    function fc(v) {
+        const n=Math.abs(parseFloat(v)||0);
+        if(n>=1e9) return (n/1e9).toFixed(1)+'M';
+        if(n>=1e6) return (n/1e6).toFixed(1)+'jt';
+        if(n>=1e3) return (n/1e3).toFixed(0)+'rb';
+        return n.toFixed(0);
+    }
+    function ach(t,a) {
+        const tv=parseFloat(t||0),av=parseFloat(a||0);
+        if(tv===0&&av>0) return 100;
+        if(tv>0) return Math.round((av/tv)*100);
+        return 0;
+    }
+    function achClass(pct) {
+        if(pct>=100) return 'ach-h';
+        if(pct>=90)  return 'ach-m';
+        return 'ach-l';
+    }
+    function gapClass(v) { return parseFloat(v)<=0?'gap-neg':'gap-pos'; }
+
+    // ===== SECTION SWITCH =====
+    function switchSection(name, el) {
+        document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('active'));
+        if(el) el.classList.add('active');
+        document.querySelectorAll('.section-panel').forEach(p=>p.classList.remove('active'));
+        const panel=document.getElementById('sec_'+name);
+        if(panel) panel.classList.add('active');
+    }
+
+    // ===== DATA LOADING =====
+    async function loadJSONData() {
+        function parseJL(txt) {
+            return txt.split('\n').filter(l=>l.trim()).map(l=>{try{return JSON.parse(l);}catch{return null;}}).filter(Boolean);
+        }
+        async function loadFile(fn) {
+            for(const base of ['data/','./data/','./','']) {
+                try{const r=await fetch(base+fn); if(r.ok) return await r.text();}catch(e){continue;}
+            }
+            throw new Error('Cannot load '+fn);
+        }
+        try{const t=await loadFile('d.channelproj.json'); channelProjData=parseJL(t);}catch(e){console.error(e);}
+        try{const t=await loadFile('d.30pareto.json'); paretoData=parseJL(t);}catch(e){}
+        try{const t=await loadFile('d.project.json'); projectData=parseJL(t);}catch(e){}
+        try{const t=await loadFile('d.tpom.json'); pomData=parseJL(t);}catch(e){}
+    }
+
+    // ===== METRICS CARDS =====
+    function updateMetrics() {
+        const chMap={};
+        let totalT=0, totalA=0;
+        channelProjData.forEach(d=>{
+            const ch=d['Channel Group'];
+            if(!chMap[ch]) chMap[ch]={t:0,a:0};
+            chMap[ch].t+=parseFloat(d[' T.MTD']||0);
+            chMap[ch].a+=parseFloat(d[' A.MTD']||0);
+            totalT+=parseFloat(d[' T.MTD']||0);
+            totalA+=parseFloat(d[' A.MTD']||0);
+        });
+        document.getElementById('mc_totalVal').textContent=fc(totalA);
+        document.getElementById('mc_totalTgt').textContent=fc(totalT);
+        const tPct=ach(totalT,totalA);
+        const tel=document.getElementById('mc_totalAch');
+        tel.textContent=tPct+'%'; tel.className='ach-badge '+achClass(tPct);
+
+        ['Wholesaler','Retail','MTI'].forEach(ch=>{
+            const d=chMap[ch]||{t:0,a:0};
+            const key=ch==='Wholesaler'?'ws':ch.toLowerCase();
+            document.getElementById(`mc_${key}Val`).textContent=fc(d.a);
+            document.getElementById(`mc_${key}Tgt`).textContent=fc(d.t);
+            const pct=ach(d.t,d.a);
+            const el=document.getElementById(`mc_${key}Ach`);
+            el.textContent=pct+'%'; el.className='ach-badge '+achClass(pct);
+        });
+    }
+
+    // ===== TOP RANKING =====
+    function renderRanking() {
+        const smMap={};
+        channelProjData.forEach(d=>{
+            const name=d.szname;
+            if(!smMap[name]) smMap[name]={name,id:d.szEmployeeId,t:0,a:0,lm:0,ly:0,gap:0};
+            const s=smMap[name];
+            s.t+=parseFloat(d[' T.MTD']||0); s.a+=parseFloat(d[' A.MTD']||0);
+            s.lm+=parseFloat(d[' LM']||0); s.ly+=parseFloat(d[' LY']||0);
+            s.gap+=parseFloat(d[' Gap MTD']||0);
+        });
+        const list=Object.values(smMap).map(s=>({...s,pct:ach(s.t,s.a)})).sort((a,b)=>b.pct-a.pct);
+        const tbody=document.getElementById('rankingBody');
+        if(!list.length){
+            tbody.innerHTML='<tr><td colspan="8"><div class="empty-state"><div class="icon">🏆</div><div>Data tidak tersedia</div></div></td></tr>';
+            return;
+        }
+        let html='';
+        list.forEach((s,i)=>{
+            const vsLMPct=s.lm>0?Math.round(((s.a-s.lm)/s.lm)*100):0;
+            const initials=s.name.split(' ').map(w=>w[0]).join('').toUpperCase().substring(0,2);
+            html+=`<tr onclick="openSalesman('${s.id}')" style="cursor:pointer;">
+                <td class="val-center"><span class="rank-badge">#${i+1}</span></td>
+                <td>
+                    <div class="sm-name-cell">
+                        <span class="sm-avatar">${initials}</span>
+                        <div><strong style="font-size:13px;">${s.name}</strong><br><small style="color:#94a3b8; font-size:10px;">ID: ${s.id}</small></div>
+                    </div>
+                </td>
+                <td class="val-center"><span class="${achClass(s.pct)}">${s.pct}%</span></td>
+                <td class="val-num">${fc(s.a)}</td>
+                <td class="val-num">${fc(s.t)}</td>
+                <td class="val-num ${gapClass(s.gap)}">${s.gap>=0?'+':''}${fc(s.gap)}</td>
+                <td class="val-num">${fc(s.lm)}</td>
+                <td class="val-center ${gapClass(vsLMPct)}">${vsLMPct>=0?'+':''}${vsLMPct}%</td>
+            </tr>`;
+        });
+        tbody.innerHTML=html;
+    }
+
+    // ===== BY CHANNEL (Grouped) =====
+    function renderChannel() {
+        const gMap={};
+        channelProjData.forEach(d=>{
+            const ch=d['Channel Group']||'Lainnya', proj=d['Project']||'-';
+            if(!gMap[ch]) gMap[ch]={t:0,a:0,g:0,ly:0,lm:0,projects:{}};
+            const G=gMap[ch];
+            G.t+=parseFloat(d[' T.MTD']||0); G.a+=parseFloat(d[' A.MTD']||0);
+            G.g+=parseFloat(d[' Gap MTD']||0); G.ly+=parseFloat(d[' LY']||0); G.lm+=parseFloat(d[' LM']||0);
+            if(!G.projects[proj]) G.projects[proj]={t:0,a:0,g:0,ly:0,lm:0,cr:0,ca:0};
+            const P=G.projects[proj];
+            P.t+=parseFloat(d[' T.MTD']||0); P.a+=parseFloat(d[' A.MTD']||0);
+            P.g+=parseFloat(d[' Gap MTD']||0); P.ly+=parseFloat(d[' LY']||0); P.lm+=parseFloat(d[' LM']||0);
+            P.cr+=parseInt(d['CR']||0); P.ca+=parseInt(d['CA']||0);
+        });
+        let tT=0,tA=0,tG=0,tLY=0,tLM=0;
+        Object.values(gMap).forEach(g=>{tT+=g.t;tA+=g.a;tG+=g.g;tLY+=g.ly;tLM+=g.lm;});
+        const tPct=ach(tT,tA);
+        const tbody=document.getElementById('channelBody');
+        let html=`<tr class="total-row">
+            <td><strong>TOTAL</strong></td>
+            <td class="val-num"><strong>${fc(tT)}</strong></td>
+            <td class="val-num"><strong>${fc(tA)}</strong></td>
+            <td class="val-num ${gapClass(tG)}"><strong>${tG>=0?'+':''}${fc(tG)}</strong></td>
+            <td class="val-center"><span class="${achClass(tPct)}">${tPct}%</span></td>
+            <td class="val-num"><strong>${fc(tLY)}</strong></td>
+            <td class="val-num"><strong>${fc(tLM)}</strong></td>
+        </tr>`;
+        Object.entries(gMap).forEach(([ch,G])=>{
+            const chPct=ach(G.t,G.a);
+            html+=`<tr class="channel-group-row">
+                <td><strong>📂 ${ch}</strong></td>
+                <td class="val-num"><strong>${fc(G.t)}</strong></td>
+                <td class="val-num"><strong>${fc(G.a)}</strong></td>
+                <td class="val-num ${gapClass(G.g)}"><strong>${G.g>=0?'+':''}${fc(G.g)}</strong></td>
+                <td class="val-center"><span class="${achClass(chPct)}">${chPct}%</span></td>
+                <td class="val-num"><strong>${fc(G.ly)}</strong></td>
+                <td class="val-num"><strong>${fc(G.lm)}</strong></td>
+            </tr>`;
+            Object.entries(G.projects).forEach(([proj,P])=>{
+                const pPct=ach(P.t,P.a);
+                html+=`<tr class="project-sub-row">
+                    <td style="padding-left:28px;"><span style="color:#94a3b8;">↳</span> <strong>${proj}</strong> <small style="color:#94a3b8;margin-left:6px;">CR:${P.cr} CA:${P.ca}</small></td>
+                    <td class="val-num">${fc(P.t)}</td>
+                    <td class="val-num">${fc(P.a)}</td>
+                    <td class="val-num ${gapClass(P.g)}">${P.g>=0?'+':''}${fc(P.g)}</td>
+                    <td class="val-center"><span class="${achClass(pPct)}">${pPct}%</span></td>
+                    <td class="val-num">${fc(P.ly)}</td>
+                    <td class="val-num">${fc(P.lm)}</td>
+                </tr>`;
+            });
+        });
+        tbody.innerHTML=html;
+    }
+
+    // ===== PARETO =====
+    function renderPareto() {
+        const top30=paretoData.sort((a,b)=>parseFloat(b[' T.MTD']||0)-parseFloat(a[' T.MTD']||0)).slice(0,30);
+        const tbody=document.getElementById('paretoBody');
+        if(!top30.length){
+            tbody.innerHTML='<tr><td colspan="8"><div class="empty-state"><div class="icon">🎯</div><div>Data pareto tidak tersedia</div></div></td></tr>';
+            return;
+        }
+        let tT=0,tA=0,tG=0,tLM=0;
+        top30.forEach(r=>{tT+=parseFloat(r[' T.MTD']||0);tA+=parseFloat(r[' A.MTD']||0);tG+=parseFloat(r[' Gap MTD']||0);tLM+=parseFloat(r[' LM']||0);});
+        const tPct=ach(tT,tA);
+        let html=`<tr class="total-row">
+            <td>—</td><td><strong>TOTAL (Top 30)</strong></td>
+            <td class="val-num"><strong>${fc(tT)}</strong></td>
+            <td class="val-num"><strong>${fc(tA)}</strong></td>
+            <td class="val-num ${gapClass(tG)}"><strong>${fc(tG)}</strong></td>
+            <td class="val-center"><span class="${achClass(tPct)}">${tPct}%</span></td>
+            <td class="val-num"><strong>${fc(tLM)}</strong></td>
+            <td>—</td>
+        </tr>`;
+        top30.forEach((r,i)=>{
+            const t=parseFloat(r[' T.MTD']||0),a=parseFloat(r[' A.MTD']||0);
+            const g=parseFloat(r[' Gap MTD']||0),lm=parseFloat(r[' LM']||0);
+            const pct=ach(t,a);
+            html+=`<tr>
+                <td class="val-center"><span class="rank-badge">#${i+1}</span></td>
+                <td><strong style="font-size:12px;">${(r['Nama Pelanggan']||'').substring(0,30)}</strong></td>
+                <td class="val-num">${fc(t)}</td>
+                <td class="val-num">${fc(a)}</td>
+                <td class="val-num ${gapClass(g)}">${fc(g)}</td>
+                <td class="val-center"><span class="${achClass(pct)}">${pct}%</span></td>
+                <td class="val-num">${fc(lm)}</td>
+                <td style="font-size:11px;color:#64748b;">${r.szname||''}</td>
+            </tr>`;
+        });
+        tbody.innerHTML=html;
+    }
+
+    // ===== TOP PROJECTS =====
+    function renderProjects() {
+        const top20=projectData.sort((a,b)=>parseFloat(b['A.MTD']||0)-parseFloat(a['A.MTD']||0)).slice(0,20);
+        const tbody=document.getElementById('projectBody');
+        if(!top20.length){
+            tbody.innerHTML='<tr><td colspan="7"><div class="empty-state"><div class="icon">📋</div><div>Data project tidak tersedia</div></div></td></tr>';
+            return;
+        }
+        let html='';
+        top20.forEach(r=>{
+            const t=parseFloat(r['T.MTD']||0),a=parseFloat(r['A.MTD']||0);
+            const g=parseFloat(r['Gap MTD']||0);
+            const pct=ach(t,a);
+            const isITG=r.ITG==='ITG SC';
+            html+=`<tr>
+                <td><strong style="font-size:12px;">${(r['CUST NAME']||'').substring(0,30)}</strong></td>
+                <td><span style="font-size:11px;color:#64748b;">${r.ITG||''}</span></td>
+                <td class="val-num">${isITG?t.toLocaleString('id-ID'):fc(t)}</td>
+                <td class="val-num">${isITG?a.toLocaleString('id-ID'):fc(a)}</td>
+                <td class="val-num ${gapClass(g)}">${isITG?g.toLocaleString('id-ID'):fc(g)}</td>
+                <td class="val-center"><span class="${achClass(pct)}">${pct}%</span></td>
+                <td style="font-size:11px;color:#64748b;">${(r.szname||'').substring(0,16)}</td>
+            </tr>`;
+        });
+        tbody.innerHTML=html;
+    }
+
+    // ===== CA POM =====
+    function renderPOM() {
+        const tbody=document.getElementById('pomBody');
+        if(!pomData.length){
+            tbody.innerHTML='<tr><td colspan="5"><div class="empty-state"><div class="icon">📊</div><div>Data CA POM tidak tersedia</div></div></td></tr>';
+            return;
+        }
+        const skuMap={};
+        pomData.forEach(r=>{
+            const sku=r.SKU||'UNKNOWN';
+            if(!skuMap[sku]) skuMap[sku]={sku,t:0,a:0,achSum:0,cnt:0};
+            const s=skuMap[sku];
+            s.t+=parseFloat(r['T.POMAdj']||0); s.a+=parseFloat(r['A.POM']||0);
+            s.achSum+=parseFloat(r['Ach_POM']||0); s.cnt++;
+        });
+        Object.values(skuMap).forEach(s=>s.gap=s.a-s.t);
+        let tT=0,tA=0,tG=0,tAS=0,tCnt=0;
+        Object.values(skuMap).forEach(s=>{tT+=s.t;tA+=s.a;tG+=s.gap;tAS+=s.achSum;tCnt+=s.cnt;});
+        const avgAch=tCnt>0?Math.round((tAS/tCnt)*100):0;
+        let html=`<tr class="total-row">
+            <td><strong>TOTAL</strong></td>
+            <td class="val-num"><strong>${tT}</strong></td>
+            <td class="val-num"><strong>${tA}</strong></td>
+            <td class="val-center"><span class="${achClass(avgAch)}">${avgAch}%</span></td>
+            <td class="val-num ${gapClass(tG)}"><strong>${tG>=0?'+':''}${fc(tG)}</strong></td>
+        </tr>`;
+        Object.values(skuMap).sort((a,b)=>b.a-a.a).forEach(s=>{
+            const pct=s.cnt>0?Math.round((s.achSum/s.cnt)*100):0;
+            html+=`<tr>
+                <td><strong style="font-size:12px;">${s.sku}</strong></td>
+                <td class="val-num">${s.t}</td>
+                <td class="val-num">${s.a}</td>
+                <td class="val-center"><span class="${achClass(pct)}">${pct}%</span></td>
+                <td class="val-num ${gapClass(s.gap)}">${s.gap>=0?'+':''}${fc(s.gap)}</td>
+            </tr>`;
+        });
+        tbody.innerHTML=html;
+    }
+
+    // ===== OPEN SALESMAN =====
+    function openSalesman(id) {
+        window.location.href=`performance_desktop.html?id=${id}`;
+    }
+
+    // ===== MAIN LOAD =====
+    async function loadData() {
+        try {
+            document.getElementById('loadingPanel').style.display='block';
+            document.getElementById('errorPanel').style.display='none';
+            document.getElementById('mainPanel').style.display='none';
+
+            await loadJSONData();
+
+            updateMetrics();
+            renderRanking();
+            renderChannel();
+            renderPareto();
+            renderProjects();
+            renderPOM();
+
+            document.getElementById('loadingPanel').style.display='none';
+            document.getElementById('mainPanel').style.display='block';
+
+            if(channelProjData.length>0) {
+                const names=[...new Set(channelProjData.map(d=>d.szname))];
+                document.getElementById('headerSubtitle').textContent=`${names.length} salesman | Data MTD`;
+            }
+        } catch(err) {
+            document.getElementById('loadingPanel').style.display='none';
+            document.getElementById('errorPanel').style.display='block';
+            document.getElementById('errorMsg').textContent=err.message;
+        }
+    }
+
+    function logout() { sessionStorage.clear(); window.location.href='index.html'; }
+
+    // ===== INIT =====
+    document.addEventListener('DOMContentLoaded',()=>{
+        const ok=sessionStorage.getItem('isLoggedIn');
+        if(!ok){ window.location.href='index.html'; return; }
+        loadData();
+    });
+</script>
+</body>
+</html>

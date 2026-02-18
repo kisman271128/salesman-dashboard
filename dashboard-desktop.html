@@ -186,6 +186,45 @@
             gap: 20px;
         }
 
+        /* ✅ TIME GONE BADGE */
+        .time-gone-badge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 8px 16px;
+        }
+        .tg-label {
+            font-size: 12px;
+            font-weight: 700;
+            color: #475569;
+            white-space: nowrap;
+        }
+        .tg-bar-wrap {
+            width: 100px;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .tg-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            background: linear-gradient(90deg, #10b981, #f59e0b, #ef4444);
+            background-size: 300% 100%;
+            transition: width 0.6s ease;
+            width: 0%;
+        }
+        .tg-value {
+            font-size: 14px;
+            font-weight: 800;
+            color: #1e293b;
+            min-width: 40px;
+            text-align: right;
+        }
+
         .refresh-btn {
             background: linear-gradient(135deg, #43e97b, #38f9d7);
             color: white;
@@ -1052,8 +1091,8 @@
 <!-- ✅ SIDEBAR NAVIGATION -->
 <div class="sidebar">
 <div class="sidebar-header">
-<div class="company-logo">SALESMAN APP</div>
-<div class="company-subtitle">Manajemen Dashboard</div>
+<div class="company-logo">Dashboard Salesman</div>
+<div class="company-subtitle">RSF Application Web</div>
 </div>
 <nav class="sidebar-nav">
 <div class="nav-item active" onclick="showDashboard()">
@@ -1069,8 +1108,8 @@
 <div class="nav-label">Perform by Salesman</div>
 </div>
 <div class="nav-item" onclick="showReports()">
-<div class="nav-icon">📈</div>
-<div class="nav-label">Laporan</div>
+<div class="nav-icon">📊</div>
+<div class="nav-label">Performance All</div>
 </div>
 <div class="nav-item" onclick="showSettings()">
 <div class="nav-icon">⚙️</div>
@@ -1114,9 +1153,16 @@
 <p id="regionName">Memuat informasi wilayah...</p>
 </div>
 <div class="header-right">
+<div class="time-gone-badge" id="timeGoneBadge" style="display:none;">
+    <div class="tg-label">⏱ Time Gone</div>
+    <div class="tg-bar-wrap">
+        <div class="tg-bar-fill" id="tgBarFill"></div>
+    </div>
+    <div class="tg-value" id="tgValue">—</div>
+</div>
 <button class="refresh-btn" onclick="loadDashboardData()">
-                        🔄 Perbarui
-                    </button>
+    🔄 Refresh
+</button>
 </div>
 </div>
 <!-- ✅ DASHBOARD CONTENT -->
@@ -1147,7 +1193,7 @@
 <div class="section-header">
 <h3 class="section-title">
 <span>📊</span>
-                                        Kinerja Line of Business
+                                        By LOB (Principle)
                                     </h3>
 </div>
 <div class="lob-grid" id="lobGrid">
@@ -1219,6 +1265,7 @@
         let currentMapMetric = 'achievement';
         let leafletMap = null;
         let markersLayer = null;
+        let tgPct = 0; // Time Gone percentage (0-100), digunakan untuk pewarnaan achievement
 
         // ✅ FORMAT CURRENCY FUNCTION
         function formatCurrencyIndonesia(value) {
@@ -1341,7 +1388,54 @@
         function openSalesmanPerformance(salesmanId) {
             console.log(`📈 Opening performance page for salesman: ${salesmanId}`);
             closeSalesmanModal();
-            window.location.href = `salesman-desktop.html?id=${salesmanId}`;
+            window.location.href = `performance_desktop.html?id=${salesmanId}`;
+        }
+
+        // ✅ UPDATE TIME GONE badge from chart_data.json
+        function updateTimeGone(data) {
+            if (!data || !data.stats) return;
+            const totalHK   = parseInt(data.stats.total_hk   || data.total_hk   || 0);
+            const sisaHKDO  = parseInt(data.stats.sisa_hk_do || data.sisa_hk_do || 0);
+            if (totalHK <= 0) return;
+
+            const gone = totalHK - sisaHKDO;
+            tgPct = Math.round((gone / totalHK) * 100); // simpan sebagai global
+
+            document.getElementById('tgValue').textContent   = tgPct + '%';
+            document.getElementById('tgBarFill').style.width = tgPct + '%';
+
+            const fill  = document.getElementById('tgBarFill');
+            const valEl = document.getElementById('tgValue');
+            if      (tgPct >= 80) { fill.style.background = '#ef4444'; valEl.style.color = '#dc2626'; }
+            else if (tgPct >= 50) { fill.style.background = '#f59e0b'; valEl.style.color = '#d97706'; }
+            else                  { fill.style.background = '#10b981'; valEl.style.color = '#059669'; }
+
+            document.getElementById('timeGoneBadge').style.display = 'flex';
+            console.log(`⏱ Time Gone: ${gone}/${totalHK} HK = ${tgPct}%`);
+        }
+
+        // ✅ Helper: parse JSON Lines text → array of objects
+        function parseJSONLines(text) {
+            return text.trim().split('\n')
+                .filter(line => line.trim())
+                .map(line => { try { return JSON.parse(line); } catch(e) { return null; } })
+                .filter(Boolean);
+        }
+
+        // ✅ Helper: format value in Jt/Rb
+        function fmtVal(v) {
+            const n = Math.abs(parseFloat(v) || 0);
+            const raw = parseFloat(v) || 0;
+            if (n >= 1e9)  return (raw/1e9).toFixed(1) + 'M';
+            if (n >= 1e6)  return (raw/1e6).toFixed(1) + 'Jt';
+            if (n >= 1e3)  return Math.round(raw/1e3) + 'Rb';
+            return Math.round(raw).toString();
+        }
+
+        // ✅ Helper: format ratio as signed percentage string
+        function fmtPct(v) {
+            const pct = Math.round((parseFloat(v) || 0) * 100);
+            return (pct >= 0 ? '+' : '') + pct + '%';
         }
 
         // ✅ LOAD DASHBOARD DATA - Real data only from \data\ folder
@@ -1354,51 +1448,106 @@
                 
                 // Load real data from files
                 const responses = await Promise.all([
-                    fetch('data/dashboard.json'),
-                    fetch('data/salesman_list.json'),
+                    fetch('data/d.dashboard.json'),    // LOB cards (JSONL)
+                    fetch('data/d.performance.json'),  // Salesman ranking (JSONL)
                     fetch('data/chart_data.json'),
                     fetch('data/d.area.json'),
                     fetch('data/d.depoproses.json')
                 ]);
 
-                // Check if any request failed
-                const failedRequests = responses.filter(response => !response.ok);
-                if (failedRequests.length > 0) {
-                    throw new Error(`Failed to load ${failedRequests.length} data files from \\data\\ folder`);
-                }
+                const [lobRes, perfRes, chartRes, areaRes, depoRes] = responses;
 
-                // Load dashboard data
-                dashboardData = await responses[0].json();
-                console.log('✅ Dashboard data loaded:', dashboardData);
-
-                // Load salesman data
-                salesmanData = await responses[1].json();
-                console.log('✅ Salesman data loaded:', salesmanData.length, 'records');
-
-                // Load chart data
-                chartData = await responses[2].json();
-                console.log('✅ Chart data loaded');
-
-                // Load area data (JSONL format)
-                const areaText = await responses[3].text();
-                if (areaText && areaText.trim()) {
-                    areaData = areaText.trim().split('\n').map(line => JSON.parse(line));
-                    console.log('✅ Area data loaded:', areaData.length, 'records');
+                // ── d.dashboard.json (JSONL) → LOB cards ──
+                if (lobRes.ok) {
+                    const rawLOB = parseJSONLines(await lobRes.text());
+                    const totalRow = rawLOB.find(r => r.LOB === 'TOTAL');
+                    const lobRows  = rawLOB.filter(r => r.LOB !== 'TOTAL');
+                    dashboardData = {
+                        depo_name:   totalRow?.['Nama Depo'] || rawLOB[0]?.['Nama Depo'] || 'Dashboard',
+                        region_name: '',
+                        total_data: totalRow ? {
+                            name:        'TOTAL',
+                            achievement: Math.round((totalRow['vs BP'] || 0) * 100) + '%',
+                            actual:      fmtVal(totalRow.Actual),
+                            target:      fmtVal(totalRow.BP),
+                            gap:         fmtVal(totalRow.Gap),
+                            vs_lm:       fmtPct(totalRow['vs LM']),
+                            vs_3lm:      fmtPct(totalRow['vs 3LM']),
+                            vs_ly:       fmtPct(totalRow['vs LY'])
+                        } : null,
+                        lob_cards: lobRows.map(r => ({
+                            name:        r.LOB,
+                            achievement: Math.round((r['vs BP'] || 0) * 100) + '%',
+                            actual:      fmtVal(r.Actual),
+                            target:      fmtVal(r.BP),
+                            gap:         fmtVal(r.Gap),
+                            vs_lm:       fmtPct(r['vs LM']),
+                            vs_3lm:      fmtPct(r['vs 3LM']),
+                            vs_ly:       fmtPct(r['vs LY'])
+                        }))
+                    };
+                    console.log('✅ d.dashboard.json loaded:', rawLOB.length, 'LOB rows');
                 } else {
-                    throw new Error('Area data file is empty');
+                    console.warn('⚠️ d.dashboard.json failed to load');
+                    dashboardData = { depo_name: 'Dashboard', region_name: '', total_data: null, lob_cards: [] };
                 }
 
-                // Load depot process data
-                depoData = await responses[4].json();
-                console.log('✅ Depot process data loaded:', depoData);
+                // ── d.performance.json (JSONL) → Salesman ranking ──
+                if (perfRes.ok) {
+                    const rawPerf = parseJSONLines(await perfRes.text());
+                    const perfRows = rawPerf.filter(r => r.szEmployeeId !== 17200519965 && r.szname !== 'Total Depo');
+                    perfRows.sort((a, b) => (a.Rank || 99) - (b.Rank || 99));
+                    salesmanData = perfRows.map(r => {
+                        const achPct = Math.round((r.Ach || 0) * 100);
+                        let status = 'Extra Effort';
+                        if      (achPct >= 100) status = 'Excellent';
+                        else if (achPct >= 90)  status = 'Very Good';
+                        else if (achPct >= 80)  status = 'Good';
+                        return {
+                            id:          r.szEmployeeId?.toString(),
+                            name:        r.szname,
+                            type:        r['Tipe Salesman'],
+                            achievement: achPct + '%',
+                            status:      status,
+                            rank:        r.Rank
+                        };
+                    });
+                    console.log('✅ d.performance.json loaded:', salesmanData.length, 'salesman');
+                } else {
+                    console.warn('⚠️ d.performance.json failed to load');
+                    salesmanData = [];
+                }
 
-                // Update UI with real data
+                // ── chart_data.json ──
+                if (chartRes.ok) {
+                    chartData = await chartRes.json();
+                    console.log('✅ Chart data loaded');
+                }
+
+                // ── d.area.json (JSONL) ──
+                if (areaRes.ok) {
+                    const areaText = await areaRes.text();
+                    if (areaText && areaText.trim()) {
+                        areaData = parseJSONLines(areaText);
+                        console.log('✅ Area data loaded:', areaData.length, 'records');
+                    }
+                }
+
+                // ── d.depoproses.json ──
+                if (depoRes.ok) {
+                    depoData = await depoRes.json();
+                    console.log('✅ Depot process data loaded:', depoData);
+                }
+
+                // Update UI with real data — updateTimeGone HARUS dipanggil duluan
+                // agar tgPct sudah tersedia saat LOB cards dan peta dirender
                 updateHeader(dashboardData);
+                updateTimeGone(chartData);          // ← set tgPct global dulu
                 updateAchievementMetrics(depoData);
                 updateLOBCards(dashboardData.lob_cards);
                 updateSalesmanTable(salesmanData);
                 
-                // Initialize and render Leaflet map
+                // Initialize and render Leaflet map (pakai tgPct yang sudah diset)
                 initializeLeafletMap();
                 renderLeafletMap();
 
@@ -1518,17 +1667,22 @@
             const card = document.createElement('div');
             card.className = `lob-card ${isTotal ? 'color-total' : `color-${index % 9}`} fade-in`;
             card.style.animationDelay = `${(isTotal ? 0 : index + 1) * 0.05}s`;
-            
+
             if (isTotal) {
                 card.style.order = '-1';
                 card.style.background = 'linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1))';
                 card.style.border = '2px solid #667eea';
             }
-            
+
+            // Warna badge achievement berdasarkan vs Time Gone
+            const achPctNum = parseInt(lob.achievement) || 0;
+            const achStyle  = getAchStyle(achPctNum);
+            const badgeStyle = `background: ${achStyle.bg}; color: ${achStyle.color};`;
+
             card.innerHTML = `
                 <div class="lob-header">
                     <div class="lob-name">${isTotal ? '📊 ' + lob.name : lob.name}</div>
-                    <div class="achievement-badge" style="${isTotal ? 'background: linear-gradient(135deg, #43e97b, #38f9d7);' : ''}">${lob.achievement}</div>
+                    <div class="achievement-badge" style="${badgeStyle}">${lob.achievement}</div>
                 </div>
                 
                 <div class="lob-metrics">
@@ -1722,95 +1876,91 @@
         // ✅ GET MARKER STYLE based on achievement and current metric
         function getMarkerStyle(achievement) {
             if (!achievement || typeof achievement !== 'number') {
-                return {
-                    color: '#94a3b8',
-                    class: 'marker-no-data',
-                    icon: '?'
-                };
+                return { color: '#94a3b8', class: 'marker-no-data', icon: '?' };
             }
-            
-            const ach = achievement * 100;
-            
+
+            const achPctVal = achievement * 100;
+
             if (currentMapMetric === 'achievement') {
-                if (ach >= 80) return { color: '#059669', class: 'marker-excellent', icon: '★' };
-                else if (ach >= 60) return { color: '#f59e0b', class: 'marker-good', icon: '●' };
-                else if (ach >= 40) return { color: '#fb7185', class: 'marker-fair', icon: '▲' };
-                else return { color: '#ef4444', class: 'marker-poor', icon: '⚠' };
+                // Gunakan tgPct sebagai patokan, sama persis dengan getAchStyle
+                const tg = tgPct || 0;
+                if (achPctVal >= tg)            return { color: '#059669', class: 'marker-excellent', icon: '★' };
+                else if (achPctVal >= tg * 0.9) return { color: '#f59e0b', class: 'marker-good',     icon: '●' };
+                else                            return { color: '#ef4444', class: 'marker-poor',     icon: '▲' };
             } else if (currentMapMetric === 'actual') {
                 return { color: '#667eea', class: 'marker-actual', icon: '₹' };
             } else if (currentMapMetric === 'gap') {
-                return achievement >= 0.8 ? 
-                    { color: '#059669', class: 'marker-positive', icon: '+' } : 
+                return achievement >= (tgPct / 100) ?
+                    { color: '#059669', class: 'marker-positive', icon: '+' } :
                     { color: '#ef4444', class: 'marker-negative', icon: '-' };
             }
-            
+
             return { color: '#667eea', class: 'marker-default', icon: '●' };
         }
 
-        // ✅ CREATE POPUP CONTENT
+        // ✅ CREATE POPUP CONTENT — semua field dari d.area.json
         function createPopupContent(location) {
-            let metricsContent = '';
-            
-            if (currentMapMetric === 'achievement') {
-                metricsContent = `
-                    <div class="popup-metric">
-                        <span class="popup-metric-label">Achievement:</span>
-                        <span class="popup-metric-value">${formatPercentage(location.Ach)}</span>
-                    </div>
-                    <div class="popup-metric">
-                        <span class="popup-metric-label">Actual:</span>
-                        <span class="popup-metric-value">${formatCurrency(location.Actual)}</span>
-                    </div>
-                    <div class="popup-metric">
-                        <span class="popup-metric-label">Target:</span>
-                        <span class="popup-metric-value">${formatCurrency(location.Target)}</span>
-                    </div>
-                    <div class="popup-metric">
-                        <span class="popup-metric-label">Gap:</span>
-                        <span class="popup-metric-value ${location.Gap >= 0 ? 'positive' : 'negative'}">${formatCurrency(location.Gap)}</span>
-                    </div>
-                `;
-            } else if (currentMapMetric === 'actual') {
-                metricsContent = `
-                    <div class="popup-metric">
-                        <span class="popup-metric-label">Actual Sales:</span>
-                        <span class="popup-metric-value">${formatCurrency(location.Actual)}</span>
-                    </div>
-                    <div class="popup-metric">
-                        <span class="popup-metric-label">Target:</span>
-                        <span class="popup-metric-value">${formatCurrency(location.Target)}</span>
-                    </div>
-                    <div class="popup-metric">
-                        <span class="popup-metric-label">Achievement:</span>
-                        <span class="popup-metric-value">${formatPercentage(location.Ach)}</span>
-                    </div>
-                `;
-            } else if (currentMapMetric === 'gap') {
-                metricsContent = `
-                    <div class="popup-metric">
-                        <span class="popup-metric-label">Gap vs Target:</span>
-                        <span class="popup-metric-value ${location.Gap >= 0 ? 'positive' : 'negative'}">${formatCurrency(location.Gap)}</span>
-                    </div>
-                    <div class="popup-metric">
-                        <span class="popup-metric-label">Actual:</span>
-                        <span class="popup-metric-value">${formatCurrency(location.Actual)}</span>
-                    </div>
-                    <div class="popup-metric">
-                        <span class="popup-metric-label">Target:</span>
-                        <span class="popup-metric-value">${formatCurrency(location.Target)}</span>
-                    </div>
-                `;
+            const achPct  = typeof location.Ach === 'number' ? (location.Ach * 100).toFixed(1) + '%' : '—';
+            const vsLY    = typeof location['vs LY']  === 'number' ? fmtPct(location['vs LY'])  : '—';
+            const vs3LM   = typeof location['vs 3LM'] === 'number' ? fmtPct(location['vs 3LM']) : '—';
+            const vsLM    = typeof location['vs LM']  === 'number' ? fmtPct(location['vs LM'])  : '—';
+
+            // Warna badge Ach di tooltip: sama logika dengan getAchStyle (vs tgPct)
+            const achPctNum = typeof location.Ach === 'number' ? location.Ach * 100 : null;
+            let achBg = '#94a3b8', achTxt = '#ffffff';
+            if (achPctNum !== null) {
+                const s = getAchStyle(achPctNum);
+                achBg  = s.bg;
+                achTxt = s.color;
             }
-            
+
+            const row = (label, val, cls='') => `
+                <div class="popup-metric">
+                    <span class="popup-metric-label">${label}</span>
+                    <span class="popup-metric-value ${cls}">${val}</span>
+                </div>`;
+
+            const gapClass = (location.Gap || 0) >= 0 ? 'positive' : 'negative';
+
             return `
                 <div class="popup-header">
-                    📍 ${location.Kecamatan}, ${location.Kabupaten}
+                    📍 ${location.Kecamatan}
+                    <span style="font-size:10px; font-weight:400; opacity:0.85; margin-left:4px;">${location.Kabupaten}</span>
                 </div>
                 <div class="popup-content">
-                    ${metricsContent}
-                    <div class="popup-metric" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #f1f5f9;">
-                        <span class="popup-metric-label">Coordinates:</span>
-                        <span class="popup-metric-value">${location.Latitude.toFixed(6)}, ${location.Longitude.toFixed(6)}</span>
+                    <!-- Achievement highlight -->
+                    <div style="text-align:center; padding:8px 0 10px; border-bottom:1px solid #f1f5f9; margin-bottom:8px;">
+                        <span style="background:${achBg}; color:${achTxt}; padding:4px 14px; border-radius:20px; font-size:15px; font-weight:800;">${achPct}</span>
+                        <div style="font-size:10px; color:#94a3b8; margin-top:4px;">Achievement vs Target</div>
+                    </div>
+                    <!-- Sales metrics -->
+                    ${row('Target',  fmtVal(location.Target))}
+                    ${row('Aktual',  fmtVal(location.Actual))}
+                    ${row('Gap',     fmtVal(location.Gap), gapClass)}
+                    <!-- Historical comparison -->
+                    <div style="border-top:1px solid #f1f5f9; margin:8px 0 6px; padding-top:6px;">
+                        <div style="font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Perbandingan Historis</div>
+                    </div>
+                    ${row('Last Month',    fmtVal(location.LM))}
+                    ${row('3 Last Month',  fmtVal(location['3LM']))}
+                    ${row('Last Year',     fmtVal(location.LY))}
+                    <!-- vs comparisons -->
+                    <div style="border-top:1px solid #f1f5f9; margin:8px 0 6px; padding-top:6px;">
+                        <div style="font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">vs Periode</div>
+                    </div>
+                    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:4px; text-align:center;">
+                        <div style="background:#f8fafc; border-radius:6px; padding:4px;">
+                            <div style="font-size:9px; color:#94a3b8; font-weight:600;">vs BL</div>
+                            <div style="font-size:12px; font-weight:700; color:${parseFloat(location['vs LM']||0)>=0?'#059669':'#ef4444'};">${vsLM}</div>
+                        </div>
+                        <div style="background:#f8fafc; border-radius:6px; padding:4px;">
+                            <div style="font-size:9px; color:#94a3b8; font-weight:600;">vs 3BL</div>
+                            <div style="font-size:12px; font-weight:700; color:${parseFloat(location['vs 3LM']||0)>=0?'#059669':'#ef4444'};">${vs3LM}</div>
+                        </div>
+                        <div style="background:#f8fafc; border-radius:6px; padding:4px;">
+                            <div style="font-size:9px; color:#94a3b8; font-weight:600;">vs TL</div>
+                            <div style="font-size:12px; font-weight:700; color:${parseFloat(location['vs LY']||0)>=0?'#059669':'#ef4444'};">${vsLY}</div>
+                        </div>
                     </div>
                 </div>
             `;
@@ -1886,7 +2036,7 @@
                 tableBody.appendChild(row);
             });
 
-            console.log('✅ Tabel salesman berhasil diperbarui dengan', salesmanList.length, 'records');
+            console.log('✅ Tabel salesman berhasil direfresh dengan', salesmanList.length, 'records');
         }
 
         // ✅ CREATE SALESMAN ROW
@@ -1894,9 +2044,11 @@
             const row = document.createElement('tr');
             row.style.animationDelay = `${index * 0.02}s`;
             row.className = 'fade-in';
-            
-            const statusClass = getStatusClass(salesman.status);
-            
+
+            // Ambil angka dari string "45%" → 45
+            const achPct  = parseInt(salesman.achievement) || 0;
+            const style   = getAchStyle(achPct);
+
             row.innerHTML = `
                 <td class="rank-column">${salesman.rank}</td>
                 <td>
@@ -1914,10 +2066,14 @@
                     </div>
                 </td>
                 <td class="achievement-cell">
-                    <div class="achievement-value">${salesman.achievement}</div>
+                    <div style="background:${style.bg}; color:${style.color}; padding:6px 12px; border-radius:12px; font-weight:700; font-size:13px; display:inline-block;">
+                        ${salesman.achievement}
+                    </div>
                 </td>
                 <td class="status-cell">
-                    <div class="status-badge ${statusClass}">${salesman.status}</div>
+                    <div style="background:${style.bg}20; color:${style.bg}; border:1px solid ${style.bg}40; padding:4px 8px; border-radius:12px; font-size:10px; font-weight:700; text-transform:uppercase; display:inline-block;">
+                        ${style.label}
+                    </div>
                 </td>
                 <td class="action-cell">
                     <button class="view-btn" onclick="openSalesmanDetail('${salesman.id}')">
@@ -1929,20 +2085,28 @@
             return row;
         }
 
-        function getStatusClass(status) {
-            switch (status) {
-                case 'Extra Effort': return 'status-extra-effort';
-                case 'Good': return 'status-good';
-                case 'Very Good': return 'status-very-good';
-                case 'Excellent': return 'status-excellent';
-                default: return 'status-good';
+        // ✅ Warna achievement badge berdasarkan perbandingan vs Time Gone (tgPct)
+        // - achPct >= tgPct           → Hijau  (on track)
+        // - achPct >= tgPct * 0.9     → Kuning (mendekati)
+        // - achPct < tgPct * 0.9      → Merah  (under)
+        function getAchStyle(achPct) {
+            const tg = tgPct || 0;
+            if (achPct >= tg) {
+                // >= Time Gone → Hijau
+                return { bg: '#059669', color: '#ffffff', label: 'On Track' };
+            } else if (achPct >= tg * 0.9) {
+                // 90%-99.99% dari Time Gone → Kuning
+                return { bg: '#f59e0b', color: '#1e293b', label: 'Mendekati' };
+            } else {
+                // < 90% dari Time Gone → Merah
+                return { bg: '#ef4444', color: '#ffffff', label: 'Extra Effort' };
             }
         }
 
         // ✅ NAVIGATION FUNCTIONS
         function openSalesmanDetail(salesmanId) {
             console.log(`🚀 Navigating to salesman detail: ${salesmanId}`);
-            window.location.href = `salesman-desktop.html?id=${salesmanId}`;
+            window.location.href = `performance_desktop.html?id=${salesmanId}`;
         }
 
         function showDashboard() {
@@ -1954,7 +2118,7 @@
         }
 
         function showReports() {
-            alert('📜 Reports module coming soon!');
+            window.location.href = 'performance_all_desktop.html';
         }
 
         function showSettings() {

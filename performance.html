@@ -399,6 +399,31 @@
         .status-high { background: rgba(16, 185, 129, 0.1); color: #059669; }
         .status-low { background: rgba(239, 68, 68, 0.1); color: #dc2626; }
 
+        /* Channel Group Row */
+        .channel-group-row {
+            background: #eef2ff !important;
+            border-top: 2px solid #c7d2fe;
+            border-bottom: 1px solid #c7d2fe;
+        }
+        .channel-group-row td {
+            background: #eef2ff !important;
+            font-weight: 700;
+            color: #3730a3;
+            font-size: 11px;
+        }
+        .channel-group-row:hover td { background: #e0e7ff !important; }
+
+        /* Project Sub Row */
+        .project-sub-row td {
+            background: #fafbff !important;
+            font-size: 11px;
+            color: #374151;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .project-sub-row:hover td { background: #f0f4ff !important; }
+        .project-sub-row .sticky-col { background: #fafbff !important; }
+        .project-sub-row:hover .sticky-col { background: #f0f4ff !important; }
+
         /* Empty state */
         .empty-state {
             text-align: center;
@@ -1141,66 +1166,53 @@
 
 		// ===== FUNGSI UPDATE UI =====
 		function updateMetricsCards(salesmanName) {
-			// Hanya gunakan channelData untuk metrics cards
-			const salesmanChannelData = channelData.filter(item => item.szname === salesmanName);
-			
-			if (salesmanChannelData.length === 0) {
-				// Jika tidak ada data channel, tampilkan semua sebagai 0
+			// Gunakan HANYA channelProjData sebagai sumber tunggal
+			const salesmanData = channelProjData.filter(item => item.szname === salesmanName);
+
+			if (salesmanData.length === 0) {
 				document.getElementById('totalValue').textContent = '0';
 				document.getElementById('totalTarget').textContent = '0';
 				document.getElementById('totalAch').textContent = '0%';
 				document.getElementById('totalAch').className = 'achievement low';
-				
-				['Wholesaler', 'Retail', 'MTI'].forEach(channel => {
-					const channelKey = channel.toLowerCase();
-					document.getElementById(`${channelKey}Value`).textContent = '0';
-					document.getElementById(`${channelKey}Target`).textContent = '0';
-					document.getElementById(`${channelKey}Ach`).textContent = '0%';
-					document.getElementById(`${channelKey}Ach`).className = 'achievement low';
+				['Wholesaler', 'Retail', 'MTI'].forEach(ch => {
+					const k = ch.toLowerCase();
+					document.getElementById(`${k}Value`).textContent = '0';
+					document.getElementById(`${k}Target`).textContent = '0';
+					document.getElementById(`${k}Ach`).textContent = '0%';
+					document.getElementById(`${k}Ach`).className = 'achievement low';
 				});
 				return;
 			}
 
-			// Kelompokkan data berdasarkan Channel Group
+			// Kelompokkan per Channel Group
 			const channelMap = {};
-			salesmanChannelData.forEach(item => {
-				const channel = item['Channel Group'];
-				const target = parseFloat(item[' T.MTD'] || 0);
-				const actual = parseFloat(item[' A.MTD'] || 0);
-				
-				if (!channelMap[channel]) {
-					channelMap[channel] = { target: 0, actual: 0 };
-				}
-				channelMap[channel].target += target;
-				channelMap[channel].actual += actual;
+			salesmanData.forEach(item => {
+				const ch = item['Channel Group'];
+				if (!channelMap[ch]) channelMap[ch] = { target: 0, actual: 0 };
+				channelMap[ch].target += parseFloat(item[' T.MTD'] || 0);
+				channelMap[ch].actual += parseFloat(item[' A.MTD'] || 0);
 			});
 
 			let totalTarget = 0, totalActual = 0;
-
-			// Update metrics untuk setiap channel
-			['Wholesaler', 'Retail', 'MTI'].forEach(channel => {
-				const data = channelMap[channel] || { target: 0, actual: 0 };
+			['Wholesaler', 'Retail', 'MTI'].forEach(ch => {
+				const data = channelMap[ch] || { target: 0, actual: 0 };
 				totalTarget += data.target;
 				totalActual += data.actual;
-
-				const channelKey = channel.toLowerCase();
-				document.getElementById(`${channelKey}Value`).textContent = formatCurrencyIndonesia(data.actual);
-				document.getElementById(`${channelKey}Target`).textContent = formatCurrencyIndonesia(data.target);
-				
-				const achPercentage = calculateAchievementPercentage(data.target, data.actual);
-				const achElement = document.getElementById(`${channelKey}Ach`);
-				achElement.textContent = `${achPercentage}%`;
-				achElement.className = `achievement ${getAchievementClass(achPercentage).replace('ach-', '')}`;
+				const k = ch.toLowerCase();
+				document.getElementById(`${k}Value`).textContent  = formatCurrencyIndonesia(data.actual);
+				document.getElementById(`${k}Target`).textContent = formatCurrencyIndonesia(data.target);
+				const achPct = calculateAchievementPercentage(data.target, data.actual);
+				const achEl  = document.getElementById(`${k}Ach`);
+				achEl.textContent = `${achPct}%`;
+				achEl.className   = `achievement ${getAchievementClass(achPct).replace('ach-', '')}`;
 			});
 
-			// Update total metrics
-			document.getElementById('totalValue').textContent = formatCurrencyIndonesia(totalActual);
+			document.getElementById('totalValue').textContent  = formatCurrencyIndonesia(totalActual);
 			document.getElementById('totalTarget').textContent = formatCurrencyIndonesia(totalTarget);
-			
-			const totalAchPercentage = calculateAchievementPercentage(totalTarget, totalActual);
-			const totalAchElement = document.getElementById('totalAch');
-			totalAchElement.textContent = `${totalAchPercentage}%`;
-			totalAchElement.className = `achievement ${getAchievementClass(totalAchPercentage).replace('ach-', '')}`;
+			const totalAchPct = calculateAchievementPercentage(totalTarget, totalActual);
+			const totalAchEl  = document.getElementById('totalAch');
+			totalAchEl.textContent = `${totalAchPct}%`;
+			totalAchEl.className   = `achievement ${getAchievementClass(totalAchPct).replace('ach-', '')}`;
 		}
 
         function updateJKSTable(salesmanName) {
@@ -1271,32 +1283,51 @@
         }
 
         function updateChannelTable(salesmanName) {
-            // Gabungkan data dari channelData dan channelProjData
-            const salesmanChannelData = channelData.filter(item => item.szname === salesmanName);
-            const salesmanChannelProjData = channelProjData.filter(item => item.szname === salesmanName);
-            const allChannelData = [...salesmanChannelData, ...salesmanChannelProjData];
-            
+            // Gunakan HANYA channelProjData (d.channelproj.json) — sumber tunggal
+            const salesmanData = channelProjData.filter(item => item.szname === salesmanName);
             const tbody = document.getElementById('channelTableBody');
-            
-            if (allChannelData.length === 0) {
+
+            if (salesmanData.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><div class="icon">📈</div><div>Data channel tidak tersedia</div></td></tr>';
                 return;
             }
 
-            // Hitung total
-            let totalTarget = 0, totalActual = 0, totalGap = 0;
-            let totalLY = 0, total3LM = 0, totalLM = 0;
-
-            allChannelData.forEach(item => {
-                totalTarget += parseFloat(item[' T.MTD'] || 0);
-                totalActual += parseFloat(item[' A.MTD'] || 0);
-                totalGap += parseFloat(item[' Gap MTD'] || 0);
-                totalLY += parseFloat(item[' LY'] || 0);
-                total3LM += parseFloat(item[' 3LM'] || 0);
-                totalLM += parseFloat(item[' LM'] || 0);
+            // Grouping: Channel Group → Project
+            const groupMap = {};
+            salesmanData.forEach(item => {
+                const ch   = item['Channel Group'] || 'Lainnya';
+                const proj = item['Project']       || '-';
+                if (!groupMap[ch]) {
+                    groupMap[ch] = { target:0, actual:0, gap:0, ly:0, threeLM:0, lm:0, projects:{} };
+                }
+                const g = groupMap[ch];
+                g.target  += parseFloat(item[' T.MTD']   || 0);
+                g.actual  += parseFloat(item[' A.MTD']   || 0);
+                g.gap     += parseFloat(item[' Gap MTD'] || 0);
+                g.ly      += parseFloat(item[' LY']      || 0);
+                g.threeLM += parseFloat(item[' 3LM']     || 0);
+                g.lm      += parseFloat(item[' LM']      || 0);
+                if (!g.projects[proj]) {
+                    g.projects[proj] = { target:0, actual:0, gap:0, ly:0, threeLM:0, lm:0, cr:0, ca:0 };
+                }
+                const p = g.projects[proj];
+                p.target  += parseFloat(item[' T.MTD']   || 0);
+                p.actual  += parseFloat(item[' A.MTD']   || 0);
+                p.gap     += parseFloat(item[' Gap MTD'] || 0);
+                p.ly      += parseFloat(item[' LY']      || 0);
+                p.threeLM += parseFloat(item[' 3LM']     || 0);
+                p.lm      += parseFloat(item[' LM']      || 0);
+                p.cr      += parseInt(item['CR']         || 0);
+                p.ca      += parseInt(item['CA']         || 0);
             });
 
-            const totalAchPercentage = calculateAchievementPercentage(totalTarget, totalActual);
+            // Grand totals
+            let totalTarget=0, totalActual=0, totalGap=0, totalLY=0, total3LM=0, totalLM=0;
+            Object.values(groupMap).forEach(g => {
+                totalTarget += g.target; totalActual += g.actual; totalGap += g.gap;
+                totalLY += g.ly; total3LM += g.threeLM; totalLM += g.lm;
+            });
+            const totalAch = calculateAchievementPercentage(totalTarget, totalActual);
 
             let html = `
                 <tr class="total-row">
@@ -1304,35 +1335,44 @@
                     <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(totalTarget)}</strong></td>
                     <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(totalActual)}</strong></td>
                     <td class="value-currency col-wide ${getGapClass(totalGap)}"><strong>${totalGap >= 0 ? '+' : ''}${formatCurrencyIndonesia(totalGap)}</strong></td>
-                    <td class="value-percentage col-wide ${getAchievementClass(totalAchPercentage)}"><strong>${totalAchPercentage}%</strong></td>
+                    <td class="value-percentage col-wide ${getAchievementClass(totalAch)}"><strong>${totalAch}%</strong></td>
                     <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(totalLY)}</strong></td>
                     <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(total3LM)}</strong></td>
                     <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(totalLM)}</strong></td>
-                </tr>
-            `;
+                </tr>`;
 
-            allChannelData.forEach(item => {
-                const target = parseFloat(item[' T.MTD'] || 0);
-                const actual = parseFloat(item[' A.MTD'] || 0);
-                const gap = parseFloat(item[' Gap MTD'] || 0);
-                const ach = parseFloat(item[' Ach'] || 0);
-                const achPercentage = Math.round(ach * 100);
-                
-                // Tambahkan info project jika ada
-                const channelInfo = item['Channel Group'] + (item['Project'] ? ` (${item['Project']})` : '');
-                
+            // Channel Group rows + Project sub-rows
+            Object.entries(groupMap).forEach(([chName, g]) => {
+                const chAch = calculateAchievementPercentage(g.target, g.actual);
                 html += `
-                    <tr>
-                        <td class="sticky-col channel-group-col col-text"><strong>${channelInfo}</strong></td>
-                        <td class="value-currency col-wide">${formatCurrencyIndonesia(target)}</td>
-                        <td class="value-currency col-wide">${formatCurrencyIndonesia(actual)}</td>
-                        <td class="value-currency col-wide ${getGapClass(gap)}">${gap >= 0 ? '+' : ''}${formatCurrencyIndonesia(gap)}</td>
-                        <td class="value-percentage col-wide ${getAchievementClass(achPercentage)}">${achPercentage}%</td>
-                        <td class="value-currency col-wide">${formatCurrencyIndonesia(item[' LY'])}</td>
-                        <td class="value-currency col-wide">${formatCurrencyIndonesia(item[' 3LM'])}</td>
-                        <td class="value-currency col-wide">${formatCurrencyIndonesia(item[' LM'])}</td>
-                    </tr>
-                `;
+                <tr class="channel-group-row">
+                    <td class="sticky-col channel-group-col col-text"><strong>📂 ${chName}</strong></td>
+                    <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(g.target)}</strong></td>
+                    <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(g.actual)}</strong></td>
+                    <td class="value-currency col-wide ${getGapClass(g.gap)}"><strong>${g.gap >= 0 ? '+' : ''}${formatCurrencyIndonesia(g.gap)}</strong></td>
+                    <td class="value-percentage col-wide ${getAchievementClass(chAch)}"><strong>${chAch}%</strong></td>
+                    <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(g.ly)}</strong></td>
+                    <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(g.threeLM)}</strong></td>
+                    <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(g.lm)}</strong></td>
+                </tr>`;
+
+                Object.entries(g.projects).forEach(([projName, p]) => {
+                    const projAch = calculateAchievementPercentage(p.target, p.actual);
+                    html += `
+                <tr class="project-sub-row">
+                    <td class="sticky-col channel-group-col col-text" style="padding-left:22px;">
+                        <span style="color:#94a3b8;">↳</span> <strong>${projName}</strong>
+                        <small style="color:#94a3b8;font-size:9px;margin-left:4px;">CR:${p.cr} CA:${p.ca}</small>
+                    </td>
+                    <td class="value-currency col-wide">${formatCurrencyIndonesia(p.target)}</td>
+                    <td class="value-currency col-wide">${formatCurrencyIndonesia(p.actual)}</td>
+                    <td class="value-currency col-wide ${getGapClass(p.gap)}">${p.gap >= 0 ? '+' : ''}${formatCurrencyIndonesia(p.gap)}</td>
+                    <td class="value-percentage col-wide ${getAchievementClass(projAch)}">${projAch}%</td>
+                    <td class="value-currency col-wide">${formatCurrencyIndonesia(p.ly)}</td>
+                    <td class="value-currency col-wide">${formatCurrencyIndonesia(p.threeLM)}</td>
+                    <td class="value-currency col-wide">${formatCurrencyIndonesia(p.lm)}</td>
+                </tr>`;
+                });
             });
 
             tbody.innerHTML = html;
@@ -1624,7 +1664,7 @@
 
                 // Tampilkan/sembunyikan tab berdasarkan ketersediaan data
                 const tabAvailability = {
-                    'channel': (channelData.length > 0 || channelProjData.length > 0),
+                    'channel': channelProjData.length > 0,
                     'project': projectData.length > 0,
                     'pareto': paretoData.length > 0,
                     'pom': pomData.length > 0

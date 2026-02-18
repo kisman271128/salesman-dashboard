@@ -484,6 +484,42 @@
             font-weight: 500;
         }
 
+        /* POM Table Specific Styles */
+        .pom-sku-col {
+            min-width: 70px !important;
+            max-width: 90px !important;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .pom-table {
+            width: auto;
+            min-width: fit-content;
+        }
+
+        .pom-table th,
+        .pom-table td {
+            text-align: center;
+            padding: 10px 8px;
+            font-size: 11px;
+        }
+
+        .pom-table th:first-child,
+        .pom-table td:first-child {
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .pom-table .col-narrow {
+            min-width: 45px;
+            max-width: 55px;
+        }
+
+        .pom-table .col-wide {
+            min-width: 70px;
+            max-width: 90px;
+        }
+
         /* Responsive */
         @media (max-width: 380px) {
             .metrics-grid { gap: 8px; }
@@ -575,6 +611,7 @@
                     <button class="tab-btn" onclick="switchTab('channel')">By Channel</button>
                     <button class="tab-btn" onclick="switchTab('ranking')">Top Ranking</button>
                     <button class="tab-btn" onclick="switchTab('project')">Top Projects</button>
+                    <button class="tab-btn" onclick="switchTab('pom')">CA POM</button>
                 </div>
             </div>
 
@@ -660,6 +697,33 @@
                                 </tr>
                             </thead>
                             <tbody id="projectTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="pomContent">
+                <div class="table-container">
+                    <div class="table-header">📋 CA POM Performance - Total Depo</div>
+                    <div class="table-wrapper">
+                        <table class="data-table pom-table">
+                            <thead>
+                                <tr>
+                                    <th class="sticky-col pom-sku-col">SKU</th>
+                                    <th class="col-wide value-currency">Tgt</th>
+                                    <th class="col-wide value-currency">Act</th>
+                                    <th class="col-wide value-percentage">Ach</th>
+                                    <th class="col-wide value-currency">Gap</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pomTableBody">
+                                <tr>
+                                    <td colspan="5" class="empty-state">
+                                        <div class="icon">⏳</div>
+                                        <div>Memuat data CA POM...</div>
+                                    </td>
+                                </tr>
+                            </tbody>
                         </table>
                     </div>
                 </div>
@@ -788,6 +852,14 @@
                 paretoData = parseJSONLines(paretoText);
             } catch (error) {
                 console.error('Pareto data loading failed:', error.message);
+            }
+
+            try {
+                const pomText = await loadFile('d.tpom.json');
+                pomData = parseJSONLines(pomText);
+                console.log('POM data loaded:', pomData.length, 'records');
+            } catch (error) {
+                console.error('POM data loading failed:', error.message);
             }
         }
 
@@ -1123,6 +1195,88 @@
             tbody.innerHTML = html;
         }
 
+        function updatePOMTable() {
+            const tbody = document.getElementById('pomTableBody');
+            
+            if (pomData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><div class="icon">📋</div><div>Data CA POM tidak tersedia</div></td></tr>';
+                return;
+            }
+
+            // Aggregate POM data by SKU
+            const skuMap = new Map();
+            
+            pomData.forEach(item => {
+                const sku = item.SKU || 'UNKNOWN';
+                
+                if (!skuMap.has(sku)) {
+                    skuMap.set(sku, {
+                        sku: sku,
+                        target: 0,
+                        actual: 0,
+                        gap: 0,
+                        achSum: 0,
+                        count: 0
+                    });
+                }
+                
+                const skuData = skuMap.get(sku);
+                skuData.cr += parseFloat(item['CR JKS'] || 0);
+                skuData.target += parseFloat(item['T.POMAdj'] || 0);
+                skuData.actual += parseFloat(item['A.POM'] || 0);
+                skuData.achSum += parseFloat(item['Ach_POM'] || 0);
+                skuData.count += 1;
+            });
+
+            // Calculate totals
+            let totalCR = 0, totalTarget = 0, totalActual = 0, totalGap = 0;
+            let totalAchSum = 0, totalCount = 0;
+
+            skuMap.forEach(skuData => {
+                skuData.gap = skuData.actual - skuData.target;
+                totalTarget += skuData.target;
+                totalActual += skuData.actual;
+                totalGap += skuData.gap;
+                totalAchSum += skuData.achSum;
+                totalCount += skuData.count;
+            });
+
+            const avgAchPercentage = totalCount > 0 ? Math.round((totalAchSum / totalCount) * 100) : 0;
+
+            // Convert map to array and sort by actual descending
+            const skuArray = Array.from(skuMap.values()).sort((a, b) => b.actual - a.actual);
+
+            // Build HTML with total row first
+            let html = `
+                <tr class="total-row">
+                    <td class="sticky-col pom-sku-col"><strong>TOTAL</strong></td>
+                    <td><strong>${totalTarget}</strong></td>
+                    <td><strong>${totalActual}</strong></td>
+                    <td class="${getAchievementClass(avgAchPercentage)}"><strong>${avgAchPercentage}%</strong></td>
+                    <td class="${getGapClass(totalGap)}"><strong>${totalGap >= 0 ? '+' : ''}${formatCurrencyIndonesia(totalGap)}</strong></td>
+                </tr>
+            `;
+
+            // Add individual SKU rows
+            skuArray.forEach(skuData => {
+                const achPercentage = skuData.count > 0 ? Math.round((skuData.achSum / skuData.count) * 100) : 0;
+                
+                html += `
+                    <tr>
+                        <td class="sticky-col pom-sku-col">
+                            <strong style="font-size: 10px;">${skuData.sku}</strong>
+                        </td>
+                        <td>${formatCurrencyIndonesia(skuData.target)}</td>
+                        <td>${formatCurrencyIndonesia(skuData.actual)}</td>
+                        <td class="${getAchievementClass(achPercentage)}">${achPercentage}%</td>
+                        <td class="${getGapClass(skuData.gap)}">${skuData.gap >= 0 ? '+' : ''}${formatCurrencyIndonesia(skuData.gap)}</td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+        }
+
         // ===== TAB SWITCHING =====
         function switchTab(tabName) {
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -1163,6 +1317,7 @@
                 updateChannelTable();
                 updateRankingTable();
                 updateProjectTable();
+                updatePOMTable();
                 
                 showLoading(false);
                 showMainContent(true);
