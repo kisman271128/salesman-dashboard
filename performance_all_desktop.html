@@ -162,6 +162,25 @@
         .data-table td { padding: 10px 14px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; white-space: nowrap; }
         .data-table tr:hover td { background: #f8faff; }
 
+        /* ===== PARETO TABLE: compact agar semua kolom muat tanpa scroll ===== */
+        #sec_pareto .data-table { font-size: 11px; table-layout: fixed; width: 100%; }
+        #sec_pareto .data-table th { padding: 8px 6px; font-size: 10px; letter-spacing: 0.2px; }
+        #sec_pareto .data-table td { padding: 7px 6px; }
+        #sec_pareto th:nth-child(1), #sec_pareto td:nth-child(1) { width: 52px; }
+        #sec_pareto th:nth-child(2), #sec_pareto td:nth-child(2) { width: 155px; }
+        #sec_pareto th:nth-child(3), #sec_pareto td:nth-child(3),
+        #sec_pareto th:nth-child(4), #sec_pareto td:nth-child(4),
+        #sec_pareto th:nth-child(5), #sec_pareto td:nth-child(5),
+        #sec_pareto th:nth-child(7), #sec_pareto td:nth-child(7),
+        #sec_pareto th:nth-child(8), #sec_pareto td:nth-child(8),
+        #sec_pareto th:nth-child(10),#sec_pareto td:nth-child(10) { width: 88px; }
+        #sec_pareto th:nth-child(6), #sec_pareto td:nth-child(6) { width: 100px; }
+        #sec_pareto th:nth-child(9), #sec_pareto td:nth-child(9) { width: 60px; }
+        /* Warna header Gap per LOB */
+        #sec_pareto th:nth-child(6) { background: #fef3c7; color: #92400e; }
+        #sec_pareto th:nth-child(7) { background: #fce7f3; color: #831843; }
+        #sec_pareto th:nth-child(8) { background: #e0f2fe; color: #075985; }
+
         .total-row td { background: #f1f5f9 !important; font-weight: 700; border-top: 2px solid #667eea; border-bottom: 2px solid #667eea; color: #1e293b; }
 
         /* Channel grouping */
@@ -365,14 +384,16 @@
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th style="width:60px;">Rank</th>
-                                <th style="min-width:200px;">Pelanggan</th>
+                                <th>Rank</th>
+                                <th>Pelanggan</th>
                                 <th class="val-num">Target</th>
                                 <th class="val-num">Aktual MTD</th>
                                 <th class="val-num">Gap MTD</th>
+                                <th class="val-num" title="Gap GPPJ+GEN">Gap GPPJ+GEN</th>
+                                <th class="val-num" title="Gap OTHERS">Gap Others</th>
+                                <th class="val-num" title="Gap GBS">Gap GBS</th>
                                 <th class="val-center">Ach%</th>
-                                <th class="val-num">Last Month</th>
-                                <th style="min-width:120px;">Salesman</th>
+                                <th class="val-num">LM</th>
                             </tr>
                         </thead>
                         <tbody id="paretoBody"></tbody>
@@ -605,38 +626,76 @@
     }
 
     // ===== PARETO =====
+    // ===== PARETO DEDUPLICATION =====
+    function dedupePareto(data) {
+        const map = new Map();
+        data.forEach(r => {
+            const key = (r['Nama Pelanggan'] || '').trim().toUpperCase();
+            if (!key) return;
+            if (!map.has(key)) {
+                map.set(key, Object.assign({}, r));
+            } else {
+                const m = map.get(key);
+                [' T.MTD',' A.MTD',' LM',' LY',' 3LM',' Max',' Gap GPPJ+GEN',' Gap OTHERS',' Gap GBS'].forEach(f => {
+                    m[f] = (parseFloat(m[f]||0) + parseFloat(r[f]||0));
+                });
+                m[' Gap MTD'] = m[' A.MTD'] - m[' T.MTD'];
+                m.szname = '';
+            }
+        });
+        return Array.from(map.values());
+    }
+
+    // ===== PARETO =====
     function renderPareto() {
-        const top30=paretoData.sort((a,b)=>parseFloat(b[' T.MTD']||0)-parseFloat(a[' T.MTD']||0)).slice(0,30);
+        const top30=dedupePareto(paretoData).sort((a,b)=>parseFloat(b[' T.MTD']||0)-parseFloat(a[' T.MTD']||0)).slice(0,30);
         const tbody=document.getElementById('paretoBody');
         if(!top30.length){
-            tbody.innerHTML='<tr><td colspan="8"><div class="empty-state"><div class="icon">🎯</div><div>Data pareto tidak tersedia</div></div></td></tr>';
+            tbody.innerHTML='<tr><td colspan="10"><div class="empty-state"><div class="icon">🎯</div><div>Data pareto tidak tersedia</div></div></td></tr>';
             return;
         }
-        let tT=0,tA=0,tG=0,tLM=0;
-        top30.forEach(r=>{tT+=parseFloat(r[' T.MTD']||0);tA+=parseFloat(r[' A.MTD']||0);tG+=parseFloat(r[' Gap MTD']||0);tLM+=parseFloat(r[' LM']||0);});
+        let tT=0,tA=0,tG=0,tGG=0,tGO=0,tGB=0,tLM=0;
+        top30.forEach(r=>{
+            tT +=parseFloat(r[' T.MTD']       ||0);
+            tA +=parseFloat(r[' A.MTD']       ||0);
+            tG +=parseFloat(r[' Gap MTD']     ||0);
+            tGG+=parseFloat(r[' Gap GPPJ+GEN']||0);
+            tGO+=parseFloat(r[' Gap OTHERS']  ||0);
+            tGB+=parseFloat(r[' Gap GBS']     ||0);
+            tLM+=parseFloat(r[' LM']          ||0);
+        });
         const tPct=ach(tT,tA);
         let html=`<tr class="total-row">
             <td>—</td><td><strong>TOTAL (Top 30)</strong></td>
             <td class="val-num"><strong>${fc(tT)}</strong></td>
             <td class="val-num"><strong>${fc(tA)}</strong></td>
             <td class="val-num ${gapClass(tG)}"><strong>${fc(tG)}</strong></td>
+            <td class="val-num ${gapClass(tGG)}"><strong>${fc(tGG)}</strong></td>
+            <td class="val-num ${gapClass(tGO)}"><strong>${fc(tGO)}</strong></td>
+            <td class="val-num ${gapClass(tGB)}"><strong>${fc(tGB)}</strong></td>
             <td class="val-center"><span class="${achClass(tPct)}">${tPct}%</span></td>
             <td class="val-num"><strong>${fc(tLM)}</strong></td>
-            <td>—</td>
         </tr>`;
         top30.forEach((r,i)=>{
-            const t=parseFloat(r[' T.MTD']||0),a=parseFloat(r[' A.MTD']||0);
-            const g=parseFloat(r[' Gap MTD']||0),lm=parseFloat(r[' LM']||0);
+            const t  =parseFloat(r[' T.MTD']       ||0);
+            const a  =parseFloat(r[' A.MTD']       ||0);
+            const g  =parseFloat(r[' Gap MTD']     ||0);
+            const gG =parseFloat(r[' Gap GPPJ+GEN']||0);
+            const gO =parseFloat(r[' Gap OTHERS']  ||0);
+            const gB =parseFloat(r[' Gap GBS']     ||0);
+            const lm =parseFloat(r[' LM']          ||0);
             const pct=ach(t,a);
             html+=`<tr>
                 <td class="val-center"><span class="rank-badge">#${i+1}</span></td>
-                <td><strong style="font-size:12px;">${(r['Nama Pelanggan']||'').substring(0,30)}</strong></td>
+                <td><strong style="font-size:11px;">${(r['Nama Pelanggan']||'').substring(0,28)}</strong><br><small style="color:#94a3b8;font-size:9px;">${r['JKS']||r['Hari JKS']||''}</small></td>
                 <td class="val-num">${fc(t)}</td>
                 <td class="val-num">${fc(a)}</td>
                 <td class="val-num ${gapClass(g)}">${fc(g)}</td>
+                <td class="val-num ${gapClass(gG)}">${fc(gG)}</td>
+                <td class="val-num ${gapClass(gO)}">${fc(gO)}</td>
+                <td class="val-num ${gapClass(gB)}">${fc(gB)}</td>
                 <td class="val-center"><span class="${achClass(pct)}">${pct}%</span></td>
                 <td class="val-num">${fc(lm)}</td>
-                <td style="font-size:11px;color:#64748b;">${r.szname||''}</td>
             </tr>`;
         });
         tbody.innerHTML=html;
