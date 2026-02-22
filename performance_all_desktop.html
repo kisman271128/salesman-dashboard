@@ -253,11 +253,16 @@
 
         /* Salesman avatar */
         .sm-avatar {
-            width: 32px; height: 32px; border-radius: 50%;
+            width: 36px; height: 36px; border-radius: 50%;
             background: linear-gradient(135deg,#667eea,#764ba2);
             color: white; display: inline-flex; align-items: center;
             justify-content: center; font-weight: 700; font-size: 12px;
             margin-right: 10px; flex-shrink: 0; vertical-align: middle;
+            overflow: hidden; border: 2px solid #e2e8f0;
+        }
+        .sm-avatar img {
+            width: 100%; height: 100%; object-fit: cover; border-radius: 50%;
+            display: block;
         }
         .sm-name-cell { display: flex; align-items: center; cursor: pointer; }
         .sm-name-cell:hover strong { color: #667eea; text-decoration: underline; }
@@ -504,7 +509,7 @@
 
 <script>
     // ===== GLOBAL =====
-    let channelProjData=[], paretoData=[], projectData=[], pomData=[];
+    let channelProjData=[], paretoData=[], projectData=[], pomData=[], perfData=[];
 
     // ===== UTILS =====
     function fc(v) {
@@ -548,6 +553,7 @@
             throw new Error('Cannot load '+fn);
         }
         try{const t=await loadFile('d.channelproj.json'); channelProjData=parseJL(t);}catch(e){console.error(e);}
+        try{const t=await loadFile('d.performance.json'); perfData=parseJL(t);}catch(e){console.warn('d.performance.json not loaded');}
         try{const t=await loadFile('d.30pareto.json'); paretoData=parseJL(t);}catch(e){}
         try{const t=await loadFile('d.project.json'); projectData=parseJL(t);}catch(e){}
         try{const t=await loadFile('d.tpom.json'); pomData=parseJL(t);}catch(e){}
@@ -584,6 +590,13 @@
 
     // ===== TOP RANKING =====
     function renderRanking() {
+        // Build tipe map from d.performance.json
+        const tipeMap={};
+        perfData.forEach(r=>{
+            const id=String(r.szEmployeeId||'');
+            if(id && r['Tipe Salesman']) tipeMap[id]=r['Tipe Salesman'];
+        });
+
         const smMap={};
         channelProjData.forEach(d=>{
             const name=d.szname;
@@ -593,7 +606,11 @@
             s.lm+=parseFloat(d[' LM']||0); s.ly+=parseFloat(d[' LY']||0);
             s.gap+=parseFloat(d[' Gap MTD']||0);
         });
-        const list=Object.values(smMap).map(s=>({...s,pct:ach(s.t,s.a)})).sort((a,b)=>b.pct-a.pct);
+        const list=Object.values(smMap).map(s=>({
+            ...s,
+            pct:ach(s.t,s.a),
+            type: tipeMap[String(s.id||'')] || ''
+        })).sort((a,b)=>b.pct-a.pct);
         const tbody=document.getElementById('rankingBody');
         if(!list.length){
             tbody.innerHTML='<tr><td colspan="8"><div class="empty-state"><div class="icon">🏆</div><div>Data tidak tersedia</div></div></td></tr>';
@@ -603,12 +620,17 @@
         list.forEach((s,i)=>{
             const vsLMPct=s.lm>0?Math.round(((s.a-s.lm)/s.lm)*100):0;
             const initials=s.name.split(' ').map(w=>w[0]).join('').toUpperCase().substring(0,2);
+            const photoId=String(s.id||'');
             html+=`<tr onclick="openSalesman('${s.id}')" style="cursor:pointer;">
                 <td class="val-center"><span class="rank-badge">#${i+1}</span></td>
                 <td>
                     <div class="sm-name-cell">
-                        <span class="sm-avatar">${initials}</span>
-                        <div><strong style="font-size:13px;">${s.name}</strong><br><small style="color:#94a3b8; font-size:10px;">ID: ${s.id}</small></div>
+                        <div class="sm-avatar">
+                            <img src="photos/${photoId}.jpg"
+                                 alt="${s.name}"
+                                 onerror="this.style.display='none'; this.parentElement.textContent='${initials}';">
+                        </div>
+                        <div><strong style="font-size:13px;">${s.name}</strong><br><small style="color:#94a3b8; font-size:10px;">${s.type ? s.type : ('ID: '+s.id)}</small></div>
                     </div>
                 </td>
                 <td class="val-center"><span class="${achClass(s.pct)}">${s.pct}%</span></td>
