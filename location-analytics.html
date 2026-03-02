@@ -8,18 +8,14 @@
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
     
-    <!-- Firebase SDK v9 Modular -->
+    <!-- Firebase SDK v10 (same as visit.html) -->
     <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js';
-        import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js';
-        import { getDatabase, ref, get, child, onValue, off } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js';
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getDatabase, ref, get, child, onValue, off } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
         
         // Make Firebase modules available globally
         window.firebaseModules = {
             initializeApp,
-            getAuth,
-            signInAnonymously,
-            onAuthStateChanged,
             getDatabase,
             ref,
             get,
@@ -921,7 +917,6 @@
         let visitMap = null;
         let mapMarkers = [];
         let firebaseApp = null;
-        let firebaseAuth = null;
         let firebaseDatabase = null;
         let isFirebaseConnected = false;
         let debugMessages = [];
@@ -967,60 +962,30 @@
         // ===== FIREBASE INITIALIZATION =====
         window.initializeFirebaseApp = async function() {
             try {
-                addDebugMessage('Memulai inisialisasi Firebase v9...');
-                updateFirebaseStatus('Menginisialisasi Firebase v9...', 'connecting');
+                addDebugMessage('Memulai inisialisasi Firebase v10...');
+                updateFirebaseStatus('Menginisialisasi Firebase...', 'connecting');
                 
-                // Check if Firebase modules are loaded
                 if (!window.firebaseModules) {
                     throw new Error('Modul Firebase tidak termuat');
                 }
 
-                const { 
-                    initializeApp, 
-                    getAuth, 
-                    signInAnonymously, 
-                    onAuthStateChanged,
-                    getDatabase,
-                    ref,
-                    get
-                } = window.firebaseModules;
+                const { initializeApp, getDatabase, ref, get } = window.firebaseModules;
 
-                // Initialize Firebase App
+                // Initialize Firebase App (same as visit.html - no auth)
                 firebaseApp = initializeApp(firebaseConfig);
                 addDebugMessage('✓ Aplikasi Firebase berhasil diinisialisasi');
 
-                // Initialize Auth
-                firebaseAuth = getAuth(firebaseApp);
-                addDebugMessage('✓ Firebase Auth berhasil diinisialisasi');
-
-                // Initialize Database
+                // Initialize Database directly - no auth needed
                 firebaseDatabase = getDatabase(firebaseApp);
                 addDebugMessage('✓ Firebase Database berhasil diinisialisasi');
 
-                // Set up auth state listener
-                onAuthStateChanged(firebaseAuth, (user) => {
-                    if (user) {
-                        addDebugMessage(`✓ User berhasil diautentikasi: ${user.uid.substring(0, 8)}...`);
-                        testDatabaseAccess();
-                    } else {
-                        addDebugMessage('✗ User tidak terautentikasi');
-                        updateFirebaseStatus('Autentikasi gagal', 'error');
-                    }
-                });
-
-                // Sign in anonymously
-                addDebugMessage('Mencoba autentikasi anonymous...');
-                updateFirebaseStatus('Melakukan autentikasi...', 'connecting');
-                
-                const userCredential = await signInAnonymously(firebaseAuth);
-                addDebugMessage(`✓ Autentikasi anonymous berhasil: ${userCredential.user.uid.substring(0, 8)}...`);
+                // Test database access
+                await testDatabaseAccess();
 
             } catch (error) {
                 addDebugMessage(`✗ Inisialisasi Firebase gagal: ${error.message}`);
                 updateFirebaseStatus(`Inisialisasi Firebase gagal: ${error.message}`, 'error');
                 isFirebaseConnected = false;
-                
-                // Still load localStorage salesman
                 loadAvailableSalesman();
             }
         };
@@ -1841,20 +1806,10 @@
                 // Test 1: App initialization
                 testResult += `1. Inisialisasi App: ${firebaseApp ? '✅ BERHASIL' : '❌ GAGAL'}\n`;
                 
-                // Test 2: Auth initialization
-                testResult += `2. Inisialisasi Auth: ${firebaseAuth ? '✅ BERHASIL' : '❌ GAGAL'}\n`;
+                // Test 2: Database initialization
+                testResult += `2. Inisialisasi Database: ${firebaseDatabase ? '✅ BERHASIL' : '❌ GAGAL'}\n`;
                 
-                // Test 3: Database initialization
-                testResult += `3. Inisialisasi Database: ${firebaseDatabase ? '✅ BERHASIL' : '❌ GAGAL'}\n`;
-                
-                // Test 4: Authentication status
-                const currentUser = firebaseAuth ? firebaseAuth.currentUser : null;
-                testResult += `4. Autentikasi: ${currentUser ? '✅ TERAUTENTIKASI' : '❌ TIDAK TERAUTENTIKASI'}\n`;
-                if (currentUser) {
-                    testResult += `   ID User: ${currentUser.uid.substring(0, 8)}...\n`;
-                }
-                
-                // Test 5: Database connectivity
+                // Test 3: Database connectivity
                 if (isFirebaseConnected) {
                     const { ref, get } = window.firebaseModules;
                     
@@ -1864,7 +1819,7 @@
                     if (visitsSnapshot.exists()) {
                         const data = visitsSnapshot.val();
                         const salesmanIds = Object.keys(data);
-                        testResult += `5. Akses Database: ✅ BERHASIL\n`;
+                        testResult += `3. Akses Database: ✅ BERHASIL\n`;
                         testResult += `   Ditemukan ${salesmanIds.length} salesman:\n`;
                         
                         for (const salesmanId of salesmanIds.slice(0, 3)) {
