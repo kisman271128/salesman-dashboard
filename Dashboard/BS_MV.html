@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitoring Program Toko Pareto</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            padding: 10px;
+            font-size: 11px;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: white;
+            border: 2px solid #333;
+            padding: 15px;
+        }
+
+        .header {
+            background-color: #d9d9d9;
+            border: 1px solid #333;
+            text-align: center;
+            padding: 8px;
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+
+        .customer-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+
+        .customer-left {
+            flex: 1;
+        }
+
+        .customer-right {
+            background-color: #4a90e2;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 3px;
+            font-weight: bold;
+            margin-left: 20px;
+            display: flex;
+            align-items: center;
+        }
+
+        .customer-right::before {
+            content: '←';
+            margin-right: 8px;
+            font-size: 16px;
+        }
+
+        .program-info {
+            margin-bottom: 20px;
+        }
+
+        .info-row {
+            display: flex;
+            margin-bottom: 3px;
+        }
+
+        .info-label {
+            width: 150px;
+            font-weight: bold;
+        }
+
+        .info-separator {
+            margin: 0 10px;
+        }
+
+        .main-content {
+            display: flex;
+            gap: 15px;
+        }
+
+        .left-section {
+            flex: 2;
+        }
+
+        .right-section {
+            flex: 1;
+        }
+
+        .section-title {
+            background-color: #e6e6e6;
+            padding: 5px 10px;
+            font-weight: bold;
+            border: 1px solid #333;
+            margin-bottom: 10px;
+        }
+
+        .target-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+
+        .target-table th,
+        .target-table td {
+            border: 1px solid #333;
+            padding: 6px;
+            text-align: center;
+            font-size: 10px;
+        }
+
+        .target-table th {
+            background-color: #f0f0f0;
+            font-weight: bold;
+        }
+
+        .target-table .program-cell {
+            background-color: #f9f9f9;
+            text-align: left;
+            font-weight: bold;
+        }
+
+        .monthly-breakdown {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+
+        .monthly-breakdown th,
+        .monthly-breakdown td {
+            border: 1px solid #333;
+            padding: 4px;
+            text-align: center;
+            font-size: 10px;
+        }
+
+        .monthly-breakdown .month-label {
+            text-align: left;
+            font-weight: bold;
+            width: 100px;
+        }
+
+        .negative {
+            color: red;
+        }
+
+        .weeks-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .week-box {
+            border: 1px solid #333;
+            padding: 20px;
+            text-align: center;
+            background-color: #f9f9f9;
+            font-weight: bold;
+        }
+
+        .program-visibility {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .visibility-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .visibility-box {
+            width: 30px;
+            height: 30px;
+            border: 1px solid #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .benefit-info {
+            font-size: 10px;
+        }
+
+        .benefit-amount {
+            background-color: #fff2cc;
+            border: 1px solid #333;
+            padding: 8px;
+            text-align: center;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+
+        .et-section {
+            background-color: #5a9bd4;
+            color: white;
+            padding: 8px;
+            margin-bottom: 10px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 11px;
+        }
+
+        .et-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+            font-size: 9px;
+        }
+
+        .et-table th,
+        .et-table td {
+            border: 1px solid #333;
+            padding: 3px;
+            text-align: center;
+        }
+
+        .et-table th {
+            background-color: #b4d7ee;
+            font-weight: bold;
+        }
+
+        .et-header {
+            background-color: #7fb3d3;
+            color: white;
+        }
+
+        @media (max-width: 1024px) {
+            .main-content {
+                flex-direction: column;
+            }
+            
+            .container {
+                padding: 10px;
+            }
+            
+            .customer-info {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .customer-right {
+                margin-left: 0;
+                align-self: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            MONITORING PROGRAM TOKO PARETO
+        </div>
+
+        <div class="customer-info">
+            <div class="customer-left">
+                <div class="info-row">
+                    <span class="info-label">ID Customer</span>
+                    <span class="info-separator">:</span>
+                    <span>9189-18-0000008</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Nama Customer</span>
+                    <span class="info-separator">:</span>
+                    <span>ANUGERAH/UMAR</span>
+                </div>
+            </div>
+            <div class="customer-right">
+                YG DIGANTI ID PELANGGAN
+            </div>
+        </div>
+
+        <div class="program-info">
+            <div class="info-row">
+                <span class="info-label">Dengan ketentuan sebagai berikut</span>
+                <span class="info-separator">:</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">A. Nama Program</span>
+                <span class="info-separator">:</span>
+                <span>IKAT TARGET PARETO (ITG)</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">B. Periode Program</span>
+                <span class="info-separator">:</span>
+                <span>Q3 - Juli sd September 2025</span>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="left-section">
+                <div class="section-title">1. Target Program *</div>
+                
+                <table class="target-table">
+                    <thead>
+                        <tr>
+                            <th rowspan="2">Program</th>
+                            <th rowspan="2">SKU</th>
+                            <th colspan="3">Target per bulan</th>
+                            <th rowspan="2">Total Target</th>
+                            <th rowspan="2">CLASS ITG</th>
+                            <th rowspan="2">CB TOKO</th>
+                            <th rowspan="2">Est. Reward<br>Tertinggi</th>
+                        </tr>
+                        <tr>
+                            <th>Jul-25</th>
+                            <th>Aug-25</th>
+                            <th>Sep-25</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="program-cell" rowspan="2">Ikat Target Grosir</td>
+                            <td>All SKU exclude WCG4+Pilus 500</td>
+                            <td>46,966,062</td>
+                            <td>54,793,739</td>
+                            <td>54,793,739</td>
+                            <td>156,553,540</td>
+                            <td>Big</td>
+                            <td>1.75%</td>
+                            <td>2,739,687</td>
+                        </tr>
+                        <tr>
+                            <td>SKU WCG4+Pilus 500</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div style="text-align: center; font-weight: bold; margin-bottom: 10px;">OMSET BY VALUE</div>
+                
+                <table class="monthly-breakdown">
+                    <thead>
+                        <tr>
+                            <th>Month</th>
+                            <th>Wk1</th>
+                            <th>Wk 2</th>
+                            <th>Wk 3</th>
+                            <th>Wk 4</th>
+                            <th>Wk5</th>
+                            <th>Total</th>
+                            <th>Ach%</th>
+                            <th>GAP</th>
+                            <th>SKU ACTIVE</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="month-label">July-25</td>
+                            <td>-</td>
+                            <td>(775,811)</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>(775,811)</td>
+                            <td class="negative">-1.7%</td>
+                            <td class="negative">(47,741,873)</td>
+                            <td>0</td>
+                        </tr>
+                        <tr>
+                            <td class="month-label">August-25</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>0.0%</td>
+                            <td class="negative">(54,793,739)</td>
+                            <td>0</td>
+                        </tr>
+                        <tr>
+                            <td class="month-label">September-25</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>0.0%</td>
+                            <td class="negative">(54,793,739)</td>
+                            <td>0</td>
+                        </tr>
+                        <tr style="background-color: #f0f0f0;">
+                            <td class="month-label"><strong>Total</strong></td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td><strong>(775,811)</strong></td>
+                            <td class="negative"><strong>-0.5%</strong></td>
+                            <td class="negative"><strong>(157,329,350)</strong></td>
+                            <td>-</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="section-title">TTD + STEMPEL TOKO</div>
+                
+                <div class="weeks-section">
+                    <div class="week-box">Week 1</div>
+                    <div class="week-box">Week 2</div>
+                    <div class="week-box">Week 3</div>
+                    <div class="week-box">Week 4</div>
+                </div>
+
+                <div class="program-visibility">
+                    <div class="visibility-item">
+                        <div style="font-weight: bold;">2. Program ITG Visibility</div>
+                        <div class="visibility-box">1</div>
+                        <div>
+                            <div style="font-size: 10px;">1 Ikut ITG Visibility</div>
+                            <div style="font-size: 10px;">0 Tdk ikut ITG Visibility</div>
+                        </div>
+                        <div class="benefit-info">
+                            <div>Benefit ITG Visibility</div>
+                            <div>200,000/bulan</div>
+                            <div>(dlm bentuk produk)</div>
+                        </div>
+                        <div class="benefit-amount">600,000</div>
+                    </div>
+                </div>
+
+                <div class="program-visibility">
+                    <div class="visibility-item">
+                        <div style="font-weight: bold;">3. Program GA Sniper</div>
+                        <div class="visibility-box">1</div>
+                        <div>
+                            <div style="font-size: 10px;">1 Ikut GA Sniper</div>
+                            <div style="font-size: 10px;">0 Tdk ikut GA Sniper</div>
+                        </div>
+                        <div class="benefit-info">
+                            <div>Benefit GA Sniper</div>
+                            <div>Program Sell Out</div>
+                        </div>
+                        <div class="benefit-amount">7,827,677</div>
+                    </div>
+                </div>
+
+                <div style="text-align: right; margin-top: 20px;">
+                    <div style="font-weight: bold; font-size: 12px;">Total Benefit Support Toko</div>
+                    <div class="benefit-amount" style="display: inline-block; margin-top: 5px;">11,167,364</div>
+                </div>
+            </div>
+
+            <div class="right-section">
+                <div class="et-section">ET (Effective Transaction) ≥ 4x / Month</div>
+                
+                <table class="et-table">
+                    <thead>
+                        <tr class="et-header">
+                            <th rowspan="2">Ach Total Q3<br>(Full Class &<br>Seasonal)</th>
+                            <th rowspan="2">Class</th>
+                            <th colspan="2">Excl WCG4<br>& Pilus500</th>
+                            <th rowspan="2">WCG4 &<br>Pilus 500</th>
+                        </tr>
+                        <tr class="et-header">
+                            <th>Add.<br>WCG4</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td rowspan="4" style="background-color: #b4d7ee; writing-mode: vertical-lr;">100% - 105%</td>
+                            <td>Super Big Plus</td>
+                            <td>2.00%</td>
+                            <td>0.25%</td>
+                            <td>1.00%</td>
+                        </tr>
+                        <tr>
+                            <td>Super Big</td>
+                            <td>1.75%</td>
+                            <td>0.25%</td>
+                            <td>1.00%</td>
+                        </tr>
+                        <tr>
+                            <td>Big</td>
+                            <td>1.50%</td>
+                            <td>0.25%</td>
+                            <td>1.00%</td>
+                        </tr>
+                        <tr>
+                            <td>Medium</td>
+                            <td>1.00%</td>
+                            <td>0.25%</td>
+                            <td>1.00%</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="et-section">ET (Effective Transaction) 1x / Month</div>
+                
+                <table class="et-table">
+                    <thead>
+                        <tr class="et-header">
+                            <th rowspan="2">Ach Total Q3<br>(Full Class &<br>Seasonal)</th>
+                            <th rowspan="2">Class</th>
+                            <th colspan="2">Excl WCG4 WCG4 &<br>& Pilus500 Pilus 500</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td rowspan="4" style="background-color: #b4d7ee; writing-mode: vertical-lr;">100% - 105%</td>
+                            <td>Super Big Plus</td>
+                            <td>1.75%</td>
+                            <td>1.00%</td>
+                        </tr>
+                        <tr>
+                            <td>Super Big</td>
+                            <td>1.50%</td>
+                            <td>1.00%</td>
+                        </tr>
+                        <tr>
+                            <td>Big</td>
+                            <td>1.25%</td>
+                            <td>1.00%</td>
+                        </tr>
+                        <tr>
+                            <td>Medium</td>
+                            <td>0.75%</td>
+                            <td>1.00%</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="et-section">ET (Effective Transaction) 2-3x / Month</div>
+                
+                <table class="et-table">
+                    <thead>
+                        <tr class="et-header">
+                            <th rowspan="2">Ach Total Q3<br>(Full Class &<br>Seasonal)</th>
+                            <th rowspan="2">Class</th>
+                            <th colspan="2">Excl WCG4 WCG4 &<br>& Pilus500 Pilus 500</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td rowspan="4" style="background-color: #b4d7ee; writing-mode: vertical-lr;">100% - 105%</td>
+                            <td>Super Big Plus</td>
+                            <td>2.00%</td>
+                            <td>1.00%</td>
+                        </tr>
+                        <tr>
+                            <td>Super Big</td>
+                            <td>1.75%</td>
+                            <td>1.00%</td>
+                        </tr>
+                        <tr>
+                            <td>Big</td>
+                            <td>1.50%</td>
+                            <td>1.00%</td>
+                        </tr>
+                        <tr>
+                            <td>Medium</td>
+                            <td>1.00%</td>
+                            <td>1.00%</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

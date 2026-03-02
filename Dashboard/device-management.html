@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Device Management - Admin (2 Devices Support)</title>
+    
+    <!-- Firebase Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header-left {
+            flex: 1;
+        }
+        h1 {
+            color: #1e293b;
+            margin-bottom: 6px;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .admin-badge {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 6px;
+            letter-spacing: 0.5px;
+        }
+        .subtitle {
+            color: #64748b;
+            font-size: 14px;
+        }
+        .back-btn {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .back-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .stat-card h3 {
+            color: #64748b;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .card h2 {
+            color: #1e293b;
+            margin-bottom: 16px;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .search-box {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .search-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .search-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+        }
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        }
+        .btn-warning {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+        }
+        .btn-warning:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+        }
+        
+        .user-card {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            transition: all 0.3s;
+            position: relative;
+        }
+        .user-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            border-radius: 12px 0 0 12px;
+        }
+        .user-card.has-devices {
+            background: linear-gradient(135deg, #fef2f2 0%, #ffffff 100%);
+            border-color: #fca5a5;
+        }
+        .user-card.has-devices::before {
+            background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
+        }
+        .user-card.partial-devices {
+            background: linear-gradient(135deg, #fef9c3 0%, #ffffff 100%);
+            border-color: #fde047;
+        }
+        .user-card.partial-devices::before {
+            background: linear-gradient(180deg, #f59e0b 0%, #d97706 100%);
+        }
+        .user-card.no-devices {
+            background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
+            border-color: #86efac;
+        }
+        .user-card.no-devices::before {
+            background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+        }
+        .user-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+        }
+        
+        .user-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+        .user-info {
+            flex: 1;
+        }
+        .user-name {
+            font-weight: 700;
+            color: #1e293b;
+            font-size: 15px;
+            margin-bottom: 4px;
+        }
+        .user-nik {
+            color: #64748b;
+            font-size: 13px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .device-count-badge {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .device-count-badge.count-0 {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .device-count-badge.count-1 {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .device-count-badge.count-2 {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .devices-list {
+            margin: 12px 0;
+        }
+        .device-item {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 8px;
+        }
+        .device-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .device-number {
+            font-weight: 700;
+            color: #667eea;
+            font-size: 13px;
+        }
+        .device-info-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #64748b;
+            margin-bottom: 4px;
+        }
+        .device-info-label {
+            font-weight: 600;
+        }
+        .fingerprint {
+            font-family: monospace;
+            background: #f1f5f9;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+        
+        .user-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+        
+        .alert {
+            padding: 16px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        .alert-success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #6ee7b7;
+        }
+        .alert-error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fca5a5;
+        }
+        .alert-info {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #93c5fd;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #64748b;
+        }
+        .spinner {
+            border: 3px solid #e2e8f0;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-left">
+                <h1>
+                    🔐 Device Management
+                    <span class="admin-badge">ADMIN</span>
+                </h1>
+                <div class="subtitle">Kelola registrasi device (Maksimal 2 device per user)</div>
+            </div>
+            <button class="back-btn" onclick="window.history.back()">← Kembali</button>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats">
+            <div class="stat-card">
+                <h3>Total Users</h3>
+                <div class="stat-value" id="totalUsers">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>2 Devices (Full)</h3>
+                <div class="stat-value" id="fullDevices">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>1 Device (Partial)</h3>
+                <div class="stat-value" id="partialDevices">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>No Devices</h3>
+                <div class="stat-value" id="noDevices">0</div>
+            </div>
+        </div>
+
+        <!-- Alert -->
+        <div id="alertBox" class="alert"></div>
+
+        <!-- User List -->
+        <div class="card">
+            <h2>👥 Daftar User & Devices</h2>
+            
+            <div class="search-box">
+                <input 
+                    type="text" 
+                    id="searchInput" 
+                    class="search-input" 
+                    placeholder="Cari user (NIK atau Nama)..."
+                    oninput="searchUsers()"
+                >
+                <button class="btn btn-primary" onclick="loadAll()">🔄 Refresh</button>
+                <button class="btn btn-warning" onclick="checkAllDevices()">📊 Check All</button>
+                <button class="btn btn-danger" onclick="clearAllDevices()">🗑️ Clear All</button>
+            </div>
+
+            <div id="loadingIndicator" class="loading">
+                <div class="spinner"></div>
+                <div>Memuat data...</div>
+            </div>
+
+            <div id="usersList"></div>
+        </div>
+    </div>
+
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBLGwid71jAnsh4DrivbBYSTsuDAP0Zjuw",
+            authDomain: "salesman-route-tracker-default-rtdb.asia-southeast1.firebasedatabase.app",
+            databaseURL: "https://salesman-route-tracker-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "salesman-route-tracker",
+            storageBucket: "salesman-route-tracker.appspot.com",
+            messagingSenderId: "288785787565",
+            appId: "1:288785787565:web:9e4f8e1e1e1e1e1e1e1e1e"
+        };
+
+        // Initialize Firebase
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const database = firebase.database();
+
+        // Data storage
+        let usersData = [];
+        let userDevices = {}; // Format: { nik: [device1, device2, ...] }
+
+        // Load all data
+        async function loadAll() {
+            document.getElementById('loadingIndicator').style.display = 'block';
+            document.getElementById('usersList').innerHTML = '';
+            
+            try {
+                await loadUsers();
+                await loadDeviceData();
+                displayUsers(usersData);
+                updateStats();
+                document.getElementById('loadingIndicator').style.display = 'none';
+            } catch (error) {
+                console.error('Error loading data:', error);
+                showAlert('error', '❌ Error loading data: ' + error.message);
+                document.getElementById('loadingIndicator').style.display = 'none';
+            }
+        }
+
+        // Load users from Firebase
+        async function loadUsers() {
+            try {
+                const snapshot = await database.ref('users').once('value');
+                const data = snapshot.val();
+                
+                usersData = [];
+                if (data) {
+                    Object.keys(data).forEach(nik => {
+                        usersData.push({
+                            nik: nik,
+                            name: data[nik].name || 'Unknown',
+                            role: data[nik].role || 'salesman'
+                        });
+                    });
+                }
+                
+                console.log('✅ Loaded', usersData.length, 'users');
+            } catch (error) {
+                console.error('❌ Error loading users:', error);
+                throw error;
+            }
+        }
+
+        // Load device data from Firebase
+        async function loadDeviceData() {
+            try {
+                const snapshot = await database.ref('users').once('value');
+                const data = snapshot.val();
+                
+                userDevices = {};
+                
+                if (data) {
+                    for (const nik in data) {
+                        const userData = data[nik];
+                        
+                        // Handle new format (devices array)
+                        if (userData.devices && Array.isArray(userData.devices)) {
+                            userDevices[nik] = userData.devices;
+                        }
+                        // Handle old format (single device) - convert to array
+                        else if (userData.device && typeof userData.device === 'object') {
+                            userDevices[nik] = [userData.device];
+                            console.log(`🔄 Converted old format for ${nik}`);
+                        }
+                        else {
+                            userDevices[nik] = [];
+                        }
+                    }
+                }
+                
+                const totalDevices = Object.values(userDevices).reduce((sum, devices) => sum + devices.length, 0);
+                console.log('✅ Loaded device data:', totalDevices, 'total devices registered');
+            } catch (error) {
+                console.error('❌ Error loading device data:', error);
+                throw error;
+            }
+        }
+
+        // Display users
+        function displayUsers(users) {
+            const container = document.getElementById('usersList');
+            
+            if (users.length === 0) {
+                container.innerHTML = '<div class="loading">Tidak ada data user</div>';
+                return;
+            }
+
+            container.innerHTML = users.map(user => {
+                const devices = userDevices[user.nik] || [];
+                const deviceCount = devices.length;
+                
+                let cardClass = 'no-devices';
+                let badgeClass = 'count-0';
+                let badgeText = 'No Devices';
+                
+                if (deviceCount === 2) {
+                    cardClass = 'has-devices';
+                    badgeClass = 'count-2';
+                    badgeText = '2/2 Devices (Full)';
+                } else if (deviceCount === 1) {
+                    cardClass = 'partial-devices';
+                    badgeClass = 'count-1';
+                    badgeText = '1/2 Device';
+                }
+                
+                let devicesHTML = '';
+                if (deviceCount > 0) {
+                    devicesHTML = `
+                        <div class="devices-list">
+                            ${devices.map((device, idx) => `
+                                <div class="device-item">
+                                    <div class="device-item-header">
+                                        <div class="device-number">📱 Device #${idx + 1}</div>
+                                        <button class="btn btn-sm btn-danger" onclick="removeSpecificDevice('${user.nik}', '${device.fingerprint}', '${user.name}', ${idx + 1})">
+                                            🗑️ Hapus
+                                        </button>
+                                    </div>
+                                    <div class="device-info-row">
+                                        <span class="device-info-label">Type:</span>
+                                        <span>${device.info?.device || 'Unknown'}</span>
+                                    </div>
+                                    <div class="device-info-row">
+                                        <span class="device-info-label">Browser:</span>
+                                        <span>${device.info?.browser || 'Unknown'} (${device.info?.os || 'Unknown'})</span>
+                                    </div>
+                                    <div class="device-info-row">
+                                        <span class="device-info-label">Registered:</span>
+                                        <span>${device.registeredAt ? new Date(device.registeredAt).toLocaleString('id-ID') : 'N/A'}</span>
+                                    </div>
+                                    <div class="device-info-row">
+                                        <span class="device-info-label">Last Used:</span>
+                                        <span>${device.lastUsed ? new Date(device.lastUsed).toLocaleString('id-ID') : 'N/A'}</span>
+                                    </div>
+                                    <div class="device-info-row">
+                                        <span class="device-info-label">Fingerprint:</span>
+                                        <span class="fingerprint">${device.fingerprint}</span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+
+                return `
+                    <div class="user-card ${cardClass}">
+                        <div class="user-card-header">
+                            <div class="user-info">
+                                <div class="user-name">${user.name}</div>
+                                <div class="user-nik">NIK: ${user.nik}</div>
+                            </div>
+                            <div class="device-count-badge ${badgeClass}">${badgeText}</div>
+                        </div>
+                        ${devicesHTML}
+                        <div class="user-actions">
+                            ${deviceCount > 0 ? `
+                                <button class="btn btn-sm btn-warning" onclick="clearAllUserDevices('${user.nik}', '${user.name}')">
+                                    🗑️ Clear All Devices (${deviceCount})
+                                </button>
+                            ` : `
+                                <span style="color: #10b981; font-size: 13px;">✅ User bisa login dari device baru</span>
+                            `}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Remove specific device
+        async function removeSpecificDevice(nik, fingerprint, name, deviceNumber) {
+            if (!confirm(`Hapus Device #${deviceNumber} untuk user?\n\nNIK: ${nik}\nNama: ${name}\n\nUser masih bisa login dari device lainnya (jika ada).`)) {
+                return;
+            }
+
+            try {
+                const devices = userDevices[nik] || [];
+                const updatedDevices = devices.filter(d => d.fingerprint !== fingerprint);
+                
+                await database.ref(`users/${nik}/devices`).set(updatedDevices);
+                userDevices[nik] = updatedDevices;
+                
+                showAlert('success', `✅ Device #${deviceNumber} berhasil dihapus untuk ${name}`);
+                displayUsers(usersData);
+                updateStats();
+            } catch (error) {
+                console.error('❌ Error removing device:', error);
+                showAlert('error', `❌ Gagal hapus device: ${error.message}`);
+            }
+        }
+
+        // Clear all devices for a user
+        async function clearAllUserDevices(nik, name) {
+            const devices = userDevices[nik] || [];
+            if (!confirm(`Clear SEMUA devices (${devices.length}) untuk user?\n\nNIK: ${nik}\nNama: ${name}\n\nUser akan bisa login dari device baru.`)) {
+                return;
+            }
+
+            try {
+                await database.ref(`users/${nik}`).update({ 
+                    devices: [],
+                    device: null // Also clear old format
+                });
+                userDevices[nik] = [];
+                
+                showAlert('success', `✅ Semua devices berhasil di-clear untuk ${name}`);
+                displayUsers(usersData);
+                updateStats();
+            } catch (error) {
+                console.error('❌ Error clearing devices:', error);
+                showAlert('error', `❌ Gagal clear devices: ${error.message}`);
+            }
+        }
+
+        // Clear all devices for all users
+        async function clearAllDevices() {
+            const totalDevices = Object.values(userDevices).reduce((sum, d) => sum + d.length, 0);
+            
+            if (!confirm(`⚠️ PERINGATAN!\n\nClear ALL device registrations?\n\nTotal ${totalDevices} devices akan dihapus.\nSemua user akan bisa login dari device baru.\n\nTindakan ini tidak bisa di-undo!`)) {
+                return;
+            }
+
+            try {
+                const updates = {};
+                for (const nik in userDevices) {
+                    if (userDevices[nik].length > 0) {
+                        updates[`${nik}/devices`] = [];
+                        updates[`${nik}/device`] = null;
+                    }
+                }
+                
+                await database.ref('users').update(updates);
+                
+                // Clear local data
+                for (const nik in userDevices) {
+                    userDevices[nik] = [];
+                }
+                
+                showAlert('success', `✅ Berhasil clear ${totalDevices} device registrations`);
+                displayUsers(usersData);
+                updateStats();
+            } catch (error) {
+                console.error('❌ Error clearing all devices:', error);
+                showAlert('error', `❌ Gagal clear devices: ${error.message}`);
+            }
+        }
+
+        // Search users
+        function searchUsers() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            
+            if (query === '') {
+                displayUsers(usersData);
+            } else {
+                const filtered = usersData.filter(user => 
+                    user.nik.toLowerCase().includes(query) || 
+                    user.name.toLowerCase().includes(query)
+                );
+                displayUsers(filtered);
+            }
+        }
+
+        // Check all devices
+        function checkAllDevices() {
+            const full = usersData.filter(u => (userDevices[u.nik] || []).length === 2).length;
+            const partial = usersData.filter(u => (userDevices[u.nik] || []).length === 1).length;
+            const none = usersData.filter(u => (userDevices[u.nik] || []).length === 0).length;
+            const totalDevices = Object.values(userDevices).reduce((sum, d) => sum + d.length, 0);
+            
+            showAlert('info', 
+                `📊 Device Status Summary:\n\n` +
+                `Total Users: ${usersData.length}\n` +
+                `Full (2 devices): ${full} users\n` +
+                `Partial (1 device): ${partial} users\n` +
+                `No devices: ${none} users\n\n` +
+                `Total Devices Registered: ${totalDevices}\n\n` +
+                `${full > 0 ? '⚠️ Ada user yang sudah full 2 devices.' : '✅ Semua user masih bisa tambah device.'}`
+            );
+        }
+
+        // Update stats
+        function updateStats() {
+            const full = usersData.filter(u => (userDevices[u.nik] || []).length === 2).length;
+            const partial = usersData.filter(u => (userDevices[u.nik] || []).length === 1).length;
+            const none = usersData.filter(u => (userDevices[u.nik] || []).length === 0).length;
+            
+            document.getElementById('totalUsers').textContent = usersData.length;
+            document.getElementById('fullDevices').textContent = full;
+            document.getElementById('partialDevices').textContent = partial;
+            document.getElementById('noDevices').textContent = none;
+        }
+
+        // Show alert
+        function showAlert(type, message) {
+            const alertBox = document.getElementById('alertBox');
+            alertBox.className = `alert alert-${type}`;
+            alertBox.textContent = message;
+            alertBox.style.display = 'block';
+            
+            setTimeout(() => {
+                alertBox.style.display = 'none';
+            }, 5000);
+        }
+
+        // Initialize on load
+        window.addEventListener('load', loadAll);
+    </script>
+</body>
+</html>
