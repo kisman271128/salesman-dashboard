@@ -3451,6 +3451,56 @@
                 return number.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
             }
 
+            // ===== PLAN DAP FIREBASE SYNC =====
+            async function syncPlanDAPToFirebase(salesmanId, dateStr, planData, retryCount) {
+                retryCount = retryCount || 0;
+                if (!window.firebaseDB || !salesmanId) {
+                    if (retryCount < 5) {
+                        setTimeout(function() { syncPlanDAPToFirebase(salesmanId, dateStr, planData, retryCount + 1); }, 2000);
+                    }
+                    return false;
+                }
+                try {
+                    var planRef = window.firebaseRef(window.firebaseDB, 'plan_dap/' + salesmanId + '/' + dateStr);
+                    await window.firebaseSet(planRef, Object.assign({}, planData, {
+                        date: dateStr,
+                        firebase_synced_at: window.firebaseServerTimestamp()
+                    }));
+                    console.log('🔥 Plan DAP synced to Firebase:', planData.amount);
+                    return true;
+                } catch (error) {
+                    console.error('❌ Firebase Plan DAP sync error:', error.message);
+                    if (retryCount < 3) {
+                        setTimeout(function() { syncPlanDAPToFirebase(salesmanId, dateStr, planData, retryCount + 1); }, 3000);
+                    } else {
+                        alert('⚠️ Plan DAP tersimpan di device tapi gagal sync ke server.\nPastikan koneksi internet aktif.');
+                    }
+                    return false;
+                }
+            }
+
+            async function initSyncPlanDAP() {
+                if (!currentSalesmanId || !window.firebaseDB) return;
+                var todayYMD = new Date().toISOString().split('T')[0];
+                var planKey = 'plan_dap_' + currentSalesmanId + '_' + todayYMD;
+                var stored = localStorage.getItem(planKey);
+                if (!stored) return;
+                try {
+                    var planData = JSON.parse(stored);
+                    if (!planData.amount || planData.amount <= 0) return;
+                    var planRef = window.firebaseRef(window.firebaseDB, 'plan_dap/' + currentSalesmanId + '/' + todayYMD);
+                    var snap = await window.firebaseGet(planRef);
+                    if (!snap.exists()) {
+                        console.log('🔄 Plan DAP ada di localStorage tapi belum di Firebase — syncing...');
+                        await syncPlanDAPToFirebase(currentSalesmanId, todayYMD, planData);
+                    } else {
+                        console.log('✅ Plan DAP sudah ada di Firebase:', snap.val().amount);
+                    }
+                } catch(e) {
+                    console.warn('initSyncPlanDAP error:', e.message);
+                }
+            }
+
             function getPlanDAP() {
                 var todayYMD = new Date().toISOString().split('T')[0];
                 var planKey = 'plan_dap_' + window.currentSalesmanId + '_' + todayYMD;
@@ -3501,25 +3551,8 @@
                 
                 console.log('✅ Plan DAP saved:', amount, '(Rp ' + formatRupiah(amount) + ')');
                 
-                // ✅ SAVE TO FIREBASE
-                if (window.firebaseDB && currentSalesmanId) {
-                    try {
-                        planData.date = todayYMD;
-                        const planRef = window.firebaseRef(
-                            window.firebaseDB, 
-                            `plan_dap/${currentSalesmanId}/${todayYMD}`
-                        );
-                        
-                        await window.firebaseSet(planRef, {
-                            ...planData,
-                            firebase_synced_at: window.firebaseServerTimestamp()
-                        });
-                        
-                        console.log('🔥 Plan DAP synced to Firebase:', amount);
-                    } catch (error) {
-                        console.error('❌ Firebase Plan DAP sync error:', error);
-                    }
-                }
+                // ✅ SAVE TO FIREBASE (with retry)
+                syncPlanDAPToFirebase(currentSalesmanId, todayYMD, planData);
                 
                 // Close modal
                 document.getElementById('planDapOverlay').classList.remove('show');
@@ -4000,7 +4033,7 @@
         function checkAdminAccess() {
             // Add your admin check logic here
             // For example, check if user ID is in admin list
-            const adminIds = ['ADMIN001', 'SUPERVISOR001']; // Add your admin IDs
+            const adminIds = ['ADMIN001', 'SUPERVISOR001', '17210036576']; // Add your admin IDs
             
             if (adminIds.includes(currentSalesmanId)) {
                 const adminBtn = document.getElementById('adminLocationBtn');
@@ -6237,13 +6270,11 @@
                         });
                         
                         if (!skuRecord) {
-                            // SKU tidak ada di outlet → Belum CA
                             skuPomBelumCA.push(skuTarget);
                             console.log(`❌ SKU ${skuTarget}: Tidak ada di outlet`);
                         } else {
                             const caPom = Number(skuRecord.CA_POM || 0);
                             if (caPom === 0) {
-                                // CA_POM = 0 → Belum CA
                                 skuPomBelumCA.push(skuTarget);
                                 console.log(`❌ SKU ${skuTarget}: CA_POM = 0 (Belum CA)`);
                             } else {
@@ -6258,6 +6289,15 @@
                     
                     console.log(`📋 Found outlet details: ID=${detailRecord['Id Pelanggan']}, Type=${customerTypeText}, SKU Zero=${skuZeroText}`);
                     displaySkuPomChecklist(selectedPelanggan, skuPomBelumCA);
+                } else {
+                    // Outlet tidak ada di detailsData — tetap tampilkan semua target SKU POM
+                    const targetSkuPom = tpomData
+                        .filter(item => (item.szEmployeeId || '').toString().trim() === currentSalesmanId)
+                        .map(item => (item.NickName || item.SKU_POM || '').toString().trim())
+                        .filter(sku => sku !== '');
+                    skuZeroText = targetSkuPom.length > 0 ? targetSkuPom.join(', ') : 'Tidak ada target SKU POM';
+                    console.log(`⚠️ Outlet "${selectedPelanggan}" tidak ada di detailsData, tampilkan semua target SKU:`, targetSkuPom);
+                    displaySkuPomChecklist(selectedPelanggan, targetSkuPom);
                 }
                 
                 customerInfo.style.display = 'block';
@@ -6383,8 +6423,6 @@
                     salesman_name: currentSalesman,
                     outlet_name: outletName,
                     date: today,
-                    plan_dap: planDAP,
-                    achievement_percentage: achievementPct,
                     checklist: checklistStatus,
                     last_updated: window.firebaseServerTimestamp()
                 };
@@ -7083,6 +7121,9 @@
                 console.log('🏪 Order status tracking enabled');
                 console.log('💾 Local storage session management active');
                 console.log('🔥 Firebase sync enabled');
+                
+                // 🔄 Sync Plan DAP localStorage → Firebase (catch missed syncs from previous sessions)
+                setTimeout(initSyncPlanDAP, 4000);
                 console.log('🔴 Inactive customer marking system enabled');
                 console.log('📑 Tab system enabled: Data SKU & SKU MSS Belum Aktif'); // ← TAMBAHKAN
                 console.log(`👥 Salesman Team Filter: ${salesmanTeam || 'Not set yet'}`);

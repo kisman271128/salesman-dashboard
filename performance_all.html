@@ -4,6 +4,36 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Performance Summary - All Salesman</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <!-- Firebase Initialization -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, push, set, get, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAoRV3qVAXQ14AEVA8Mo49HXfAyhMMm8Bs",
+            authDomain: "salesman-route-tracker.firebaseapp.com",
+            databaseURL: "https://salesman-route-tracker-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "salesman-route-tracker",
+            storageBucket: "salesman-route-tracker.firebasestorage.app",
+            messagingSenderId: "590789273516",
+            appId: "1:590789273516:web:79abe0c7e4cbccfa44fc09",
+            measurementId: "G-5RYSWKQ063"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+
+        window.firebaseDB = database;
+        window.firebaseRef = ref;
+        window.firebasePush = push;
+        window.firebaseSet = set;
+        window.firebaseGet = get;
+        window.firebaseServerTimestamp = serverTimestamp;
+
+        console.log('🔥 Firebase initialized in performance_all.html');
+    </script>
     <style>
         * {
             margin: 0;
@@ -225,6 +255,38 @@
             display: block;
         }
 
+        /* Project Sub-Tabs */
+        .sub-tab-nav {
+            display: flex;
+            gap: 6px;
+            padding: 10px 16px 4px;
+            overflow-x: auto;
+            scrollbar-width: none;
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .sub-tab-nav::-webkit-scrollbar { display: none; }
+        .sub-tab-btn {
+            flex-shrink: 0;
+            padding: 5px 14px;
+            border: 1.5px solid #c7d2fe;
+            background: white;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #6366f1;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .sub-tab-btn:hover { background: #eef2ff; }
+        .sub-tab-btn.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-color: transparent;
+            box-shadow: 0 2px 6px rgba(102,126,234,0.35);
+        }
+
         /* Table Styles */
         .table-container {
             background: white;
@@ -257,12 +319,22 @@
         .data-table th,
         .data-table td {
             padding: 8px 12px;
-            text-align: left;
+            text-align: right;
             border-bottom: 1px solid #f1f3f4;
             font-size: 11px;
             white-space: nowrap;
             width: auto;
         }
+
+        /* Customer & Salesman → rata kiri */
+        .data-table td.sticky-col,
+        .data-table th.sticky-col,
+        .data-table td.col-medium,
+        .data-table th.col-medium { text-align: left; }
+
+        /* Ach% → rata tengah */
+        .data-table td.value-percentage,
+        .data-table th.value-percentage { text-align: center; }
 
         .data-table th {
             background: #f8fafc;
@@ -545,6 +617,254 @@
             max-width: 90px;
         }
 
+        /* ===== VISIT REPORT STYLES ===== */
+        .visit-report-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 16px;
+            background: white;
+            border-bottom: 1px solid #f1f5f9;
+            margin-bottom: 12px;
+        }
+        .visit-report-toolbar input[type="date"] {
+            flex: 1;
+            padding: 9px 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 13px;
+            color: #1e293b;
+            background: #f8fafc;
+        }
+        .btn-load-visit {
+            padding: 9px 16px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .btn-share-wa {
+            padding: 9px 14px;
+            background: linear-gradient(135deg, #25d366, #128c7e);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .btn-share-wa:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* The widescreen report card */
+        .visit-report-scroll-wrapper {
+            padding: 0 16px 16px;
+            overflow-x: auto;
+        }
+        #visitReportCard {
+            min-width: 780px;
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+            font-family: 'Segoe UI', sans-serif;
+        }
+        .vr-header {
+            background: linear-gradient(135deg, #1e3a5f 0%, #2d6a9f 50%, #667eea 100%);
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .vr-header-left h2 {
+            font-size: 17px;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 2px;
+        }
+        .vr-header-left p {
+            font-size: 12px;
+            color: rgba(255,255,255,0.8);
+        }
+        .vr-header-right {
+            text-align: right;
+        }
+        .vr-header-right .vr-date {
+            font-size: 18px;
+            font-weight: 800;
+            color: #ffd700;
+        }
+        .vr-header-right .vr-ts {
+            font-size: 10px;
+            color: rgba(255,255,255,0.7);
+            margin-top: 2px;
+        }
+
+        /* Summary metrics bar */
+        .vr-metrics-bar {
+            display: flex;
+            background: #1e293b;
+            padding: 10px 16px;
+            gap: 0;
+        }
+        .vr-metric-item {
+            flex: 1;
+            text-align: center;
+            padding: 6px 4px;
+            border-right: 1px solid rgba(255,255,255,0.1);
+        }
+        .vr-metric-item:last-child { border-right: none; }
+        .vr-metric-item .vm-label {
+            font-size: 9px;
+            color: rgba(255,255,255,0.6);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 3px;
+        }
+        .vr-metric-item .vm-value {
+            font-size: 15px;
+            font-weight: 800;
+            color: white;
+        }
+        .vr-metric-item .vm-value.green { color: #4ade80; }
+        .vr-metric-item .vm-value.yellow { color: #fbbf24; }
+        .vr-metric-item .vm-value.red { color: #f87171; }
+        .vr-metric-item .vm-value.blue { color: #60a5fa; }
+
+        /* Report table */
+        .vr-table-wrapper { overflow-x: auto; }
+        .vr-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }
+        .vr-table thead tr {
+            background: #f1f5f9;
+        }
+        .vr-table th {
+            padding: 9px 10px;
+            text-align: center;
+            font-size: 10px;
+            font-weight: 700;
+            color: #374151;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            border-bottom: 2px solid #e2e8f0;
+            white-space: nowrap;
+        }
+        .vr-table th.left { text-align: left; }
+        .vr-table td {
+            padding: 9px 10px;
+            text-align: center;
+            border-bottom: 1px solid #f1f5f9;
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+        .vr-table td.left { text-align: left; }
+        .vr-table tbody tr:hover { background: #fafbff; }
+        .vr-table tbody tr:nth-child(even) { background: #fafcff; }
+        .vr-table tbody tr:nth-child(even):hover { background: #f0f4ff; }
+
+        /* Total row */
+        .vr-total-row td {
+            background: #1e293b !important;
+            color: white !important;
+            font-weight: 700 !important;
+            border-bottom: none !important;
+            font-size: 12px;
+        }
+
+        /* Column group headers */
+        .vr-col-group-header th {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .vr-col-kunjungan { background: #eff6ff !important; color: #1d4ed8 !important; }
+        .vr-col-penjualan { background: #f0fdf4 !important; color: #065f46 !important; }
+        .vr-col-reason    { background: #fff7ed !important; color: #9a3412 !important; }
+        .vr-col-sku       { background: #fdf4ff !important; color: #6b21a8 !important; }
+
+        /* Salesman cell */
+        .vr-salesman-cell {
+            min-width: 130px;
+            max-width: 160px;
+        }
+        .vr-salesman-name {
+            font-weight: 700;
+            color: #1e293b;
+            font-size: 11px;
+        }
+        .vr-salesman-type {
+            font-size: 9px;
+            color: #64748b;
+            margin-top: 1px;
+        }
+
+        /* Value badges */
+        .badge-ec { 
+            background: #dcfce7; color: #166534; 
+            padding: 2px 7px; border-radius: 20px; font-weight: 700;
+        }
+        .badge-ec.warn { background: #fef9c3; color: #854d0e; }
+        .badge-ec.bad  { background: #fee2e2; color: #991b1b; }
+        .badge-ach     { 
+            display: inline-block;
+            padding: 2px 7px; border-radius: 20px; font-weight: 700; font-size: 11px;
+        }
+        .badge-ach.high { background: #dcfce7; color: #166534; }
+        .badge-ach.mid  { background: #fef9c3; color: #854d0e; }
+        .badge-ach.low  { background: #fee2e2; color: #991b1b; }
+
+        .vr-currency {
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+            color: #1e293b;
+            font-size: 11px;
+        }
+        .vr-currency.dap { color: #2563eb; }
+        .vr-currency.actual { color: #059669; }
+        
+        .vr-count-tutup  { color: #dc2626; font-weight: 600; }
+        .vr-count-none   { color: #94a3b8; font-weight: 500; }
+        .vr-sku-list { 
+            font-size: 9px; color: #7c3aed; 
+            max-width: 120px; 
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+
+        /* Footer */
+        .vr-footer {
+            background: #f8fafc;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid #e2e8f0;
+        }
+        .vr-footer-left { font-size: 10px; color: #64748b; }
+        .vr-footer-right { font-size: 10px; color: #94a3b8; }
+
+        /* Loading state inside tab */
+        .vr-loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: #64748b;
+        }
+        .vr-loading .spinner { margin: 0 auto 12px; }
+        .vr-empty {
+            text-align: center;
+            padding: 60px 20px;
+            color: #94a3b8;
+            font-size: 13px;
+        }
+
         /* Responsive */
         @media (max-width: 380px) {
             .metrics-grid { gap: 8px; }
@@ -634,9 +954,10 @@
                 <div class="tab-nav">
                     <button class="tab-btn active" onclick="switchTab('summary')">30 Pareto</button>
                     <button class="tab-btn" onclick="switchTab('channel')">By Channel</button>
-                    <button class="tab-btn" onclick="switchTab('ranking')">Top Ranking</button>
-                    <button class="tab-btn" onclick="switchTab('project')">Top Projects</button>
+                    <button class="tab-btn" onclick="switchTab('ranking')">By Salesman</button>
+                    <button class="tab-btn" onclick="switchTab('project')">Projects</button>
                     <button class="tab-btn" onclick="switchTab('pom')">CA POM</button>
+                    <button class="tab-btn" id="tabBtnVisitReport" onclick="switchTab('visitReport')">📋 Visit</button>
                 </div>
             </div>
 
@@ -687,7 +1008,7 @@
 
             <div class="tab-content" id="rankingContent">
                 <div class="table-container">
-                    <div class="table-header">🏆 Top Performance Ranking</div>
+                    <div class="table-header">🏆 Ranking Salesman</div>
                     <div class="table-wrapper">
                         <table class="data-table">
                             <thead>
@@ -707,13 +1028,20 @@
             </div>
 
             <div class="tab-content" id="projectContent">
+                <!-- ITG Sub-tabs -->
+                <div class="sub-tab-nav" id="projectSubTabs">
+                    <button class="sub-tab-btn active" onclick="switchProjectITG('ITG Arjuna')">ITG Arjuna</button>
+                    <button class="sub-tab-btn" onclick="switchProjectITG('ITG Bima')">ITG Bima</button>
+                    <button class="sub-tab-btn" onclick="switchProjectITG('ITG SC')">ITG SC</button>
+                    <button class="sub-tab-btn" onclick="switchProjectITG('Kantinku')">Kantinku</button>
+                </div>
                 <div class="table-container">
-                    <div class="table-header">🎯 Top Project Performance</div>
                     <div class="table-wrapper">
                         <table class="data-table">
                             <thead>
-                                <tr>
+                                <tr id="projectTableHead">
                                     <th class="sticky-col salesman-name-col">Customer</th>
+                                    <th class="col-wide value-currency">Gap Qrt</th>
                                     <th class="col-wide value-currency">T.MTD</th>
                                     <th class="col-wide value-currency">A.MTD</th>
                                     <th class="col-wide value-currency">Gap</th>
@@ -753,9 +1081,36 @@
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Bottom Navigation -->
+            <!-- ===== VISIT REPORT TAB ===== -->
+            <div class="tab-content" id="visitReportContent">
+                <!-- Toolbar: Date picker + buttons -->
+                <div class="visit-report-toolbar">
+                    <input type="date" id="visitReportDate" />
+                    <button class="btn-load-visit" onclick="loadVisitReport()">🔍 Load</button>
+                    <button class="btn-share-wa" id="btnShareWA" onclick="shareVisitReportAsImage()" disabled title="Share via WhatsApp">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.117.554 4.107 1.523 5.832L.057 23.676a.75.75 0 00.918.919l5.844-1.465A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.9 0-3.681-.506-5.215-1.389l-.374-.224-3.882.973.983-3.883-.232-.384A10.004 10.004 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+                    </button>
+                </div>
+
+                <!-- Loading / empty / report card -->
+                <div id="visitReportLoading" class="vr-loading" style="display:none;">
+                    <div class="spinner"></div>
+                    <div>Memuat data kunjungan dari Firebase...</div>
+                </div>
+                <div id="visitReportEmpty" class="vr-empty">
+                    <div style="font-size:40px;margin-bottom:12px;">📋</div>
+                    <div>Pilih tanggal & klik <strong>Load</strong> untuk melihat<br>laporan kunjungan semua salesman</div>
+                </div>
+
+                <div class="visit-report-scroll-wrapper">
+                    <div id="visitReportCard" style="display:none;">
+                        <!-- Dynamically rendered -->
+                    </div>
+                </div>
+            </div>
+
+        </div><!-- end mainContent -->
         <div class="bottom-nav">
             <div class="nav-item" onclick="goHome()">
                 <div class="nav-icon home">🏠</div>
@@ -764,6 +1119,10 @@
             <div class="nav-item" onclick="showMV()">
                 <div class="nav-icon mv">👥</div>
                 <div class="nav-label">MV</div>
+            </div>
+            <div class="nav-item" id="navVisitReport" onclick="switchToVisitReport()">
+                <div class="nav-icon" style="background:#10b981;color:white;">📋</div>
+                <div class="nav-label">Visit Rep.</div>
             </div>
         </div>
     </div>
@@ -774,8 +1133,10 @@
         let channelData = [];
         let channelProjData = [];
         let projectData = [];
+        let currentProjectITG = 'ITG Arjuna';
         let paretoData = [];
         let pomData = [];
+        let skupelangganData = []; // For PC calculation
 
         // ===== UTILITY FUNCTIONS =====
         function formatCurrencyIndonesia(value) {
@@ -784,6 +1145,12 @@
             if (val >= 1000000) return `${(val/1000000).toFixed(1)}jt`;
             if (val >= 1000) return `${(val/1000).toFixed(0)}rb`;
             return `${val.toFixed(0)}`;
+        }
+
+        // Format angka penuh dengan pemisah ribuan titik (tanpa singkatan), e.g. 2.320
+        function formatNumberFull(value) {
+            const val = Math.abs(parseFloat(value) || 0);
+            return Math.round(val).toLocaleString('id-ID');
         }
 
         function calculateAchievementPercentage(target, actual) {
@@ -892,6 +1259,16 @@
                 console.log('POM data loaded:', pomData.length, 'records');
             } catch (error) {
                 console.error('POM data loading failed:', error.message);
+            }
+
+            // d.skupelanggan.json — for PC (Plan Call) calculation in Visit Report
+            try {
+                const skupelangganText = await loadFile('d.skupelanggan.json');
+                skupelangganData = parseJSONLines(skupelangganText);
+                window.pelangganData = skupelangganData; // expose to window
+                console.log('Skupelanggan data loaded:', skupelangganData.length, 'records');
+            } catch (error) {
+                console.error('Skupelanggan data loading failed:', error.message);
             }
         }
 
@@ -1158,35 +1535,67 @@
             tbody.innerHTML = html;
         }
 
+        function switchProjectITG(itg) {
+            currentProjectITG = itg;
+            document.querySelectorAll('.sub-tab-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.textContent.trim() === itg);
+            });
+            const showGapQrt = (itg === 'ITG Arjuna' || itg === 'ITG SC');
+            const thead = document.getElementById('projectTableHead');
+            if (thead) {
+                thead.innerHTML = `
+                    <th class="sticky-col salesman-name-col">Customer</th>
+                    ${showGapQrt ? '<th class="col-wide value-currency">Gap Qrt</th>' : ''}
+                    <th class="col-wide value-currency">T.MTD</th>
+                    <th class="col-wide value-currency">A.MTD</th>
+                    <th class="col-wide value-currency">Gap</th>
+                    <th class="col-wide value-percentage">Ach%</th>
+                    <th class="col-medium">Salesman</th>
+                `;
+            }
+            updateProjectTable();
+        }
+
         function updateProjectTable() {
             const tbody = document.getElementById('projectTableBody');
-            
+            const showGapQrt = (currentProjectITG === 'ITG Arjuna' || currentProjectITG === 'ITG SC');
+            const useFullFormat = (currentProjectITG === 'ITG SC');
+            const fmt = (val) => useFullFormat ? formatNumberFull(val) : formatCurrencyIndonesia(val);
+            const colSpan = showGapQrt ? 7 : 6;
+
             if (projectData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><div class="icon">🎯</div><div>No project data available</div></td></tr>';
+                tbody.innerHTML = `<tr><td colspan="${colSpan}" class="empty-state"><div class="icon">🎯</div><div>No project data available</div></td></tr>`;
                 return;
             }
 
-            // Sort by actual value descending
-            const sortedProjects = projectData.sort((a, b) => 
+            const filtered = projectData.filter(p => (p.ITG || '').trim() === currentProjectITG);
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="${colSpan}" class="empty-state"><div class="icon">🎯</div><div>Tidak ada data untuk ${currentProjectITG}</div></td></tr>`;
+                return;
+            }
+
+            const sortedProjects = [...filtered].sort((a, b) => 
                 parseFloat(b['A.MTD'] || 0) - parseFloat(a['A.MTD'] || 0)
-            ).slice(0, 20); // Top 20 projects
+            );
 
             let html = '';
             sortedProjects.forEach(project => {
-                const target = parseFloat(project['T.MTD'] || 0);
-                const actual = parseFloat(project['A.MTD'] || 0);
-                const gap = parseFloat(project['Gap MTD'] || 0);
+                const target   = parseFloat(project['T.MTD']   || 0);
+                const actual   = parseFloat(project['A.MTD']   || 0);
+                const gap      = parseFloat(project['Gap MTD'] || 0);
+                const gapQrt   = parseFloat(project['Gap Qrt'] || 0);
                 const achPercentage = calculateAchievementPercentage(target, actual);
                 
                 html += `
                     <tr>
                         <td class="sticky-col salesman-name-col">
-                            <strong style="font-size: 10px;">${(project['CUST NAME'] || '').substring(0, 20)}</strong><br>
-                            <small style="color: #64748b; font-size: 9px;">${project.ITG || ''}</small>
+                            <strong style="font-size: 10px;">${(project['CUST NAME'] || '').substring(0, 20)}</strong>
                         </td>
-                        <td class="value-currency col-wide">${formatCurrencyIndonesia(target)}</td>
-                        <td class="value-currency col-wide">${formatCurrencyIndonesia(actual)}</td>
-                        <td class="value-currency col-wide ${getGapClass(gap)}">${formatCurrencyIndonesia(gap)}</td>
+                        ${showGapQrt ? `<td class="value-currency col-wide ${getGapClass(gapQrt)}">${fmt(gapQrt)}</td>` : ''}
+                        <td class="value-currency col-wide">${fmt(target)}</td>
+                        <td class="value-currency col-wide">${fmt(actual)}</td>
+                        <td class="value-currency col-wide ${getGapClass(gap)}">${fmt(gap)}</td>
                         <td class="value-percentage col-wide ${getAchievementClass(achPercentage)}">${achPercentage}%</td>
                         <td class="col-medium">
                             <small style="font-size: 9px;">${(project.szname || '').substring(0, 10)}</small>
@@ -1317,7 +1726,7 @@
                 updateSummaryTable();
                 updateChannelTable();
                 updateRankingTable();
-                updateProjectTable();
+                switchProjectITG('ITG Arjuna'); // init with correct header
                 updatePOMTable();
                 
                 showLoading(false);
@@ -1360,6 +1769,643 @@
             }
             return true;
         }
+
+        // ===== VISIT REPORT FUNCTIONS =====
+
+        function switchToVisitReport() {
+            // Activate tab button
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('tabBtnVisitReport').classList.add('active');
+            // Show tab content
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById('visitReportContent').classList.add('active');
+            // Scroll to top
+            document.getElementById('mainContent').scrollTop = 0;
+            // Set default date = today if not already set
+            const dateInput = document.getElementById('visitReportDate');
+            if (!dateInput.value) {
+                const today = new Date();
+                const y = today.getFullYear();
+                const m = String(today.getMonth()+1).padStart(2,'0');
+                const d = String(today.getDate()).padStart(2,'0');
+                dateInput.value = `${y}-${m}-${d}`;
+            }
+        }
+
+        function fmtIDDate(dateStr) {
+            const months = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+            const days   = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+            const d = new Date(dateStr + 'T00:00:00');
+            return `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+        }
+
+        function fmtRp(val) {
+            const n = Math.abs(parseFloat(val) || 0);
+            if (n >= 1e9) return `${(n/1e9).toFixed(2)}M`;
+            if (n >= 1e6) return `${(n/1e6).toFixed(2)}jt`;
+            if (n >= 1e3) return `${(n/1e3).toFixed(0)}rb`;
+            return `${n.toFixed(0)}`;
+        }
+
+        function getECBadgeClass(ecPct) {
+            if (ecPct >= 75) return 'badge-ec';
+            if (ecPct >= 50) return 'badge-ec warn';
+            return 'badge-ec bad';
+        }
+        function getAchBadgeClass(pct) {
+            if (pct >= 85) return 'badge-ach high';
+            if (pct >= 60) return 'badge-ach mid';
+            return 'badge-ach low';
+        }
+
+        async function loadVisitReport() {
+            const dateStr = document.getElementById('visitReportDate').value;
+            if (!dateStr) { alert('Pilih tanggal terlebih dahulu'); return; }
+
+            // Wait for Firebase to be ready (module loads async)
+            let attempts = 0;
+            while (!window.firebaseDB && attempts < 20) {
+                await new Promise(r => setTimeout(r, 200));
+                attempts++;
+            }
+
+            if (!window.firebaseDB) {
+                alert('⚠️ Firebase belum siap. Tunggu beberapa detik lalu coba lagi.');
+                return;
+            }
+
+            document.getElementById('visitReportEmpty').style.display = 'none';
+            document.getElementById('visitReportCard').style.display = 'none';
+            document.getElementById('visitReportLoading').style.display = 'flex';
+            document.getElementById('btnShareWA').disabled = true;
+
+            try {
+                // Build salesman list from channelProjData
+                const salesmanMap = new Map();
+                channelProjData.forEach(item => {
+                    const rawId = (item.szEmployeeId || '').toString().trim();
+                    if (rawId && item.szname) {
+                        if (!salesmanMap.has(rawId)) {
+                            salesmanMap.set(rawId, {
+                                id: rawId,
+                                name: (item.szname || '').trim(),
+                                type: (item['Tipe Salesman'] || item.tipe || '').trim() || '-',
+                                firebaseId: null  // will be resolved below
+                            });
+                        }
+                    }
+                });
+                if (jksData && jksData.length > 0) {
+                    jksData.forEach(item => {
+                        const id = (item.szEmployeeId || '').toString().trim();
+                        if (salesmanMap.has(id) && item['Tipe Salesman']) {
+                            salesmanMap.get(id).type = item['Tipe Salesman'];
+                        }
+                    });
+                }
+                const salesmanList = Array.from(salesmanMap.values());
+
+                // ── pelangganData for PC ──
+                const pelangganData = skupelangganData.length > 0 ? skupelangganData : (window.pelangganData || []);
+                const pelangganByNormName = {};
+                const pelangganByEmpId    = {};
+                pelangganData.forEach(p => {
+                    const nm = (p.szname || '').trim().toLowerCase();
+                    if (nm) {
+                        if (!pelangganByNormName[nm]) pelangganByNormName[nm] = [];
+                        pelangganByNormName[nm].push(p);
+                    }
+                    const eid = (p.szEmployeeId || '').toString().trim();
+                    if (eid) {
+                        if (!pelangganByEmpId[eid]) pelangganByEmpId[eid] = [];
+                        pelangganByEmpId[eid].push(p);
+                    }
+                });
+                console.log('📋 pelangganData rows:', pelangganData.length,
+                    '| distinct names:', Object.keys(pelangganByNormName).length);
+
+                // ═══════════════════════════════════════════════════════════
+                // 🔑 DISCOVER REAL FIREBASE IDs from visits node
+                // visits/{firebaseId}/{visitKey}.salesman_id (or salesman_name)
+                // This resolves ID format mismatch between JSON files and Firebase
+                // ═══════════════════════════════════════════════════════════
+                // nameToFirebaseId: normalized_salesman_name → firebaseId
+                const nameToFirebaseId = {};
+
+                try {
+                    const visitsRootRef  = window.firebaseRef(window.firebaseDB, `visits`);
+                    const visitsRootSnap = await window.firebaseGet(visitsRootRef);
+                    if (visitsRootSnap.exists()) {
+                        visitsRootSnap.forEach(idNode => {
+                            const fbId = idNode.key;
+                            // Grab any child to read salesman_name / salesman_id
+                            idNode.forEach(visitNode => {
+                                const v = visitNode.val();
+                                if (v && v.salesman_name) {
+                                    const normName = v.salesman_name.trim().toLowerCase();
+                                    nameToFirebaseId[normName] = fbId;
+                                }
+                                return true; // stop after first child
+                            });
+                        });
+                    }
+                    console.log('🔑 Firebase ID map built from visits:', nameToFirebaseId);
+                } catch(e) {
+                    console.warn('⚠️ Could not build Firebase ID map from visits:', e.message);
+                }
+
+                // Also build from sku_pom_checklist (has salesman_name inside)
+                try {
+                    const skuRootRef  = window.firebaseRef(window.firebaseDB, `sku_pom_checklist`);
+                    const skuRootSnap = await window.firebaseGet(skuRootRef);
+                    if (skuRootSnap.exists()) {
+                        skuRootSnap.forEach(idNode => {
+                            const fbId = idNode.key;
+                            idNode.forEach(dateNode => {
+                                dateNode.forEach(outletNode => {
+                                    const v = outletNode.val();
+                                    if (v && v.salesman_name) {
+                                        const normName = v.salesman_name.trim().toLowerCase();
+                                        if (!nameToFirebaseId[normName]) {
+                                            nameToFirebaseId[normName] = fbId;
+                                        }
+                                    }
+                                    return true;
+                                });
+                                return true;
+                            });
+                        });
+                    }
+                    console.log('🔑 Firebase ID map enriched from sku_pom_checklist:', nameToFirebaseId);
+                } catch(e) {
+                    console.warn('⚠️ Could not enrich from sku_pom_checklist:', e.message);
+                }
+
+                // Assign resolved firebaseId to each salesman
+                salesmanList.forEach(sm => {
+                    const normName = sm.name.toLowerCase();
+                    sm.firebaseId = nameToFirebaseId[normName] || sm.id; // fallback to json id
+                    if (sm.firebaseId !== sm.id) {
+                        console.log(`🔑 ID resolved: ${sm.name} → json:${sm.id} → firebase:${sm.firebaseId}`);
+                    }
+                });
+
+                // ── Plan DAP: fetch parallel using firebaseId ──
+                const planDapByFirebaseId = {};
+                await Promise.all(salesmanList.map(async sm => {
+                    const ids = [...new Set([sm.firebaseId, sm.id, parseInt(sm.id,10).toString()])];
+                    for (const tryId of ids) {
+                        try {
+                            const ref1  = window.firebaseRef(window.firebaseDB, `plan_dap/${tryId}/${dateStr}`);
+                            const snap1 = await window.firebaseGet(ref1);
+                            if (snap1.exists()) {
+                                planDapByFirebaseId[sm.firebaseId] = Number(snap1.val().amount || 0);
+                                console.log(`💰 Plan DAP ${sm.name}: Rp ${planDapByFirebaseId[sm.firebaseId].toLocaleString('id-ID')}`);
+                                break;
+                            }
+                        } catch(e) { /* skip */ }
+                    }
+                    if (!planDapByFirebaseId[sm.firebaseId]) {
+                        console.warn(`⚠️ Plan DAP not found for ${sm.name} (tried: ${[...new Set([sm.firebaseId, sm.id])].join(', ')})`);
+                    }
+                }));
+                console.log('💰 Plan DAP loaded:', Object.keys(planDapByFirebaseId).length, 'entries');
+
+                // Fetch visits for each salesman from Firebase
+                const reportRows = [];
+
+                for (const sm of salesmanList) {
+                    try {
+                        // ── Fetch visits using resolved firebaseId ──
+                        let snap = null;
+                        try {
+                            const visitsRef = window.firebaseRef(window.firebaseDB, `visits/${sm.firebaseId}`);
+                            snap = await window.firebaseGet(visitsRef);
+                        } catch(e) {
+                            console.warn(`⚠️ Cannot read visits for ${sm.name} (${sm.firebaseId}):`, e.message);
+                        }
+
+                        // ── PC calculation ──
+                        const todayDayMap = { 0:'MINGGU',1:'SENIN',2:'SELASA',3:'RABU',4:'KAMIS',5:'JUMAT',6:'SABTU' };
+                        const dateObj  = new Date(dateStr + 'T00:00:00');
+                        const todayDay = todayDayMap[dateObj.getDay()];
+                        const normName = sm.name.toLowerCase();
+                        const candidates = pelangganByNormName[normName]
+                                        || pelangganByEmpId[sm.firebaseId]
+                                        || pelangganByEmpId[sm.id]
+                                        || [];
+                        const uniquePCOutlets = new Set();
+                        candidates.forEach(p => {
+                            if (!p.Nama_Pelanggan) return;
+                            const hk = (p.Hari_Kunjungan || '').toUpperCase().trim();
+                            if (hk === todayDay || (hk.includes('2&4') && hk.includes(todayDay))) {
+                                uniquePCOutlets.add(p.Nama_Pelanggan);
+                            }
+                        });
+                        const pc = uniquePCOutlets.size;
+                        if (pc === 0) console.warn(`⚠️ PC=0 for ${sm.name} | normName:"${normName}" | candidates:${candidates.length} | day:${todayDay}`);
+
+                        // Process visits
+                        let ac = 0, ec = 0, actualSO = 0;
+                        let tokoTutupList = [], tokoTidakOrderList = [], tokoTidakSelesaiList = [];
+                        const visitedSet = new Set();
+
+                        if (snap && snap.exists()) {
+                            Object.values(snap.val()).forEach(v => {
+                                if (!v.start_time) return;
+                                const vDate = v.start_time.split('T')[0];
+                                if (vDate !== dateStr) return;
+
+                                const name   = v.outlet_name || '';
+                                const status = v.visit_status || '';
+                                const order  = v.order_status || '';
+                                const amt    = Number(v.so_amount || 0);
+
+                                if (status === 'completed') {
+                                    visitedSet.add(name);
+                                    if (order === 'ada_so') {
+                                        ec++;
+                                        actualSO += amt;
+                                    } else if (order === 'toko_tutup') {
+                                        tokoTutupList.push(name);
+                                    } else if (order === 'toko_tidak_order') {
+                                        tokoTidakOrderList.push(name);
+                                    }
+                                } else if (['started','paused','resumed'].includes(status)) {
+                                    tokoTidakSelesaiList.push(name);
+                                }
+                            });
+                            ac = visitedSet.size;
+                        }
+
+                        // ── Plan DAP from prefetched map ──
+                        const planDAP = planDapByFirebaseId[sm.firebaseId] || 0;
+
+                        // ── SKU POM from Firebase using resolved firebaseId ──
+                        const skuMap = {};
+                        try {
+                            const skuRef  = window.firebaseRef(window.firebaseDB, `sku_pom_checklist/${sm.firebaseId}/${dateStr}`);
+                            const skuSnap = await window.firebaseGet(skuRef);
+                            if (skuSnap.exists()) {
+                                console.log(`🏷️ SKU POM found for ${sm.name}:`, Object.keys(skuSnap.val()).length, 'outlets');
+                                Object.values(skuSnap.val()).forEach(outletData => {
+                                    const chk = outletData.checklist || outletData || {};
+                                    Object.keys(chk).forEach(rawSku => {
+                                        if (chk[rawSku] === true) {
+                                            const sku = rawSku.split('/')[0].trim();
+                                            skuMap[sku] = (skuMap[sku] || 0) + 1;
+                                        }
+                                    });
+                                });
+                            } else {
+                                console.warn(`⚠️ No SKU POM for ${sm.name} (firebaseId:${sm.firebaseId}) on ${dateStr}`);
+                            }
+                        } catch(e) {
+                            console.warn(`⚠️ SKU POM error for ${sm.name}:`, e.message);
+                        }
+                        const ecPct  = pc > 0 ? Math.round((ec/pc)*100) : (ec > 0 ? 100 : 0);
+                        const achPct = planDAP > 0 ? Math.round((actualSO/planDAP)*100) : (actualSO > 0 ? 100 : 0);
+
+                        // Only add rows that had some activity or have PC outlets
+                        if (pc > 0 || ac > 0) {
+                            reportRows.push({ sm, pc, ac, ec, ecPct, planDAP, actualSO, achPct,
+                                tokoTutupList, tokoTidakOrderList, tokoTidakSelesaiList, skuMap });
+                        }
+                    } catch(e) {
+                        console.error('Error loading visits for', sm.name, e);
+                    }
+                }
+
+                // Sort by ec descending
+                reportRows.sort((a,b) => b.ec - a.ec || b.actualSO - a.actualSO);
+
+                // Totals
+                const totals = reportRows.reduce((t, r) => ({
+                    pc: t.pc + r.pc, ac: t.ac + r.ac, ec: t.ec + r.ec,
+                    planDAP: t.planDAP + r.planDAP, actualSO: t.actualSO + r.actualSO,
+                    tutup: t.tutup + r.tokoTutupList.length,
+                    tidakOrder: t.tidakOrder + r.tokoTidakOrderList.length,
+                    tidakSelesai: t.tidakSelesai + r.tokoTidakSelesaiList.length
+                }), { pc:0, ac:0, ec:0, planDAP:0, actualSO:0, tutup:0, tidakOrder:0, tidakSelesai:0 });
+
+                const totalECPct  = totals.pc > 0 ? Math.round((totals.ec/totals.pc)*100) : 0;
+                const totalAchPct = totals.planDAP > 0 ? Math.round((totals.actualSO/totals.planDAP)*100) : 0;
+
+                renderVisitReportCard(dateStr, reportRows, totals, totalECPct, totalAchPct);
+
+            } catch(err) {
+                console.error('Visit report error:', err);
+                alert('Gagal memuat data: ' + err.message);
+                document.getElementById('visitReportEmpty').style.display = 'block';
+            } finally {
+                document.getElementById('visitReportLoading').style.display = 'none';
+            }
+        }
+
+        function renderVisitReportCard(dateStr, rows, totals, totalECPct, totalAchPct) {
+            const card = document.getElementById('visitReportCard');
+            const now  = new Date();
+            const tsStr = now.toLocaleTimeString('id-ID', {hour:'2-digit',minute:'2-digit'});
+
+            // ── Main table rows (NO SKU POM column) ──
+            let tableRows = '';
+            rows.forEach(r => {
+                const ttCount  = r.tokoTutupList.length;
+                const ttoCount = r.tokoTidakOrderList.length;
+                const ttsCount = r.tokoTidakSelesaiList.length;
+                tableRows += `
+                <tr>
+                    <td class="left" style="padding-left:14px;">
+                        <div class="vr-salesman-name">${r.sm.name}</div>
+                        <div class="vr-salesman-type">${r.sm.type}</div>
+                    </td>
+                    <td><strong>${r.pc}</strong></td>
+                    <td><strong style="color:${r.ac>=r.pc?'#059669':'#d97706'}">${r.ac}</strong></td>
+                    <td><strong style="color:#2563eb">${r.ec}</strong></td>
+                    <td><span class="${getECBadgeClass(r.ecPct)}">${r.ecPct}%</span></td>
+                    <td><span class="vr-currency dap">${r.planDAP > 0 ? fmtRp(r.planDAP) : '<span style="color:#94a3b8">-</span>'}</span></td>
+                    <td><span class="vr-currency actual">${r.actualSO > 0 ? fmtRp(r.actualSO) : '<span style="color:#94a3b8">-</span>'}</span></td>
+                    <td><span class="${getAchBadgeClass(r.achPct)}">${r.achPct}%</span></td>
+                    <td class="${ttCount>0?'vr-count-tutup':'vr-count-none'}">${ttCount > 0 ? ttCount : '—'}</td>
+                    <td class="${ttoCount>0?'vr-count-tutup':'vr-count-none'}">${ttoCount > 0 ? ttoCount : '—'}</td>
+                    <td class="${ttsCount>0?'vr-count-tutup':'vr-count-none'}">${ttsCount > 0 ? `<span style="color:#d97706">${ttsCount}</span>` : '—'}</td>
+                </tr>`;
+            });
+
+            if (rows.length === 0) {
+                tableRows = `<tr><td colspan="11" style="padding:30px;color:#94a3b8;text-align:center;">
+                    Tidak ada data kunjungan untuk tanggal ini</td></tr>`;
+            }
+
+            // ── SKU POM section: rows=salesman, columns=SKU ──
+            // Collect all unique SKUs across all salesman
+            const allSkus = [];
+            rows.forEach(r => {
+                Object.keys(r.skuMap).forEach(sku => {
+                    if (!allSkus.includes(sku)) allSkus.push(sku);
+                });
+            });
+            // Sort SKUs by total outlets descending
+            allSkus.sort((a, b) => {
+                const totalA = rows.reduce((s, r) => s + (r.skuMap[a] || 0), 0);
+                const totalB = rows.reduce((s, r) => s + (r.skuMap[b] || 0), 0);
+                return totalB - totalA;
+            });
+
+            let skuTableRows = '';
+            if (allSkus.length === 0) {
+                skuTableRows = `<tr><td colspan="20" style="padding:20px;color:#94a3b8;text-align:center;">Belum ada data SKU POM untuk tanggal ini</td></tr>`;
+            } else {
+                // Header: SALESMAN | SKU1 | SKU2 | ... | TOTAL
+                const skuHeaders = allSkus.map(sku =>
+                    `<th class="vr-col-sku" style="background:#f3e8ff;color:#6b21a8;text-align:center;min-width:65px;font-size:10px;">${sku}</th>`
+                ).join('');
+
+                skuTableRows = `
+                <tr style="background:#f3e8ff;">
+                    <th class="left" style="padding-left:14px;color:#6b21a8;min-width:150px;background:#ede9fe;">SALESMAN</th>
+                    ${skuHeaders}
+                    <th style="color:#6b21a8;text-align:center;min-width:65px;background:#ede9fe;font-size:10px;">TOTAL</th>
+                </tr>`;
+
+                // One row per salesman
+                rows.forEach(r => {
+                    const skuCells = allSkus.map(sku => {
+                        const cnt = r.skuMap[sku] || 0;
+                        return `<td style="text-align:center;font-weight:${cnt>0?'700':'400'};color:${cnt>0?'#7c3aed':'#cbd5e1'};font-size:12px;">${cnt > 0 ? cnt : '—'}</td>`;
+                    }).join('');
+                    const rowTotal = Object.values(r.skuMap).reduce((s,v) => s+v, 0);
+                    skuTableRows += `
+                    <tr>
+                        <td class="left" style="padding-left:14px;">
+                            <div style="font-weight:700;color:#1e293b;font-size:11px;">${r.sm.name}</div>
+                            <div style="font-size:9px;color:#64748b;">${r.sm.type}</div>
+                        </td>
+                        ${skuCells}
+                        <td style="text-align:center;font-weight:800;color:#7c3aed;background:#faf5ff;font-size:12px;">${rowTotal > 0 ? rowTotal : '—'}</td>
+                    </tr>`;
+                });
+
+                // Grand total row
+                const totalSkuCells = allSkus.map(sku => {
+                    const t = rows.reduce((s, r) => s + (r.skuMap[sku] || 0), 0);
+                    return `<td style="text-align:center;font-weight:700;color:white;font-size:12px;">${t > 0 ? t : '—'}</td>`;
+                }).join('');
+                const grandTotal = rows.reduce((s, r) => s + Object.values(r.skuMap).reduce((x,v) => x+v, 0), 0);
+                skuTableRows += `
+                <tr class="vr-total-row">
+                    <td class="left" style="padding-left:14px;">GRAND TOTAL</td>
+                    ${totalSkuCells}
+                    <td style="text-align:center;font-weight:800;font-size:12px;">${grandTotal > 0 ? grandTotal : '—'}</td>
+                </tr>`;
+            }
+
+            card.innerHTML = `
+            <div class="vr-header">
+                <div class="vr-header-left">
+                    <h2>📋 SUMMARY VISIT REPORT HARIAN</h2>
+                    <p>Rekapan Kunjungan Semua Salesman &nbsp;•&nbsp; ${rows.length} salesman aktif</p>
+                </div>
+                <div class="vr-header-right">
+                    <div class="vr-date">${fmtIDDate(dateStr)}</div>
+                    <div class="vr-ts">Generated ${tsStr} WIB • Sales Dashboard WebApp</div>
+                </div>
+            </div>
+
+            <div class="vr-metrics-bar">
+                <div class="vr-metric-item">
+                    <div class="vm-label">Total PC</div>
+                    <div class="vm-value blue">${totals.pc}</div>
+                </div>
+                <div class="vr-metric-item">
+                    <div class="vm-label">Total AC</div>
+                    <div class="vm-value ${totals.ac >= totals.pc ? 'green':'yellow'}">${totals.ac}</div>
+                </div>
+                <div class="vr-metric-item">
+                    <div class="vm-label">Total EC</div>
+                    <div class="vm-value green">${totals.ec}</div>
+                </div>
+                <div class="vr-metric-item">
+                    <div class="vm-label">EC vs PC</div>
+                    <div class="vm-value ${totalECPct>=75?'green':totalECPct>=50?'yellow':'red'}">${totalECPct}%</div>
+                </div>
+                <div class="vr-metric-item">
+                    <div class="vm-label">Total Plan DAP</div>
+                    <div class="vm-value blue">${totals.planDAP > 0 ? fmtRp(totals.planDAP) : '-'}</div>
+                </div>
+                <div class="vr-metric-item">
+                    <div class="vm-label">Total Actual SO</div>
+                    <div class="vm-value green">${fmtRp(totals.actualSO)}</div>
+                </div>
+                <div class="vr-metric-item">
+                    <div class="vm-label">Ach SO</div>
+                    <div class="vm-value ${totalAchPct>=85?'green':totalAchPct>=60?'yellow':'red'}">${totalAchPct > 0 ? totalAchPct+'%' : '-'}</div>
+                </div>
+                <div class="vr-metric-item">
+                    <div class="vm-label">Toko Tutup</div>
+                    <div class="vm-value red">${totals.tutup}</div>
+                </div>
+                <div class="vr-metric-item">
+                    <div class="vm-label">Tidak Order</div>
+                    <div class="vm-value yellow">${totals.tidakOrder}</div>
+                </div>
+                <div class="vr-metric-item">
+                    <div class="vm-label">Tdk Selesai</div>
+                    <div class="vm-value ${totals.tidakSelesai>0?'yellow':'green'}">${totals.tidakSelesai}</div>
+                </div>
+            </div>
+
+            <!-- ═══ TABLE 1: PERFORMA KUNJUNGAN ═══ -->
+            <div style="padding:10px 16px 4px;background:#f8fafc;border-top:1px solid #e2e8f0;">
+                <span style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:0.5px;">
+                    📊 Performa Kunjungan & Penjualan
+                </span>
+            </div>
+            <div class="vr-table-wrapper">
+                <table class="vr-table">
+                    <thead>
+                        <tr class="vr-col-group-header">
+                            <th class="left" rowspan="2" style="min-width:150px;background:#f8fafc;">Salesman</th>
+                            <th colspan="4" class="vr-col-kunjungan" style="border-left:2px solid #bfdbfe;">📍 Data Kunjungan</th>
+                            <th colspan="3" class="vr-col-penjualan" style="border-left:2px solid #bbf7d0;">💰 Performa Penjualan</th>
+                            <th colspan="3" class="vr-col-reason" style="border-left:2px solid #fed7aa;">⚠️ Alasan Tidak Order</th>
+                        </tr>
+                        <tr>
+                            <th class="vr-col-kunjungan" style="border-left:2px solid #bfdbfe;">PC</th>
+                            <th class="vr-col-kunjungan">AC</th>
+                            <th class="vr-col-kunjungan">EC</th>
+                            <th class="vr-col-kunjungan">EC%</th>
+                            <th class="vr-col-penjualan" style="border-left:2px solid #bbf7d0;">Plan DAP</th>
+                            <th class="vr-col-penjualan">Actual SO</th>
+                            <th class="vr-col-penjualan">Ach%</th>
+                            <th class="vr-col-reason" style="border-left:2px solid #fed7aa;">Tutup</th>
+                            <th class="vr-col-reason">Tdk Order</th>
+                            <th class="vr-col-reason">Tdk Selesai</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${tableRows}
+                        <tr class="vr-total-row">
+                            <td class="left" style="padding-left:14px;">📊 TOTAL (${rows.length} Salesman)</td>
+                            <td>${totals.pc}</td>
+                            <td>${totals.ac}</td>
+                            <td>${totals.ec}</td>
+                            <td>${totalECPct}%</td>
+                            <td>${totals.planDAP > 0 ? fmtRp(totals.planDAP) : '-'}</td>
+                            <td>${fmtRp(totals.actualSO)}</td>
+                            <td>${totalAchPct > 0 ? totalAchPct+'%' : '-'}</td>
+                            <td>${totals.tutup}</td>
+                            <td>${totals.tidakOrder}</td>
+                            <td>${totals.tidakSelesai}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- ═══ TABLE 2: SKU POM BREAKDOWN ═══ -->
+            <div style="padding:10px 16px 4px;background:#f5f3ff;border-top:3px solid #c4b5fd;margin-top:8px;">
+                <span style="font-size:11px;font-weight:700;color:#6b21a8;text-transform:uppercase;letter-spacing:0.5px;">
+                    🏷️ Breakdown SKU POM Yang Dipesan — Per Salesman
+                </span>
+            </div>
+            <div class="vr-table-wrapper">
+                <table class="vr-table">
+                    <tbody>
+                        ${skuTableRows}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="vr-footer">
+                <div class="vr-footer-left">
+                    🔥 Semua data bersumber dari <strong>Firebase Real-time</strong> — Kunjungan • Plan DAP • SKU POM
+                </div>
+                <div class="vr-footer-right">Sales Dashboard WebApp © ${new Date().getFullYear()}</div>
+            </div>`;
+
+            card.style.display = 'block';
+            document.getElementById('btnShareWA').disabled = false;
+        }
+
+        async function shareVisitReportAsImage() {
+            const card = document.getElementById('visitReportCard');
+            if (!card || card.style.display === 'none') return;
+
+            const btn = document.getElementById('btnShareWA');
+            btn.disabled = true;
+            btn.innerHTML = '⏳';
+
+            try {
+                // Temporarily expand card to full width for capture
+                const origStyle = card.style.cssText;
+                card.style.width = card.scrollWidth + 'px';
+                card.style.minWidth = 'unset';
+
+                const canvas = await html2canvas(card, {
+                    scale: 2,
+                    useCORS: true,
+                    backgroundColor: '#ffffff',
+                    logging: false,
+                    width: card.scrollWidth,
+                    windowWidth: card.scrollWidth + 40
+                });
+
+                card.style.cssText = origStyle;
+
+                canvas.toBlob(async (blob) => {
+                    const dateStr = document.getElementById('visitReportDate').value;
+                    const fileName = `visit_report_${dateStr}.png`;
+
+                    // Try Web Share API first (mobile)
+                    if (navigator.share && navigator.canShare) {
+                        const file = new File([blob], fileName, { type: 'image/png' });
+                        if (navigator.canShare({ files: [file] })) {
+                            await navigator.share({
+                                files: [file],
+                                title: `Visit Report ${dateStr}`,
+                                text: `Laporan Kunjungan Harian Salesman - ${dateStr}`
+                            });
+                            btn.disabled = false;
+                            btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.117.554 4.107 1.523 5.832L.057 23.676a.75.75 0 00.918.919l5.844-1.465A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.9 0-3.681-.506-5.215-1.389l-.374-.224-3.882.973.983-3.883-.232-.384A10.004 10.004 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>`;
+                            return;
+                        }
+                    }
+
+                    // Fallback: download + open WA Web
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = fileName;
+                    a.click();
+                    URL.revokeObjectURL(url);
+
+                    setTimeout(() => {
+                        const dateStr = document.getElementById('visitReportDate').value;
+                        const msg = encodeURIComponent(`📋 *SUMMARY VISIT REPORT HARIAN*\n🗓️ ${fmtIDDate(dateStr)}\n\n_(Silahkan lihat gambar yang baru diunduh)_`);
+                        window.open(`https://wa.me/?text=${msg}`, '_blank');
+                    }, 800);
+
+                    btn.disabled = false;
+                    btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.117.554 4.107 1.523 5.832L.057 23.676a.75.75 0 00.918.919l5.844-1.465A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.9 0-3.681-.506-5.215-1.389l-.374-.224-3.882.973.983-3.883-.232-.384A10.004 10.004 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>`;
+                }, 'image/png', 0.95);
+
+            } catch(err) {
+                console.error('Share error:', err);
+                alert('Gagal membuat gambar: ' + err.message);
+                btn.disabled = false;
+                btn.innerHTML = '📤';
+            }
+        }
+
+        // Initialize visit report date on DOM ready
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date();
+            const y = today.getFullYear();
+            const m = String(today.getMonth()+1).padStart(2,'0');
+            const d = String(today.getDate()).padStart(2,'0');
+            const dateInput = document.getElementById('visitReportDate');
+            if (dateInput) dateInput.value = `${y}-${m}-${d}`;
+        });
 
         // ===== INITIALIZE =====
         document.addEventListener('DOMContentLoaded', function() {
