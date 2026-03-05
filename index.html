@@ -962,70 +962,39 @@
             }, 2000);
         }
 
-        // ✅ UPDATED: Load last update info from chart_data.json
-        // Get last date where DO > 0 and combine with period
+        // Baca d.soharian.json langsung — lebih akurat karena selalu sync dengan Excel export
         async function loadLastUpdateInfo() {
             try {
-                console.log('📅 Loading last update info from chart_data.json...');
-                
-                // Set loading state
                 document.getElementById('lastUpdateTime').textContent = 'Loading...';
-                
-                const response = await fetch('data/chart_data.json');
-                console.log('📊 Chart data fetch response:', response.status, response.ok);
-                
-                if (response.ok) {
-                    const chartData = await response.json();
-                    console.log('📊 Chart data structure:', {
-                        hasPeriod: !!chartData.period,
-                        hasDoData: !!chartData.do_data,
-                        hasLabels: !!chartData.labels,
-                        period: chartData.period
-                    });
-                    
-                    // Find last date where DO > 0
-                    if (chartData.do_data && chartData.labels && chartData.period) {
-                        const doData = chartData.do_data;
-                        const labels = chartData.labels;
-                        const period = chartData.period;
-                        
-                        // Loop from end to find last DO > 0
-                        let lastDateLabel = null;
-                        for (let i = doData.length - 1; i >= 0; i--) {
-                            if (doData[i] > 0) {
-                                lastDateLabel = labels[i];
-                                console.log(`📅 Found last DO > 0 at index ${i}: DO=${doData[i]}, Date=${lastDateLabel}`);
-                                break;
-                            }
-                        }
-                        
-                        if (lastDateLabel) {
-                            // Combine date with period
-                            // Example: "25" + "Oktober 2025" = "25 Oktober 2025"
-                            const lastUpdateText = `${lastDateLabel} ${period}`;
-                            
-                            document.getElementById('lastUpdateTime').textContent = lastUpdateText;
-                            console.log('✅ Last update info loaded:', lastUpdateText);
-                        } else {
-                            console.warn('⚠️ No DO data > 0 found');
-                            document.getElementById('lastUpdateTime').textContent = period || 'Data not available';
-                        }
-                    } else {
-                        console.warn('⚠️ Missing required fields in chart_data.json');
-                        console.log('📊 Available fields:', Object.keys(chartData));
-                        document.getElementById('lastUpdateTime').textContent = chartData.period || 'Data not available';
-                    }
-                } else {
-                    console.warn('⚠️ Could not load chart_data.json:', response.status, response.statusText);
-                    
-                    // Show fallback
-                    document.getElementById('lastUpdateTime').textContent = 'Data not available';
+
+                const response = await fetch('data/d.soharian.json');
+                if (!response.ok) throw new Error('d.soharian.json not found');
+
+                const text = await response.text();
+                const rows = text.trim().split('\n')
+                    .map(l => { try { return JSON.parse(l); } catch { return null; } })
+                    .filter(r => r && r.Tgl && r.Tgl !== 0 && r.DO > 0);
+
+                if (rows.length === 0) {
+                    document.getElementById('lastUpdateTime').textContent = 'Data tidak tersedia';
+                    return;
                 }
+
+                // Ambil baris terakhir dengan DO > 0
+                const lastRow = rows[rows.length - 1];
+                const tgl = new Date(lastRow.Tgl);
+
+                const bulan = ['Januari','Februari','Maret','April','Mei','Juni',
+                               'Juli','Agustus','September','Oktober','November','Desember'];
+                const day   = String(tgl.getDate()).padStart(2, '0');
+                const label = `${day} ${bulan[tgl.getMonth()]} ${tgl.getFullYear()}`;
+
+                document.getElementById('lastUpdateTime').textContent = label;
+                console.log('✅ Last update from d.soharian.json:', label);
+
             } catch (error) {
-                console.error('❌ Error loading last update info:', error);
-                
-                // Show fallback
-                document.getElementById('lastUpdateTime').textContent = 'Data not available';
+                console.error('❌ loadLastUpdateInfo error:', error);
+                document.getElementById('lastUpdateTime').textContent = 'Data tidak tersedia';
             }
         }
 
