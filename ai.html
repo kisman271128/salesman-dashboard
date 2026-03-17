@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Insight - Salesman App</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(180deg, #f8f9ff 0%, #e8ecff 100%);
+            min-height: 100vh;
+            color: #2c3e50;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* ── HEADER ── */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 16px 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 0 0 28px 28px;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .back-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            padding: 10px 12px;
+            border-radius: 12px;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.35); }
+
+        .header-info { text-align: center; flex: 1; }
+        .header-title {
+            font-size: 16px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        .header-subtitle {
+            font-size: 11px;
+            opacity: 0.85;
+            margin-top: 2px;
+        }
+
+        .ai-status-dot {
+            width: 8px; height: 8px;
+            background: #4ade80;
+            border-radius: 50%;
+            animation: pulse-green 2s infinite;
+            display: inline-block;
+        }
+        @keyframes pulse-green {
+            0%,100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.3); }
+        }
+
+        /* ── MAIN SCROLL AREA ── */
+        .main-scroll {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            padding-bottom: 100px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* ── AUTO INSIGHT SECTION ── */
+        .insight-loading {
+            background: linear-gradient(135deg, #f0f4ff, #e8ecff);
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid #d4d8f5;
+        }
+        .insight-loading .spinner {
+            width: 36px; height: 36px;
+            border: 3px solid #d4d8f5;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .insight-loading p { font-size: 13px; color: #667eea; font-weight: 500; }
+        .insight-loading .sub { font-size: 11px; color: #8892b0; margin-top: 4px; }
+
+        /* ── INSIGHT CARDS ── */
+        .insight-card {
+            border-radius: 16px;
+            padding: 14px 16px;
+            animation: fadeUp 0.4s ease-out;
+            opacity: 0;
+            animation-fill-mode: forwards;
+        }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .insight-card:nth-child(1) { animation-delay: 0.05s; }
+        .insight-card:nth-child(2) { animation-delay: 0.15s; }
+        .insight-card:nth-child(3) { animation-delay: 0.25s; }
+
+        .card-summary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+        .card-gap {
+            background: linear-gradient(135deg, #fff5f5, #fff0f0);
+            border: 1px solid #fecaca;
+        }
+        .card-rekomendasi {
+            background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+            border: 1px solid #bbf7d0;
+        }
+
+        .insight-card-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .insight-card-icon {
+            font-size: 20px;
+            line-height: 1;
+        }
+        .insight-card-title {
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .card-summary .insight-card-title { color: rgba(255,255,255,0.9); }
+        .card-gap .insight-card-title { color: #dc2626; }
+        .card-rekomendasi .insight-card-title { color: #16a34a; }
+
+        .insight-card-body {
+            font-size: 13px;
+            line-height: 1.7;
+        }
+        .card-summary .insight-card-body { color: rgba(255,255,255,0.92); }
+        .card-gap .insight-card-body { color: #7f1d1d; }
+        .card-rekomendasi .insight-card-body { color: #14532d; }
+
+        .insight-card-body ul {
+            list-style: none;
+            padding: 0;
+        }
+        .insight-card-body ul li {
+            padding: 3px 0 3px 18px;
+            position: relative;
+        }
+        .insight-card-body ul li::before {
+            content: '•';
+            position: absolute;
+            left: 4px;
+            font-weight: bold;
+        }
+        .card-summary ul li::before { color: #c4b5fd; }
+        .card-gap ul li::before { color: #ef4444; }
+        .card-rekomendasi ul li::before { color: #22c55e; }
+
+        /* ── DIVIDER ── */
+        .chat-divider {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 4px 0;
+        }
+        .chat-divider hr { flex: 1; border: none; border-top: 1px solid #e2e8f0; }
+        .chat-divider span { font-size: 11px; color: #94a3b8; white-space: nowrap; }
+
+        /* ── CHAT MESSAGES ── */
+        .chat-msg {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            animation: fadeUp 0.3s ease-out;
+            opacity: 0;
+            animation-fill-mode: forwards;
+        }
+        .chat-msg.user { align-items: flex-end; }
+        .chat-msg.ai   { align-items: flex-start; }
+
+        .chat-bubble {
+            max-width: 88%;
+            padding: 10px 14px;
+            border-radius: 16px;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        .chat-msg.user .chat-bubble {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+        .chat-msg.ai .chat-bubble {
+            background: #f1f5f9;
+            color: #1e293b;
+            border-bottom-left-radius: 4px;
+            border: 1px solid #e2e8f0;
+        }
+        .chat-label {
+            font-size: 10px;
+            color: #94a3b8;
+            padding: 0 4px;
+        }
+        .chat-msg.ai .chat-label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .chat-msg.ai .chat-label::before {
+            content: '🤖';
+            font-size: 11px;
+        }
+
+        /* Typing indicator */
+        .typing-bubble {
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            border-bottom-left-radius: 4px;
+            padding: 12px 16px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .dot {
+            width: 6px; height: 6px;
+            background: #94a3b8;
+            border-radius: 50%;
+            animation: bounce 1.2s infinite;
+        }
+        .dot:nth-child(2) { animation-delay: 0.2s; }
+        .dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes bounce {
+            0%,60%,100% { transform: translateY(0); }
+            30% { transform: translateY(-5px); }
+        }
+
+        /* ── INPUT BAR ── */
+        .input-bar {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 400px;
+            background: white;
+            border-top: 1px solid #e2e8f0;
+            padding: 10px 12px 14px;
+            display: flex;
+            gap: 8px;
+            align-items: flex-end;
+            z-index: 100;
+            box-shadow: 0 -4px 20px rgba(102,126,234,0.08);
+        }
+
+        .input-wrap {
+            flex: 1;
+            background: #f8fafc;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 20px;
+            padding: 10px 14px;
+            display: flex;
+            align-items: center;
+            transition: border-color 0.2s;
+        }
+        .input-wrap:focus-within {
+            border-color: #667eea;
+            background: white;
+        }
+
+        #chatInput {
+            flex: 1;
+            border: none;
+            background: transparent;
+            font-size: 13px;
+            color: #1e293b;
+            outline: none;
+            font-family: inherit;
+            resize: none;
+            max-height: 80px;
+            line-height: 1.5;
+        }
+        #chatInput::placeholder { color: #94a3b8; }
+
+        .send-btn {
+            width: 40px; height: 40px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: opacity 0.2s, transform 0.2s;
+        }
+        .send-btn:hover { opacity: 0.9; transform: scale(1.05); }
+        .send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+        /* ── SUGGESTION CHIPS ── */
+        .chip-row {
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+            padding-bottom: 2px;
+            -webkit-overflow-scrolling: touch;
+        }
+        .chip-row::-webkit-scrollbar { display: none; }
+        .chip {
+            background: #f0f4ff;
+            border: 1px solid #c7d2fe;
+            border-radius: 20px;
+            padding: 5px 12px;
+            font-size: 11px;
+            color: #4f46e5;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background 0.2s;
+        }
+        .chip:hover { background: #e0e7ff; }
+
+        /* ── ERROR STATE ── */
+        .error-card {
+            background: #fff5f5;
+            border: 1px solid #fecaca;
+            border-radius: 12px;
+            padding: 14px;
+            text-align: center;
+            font-size: 12px;
+            color: #dc2626;
+        }
+
+        /* Markdown-like formatting */
+        .chat-bubble strong { font-weight: 600; }
+        .chat-bubble .highlight {
+            background: rgba(102,126,234,0.1);
+            border-radius: 4px;
+            padding: 0 4px;
+            font-weight: 600;
+            color: #4f46e5;
+        }
+
+
+        /* ── PROVIDER TOGGLE ── */
+        .provider-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 8px 16px;
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+            flex-shrink: 0;
+        }
+        .provider-label {
+            font-size: 11px;
+            color: #64748b;
+            font-weight: 500;
+        }
+        .provider-toggle {
+            display: flex;
+            background: #e2e8f0;
+            border-radius: 20px;
+            padding: 3px;
+            gap: 2px;
+        }
+        .provider-btn {
+            padding: 4px 14px;
+            border-radius: 16px;
+            border: none;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: transparent;
+            color: #64748b;
+        }
+        .provider-btn.active {
+            color: white;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+        }
+        .provider-btn.groq.active  { background: linear-gradient(135deg, #f97316, #ea580c); }
+        .provider-btn.gemini.active { background: linear-gradient(135deg, #4285f4, #34a853); }
+
+        .provider-status {
+            font-size: 10px;
+            color: #94a3b8;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+        .provider-status.ok   { color: #16a34a; }
+        .provider-status.warn { color: #d97706; }
+        .provider-status.err  { color: #dc2626; }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <!-- HEADER -->
+    <div class="header">
+        <button class="back-btn" onclick="history.back()">←</button>
+        <div class="header-info">
+            <div class="header-title">
+                🤖 AI Insight
+                <span class="ai-status-dot"></span>
+            </div>
+            <div class="header-subtitle">Analisis otomatis data sales real-time</div>
+        </div>
+        <button class="back-btn" onclick="refreshInsight()" title="Refresh">↻</button>
+    </div>
+
+    <!-- PROVIDER TOGGLE BAR -->
+    <div class="provider-bar">
+        <span class="provider-label">AI Provider:</span>
+        <div class="provider-toggle">
+            <button class="provider-btn groq active" id="btnGroq" onclick="switchProvider('groq')">
+                ⚡ Groq
+            </button>
+            <button class="provider-btn gemini" id="btnGemini" onclick="switchProvider('gemini')">
+                ✨ Gemini
+            </button>
+        </div>
+        <span class="provider-status ok" id="providerStatus">● Siap</span>
+    </div>
+
+    <!-- SCROLL AREA -->
+    <div class="main-scroll" id="mainScroll">
+
+        <!-- Auto insight loading placeholder -->
+        <div class="insight-loading" id="insightLoading">
+            <div class="spinner"></div>
+            <p id="loadingText">🔍 Memuat semua data...</p>
+            <div class="sub" id="loadingSub">Membaca data dari semua file JSON</div>
+        </div>
+
+        <!-- Insight cards will be injected here -->
+        <div id="insightCards" style="display:none; display:flex; flex-direction:column; gap:12px;"></div>
+
+        <!-- Chat divider -->
+        <div class="chat-divider" id="chatDivider" style="display:none;">
+            <hr><span>💬 Tanya lebih lanjut</span><hr>
+        </div>
+
+        <!-- Suggestion chips -->
+        <div class="chip-row" id="chipRow" style="display:none;">
+            <div class="chip" onclick="askChip('Siapa salesman dengan achievement tertinggi dan terendah?')">🏆 Top vs Bottom</div>
+            <div class="chip" onclick="askChip('Salesman mana yang CR dan CA-nya paling bermasalah?')">⚠️ CR/CA Alert</div>
+            <div class="chip" onclick="askChip('LOB mana yang gap-nya paling besar bulan ini?')">📊 Gap per LOB</div>
+            <div class="chip" onclick="askChip('Outlet pareto mana yang belum tercapai dan harus dikunjungi segera?')">🏪 Pareto Alert</div>
+        </div>
+
+        <!-- Chat messages container -->
+        <div id="chatMessages" style="display:flex; flex-direction:column; gap:10px;"></div>
+
+    </div>
+
+    <!-- INPUT BAR -->
+    <div class="input-bar">
+        <div class="input-wrap">
+            <textarea id="chatInput" placeholder="Tanya sesuatu tentang data sales..." rows="1"
+                onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+        </div>
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()" disabled>
+            ➤
+        </button>
+    </div>
+
+</div>
+<script>
+// ═══════════════════════════════════════════════
+//  CONFIGURATION
+// ═══════════════════════════════════════════════
+const PROVIDERS = {
+    groq: {
+        url:   '/api/ai',
+        model: 'llama-3.1-8b-instant',   // hemat token, cepat
+        name:  'Groq (Llama)',
+    },
+    gemini: {
+        url:   '/api/gemini',
+        model: 'gemini-2.0-flash',        // gratis, 1M token/hari
+        name:  'Google Gemini',
+    }
+};
+
+const DATA_DIR = 'data/';
+const DATA_FILES = {
+    performance:    'd.performance.json',
+    dashboard:      'd.dashboard.json',
+    salesmanProses: 'd.salesmanproses.json',
+    depoProses:     'd.depoproses.json',
+    pareto:         'd.30pareto.json',
+    channel:        'd.channel.json',
+    channelProj:    'd.channelproj.json',
+    area:           'd.area.json',
+    pcacec:         'd.pcacec.json',
+    tpom:           'd.tpom.json',
+    tsales:         'd.tsales.json',
+    salesman:       'd.salesman.json',
+    details:        'd.details.json',
+    jks:            'd.jks.json',
+    sku:            'd.sku.json',
+    skupelanggan:   'd.skupelanggan.json',
+    salesmanlob:    'd.salesmanlob.json',
+    project:        'd.project.json',
+};
+
+// ═══════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════
+let currentProvider = 'groq';
+let allData = {};
+let conversationHistory = [];
+let isLoading = false;
+
+// ═══════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', async () => {
+    document.getElementById('chatInput').addEventListener('input', toggleSendBtn);
+
+    // Load provider preference dari localStorage
+    const saved = localStorage.getItem('ai_provider');
+    if (saved && PROVIDERS[saved]) switchProvider(saved, false);
+
+    await loadAllDataAndInsight();
+});
+
+// ═══════════════════════════════════════════════
+//  PROVIDER SWITCH
+// ═══════════════════════════════════════════════
+function switchProvider(name, doRefresh = true) {
+    if (!PROVIDERS[name]) return;
+    currentProvider = name;
+    localStorage.setItem('ai_provider', name);
+
+    // Update UI toggle
+    document.querySelectorAll('.provider-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('btn' + name.charAt(0).toUpperCase() + name.slice(1))?.classList.add('active');
+
+    setProviderStatus('ok', '● ' + PROVIDERS[name].name);
+
+    // Reset chat & refresh insight jika data sudah ada
+    if (doRefresh && Object.keys(allData).length > 0) {
+        conversationHistory = [];
+        document.getElementById('chatMessages').innerHTML = '';
+        document.getElementById('insightCards').innerHTML = '';
+        document.getElementById('chatDivider').style.display = 'none';
+        document.getElementById('chipRow').style.display = 'none';
+        generateAutoInsight();
+    }
+}
+
+function setProviderStatus(type, text) {
+    const el = document.getElementById('providerStatus');
+    if (!el) return;
+    el.className = 'provider-status ' + type;
+    el.textContent = text;
+}
+
+// ═══════════════════════════════════════════════
+//  LOAD SEMUA FILE JSON
+// ═══════════════════════════════════════════════
+async function loadNDJSON(filename) {
+    try {
+        const res = await fetch(DATA_DIR + filename);
+        if (!res.ok) return [];
+        const text = await res.text();
+        return text.trim().split('\n')
+            .filter(l => l.trim())
+            .map(l => { try { return JSON.parse(l); } catch { return null; } })
+            .filter(Boolean);
+    } catch { return []; }
+}
+
+async function loadAllDataAndInsight() {
+    setLoading('🔍 Memuat semua data...', 'Membaca file JSON...');
+
+    const keys = Object.keys(DATA_FILES);
+    const results = await Promise.all(keys.map(k => loadNDJSON(DATA_FILES[k])));
+    keys.forEach((k, i) => { allData[k] = results[i]; });
+
+    const loaded = keys.filter((k, i) => results[i].length > 0);
+    setLoading('🤖 Menganalisis data...', `${loaded.length} file dimuat — ${PROVIDERS[currentProvider].name} menganalisis...`);
+
+    await generateAutoInsight();
+}
+
+function setLoading(title, sub) {
+    const t = document.getElementById('loadingText');
+    const s = document.getElementById('loadingSub');
+    if (t) t.textContent = title;
+    if (s) s.textContent = sub;
+}
+
+// ═══════════════════════════════════════════════
+//  AUTO INSIGHT
+// ═══════════════════════════════════════════════
+async function generateAutoInsight() {
+    const prompt = buildInsightPrompt();
+    document.getElementById('insightLoading').style.display = 'flex';
+    setProviderStatus('warn', '⏳ Memproses...');
+
+    try {
+        const raw = await callAI([{ role: 'user', content: prompt }], 1500);
+
+        conversationHistory.push({ role: 'user', content: prompt });
+        conversationHistory.push({ role: 'assistant', content: raw });
+
+        renderInsightCards(raw);
+        document.getElementById('insightLoading').style.display = 'none';
+        document.getElementById('chatDivider').style.display = 'flex';
+        document.getElementById('chipRow').style.display = 'flex';
+        document.getElementById('sendBtn').disabled = false;
+        setProviderStatus('ok', '● ' + PROVIDERS[currentProvider].name);
+
+    } catch (err) {
+        showInsightError(err.message);
+        setProviderStatus('err', '✕ Error');
+    }
+}
+
+function buildInsightPrompt() {
+    const perf    = allData.performance || [];
+    const dash    = allData.dashboard   || [];
+    const sproses = allData.salesmanProses || [];
+    const pareto  = allData.pareto      || [];
+    const tpom    = allData.tpom        || [];
+    const depo    = allData.depoProses?.[0] || {};
+
+    const perfRows = perf.filter(d => d.szname !== 'Total Depo').map(d =>
+        `  • ${d.szname}: Ach ${(d.Ach*100).toFixed(1)}%, Gap ${formatRupiah(d.Gap)}, Rank #${d.Rank}`
+    ).join('\n');
+    const total = perf.find(d => d.szname === 'Total Depo');
+
+    const lobRows = dash.map(d =>
+        `  • ${d.LOB}: Ach ${(d['vs BP']*100).toFixed(1)}%, Actual ${formatRupiah(d.Actual)}, Gap ${formatRupiah(d.Gap)}`
+    ).join('\n');
+
+    const kpiDepo = depo['T.CR']
+        ? `CR: ${depo['A.CR']}/${depo['T.CR']} (${(depo['Ach_CR']*100).toFixed(0)}%), CA: ${depo['A.CA']} (${(depo['Ach_CA']*100).toFixed(0)}%), AvgSKU: ${depo['A.AvgSKU']?.toFixed(1)}/${depo['T.AvgSKU']}, CAProd: ${(depo['Ach_CAProdAll']*100).toFixed(0)}%`
+        : '-';
+
+    const sproblemsRows = sproses.map(d => {
+        const issues = [];
+        if (d['Ach_CA'] < 0.6)        issues.push(`CA rendah ${(d['Ach_CA']*100).toFixed(0)}%`);
+        if (d['Ach_AvgSKU'] < 0.5)    issues.push(`AvgSKU rendah ${d['A.AvgSKU']?.toFixed(1)}`);
+        if (d['Ach_CAProdAll'] < 0.4)  issues.push(`CAProd rendah ${(d['Ach_CAProdAll']*100).toFixed(0)}%`);
+        if (d['CR Pasif'] < -30)       issues.push(`CR Pasif ${d['CR Pasif']}`);
+        return issues.length ? `  • ${d.szname}: ${issues.join(', ')}` : null;
+    }).filter(Boolean).join('\n');
+
+    const paretoIssues = pareto
+        .filter(d => d[' Gap MTD'] < -10000000)
+        .sort((a,b) => a[' Gap MTD'] - b[' Gap MTD']).slice(0, 5)
+        .map(d => `  • ${d.szname} → ${d['Nama Pelanggan']}: Gap ${formatRupiah(d[' Gap MTD'])}`)
+        .join('\n');
+
+    const pomIssues = tpom.filter(d => d.Ach_POM < 0.5).slice(0, 5)
+        .map(d => `  • ${d.szname} - ${d.NickName}: ${(d.Ach_POM*100).toFixed(0)}% (${d['A.POM']}/${d['T.POM']})`)
+        .join('\n');
+
+    return `Kamu adalah AI analis sales untuk "${perf[0]?.['Nama Depo'] || 'Depo'}".
+
+=== PERFORMANCE SALESMAN ===
+${perfRows}
+Total Depo: Ach ${total ? (total.Ach*100).toFixed(1) : '-'}%, Gap ${total ? formatRupiah(total.Gap) : '-'}
+
+=== LOB BREAKDOWN ===
+${lobRows}
+
+=== KPI PROSES DEPO ===
+${kpiDepo}
+
+=== MASALAH KPI SALESMAN ===
+${sproblemsRows || '  Semua dalam batas normal'}
+
+=== PARETO OUTLET KRITIS ===
+${paretoIssues || '  Tidak ada outlet kritis'}
+
+=== POM ACHIEVEMENT RENDAH ===
+${pomIssues || '  Semua POM dalam batas normal'}
+
+Berikan analisis dalam format JSON persis (tanpa markdown):
+{
+  "ringkasan": "2-3 kalimat kondisi overall, sebutkan achievement total, LOB bermasalah, dan tren umum",
+  "masalah": ["masalah 1 spesifik dengan nama/angka", "masalah 2", "masalah 3", "masalah 4"],
+  "rekomendasi": ["aksi 1 konkret dengan nama target", "aksi 2", "aksi 3", "aksi 4"]
+}`;
+}
+
+// ═══════════════════════════════════════════════
+//  RENDER INSIGHT CARDS
+// ═══════════════════════════════════════════════
+function renderInsightCards(raw) {
+    let data;
+    try {
+        const clean = raw.replace(/```json|```/g, '').trim();
+        data = JSON.parse(clean);
+    } catch {
+        data = { ringkasan: raw, masalah: [], rekomendasi: [] };
+    }
+
+    const container = document.getElementById('insightCards');
+    container.style.display = 'flex';
+    container.style.flexDirection = 'column';
+    container.style.gap = '12px';
+    container.innerHTML = '';
+
+    const c1 = document.createElement('div');
+    c1.className = 'insight-card card-summary';
+    c1.innerHTML = `
+        <div class="insight-card-header">
+            <span class="insight-card-icon">📊</span>
+            <span class="insight-card-title">Ringkasan Kondisi</span>
+        </div>
+        <div class="insight-card-body">${escapeHtml(data.ringkasan)}</div>`;
+    container.appendChild(c1);
+
+    if (data.masalah?.length) {
+        const c2 = document.createElement('div');
+        c2.className = 'insight-card card-gap';
+        c2.innerHTML = `
+            <div class="insight-card-header">
+                <span class="insight-card-icon">⚠️</span>
+                <span class="insight-card-title">Masalah Terdeteksi</span>
+            </div>
+            <div class="insight-card-body"><ul>${data.masalah.map(m=>`<li>${escapeHtml(m)}</li>`).join('')}</ul></div>`;
+        container.appendChild(c2);
+    }
+
+    if (data.rekomendasi?.length) {
+        const c3 = document.createElement('div');
+        c3.className = 'insight-card card-rekomendasi';
+        c3.innerHTML = `
+            <div class="insight-card-header">
+                <span class="insight-card-icon">🎯</span>
+                <span class="insight-card-title">Rekomendasi Aksi</span>
+            </div>
+            <div class="insight-card-body"><ul>${data.rekomendasi.map(r=>`<li>${escapeHtml(r)}</li>`).join('')}</ul></div>`;
+        container.appendChild(c3);
+    }
+}
+
+// ═══════════════════════════════════════════════
+//  CHAT
+// ═══════════════════════════════════════════════
+async function sendMessage() {
+    const input = document.getElementById('chatInput');
+    const text = input.value.trim();
+    if (!text || isLoading) return;
+    input.value = '';
+    autoResize(input);
+    toggleSendBtn();
+    addChatMsg('user', text);
+    scrollToBottom();
+    await askAI(text);
+}
+
+async function askChip(question) {
+    addChatMsg('user', question);
+    scrollToBottom();
+    await askAI(question);
+}
+
+async function askAI(userText) {
+    isLoading = true;
+    document.getElementById('sendBtn').disabled = true;
+    setProviderStatus('warn', '⏳ Memproses...');
+
+    const typing = showTyping();
+    scrollToBottom();
+
+    const enriched = enrichWithRelevantData(userText);
+    conversationHistory.push({ role: 'user', content: enriched });
+
+    try {
+        const reply = await callAI(conversationHistory, 800);
+        conversationHistory.push({ role: 'assistant', content: reply });
+        typing.remove();
+        addChatMsg('ai', reply);
+        setProviderStatus('ok', '● ' + PROVIDERS[currentProvider].name);
+        scrollToBottom();
+    } catch (err) {
+        typing.remove();
+        const isRateLimit = err.message.toLowerCase().includes('rate limit') || err.message.includes('429');
+        if (isRateLimit) {
+            const other = currentProvider === 'groq' ? 'gemini' : 'groq';
+            addChatMsg('ai',
+                `⚠️ **Rate limit tercapai di ${PROVIDERS[currentProvider].name}.**\n\n` +
+                `Coba beralih ke **${PROVIDERS[other].name}** dengan klik tombol toggle di atas, ` +
+                `atau tunggu beberapa menit lagi.`
+            );
+            setProviderStatus('err', '✕ Rate limit');
+        } else {
+            addChatMsg('ai', '⚠️ Maaf, terjadi kesalahan: ' + err.message);
+            setProviderStatus('err', '✕ Error');
+        }
+        scrollToBottom();
+    } finally {
+        isLoading = false;
+        document.getElementById('sendBtn').disabled = false;
+    }
+}
+
+function enrichWithRelevantData(question) {
+    const q = question.toLowerCase();
+    let extra = '';
+
+    if (q.includes('area') || q.includes('kecamatan') || q.includes('kabupaten') || q.includes('wilayah')) {
+        const d = (allData.area||[]).sort((a,b)=>a.Gap-b.Gap).slice(0,8)
+            .map(d=>`${d.Kecamatan}(${d.Kabupaten}): Ach ${(d.Ach*100).toFixed(1)}%, Gap ${formatRupiah(d.Gap)}`).join('\n');
+        extra += `\n\nDATA AREA:\n${d}`;
+    }
+    if (q.includes('channel')||q.includes('wholesaler')||q.includes('retail')||q.includes('mti')) {
+        const d = (allData.channel||[]).map(d=>`${d.szname}-${d['Channel Group']}: Ach ${(d[' Ach']*100).toFixed(1)}%, Gap ${formatRupiah(d[' Gap MTD'])}`).join('\n');
+        extra += `\n\nDATA CHANNEL:\n${d}`;
+    }
+    if (q.includes('pareto')||q.includes('outlet')||q.includes('pelanggan')||q.includes('toko')) {
+        const d = (allData.pareto||[]).sort((a,b)=>a[' Gap MTD']-b[' Gap MTD']).slice(0,10)
+            .map(d=>`${d.szname}→${d['Nama Pelanggan']}(${d.JKS}): Gap ${formatRupiah(d[' Gap MTD'])}`).join('\n');
+        extra += `\n\nDATA PARETO:\n${d}`;
+    }
+    if (q.includes('cr ')||q.includes(' ca ')||q.includes('visit')||q.includes('sku')||q.includes('proses')) {
+        const d = (allData.salesmanProses||[]).map(d=>
+            `${d.szname}: CR ${d['A.CR']}/${d['T.CR']}(${(d['Ach_CR']*100).toFixed(0)}%), CA ${(d['Ach_CA']*100).toFixed(0)}%, SKU ${d['A.AvgSKU']?.toFixed(1)}, CAProd ${(d['Ach_CAProdAll']*100).toFixed(0)}%`
+        ).join('\n');
+        extra += `\n\nKPI PROSES:\n${d}`;
+    }
+    if (q.includes('lob')||q.includes('gppj')||q.includes('gbs')||q.includes('gen')||q.includes('brand')) {
+        const d = (allData.dashboard||[]).map(d=>`${d.LOB}: Ach ${(d['vs BP']*100).toFixed(1)}%, Gap ${formatRupiah(d.Gap)}`).join('\n');
+        extra += `\n\nDATA LOB:\n${d}`;
+    }
+    if (q.includes('pom')||q.includes('planogram')||q.includes('display')) {
+        const d = (allData.tpom||[]).map(d=>`${d.szname}-${d.NickName}: ${(d.Ach_POM*100).toFixed(0)}%(${d['A.POM']}/${d['T.POM']})`).join('\n');
+        extra += `\n\nDATA POM:\n${d}`;
+    }
+    if (q.includes('target')||q.includes('principle')) {
+        const d = (allData.tsales||[]).slice(0,15).map(d=>`${d['Nama Salesman']}-${d.Principle}: T ${formatRupiah(d['T.SalesAdj'])}, Gr ${(d.GrSales*100).toFixed(1)}%`).join('\n');
+        extra += `\n\nTARGET SALES:\n${d}`;
+    }
+    if (q.includes('minggu')||q.includes('week')||q.includes('tren')) {
+        const d = (allData.pcacec||[]).filter(d=>d['SalesOrderValue']>0)
+            .map(d=>`${d.szname} ${d.Week_Report}: PC ${d['Avg PC per Day']?.toFixed(1)}/hr, SO ${formatRupiah(d.SalesOrderValue)}`).join('\n');
+        extra += `\n\nTREN MINGGUAN:\n${d}`;
+    }
+    return extra ? question + '\n\n[KONTEKS DATA:' + extra + ']' : question;
+}
+
+function addChatMsg(role, text) {
+    const wrap = document.getElementById('chatMessages');
+    const div = document.createElement('div');
+    div.className = `chat-msg ${role}`;
+    const providerTag = role === 'ai'
+        ? `<span style="font-size:9px;background:${currentProvider==='groq'?'#fed7aa':'#bfdbfe'};color:${currentProvider==='groq'?'#c2410c':'#1d4ed8'};padding:1px 5px;border-radius:8px;margin-left:4px;">${PROVIDERS[currentProvider].name}</span>`
+        : '';
+    div.innerHTML = `
+        <div class="chat-label">${role==='user'?'Anda':'AI Insight'}${providerTag}</div>
+        <div class="chat-bubble">${formatChatText(text)}</div>`;
+    wrap.appendChild(div);
+    return div;
+}
+
+function showTyping() {
+    const wrap = document.getElementById('chatMessages');
+    const div = document.createElement('div');
+    div.className = 'chat-msg ai';
+    div.innerHTML = `
+        <div class="chat-label">AI Insight</div>
+        <div class="typing-bubble">
+            <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        </div>`;
+    wrap.appendChild(div);
+    return div;
+}
+
+// ═══════════════════════════════════════════════
+//  API CALLS — GROQ & GEMINI
+// ═══════════════════════════════════════════════
+async function callAI(messages, maxTokens = 800) {
+    if (currentProvider === 'gemini') {
+        return await callGemini(messages, maxTokens);
+    } else {
+        return await callGroq(messages, maxTokens);
+    }
+}
+
+async function callGroq(messages, maxTokens) {
+    const res = await fetch(PROVIDERS.groq.url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            model:       PROVIDERS.groq.model,
+            messages:    [{ role: 'system', content: buildSystemPrompt() }, ...messages],
+            max_tokens:  maxTokens,
+            temperature: 0.3
+        })
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error?.message || `Groq HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content || '(tidak ada respons)';
+}
+
+async function callGemini(messages, maxTokens) {
+    // Convert OpenAI-style messages to Gemini format
+    const systemPrompt = buildSystemPrompt();
+    const contents = messages.map(m => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }]
+    }));
+
+    const res = await fetch(PROVIDERS.gemini.url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            system_instruction: { parts: [{ text: systemPrompt }] },
+            contents: contents,
+            generationConfig: {
+                maxOutputTokens: maxTokens,
+                temperature: 0.3
+            }
+        })
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error?.message || `Gemini HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || '(tidak ada respons)';
+}
+
+function buildSystemPrompt() {
+    const perf = allData.performance || [];
+    const depoName = perf[0]?.['Nama Depo'] || 'Depo';
+    const total = perf.find(d => d.szname === 'Total Depo');
+    const list = perf.filter(d => d.szname !== 'Total Depo')
+        .map(d => `${d.szname}: Ach ${(d.Ach*100).toFixed(1)}%, Gap ${formatRupiah(d.Gap)}, Rank #${d.Rank}`)
+        .join('\n');
+
+    return `Kamu adalah AI analis sales profesional untuk ${depoName}.
+Total Achievement: ${total ? (total.Ach*100).toFixed(1) : '-'}%, Total Gap: ${total ? formatRupiah(total.Gap) : '-'}
+SALESMAN:\n${list}
+Data tersedia: performance, LOB, KPI proses, pareto outlet, channel, area, POM, target sales, weekly trend.
+Jawab dengan akurat, bahasa Indonesia profesional, maksimal 4-5 kalimat. Sebutkan angka spesifik.`;
+}
+
+// ═══════════════════════════════════════════════
+//  UTILITIES
+// ═══════════════════════════════════════════════
+function formatRupiah(num) {
+    if (!num && num !== 0) return '-';
+    const abs = Math.abs(num), sign = num < 0 ? '-' : '';
+    if (abs >= 1e9) return sign + 'Rp ' + (abs/1e9).toFixed(1) + 'M';
+    if (abs >= 1e6) return sign + 'Rp ' + (abs/1e6).toFixed(0) + 'jt';
+    return sign + 'Rp ' + abs.toLocaleString('id-ID');
+}
+function formatChatText(text) {
+    return escapeHtml(text).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');
+}
+function escapeHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function scrollToBottom() {
+    const el = document.getElementById('mainScroll');
+    setTimeout(() => el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' }), 100);
+}
+function handleKey(e) { if (e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();} }
+function autoResize(el) { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,80)+'px'; }
+function toggleSendBtn() {
+    document.getElementById('sendBtn').disabled = !document.getElementById('chatInput').value.trim() || isLoading;
+}
+function showInsightError(msg) {
+    document.getElementById('insightLoading').style.display = 'none';
+    const wrap = document.getElementById('insightCards');
+    wrap.style.display = 'flex';
+    wrap.innerHTML = `<div class="error-card">❌ ${escapeHtml(msg)}<br><small>Coba ganti provider atau refresh halaman</small></div>`;
+}
+async function refreshInsight() {
+    document.getElementById('insightCards').innerHTML = '';
+    document.getElementById('insightCards').style.display = 'none';
+    document.getElementById('chatMessages').innerHTML = '';
+    document.getElementById('chatDivider').style.display = 'none';
+    document.getElementById('chipRow').style.display = 'none';
+    conversationHistory = [];
+    allData = {};
+    await loadAllDataAndInsight();
+}
+</script>
