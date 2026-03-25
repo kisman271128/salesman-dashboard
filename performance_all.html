@@ -1594,6 +1594,22 @@
             return '0';
         }
 
+        // Format angka dengan pemisah titik ribuan (untuk ITG SC): 1570 → 1.570
+        function formatThousand(value) {
+            const num = Math.round(parseFloat(value) || 0);
+            return num.toLocaleString('id-ID');
+        }
+
+        // Format gap dengan tanda +/- dan format titik (untuk ITG SC)
+        function formatGapFull(value) {
+            const num = parseFloat(value || 0);
+            const formatted = formatThousand(Math.abs(num));
+            if (num > 0) return '+' + formatted;
+            if (num < 0) return '-' + formatted;
+            return '0';
+        }
+
+
 
         // Format angka penuh dengan pemisah ribuan titik (tanpa singkatan), e.g. 2.320
         function formatNumberFull(value) {
@@ -2009,7 +2025,8 @@
             const tbody = document.getElementById('projectTableBody');
             const showGapQrt = (currentProjectITG === 'ITG Arjuna' || currentProjectITG === 'ITG SC');
             const useFullFormat = (currentProjectITG === 'ITG SC');
-            const fmt = (val) => useFullFormat ? formatNumberFull(val) : formatCurrencyIndonesia(val);
+            const fmt = (val) => useFullFormat ? formatThousand(val) : formatCurrencyIndonesia(val);
+            const fmtGap = (val) => useFullFormat ? formatGapFull(val) : formatGap(val);
             const colSpan = showGapQrt ? 7 : 6;
 
             if (projectData.length === 0) {
@@ -2041,10 +2058,10 @@
                         <td class="sticky-col salesman-name-col">
                             <strong style="font-size: 10px;">${(project['CUST NAME'] || '').substring(0, 20)}</strong>
                         </td>
-                        ${showGapQrt ? `<td class="value-currency col-wide ${getGapClass(gapQrt)}">${formatGap(gapQrt)}</td>` : ''}
+                        ${showGapQrt ? `<td class="value-currency col-wide ${getGapClass(gapQrt)}">${fmtGap(gapQrt)}</td>` : ''}
                         <td class="value-currency col-wide">${fmt(target)}</td>
                         <td class="value-currency col-wide">${fmt(actual)}</td>
-                        <td class="value-currency col-wide ${getGapClass(gap)}">${formatGap(gap)}</td>
+                        <td class="value-currency col-wide ${getGapClass(gap)}">${fmtGap(gap)}</td>
                         <td class="value-percentage col-wide ${getAchievementClass(achPercentage)}">${achPercentage}%</td>
                         <td class="col-medium">
                             <small style="font-size: 9px;">${(project.szname || '').substring(0, 10)}</small>

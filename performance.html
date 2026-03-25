@@ -1476,10 +1476,25 @@
             return '0';
         }
 
+        // Format angka dengan pemisah titik ribuan (untuk ITG SC): 1570 → 1.570
+        function formatThousand(value) {
+            const num = Math.round(parseFloat(value) || 0);
+            return num.toLocaleString('id-ID');
+        }
+
+        // Format gap dengan tanda +/- dan format titik (untuk ITG SC)
+        function formatGapFull(value) {
+            const num = parseFloat(value || 0);
+            const formatted = formatThousand(Math.abs(num));
+            if (num > 0) return '+' + formatted;
+            if (num < 0) return '-' + formatted;
+            return '0';
+        }
+
+
 
         function formatNumberWithThousandSeparator(value) {
-            const val = Math.round(parseFloat(value) || 0);
-            return val.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+            return formatThousand(value);
         }
 
         function calculateAchievementPercentage(target, actual) {
@@ -1847,7 +1862,8 @@
             const tbody = document.getElementById('projectTableBody');
             const showGapQrt = (currentProjectITG === 'ITG Arjuna' || currentProjectITG === 'ITG SC');
             const useFullFormat = (currentProjectITG === 'ITG SC');
-            const fmt = (val) => useFullFormat ? formatNumberWithThousandSeparator(val) : formatCurrencyIndonesia(val);
+            const fmt = (val) => useFullFormat ? formatThousand(val) : formatCurrencyIndonesia(val);
+            const fmtGap = (val) => useFullFormat ? formatGapFull(val) : formatGap(val);
             const colSpan = showGapQrt ? 7 : 6;
 
             // Filter by salesman + ITG
@@ -1887,10 +1903,10 @@
             let html = `
                 <tr class="total-row">
                     <td class="sticky-col project-customer-col col-text"><strong>TOTAL</strong></td>
-                    ${showGapQrt ? `<td class="value-currency col-wide ${getGapClass(totalGapQ3)}"><strong>${formatGap(totalGapQ3)}</strong></td>` : ''}
+                    ${showGapQrt ? `<td class="value-currency col-wide ${getGapClass(totalGapQ3)}"><strong>${fmtGap(totalGapQ3)}</strong></td>` : ''}
                     <td class="value-currency col-wide"><strong>${fmt(totalTMTD)}</strong></td>
                     <td class="value-currency col-wide"><strong>${fmt(totalAMTD)}</strong></td>
-                    <td class="value-currency col-wide ${getGapClass(totalGapMTD)}"><strong>${formatGap(totalGapMTD)}</strong></td>
+                    <td class="value-currency col-wide ${getGapClass(totalGapMTD)}"><strong>${fmtGap(totalGapMTD)}</strong></td>
                     <td class="value-percentage col-wide ${getAchievementClass(totalAch)}"><strong>${totalAch}%</strong></td>
                     <td class="col-medium">-</td>
                 </tr>`;
@@ -1908,10 +1924,10 @@
                         <td class="sticky-col project-customer-col col-text">
                             <strong style="font-size: 10px;">${(item['CUST NAME'] || '').substring(0, 25)}</strong>
                         </td>
-                        ${showGapQrt ? `<td class="value-currency col-wide ${getGapClass(gapQ3)}">${formatGap(gapQ3)}</td>` : ''}
+                        ${showGapQrt ? `<td class="value-currency col-wide ${getGapClass(gapQ3)}">${fmtGap(gapQ3)}</td>` : ''}
                         <td class="value-currency col-wide">${fmt(item['T.MTD'])}</td>
                         <td class="value-currency col-wide">${fmt(item['A.MTD'])}</td>
-                        <td class="value-currency col-wide ${getGapClass(gapMTD)}">${formatGap(gapMTD)}</td>
+                        <td class="value-currency col-wide ${getGapClass(gapMTD)}">${fmtGap(gapMTD)}</td>
                         <td class="value-percentage col-wide ${getAchievementClass(achPct)}">${achPct}%</td>
                         <td class="col-medium"><span class="status-badge ${statusClass}">${item.Status || ''}</span></td>
                     </tr>`;
