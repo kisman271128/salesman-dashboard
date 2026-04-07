@@ -449,14 +449,16 @@
 // ═══════════════════════════════════════════════
 const PROVIDERS = {
     groq: {
-        url:   '/api/ai',
-        model: 'llama-3.1-8b-instant',   // hemat token, cepat
-        name:  'Groq (Llama)',
+        url:    'https://api.groq.com/openai/v1/chat/completions',
+        apiKey: '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',      // ganti dengan Groq API key Anda
+        model:  'llama-3.1-8b-instant',   // hemat token, cepat
+        name:   'Groq (Llama)',
     },
     gemini: {
-        url:   '/api/gemini',
-        model: 'gemini-2.0-flash',        // gratis, 1M token/hari
-        name:  'Google Gemini',
+        url:    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
+        apiKey: 'AIzaSyAaInFV6pikNg-8MWWNbOuUkFZ2eqJ5FDs',    // ganti dengan Gemini API key Anda
+        model:  'gemini-2.0-flash',       // gratis, 1M token/hari
+        name:   'Google Gemini',
     }
 };
 
@@ -865,7 +867,10 @@ async function callAI(messages, maxTokens = 800) {
 async function callGroq(messages, maxTokens) {
     const res = await fetch(PROVIDERS.groq.url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + PROVIDERS.groq.apiKey
+        },
         body: JSON.stringify({
             model:       PROVIDERS.groq.model,
             messages:    [{ role: 'system', content: buildSystemPrompt() }, ...messages],
@@ -889,7 +894,8 @@ async function callGemini(messages, maxTokens) {
         parts: [{ text: m.content }]
     }));
 
-    const res = await fetch(PROVIDERS.gemini.url, {
+    const geminiUrl = PROVIDERS.gemini.url + '?key=' + PROVIDERS.gemini.apiKey;
+    const res = await fetch(geminiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
