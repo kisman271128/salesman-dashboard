@@ -462,8 +462,9 @@
             background: #FFFFFF;
             box-shadow: 0 2px 8px rgba(27,200,220,0.2);
         }
-        .provider-btn.active.groq { color: #EA580C; }
-        .provider-btn.active.gemini { color: #17B5C8; }
+        .provider-btn.active.groq       { color: #EA580C; }
+        .provider-btn.active.gemini     { color: #17B5C8; }
+        .provider-btn.active.openrouter { color: #7C3AED; }
         .provider-status {
             margin-left: auto;
             font-size: 11px;
@@ -840,6 +841,9 @@
             <button class="provider-btn gemini" id="btnGemini" onclick="switchProvider('gemini')">
                 ✨ Gemini
             </button>
+            <button class="provider-btn openrouter" id="btnOpenrouter" onclick="switchProvider('openrouter')">
+                🔀 OpenRouter
+            </button>
         </div>
         <span class="provider-status ok" id="providerStatus">● Siap</span>
     </div>
@@ -914,6 +918,38 @@
                         <button class="eye-btn" onclick="toggleKeyVisibility('inputGeminiKey', this)">👁</button>
                     </div>
                 </div>
+                <div class="settings-field">
+                    <label>🔀 OpenRouter API Key</label>
+                    <small>Daftar gratis di <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai/keys</a> — banyak model gratis!</small>
+                    <div class="key-input-wrap">
+                        <input type="password" id="inputOpenrouterKey" placeholder="sk-or-..." autocomplete="off"/>
+                        <button class="eye-btn" onclick="toggleKeyVisibility('inputOpenrouterKey', this)">👁</button>
+                    </div>
+                </div>
+                <div class="settings-field" id="orModelField">
+                    <label style="font-size:12px;color:#546E7A;">🤖 Model OpenRouter (pilih yang aktif)</label>
+                    <select id="selectOrModel" style="padding:8px 10px;border:1.5px solid #B2EBF2;border-radius:10px;font-size:12px;background:#F0FAFB;color:#1A1A2E;outline:none;width:100%;">
+                        <optgroup label="🌐 Auto Router (direkomendasikan)">
+                            <option value="openrouter/free">🔀 Auto — pilih model terbaik otomatis</option>
+                        </optgroup>
+                        <optgroup label="⭐ General Purpose">
+                            <option value="meta-llama/llama-3.3-70b-instruct:free">🦙 Llama 3.3 70B — terbaik umum</option>
+                            <option value="google/gemma-3-27b-it:free">✨ Google Gemma 3 27B</option>
+                            <option value="nousresearch/hermes-3-llama-3.1-405b:free">🔮 Hermes 3 Llama 405B</option>
+                            <option value="nvidia/nemotron-3-super-120b-a12b:free">⚡ NVIDIA Nemotron 120B</option>
+                        </optgroup>
+                        <optgroup label="🤖 OpenAI Open Source">
+                            <option value="openai/gpt-oss-120b:free">🟢 GPT OSS 120B (free)</option>
+                            <option value="openai/gpt-oss-20b:free">🟢 GPT OSS 20B (free)</option>
+                        </optgroup>
+                        <optgroup label="💬 Ringan & Cepat">
+                            <option value="google/gemma-3-12b-it:free">✨ Google Gemma 3 12B</option>
+                            <option value="minimax/minimax-m2.5:free">🎯 MiniMax M2.5 (197K ctx)</option>
+                            <option value="meta-llama/llama-3.2-3b-instruct:free">🦙 Llama 3.2 3B — tercepat</option>
+                        </optgroup>
+                    </select>
+                    <small style="color:#90A4AE;">Gunakan <b>Auto</b> agar tidak perlu ganti manual jika model mati.</small>
+                </div>
             </div>
             <div class="settings-footer">
                 <button class="settings-btn cancel" onclick="closeSettings()">Batal</button>
@@ -939,6 +975,12 @@ const PROVIDERS = {
         get apiKey() { return localStorage.getItem('ai_key_gemini') || ''; },
         model: 'gemini-2.0-flash',
         name:  'Google Gemini',
+    },
+    openrouter: {
+        url:   'https://openrouter.ai/api/v1/chat/completions',
+        get apiKey()  { return localStorage.getItem('ai_key_openrouter') || ''; },
+        get model()   { return localStorage.getItem('ai_model_openrouter') || 'openrouter/free'; },
+        name:  'OpenRouter',
     }
 };
 
@@ -1242,12 +1284,13 @@ async function askAI(userText) {
         scrollToBottom();
     } catch (err) {
         typing.remove();
-        const isRateLimit = err.message.toLowerCase().includes('rate limit') || err.message.includes('429');
+        const isRateLimit = err.message.toLowerCase().includes('rate limit') || err.message.includes('429') || err.message.toLowerCase().includes('quota');
         if (isRateLimit) {
-            const other = currentProvider === 'groq' ? 'gemini' : 'groq';
+            const allProviders = ['groq', 'gemini', 'openrouter'];
+            const others = allProviders.filter(p => p !== currentProvider).map(p => PROVIDERS[p].name).join(' atau ');
             addChatMsg('ai',
-                `⚠️ **Rate limit tercapai di ${PROVIDERS[currentProvider].name}.**\n\n` +
-                `Coba beralih ke **${PROVIDERS[other].name}** dengan klik tombol toggle di atas, ` +
+                `⚠️ **Rate limit/quota tercapai di ${PROVIDERS[currentProvider].name}.**\n\n` +
+                `Coba beralih ke **${others}** dengan klik tombol toggle di atas, ` +
                 `atau tunggu beberapa menit lagi.`
             );
             setProviderStatus('err', '✕ Rate limit');
@@ -1310,8 +1353,14 @@ function addChatMsg(role, text) {
     const wrap = document.getElementById('chatMessages');
     const div = document.createElement('div');
     div.className = `chat-msg ${role}`;
+    const tagColors = {
+        groq:       { bg: '#fed7aa', fg: '#c2410c' },
+        gemini:     { bg: '#bfdbfe', fg: '#17B5C8' },
+        openrouter: { bg: '#ede9fe', fg: '#7C3AED' }
+    };
+    const tc = tagColors[currentProvider] || { bg: '#e2e8f0', fg: '#475569' };
     const providerTag = role === 'ai'
-        ? `<span style="font-size:9px;background:${currentProvider==='groq'?'#fed7aa':'#bfdbfe'};color:${currentProvider==='groq'?'#c2410c':'#17B5C8'};padding:1px 5px;border-radius:8px;margin-left:4px;">${PROVIDERS[currentProvider].name}</span>`
+        ? `<span style="font-size:9px;background:${tc.bg};color:${tc.fg};padding:1px 5px;border-radius:8px;margin-left:4px;">${PROVIDERS[currentProvider].name}</span>`
         : '';
     div.innerHTML = `
         <div class="chat-label">${role==='user'?'Anda':'AI Insight'}${providerTag}</div>
@@ -1337,11 +1386,9 @@ function showTyping() {
 //  API CALLS — GROQ & GEMINI
 // ═══════════════════════════════════════════════
 async function callAI(messages, maxTokens = 800) {
-    if (currentProvider === 'gemini') {
-        return await callGemini(messages, maxTokens);
-    } else {
-        return await callGroq(messages, maxTokens);
-    }
+    if (currentProvider === 'gemini')     return await callGemini(messages, maxTokens);
+    if (currentProvider === 'openrouter') return await callOpenRouter(messages, maxTokens);
+    return await callGroq(messages, maxTokens);
 }
 
 async function callGroq(messages, maxTokens) {
@@ -1396,6 +1443,37 @@ async function callGemini(messages, maxTokens) {
     }
     const data = await res.json();
     return data.candidates?.[0]?.content?.parts?.[0]?.text || '(tidak ada respons)';
+}
+
+async function callOpenRouter(messages, maxTokens) {
+    const key = PROVIDERS.openrouter.apiKey;
+    if (!key) throw new Error('OpenRouter API key belum diisi. Klik ⚙️ untuk mengatur.');
+    const model = PROVIDERS.openrouter.model;
+    const res = await fetch(PROVIDERS.openrouter.url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + key,
+            'HTTP-Referer': window.location.origin,
+            'X-Title': 'Salesman AI Insight'
+        },
+        body: JSON.stringify({
+            model:       model,
+            messages:    [{ role: 'system', content: buildSystemPrompt() }, ...messages],
+            max_tokens:  maxTokens,
+            temperature: 0.3
+        })
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        const status = res.status;
+        if (status === 404) throw new Error(`Model "${model}" tidak tersedia. Buka ⚙️ dan pilih model lain.`);
+        if (status === 401) throw new Error('OpenRouter API key tidak valid. Cek kembali di ⚙️.');
+        if (status === 429) throw new Error('Rate limit OpenRouter tercapai. Tunggu sebentar atau ganti model.');
+        throw new Error(err.error?.message || `OpenRouter HTTP ${status}`);
+    }
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content || '(tidak ada respons)';
 }
 
 function buildSystemPrompt() {
@@ -1459,10 +1537,12 @@ async function refreshInsight() {
 //  SETTINGS — API KEY MANAGEMENT
 // ═══════════════════════════════════════════════
 function openSettings() {
-    const groqKey   = localStorage.getItem('ai_key_groq')   || '';
-    const geminiKey = localStorage.getItem('ai_key_gemini') || '';
-    document.getElementById('inputGroqKey').value   = groqKey;
-    document.getElementById('inputGeminiKey').value = geminiKey;
+    document.getElementById('inputGroqKey').value       = localStorage.getItem('ai_key_groq')       || '';
+    document.getElementById('inputGeminiKey').value     = localStorage.getItem('ai_key_gemini')     || '';
+    document.getElementById('inputOpenrouterKey').value = localStorage.getItem('ai_key_openrouter') || '';
+    const savedModel = localStorage.getItem('ai_model_openrouter') || 'openrouter/free';
+    const sel = document.getElementById('selectOrModel');
+    if (sel) sel.value = savedModel;
     document.getElementById('settingsOverlay').classList.add('open');
 }
 
@@ -1486,14 +1566,21 @@ function toggleKeyVisibility(inputId, btn) {
 }
 
 function saveSettings() {
-    const groqKey   = document.getElementById('inputGroqKey').value.trim();
-    const geminiKey = document.getElementById('inputGeminiKey').value.trim();
+    const groqKey       = document.getElementById('inputGroqKey').value.trim();
+    const geminiKey     = document.getElementById('inputGeminiKey').value.trim();
+    const openrouterKey = document.getElementById('inputOpenrouterKey').value.trim();
 
-    if (groqKey)   localStorage.setItem('ai_key_groq',   groqKey);
-    else           localStorage.removeItem('ai_key_groq');
+    if (groqKey)       localStorage.setItem('ai_key_groq',       groqKey);
+    else               localStorage.removeItem('ai_key_groq');
 
-    if (geminiKey) localStorage.setItem('ai_key_gemini', geminiKey);
-    else           localStorage.removeItem('ai_key_gemini');
+    if (geminiKey)     localStorage.setItem('ai_key_gemini',     geminiKey);
+    else               localStorage.removeItem('ai_key_gemini');
+
+    if (openrouterKey) localStorage.setItem('ai_key_openrouter', openrouterKey);
+    else               localStorage.removeItem('ai_key_openrouter');
+
+    const selModel = document.getElementById('selectOrModel');
+    if (selModel && selModel.value) localStorage.setItem('ai_model_openrouter', selModel.value);
 
     closeSettings();
     setProviderStatus('ok', '● Key tersimpan');
@@ -1505,9 +1592,10 @@ function saveSettings() {
 
 // Show settings on first load if no key set
 document.addEventListener('DOMContentLoaded', () => {
-    const hasGroq   = localStorage.getItem('ai_key_groq');
-    const hasGemini = localStorage.getItem('ai_key_gemini');
-    if (!hasGroq && !hasGemini) {
+    const hasAnyKey = localStorage.getItem('ai_key_groq')
+                   || localStorage.getItem('ai_key_gemini')
+                   || localStorage.getItem('ai_key_openrouter');
+    if (!hasAnyKey) {
         setTimeout(openSettings, 800);
     }
 });
