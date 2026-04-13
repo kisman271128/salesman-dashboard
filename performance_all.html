@@ -261,7 +261,7 @@
         /* Project Sub-Tabs */
         .sub-tab-nav {
             display: flex;
-            gap: 6px;
+            gap: 2px;
             padding: 10px 16px 4px;
             overflow-x: auto;
             scrollbar-width: none;
@@ -271,7 +271,7 @@
         .sub-tab-nav::-webkit-scrollbar { display: none; }
         .sub-tab-btn {
             flex-shrink: 0;
-            padding: 5px 14px;
+            padding: 5px 10px;
             border: 1.5px solid #F5DBA8;
             background: #FFFFFF;
             border-radius: 20px;
@@ -280,7 +280,7 @@
             color: #6366f1;
             cursor: pointer;
             transition: all 0.2s;
-            white-space: nowrap;
+            /* white-space: nowrap; */
         }
         .sub-tab-btn:hover { background: #FFFFFF; }
         .sub-tab-btn.active {
@@ -742,6 +742,15 @@
             white-space: nowrap;
         }
         .vr-table th.left { text-align: left; }
+        .vr-table th[rowspan] {
+            white-space: normal !important;
+            vertical-align: middle !important;
+            position: sticky;
+            left: 0;
+            z-index: 5;
+            background: #E0F7FA !important;
+            padding: 9px 10px !important;
+        }
         .vr-table td {
             padding: 9px 10px;
             text-align: center;
@@ -773,6 +782,8 @@
         .vr-col-kunjungan { background: #FFFFFF!important; color: #17B5C8 !important; }
         .vr-col-penjualan { background: #F1FFF5 !important; color: #065f46 !important; }
         .vr-col-reason    { background: #E0F7FA !important; color: #9a3412 !important; }
+        .vr-col-reason    { padding: 6px 4px !important; font-size: 9px !important; }
+        .vr-table td.vr-col-reason-cell { padding: 6px 4px !important; font-size: 10px !important; min-width: 0 !important; }
         .vr-col-sku       { background: #E0F7FA !important; color: #6b21a8 !important; }
 
         /* Salesman cell */
@@ -1573,6 +1584,7 @@
         let currentProjectITG = 'ITG Arjuna';
         let paretoData = [];
         let pomData = [];
+        let performanceData = [];
         let skupelangganData = []; // For PC calculation
 
         // ===== UTILITY FUNCTIONS =====
@@ -1724,6 +1736,14 @@
             }
 
             // d.skupelanggan.json — for PC (Plan Call) calculation in Visit Report
+            try {
+                const perfText = await loadFile('d.performance.json');
+                performanceData = parseJSONLines(perfText);
+                console.log('Performance data loaded:', performanceData.length, 'records');
+            } catch (error) {
+                console.error('Performance data loading failed:', error.message);
+            }
+
             try {
                 const skupelangganText = await loadFile('d.skupelanggan.json');
                 skupelangganData = parseJSONLines(skupelangganText);
@@ -2313,8 +2333,8 @@
             return 'badge-ec bad';
         }
         function getAchBadgeClass(pct) {
-            if (pct >= 85) return 'badge-ach high';
-            if (pct >= 60) return 'badge-ach mid';
+            if (pct >= 100) return 'badge-ach high';
+            if (pct >= 90)  return 'badge-ach mid';
             return 'badge-ach low';
         }
 
@@ -2607,12 +2627,25 @@
             const now  = new Date();
             const tsStr = now.toLocaleTimeString('id-ID', {hour:'2-digit',minute:'2-digit'});
 
+            // Ach MTD Total Depo — dari d.performance.json record szname === "Total Depo"
+            const totalDepoPerf = performanceData.find(p => (p.szname || '').trim() === 'Total Depo');
+            const totalAchMTD   = totalDepoPerf ? Math.round(parseFloat(totalDepoPerf['Ach'] || 0) * 100) : null;
+            const totalAchMTDCell = totalAchMTD !== null
+                ? `<span class="${getAchBadgeClass(totalAchMTD)}">${totalAchMTD}%</span>`
+                : '-';
+
             // ── Main table rows (NO SKU POM column) ──
             let tableRows = '';
             rows.forEach(r => {
                 const ttCount  = r.tokoTutupList.length;
                 const ttoCount = r.tokoTidakOrderList.length;
                 const ttsCount = r.tokoTidakSelesaiList.length;
+                // Ambil Ach MTD dari d.performance.json berdasarkan nama salesman
+                const perfRec  = performanceData.find(p => (p.szname || '').trim() === r.sm.name.trim());
+                const achMTD   = perfRec ? Math.round((parseFloat(perfRec['Ach'] || 0)) * 100) : null;
+                const achMTDCell = achMTD !== null
+                    ? `<span class="${getAchBadgeClass(achMTD)}">${achMTD}%</span>`
+                    : `<span style="color:#78909C">-</span>`;
                 tableRows += `
                 <tr>
                     <td class="left" style="padding-left:14px;">
@@ -2623,17 +2656,18 @@
                     <td><strong style="color:${r.ac>=r.pc?'#27AE60':'#E67E22'}">${r.ac}</strong></td>
                     <td><strong style="color:#17B5C8">${r.ec}</strong></td>
                     <td><span class="${getECBadgeClass(r.ecPct)}">${r.ecPct}%</span></td>
+                    <td style="border-left:2px solid #bbf7d0;">${achMTDCell}</td>
                     <td><span class="vr-currency dap">${r.planDAP > 0 ? fmtRp(r.planDAP) : '<span style="color:#78909C">-</span>'}</span></td>
                     <td><span class="vr-currency actual">${r.actualSO > 0 ? fmtRp(r.actualSO) : '<span style="color:#78909C">-</span>'}</span></td>
                     <td><span class="${getAchBadgeClass(r.achPct)}">${r.achPct}%</span></td>
-                    <td class="${ttCount>0?'vr-count-tutup':'vr-count-none'}">${ttCount > 0 ? ttCount : '—'}</td>
-                    <td class="${ttoCount>0?'vr-count-tutup':'vr-count-none'}">${ttoCount > 0 ? ttoCount : '—'}</td>
-                    <td class="${ttsCount>0?'vr-count-tutup':'vr-count-none'}">${ttsCount > 0 ? `<span style="color:#E67E22">${ttsCount}</span>` : '—'}</td>
+                    <td class="${ttCount>0?'vr-count-tutup':'vr-count-none'}" style="padding:6px 4px;">${ttCount > 0 ? ttCount : '—'}</td>
+                    <td class="${ttoCount>0?'vr-count-tutup':'vr-count-none'}" style="padding:6px 4px;">${ttoCount > 0 ? ttoCount : '—'}</td>
+                    <td class="${ttsCount>0?'vr-count-tutup':'vr-count-none'}" style="padding:6px 4px;">${ttsCount > 0 ? `<span style="color:#E67E22">${ttsCount}</span>` : '—'}</td>
                 </tr>`;
             });
 
             if (rows.length === 0) {
-                tableRows = `<tr><td colspan="11" style="padding:30px;color:#78909C;text-align:center;">
+                tableRows = `<tr><td colspan="12" style="padding:30px;color:#78909C;text-align:center;">
                     Tidak ada data kunjungan untuk tanggal ini</td></tr>`;
             }
 
@@ -2730,11 +2764,11 @@
                     <div class="vm-value ${totalECPct>=75?'green':totalECPct>=50?'yellow':'red'}">${totalECPct}%</div>
                 </div>
                 <div class="vr-metric-item">
-                    <div class="vm-label">Total Plan DAP</div>
+                    <div class="vm-label">Total DAP</div>
                     <div class="vm-value blue">${totals.planDAP > 0 ? fmtRp(totals.planDAP) : '-'}</div>
                 </div>
                 <div class="vr-metric-item">
-                    <div class="vm-label">Total Actual SO</div>
+                    <div class="vm-label">Total SO</div>
                     <div class="vm-value green">${fmtRp(totals.actualSO)}</div>
                 </div>
                 <div class="vr-metric-item">
@@ -2758,29 +2792,30 @@
             <!-- ═══ TABLE 1: PERFORMA KUNJUNGAN ═══ -->
             <div style="padding:10px 16px 4px;background:#E0F7FA;border-top:1px solid #FFFFFF;">
                 <span style="font-size:11px;font-weight:700;color:#6A1FA7;text-transform:uppercase;letter-spacing:0.5px;">
-                    📊 Performa Kunjungan & Penjualan
+                    📊 Produktifitas dan Aktual SO by Salesman
                 </span>
             </div>
             <div class="vr-table-wrapper">
                 <table class="vr-table">
                     <thead>
                         <tr class="vr-col-group-header">
-                            <th class="left" rowspan="2" style="min-width:150px;background:#E0F7FA;">Salesman</th>
+                            <th class="left" rowspan="2" style="min-width:130px;max-width:160px;">Salesman</th>
                             <th colspan="4" class="vr-col-kunjungan" style="border-left:2px solid #bfdbfe;">📍 Data Kunjungan</th>
-                            <th colspan="3" class="vr-col-penjualan" style="border-left:2px solid #bbf7d0;">💰 Performa Penjualan</th>
-                            <th colspan="3" class="vr-col-reason" style="border-left:2px solid #fed7aa;">⚠️ Alasan Tidak Order</th>
+                            <th colspan="4" class="vr-col-penjualan" style="border-left:2px solid #bbf7d0;">💰 Performa Penjualan</th>
+                            <th colspan="3" class="vr-col-reason" style="border-left:2px solid #fed7aa;">⚠️ Alasan Tidak EC</th>
                         </tr>
                         <tr>
                             <th class="vr-col-kunjungan" style="border-left:2px solid #bfdbfe;">PC</th>
                             <th class="vr-col-kunjungan">AC</th>
                             <th class="vr-col-kunjungan">EC</th>
                             <th class="vr-col-kunjungan">EC%</th>
-                            <th class="vr-col-penjualan" style="border-left:2px solid #bbf7d0;">Plan DAP</th>
-                            <th class="vr-col-penjualan">Actual SO</th>
+                            <th class="vr-col-penjualan" style="border-left:2px solid #bbf7d0;">Ach MTD</th>
+                            <th class="vr-col-penjualan">Plan DAP</th>
+                            <th class="vr-col-penjualan">Aktual SO</th>
                             <th class="vr-col-penjualan">Ach%</th>
-                            <th class="vr-col-reason" style="border-left:2px solid #fed7aa;">Tutup</th>
-                            <th class="vr-col-reason">Tdk Order</th>
-                            <th class="vr-col-reason">Tdk Selesai</th>
+                            <th class="vr-col-reason" style="border-left:2px solid #fed7aa;padding:6px 4px;">Tutup</th>
+                            <th class="vr-col-reason" style="padding:6px 4px;">Stok</th>
+                            <th class="vr-col-reason" style="padding:6px 4px;">Visit Tunda</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -2791,12 +2826,13 @@
                             <td>${totals.ac}</td>
                             <td>${totals.ec}</td>
                             <td>${totalECPct}%</td>
+                            <td style="border-left:2px solid #bbf7d0;">${totalAchMTDCell}</td>
                             <td>${totals.planDAP > 0 ? fmtRp(totals.planDAP) : '-'}</td>
                             <td>${fmtRp(totals.actualSO)}</td>
-                            <td>${totalAchPct > 0 ? totalAchPct+'%' : '-'}</td>
-                            <td>${totals.tutup}</td>
-                            <td>${totals.tidakOrder}</td>
-                            <td>${totals.tidakSelesai}</td>
+                            <td><span class="${getAchBadgeClass(totalAchPct)}">${totalAchPct > 0 ? totalAchPct+'%' : '-'}</span></td>
+                            <td style="padding:6px 2px;">${totals.tutup}</td>
+                            <td style="padding:6px 2px;">${totals.tidakOrder}</td>
+                            <td style="padding:6px 2px;">${totals.tidakSelesai}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -2805,7 +2841,7 @@
             <!-- ═══ TABLE 2: SKU POM BREAKDOWN ═══ -->
             <div style="padding:10px 16px 4px;background:#E0F7FA;border-top:3px solid #c4b5fd;margin-top:8px;">
                 <span style="font-size:11px;font-weight:700;color:#6b21a8;text-transform:uppercase;letter-spacing:0.5px;">
-                    🏷️ Breakdown SKU POM Yang Dipesan — Per Salesman
+                    🏷️ Aktual New CA POM by Salesman
                 </span>
             </div>
             <div class="vr-table-wrapper">
