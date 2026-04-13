@@ -1285,10 +1285,7 @@
             <div class="tab-content" id="projectContent">
                 <!-- ITG Sub-tabs -->
                 <div class="sub-tab-nav" id="projectSubTabs">
-                    <button class="sub-tab-btn active" onclick="switchProjectITG('ITG Arjuna')">ITG Arjuna</button>
-                    <button class="sub-tab-btn" onclick="switchProjectITG('ITG Bima')">ITG Bima</button>
-                    <button class="sub-tab-btn" onclick="switchProjectITG('ITG SC')">ITG SC</button>
-                    <button class="sub-tab-btn" onclick="switchProjectITG('Kantinku')">Kantinku</button>
+                    <!-- Sub-tab otomatis diisi dari data ITG -->
                 </div>
                 <div class="table-container">
                     <div class="table-header" id="projectTableHeader">🎯 Performa per Project - ITG Arjuna</div>
@@ -1829,6 +1826,37 @@
         }
 
         // ══ SWITCH PROJECT SUB-TAB ══
+        // Program ITG yang datanya dalam satuan (bukan rupiah) => format angka penuh tanpa rb/jt
+        const ITG_UNIT_PROGRAMS = ['ITG SC'];
+        const KNOWN_ITG_ORDER   = ['ITG Arjuna', 'ITG Bima', 'ITG SC', 'Kantinku'];
+
+        // Bangun sub-tab dari data salesman secara otomatis
+        function buildITGSubTabs(salesmanName) {
+            const container = document.getElementById('projectSubTabs');
+            if (!container) return;
+
+            // Kumpulkan semua ITG unik milik salesman ini
+            const itgSet = new Set();
+            projectData
+                .filter(p => p.szname === salesmanName)
+                .forEach(p => { const n = (p.ITG || '').trim(); if (n) itgSet.add(n); });
+
+            // Urutkan: yang sudah dikenal di depan, sisanya alfabet
+            const sorted = [
+                ...KNOWN_ITG_ORDER.filter(k => itgSet.has(k)),
+                ...[...itgSet].filter(k => !KNOWN_ITG_ORDER.includes(k)).sort()
+            ];
+
+            if (sorted.length === 0) return;
+
+            // Reset ke program pertama jika program aktif tidak ada di data salesman ini
+            if (!sorted.includes(currentProjectITG)) currentProjectITG = sorted[0];
+
+            container.innerHTML = sorted.map(itg =>
+                `<button class="sub-tab-btn${itg === currentProjectITG ? ' active' : ''}" onclick="switchProjectITG('${itg}')">${itg}</button>`
+            ).join('');
+        }
+
         function switchProjectITG(itg) {
             currentProjectITG = itg;
             document.querySelectorAll('.sub-tab-btn').forEach(btn => {
@@ -1837,8 +1865,10 @@
             // Update header
             const header = document.getElementById('projectTableHeader');
             if (header) header.textContent = '🎯 Performa per Project - ' + itg;
-            // Update thead (tampilkan/sembunyikan Gap Qrt)
-            const showGapQrt = (itg === 'ITG Arjuna' || itg === 'ITG SC');
+            // showGapQrt: tampilkan jika ada data non-zero untuk salesman + program ini
+            const salesmanName = window._currentSalesmanName;
+            const itgRecords = projectData.filter(p => p.szname === salesmanName && (p.ITG || '').trim() === itg);
+            const showGapQrt = itgRecords.some(p => parseFloat(p['Gap Qrt'] || 0) !== 0);
             const thead = document.getElementById('projectTableHead');
             if (thead) {
                 thead.innerHTML = `
@@ -1852,7 +1882,7 @@
                 `;
             }
             // Re-render dengan filter ITG baru
-            if (window._currentSalesmanName) updateProjectTable(window._currentSalesmanName);
+            if (salesmanName) updateProjectTable(salesmanName);
         }
 
         function updateProjectTable(salesmanName) {
@@ -1860,29 +1890,25 @@
             else salesmanName = window._currentSalesmanName;
 
             const tbody = document.getElementById('projectTableBody');
-            const showGapQrt = (currentProjectITG === 'ITG Arjuna' || currentProjectITG === 'ITG SC');
-            const useFullFormat = (currentProjectITG === 'ITG SC');
-            const fmt = (val) => useFullFormat ? formatThousand(val) : formatCurrencyIndonesia(val);
-            const fmtGap = (val) => useFullFormat ? formatGapFull(val) : formatGap(val);
-            const colSpan = showGapQrt ? 7 : 6;
 
-            // Filter by salesman + ITG
+            // Filter data salesman ini dulu
             const allData = projectData.filter(item => item.szname === salesmanName);
             if (allData.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="${colSpan}" class="empty-state"><div class="icon">🎯</div><div>Data project tidak tersedia</div></td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="empty-state"><div class="icon">🎯</div><div>Data project tidak tersedia</div></td></tr>`;
                 return;
             }
 
-            // Update sub-tab dynamically based on available ITGs
-            const availableITGs = [...new Set(allData.map(d => (d.ITG || '').trim()).filter(Boolean))];
-            const subTabNav = document.getElementById('projectSubTabs');
-            if (subTabNav && availableITGs.length > 0) {
-                const allITGs = ['ITG Arjuna', 'ITG Bima', 'ITG SC', 'Kantinku'];
-                subTabNav.innerHTML = allITGs
-                    .filter(itg => availableITGs.includes(itg))
-                    .map(itg => `<button class="sub-tab-btn ${itg === currentProjectITG ? 'active' : ''}" onclick="switchProjectITG('${itg}')">${itg}</button>`)
-                    .join('');
-            }
+            // Bangun sub-tab setiap kali data salesman berubah
+            buildITGSubTabs(salesmanName);
+
+            // useFullFormat: format penuh untuk program satuan (ITG SC, dll)
+            const useFullFormat = ITG_UNIT_PROGRAMS.includes(currentProjectITG);
+            // showGapQrt: tampilkan jika ada data Gap Qrt non-zero untuk program ini
+            const itgRecords = allData.filter(d => (d.ITG || '').trim() === currentProjectITG);
+            const showGapQrt = itgRecords.some(p => parseFloat(p['Gap Qrt'] || 0) !== 0);
+            const fmt    = (val) => useFullFormat ? formatThousand(val) : formatCurrencyIndonesia(val);
+            const fmtGap = (val) => useFullFormat ? formatGapFull(val) : formatGap(val);
+            const colSpan = showGapQrt ? 7 : 6;
 
             const filtered = allData.filter(d => (d.ITG || '').trim() === currentProjectITG);
             if (filtered.length === 0) {
