@@ -1470,10 +1470,7 @@
             <div class="tab-content" id="projectContent">
                 <!-- ITG Sub-tabs -->
                 <div class="sub-tab-nav" id="projectSubTabs">
-                    <button class="sub-tab-btn active" onclick="switchProjectITG('ITG Arjuna')">ITG Arjuna</button>
-                    <button class="sub-tab-btn" onclick="switchProjectITG('ITG Bima')">ITG Bima</button>
-                    <button class="sub-tab-btn" onclick="switchProjectITG('ITG SC')">ITG SC</button>
-                    <button class="sub-tab-btn" onclick="switchProjectITG('Kantinku')">Kantinku</button>
+                    <!-- Sub-tab otomatis diisi dari data ITG -->
                 </div>
                 <div class="table-container">
                     <div class="table-wrapper">
@@ -2000,12 +1997,46 @@
             tbody.innerHTML = html;
         }
 
+        // ===== DYNAMIC ITG SUB-TABS =====
+        // Program ITG yang datanya dalam satuan (bukan rupiah) => format angka penuh tanpa rb/jt
+        const ITG_UNIT_PROGRAMS = ['ITG SC'];
+
+        function buildITGSubTabs() {
+            const container = document.getElementById('projectSubTabs');
+            if (!container) return;
+
+            // Kumpulkan semua nilai ITG unik dari data
+            const itgSet = new Set();
+            projectData.forEach(p => {
+                const name = (p.ITG || '').trim();
+                if (name) itgSet.add(name);
+            });
+
+            // Urutan yang dikenal lebih dulu, sisanya alfabet
+            const KNOWN_ORDER = ['ITG Arjuna', 'ITG Bima', 'ITG SC', 'Kantinku'];
+            const sorted = [
+                ...KNOWN_ORDER.filter(k => itgSet.has(k)),
+                ...[...itgSet].filter(k => !KNOWN_ORDER.includes(k)).sort()
+            ];
+
+            if (sorted.length === 0) return;
+
+            container.innerHTML = sorted.map((itg, i) =>
+                `<button class="sub-tab-btn${i === 0 ? ' active' : ''}" onclick="switchProjectITG('${itg}')">${itg}</button>`
+            ).join('');
+
+            // Set program pertama sebagai aktif
+            currentProjectITG = sorted[0];
+        }
+
         function switchProjectITG(itg) {
             currentProjectITG = itg;
             document.querySelectorAll('.sub-tab-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.textContent.trim() === itg);
             });
-            const showGapQrt = (itg === 'ITG Arjuna' || itg === 'ITG SC');
+            // showGapQrt: tampilkan kolom Gap Qrt jika ada data non-zero untuk program ini
+            const itgRecords = projectData.filter(p => (p.ITG || '').trim() === itg);
+            const showGapQrt = itgRecords.some(p => parseFloat(p['Gap Qrt'] || 0) !== 0);
             const thead = document.getElementById('projectTableHead');
             if (thead) {
                 thead.innerHTML = `
@@ -2023,8 +2054,10 @@
 
         function updateProjectTable() {
             const tbody = document.getElementById('projectTableBody');
-            const showGapQrt = (currentProjectITG === 'ITG Arjuna' || currentProjectITG === 'ITG SC');
-            const useFullFormat = (currentProjectITG === 'ITG SC');
+            // useFullFormat: format angka penuh (tanpa rb/jt) untuk program satuan seperti ITG SC
+            const useFullFormat = ITG_UNIT_PROGRAMS.includes(currentProjectITG);
+            const itgRecords = projectData.filter(p => (p.ITG || '').trim() === currentProjectITG);
+            const showGapQrt = itgRecords.some(p => parseFloat(p['Gap Qrt'] || 0) !== 0);
             const fmt = (val) => useFullFormat ? formatThousand(val) : formatCurrencyIndonesia(val);
             const fmtGap = (val) => useFullFormat ? formatGapFull(val) : formatGap(val);
             const colSpan = showGapQrt ? 7 : 6;
@@ -2119,7 +2152,7 @@
                 totalCount += skuData.count;
             });
 
-            const totalAchPercentage = calculateAchievementPercentage(totalTarget, totalActual);
+            const avgAchPercentage = totalCount > 0 ? Math.round((totalAchSum / totalCount) * 100) : 0;
 
             // Convert map to array and sort by actual descending
             const skuArray = Array.from(skuMap.values()).sort((a, b) => b.actual - a.actual);
@@ -2130,14 +2163,14 @@
                     <td class="sticky-col pom-sku-col"><strong>TOTAL</strong></td>
                     <td><strong>${totalTarget}</strong></td>
                     <td><strong>${totalActual}</strong></td>
-                    <td class="${getAchievementClass(totalAchPercentage)}"><strong>${totalAchPercentage}%</strong></td>
-                    <td class="${getGapClass(totalGap)}"><strong>${formatGapFull(totalGap)}</strong></td>
+                    <td class="${getAchievementClass(avgAchPercentage)}"><strong>${avgAchPercentage}%</strong></td>
+                    <td class="${getGapClass(totalGap)}"><strong>${formatGap(totalGap)}</strong></td>
                 </tr>
             `;
 
             // Add individual SKU rows
             skuArray.forEach(skuData => {
-                const achPercentage = calculateAchievementPercentage(skuData.target, skuData.actual);
+                const achPercentage = skuData.count > 0 ? Math.round((skuData.achSum / skuData.count) * 100) : 0;
                 
                 html += `
                     <tr>
@@ -2147,7 +2180,7 @@
                         <td>${formatCurrencyIndonesia(skuData.target)}</td>
                         <td>${formatCurrencyIndonesia(skuData.actual)}</td>
                         <td class="${getAchievementClass(achPercentage)}">${achPercentage}%</td>
-                        <td class="${getGapClass(skuData.gap)}">${formatGapFull(skuData.gap)}</td>
+                        <td class="${getGapClass(skuData.gap)}">${formatGap(skuData.gap)}</td>
                     </tr>
                 `;
             });
@@ -2192,7 +2225,8 @@
                 updateSummaryTable();
                 updateChannelTable();
                 updateRankingTable();
-                switchProjectITG('ITG Arjuna'); // init with correct header
+                buildITGSubTabs();                   // bangun sub-tab otomatis dari data
+                switchProjectITG(currentProjectITG); // init program pertama
                 updatePOMTable();
                 
                 showLoading(false);
