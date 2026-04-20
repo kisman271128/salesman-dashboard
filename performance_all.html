@@ -261,14 +261,13 @@
         /* Project Sub-Tabs */
         .sub-tab-nav {
             display: flex;
-            gap: 2px;
-            padding: 10px 16px 4px;
-            overflow-x: auto;
-            scrollbar-width: none;
+            flex-wrap: wrap;
+            gap: 6px;
+            padding: 10px 16px 8px;
+            overflow-x: visible;
             background: #E0F7FA;
             border-bottom: 1px solid #FFFFFF;
         }
-        .sub-tab-nav::-webkit-scrollbar { display: none; }
         .sub-tab-btn {
             flex-shrink: 0;
             padding: 5px 10px;
@@ -2033,7 +2032,7 @@
             });
 
             // Urutan yang dikenal lebih dulu, sisanya alfabet
-            const KNOWN_ORDER = ['ITG Arjuna', 'ITG Bima', 'ITG SC', 'Kantinku'];
+            const KNOWN_ORDER = ['ITG Arjuna', 'ITG Bima', 'ITG SC', 'Kantinku', 'Kantinku GBS', 'CLBK Bima', 'LCLB Arjuna'];
             const sorted = [
                 ...KNOWN_ORDER.filter(k => itgSet.has(k)),
                 ...[...itgSet].filter(k => !KNOWN_ORDER.includes(k)).sort()
@@ -2172,7 +2171,17 @@
                 totalCount += skuData.count;
             });
 
-            const avgAchPercentage = totalCount > 0 ? Math.round((totalAchSum / totalCount) * 100) : 0;
+            const avgAchPercentage = totalTarget > 0 ? Math.round((totalActual / totalTarget) * 100) : 0;
+
+            // Format angka POM: titik ribuan, misal 1.250 bukan 1rb
+            const fmtPOM = (val) => Math.round(parseFloat(val) || 0).toLocaleString('id-ID');
+            const fmtGapPOM = (num) => {
+                const n = parseFloat(num || 0);
+                const abs = fmtPOM(Math.abs(n));
+                if (n > 0) return '+' + abs;
+                if (n < 0) return '-' + abs;
+                return '0';
+            };
 
             // Convert map to array and sort by actual descending
             const skuArray = Array.from(skuMap.values()).sort((a, b) => b.actual - a.actual);
@@ -2181,26 +2190,26 @@
             let html = `
                 <tr class="total-row">
                     <td class="sticky-col pom-sku-col"><strong>TOTAL</strong></td>
-                    <td><strong>${totalTarget}</strong></td>
-                    <td><strong>${totalActual}</strong></td>
+                    <td><strong>${fmtPOM(totalTarget)}</strong></td>
+                    <td><strong>${fmtPOM(totalActual)}</strong></td>
                     <td class="${getAchievementClass(avgAchPercentage)}"><strong>${avgAchPercentage}%</strong></td>
-                    <td class="${getGapClass(totalGap)}"><strong>${formatGap(totalGap)}</strong></td>
+                    <td class="${getGapClass(totalGap)}"><strong>${fmtGapPOM(totalGap)}</strong></td>
                 </tr>
             `;
 
             // Add individual SKU rows
             skuArray.forEach(skuData => {
-                const achPercentage = skuData.count > 0 ? Math.round((skuData.achSum / skuData.count) * 100) : 0;
+                const achPercentage = skuData.target > 0 ? Math.round((skuData.actual / skuData.target) * 100) : 0;
                 
                 html += `
                     <tr>
                         <td class="sticky-col pom-sku-col">
                             <strong style="font-size: 10px;">${skuData.sku}</strong>
                         </td>
-                        <td>${formatCurrencyIndonesia(skuData.target)}</td>
-                        <td>${formatCurrencyIndonesia(skuData.actual)}</td>
+                        <td>${fmtPOM(skuData.target)}</td>
+                        <td>${fmtPOM(skuData.actual)}</td>
                         <td class="${getAchievementClass(achPercentage)}">${achPercentage}%</td>
-                        <td class="${getGapClass(skuData.gap)}">${formatGap(skuData.gap)}</td>
+                        <td class="${getGapClass(skuData.gap)}">${fmtGapPOM(skuData.gap)}</td>
                     </tr>
                 `;
             });
