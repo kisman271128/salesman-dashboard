@@ -2537,21 +2537,68 @@
                         // Process visits
                         let ac = 0, ec = 0, actualSO = 0;
                         let tokoTutupList = [], tokoTidakOrderList = [], tokoTidakSelesaiList = [];
-                        const visitedSet = new Set();
 
                         if (snap && snap.exists()) {
+                            // ── FIX: Deduplikasi per outlet — ambil record TERBARU ──────────────
+                            // ROOT CAUSE anomali double counting:
+                            //
+                            // BUG 1 — Orphan record dari visit yang di-pause lalu selesai:
+                            //   Saat app restart / firebaseKey hilang, endVisitSession() membuat
+                            //   record BARU dengan status 'completed', sementara record lama
+                            //   dengan status 'paused'/'started' tetap ada di Firebase.
+                            //   Akibatnya satu outlet terhitung dua kali:
+                            //     - sekali di tokoTidakSelesaiList (Visit Tunda) ← record lama
+                            //     - sekali di ec/tutup/tidakOrder               ← record baru
+                            //
+                            // BUG 2 — AC hanya menghitung 'completed', bukan semua kunjungan:
+                            //   visitedSet.add() hanya dipanggil untuk status 'completed',
+                            //   sehingga outlet yang masih paused tidak ikut terhitung di AC.
+                            //
+                            // SOLUSI: group semua record per outlet_name, pilih yang paling
+                            // akhir berdasarkan end_time / start_time, lalu klasifikasikan
+                            // hanya berdasarkan status FINAL outlet tersebut.
+                            // ────────────────────────────────────────────────────────────────────
+
+                            // Step 1: Kumpulkan semua record hari ini, group per outlet_name
+                            const outletLatest = {}; // outlet_name → record terbaru
                             Object.values(snap.val()).forEach(v => {
                                 if (!v.start_time) return;
                                 const vDate = v.start_time.split('T')[0];
                                 if (vDate !== dateStr) return;
+                                if (!v.outlet_name) return;
 
+                                const name = v.outlet_name;
+                                const existing = outletLatest[name];
+                                if (!existing) {
+                                    outletLatest[name] = v;
+                                } else {
+                                    // Pilih record yang lebih baru: bandingkan end_time, lalu start_time
+                                    const newTime  = v.end_time || v.start_time || '';
+                                    const prevTime = existing.end_time || existing.start_time || '';
+                                    // 'completed' selalu menang atas status lain jika waktu sama
+                                    const newIsCompleted  = v.visit_status === 'completed';
+                                    const prevIsCompleted = existing.visit_status === 'completed';
+                                    if (newIsCompleted && !prevIsCompleted) {
+                                        outletLatest[name] = v; // completed menang
+                                    } else if (!newIsCompleted && prevIsCompleted) {
+                                        // pertahankan yang completed
+                                    } else if (newTime > prevTime) {
+                                        outletLatest[name] = v; // ambil yang lebih baru
+                                    }
+                                }
+                            });
+
+                            // Step 2: Klasifikasikan berdasarkan status FINAL per outlet
+                            Object.values(outletLatest).forEach(v => {
                                 const name   = v.outlet_name || '';
                                 const status = v.visit_status || '';
                                 const order  = v.order_status || '';
                                 const amt    = Number(v.so_amount || 0);
 
+                                // AC = semua outlet yang dikunjungi (apapun statusnya)
+                                ac++;
+
                                 if (status === 'completed') {
-                                    visitedSet.add(name);
                                     if (order === 'ada_so') {
                                         ec++;
                                         actualSO += amt;
@@ -2560,11 +2607,11 @@
                                     } else if (order === 'toko_tidak_order') {
                                         tokoTidakOrderList.push(name);
                                     }
-                                } else if (['started','paused','resumed'].includes(status)) {
+                                } else if (['started', 'paused', 'resumed'].includes(status)) {
+                                    // Hanya masuk Visit Tunda jika status FINAL-nya memang belum selesai
                                     tokoTidakSelesaiList.push(name);
                                 }
                             });
-                            ac = visitedSet.size;
                         }
 
                         // ── Plan DAP from prefetched map ──

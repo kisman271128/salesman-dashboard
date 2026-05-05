@@ -1,0 +1,2963 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performance Summary - All Salesman</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js">
+        
+    
+        </script>
+    
+    <!-- Firebase Initialization -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, push, set, get, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAoRV3qVAXQ14AEVA8Mo49HXfAyhMMm8Bs",
+            authDomain: "salesman-route-tracker.firebaseapp.com",
+            databaseURL: "https://salesman-route-tracker-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "salesman-route-tracker",
+            storageBucket: "salesman-route-tracker.firebasestorage.app",
+            messagingSenderId: "590789273516",
+            appId: "1:590789273516:web:79abe0c7e4cbccfa44fc09",
+            measurementId: "G-5RYSWKQ063"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+
+        window.firebaseDB = database;
+        window.firebaseRef = ref;
+        window.firebasePush = push;
+        window.firebaseSet = set;
+        window.firebaseGet = get;
+        window.firebaseServerTimestamp = serverTimestamp;
+
+        console.log('🔥 Firebase initialized in performance_all.html');
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #E0F7FA, #B2EBF2) !important;
+            min-height: 100vh;
+            color: #1A1A2E;
+            padding-bottom: 100px;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: #FFFFFF;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            background: linear-gradient(135deg, #17B5C8, #1BC8DC, #17B5C8);
+            color: white;
+            margin-bottom: 16px;
+        }
+
+        .back-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            padding: 10px;
+            border-radius: 12px;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateX(-2px);
+        }
+
+        .header-title {
+            text-align: center;
+            flex: 1;
+        }
+
+        .header-title h1 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .header-title p {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .menu-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            padding: 10px;
+            border-radius: 12px;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        /* Loading & Error States */
+        .loading-spinner {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            flex-direction: column;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #FFFFFF;
+            border-top: 4px solid #1BC8DC;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: rgba(231, 76, 60, 0.1);
+            border: 1px solid rgba(231, 76, 60, 0.3);
+            color: #E74C3C;
+            padding: 16px;
+            border-radius: 12px;
+            margin: 16px;
+            text-align: center;
+        }
+
+        /* Metrics Cards */
+        .metrics-container {
+            padding: 0 16px 16px;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .metric-card {
+            background: #FFFFFF;
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid;
+            transition: transform 0.2s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .metric-card.total { border-left-color: #1BC8DC; }
+        .metric-card.wholesaler { border-left-color: #2ECC71; }
+        .metric-card.retail { border-left-color: #F39C12; }
+        .metric-card.mti { border-left-color: #E74C3C; }
+
+        .metric-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #546E7A;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .metric-value {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .metric-subtitle {
+            font-size: 11px;
+            color: #546E7A;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .achievement {
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 10px;
+        }
+
+        .achievement.high { background: rgba(16, 185, 129, 0.1); color: #27AE60; }
+        .achievement.medium { background: rgba(243, 156, 18, 0.1); color: #E67E22; }
+        .achievement.low { background: rgba(231, 76, 60, 0.1); color: #E74C3C; }
+
+        /* Tab Navigation */
+        .tab-container {
+            padding: 0 16px;
+            margin-bottom: 16px;
+        }
+
+        .tab-nav {
+            display: flex;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 12px;
+            padding: 4px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 16px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 10px 8px;
+            border: none;
+            background: transparent;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #546E7A;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, #17B5C8, #1BC8DC, #17B5C8);
+            color: white;
+            box-shadow: 0 2px 8px rgba(27, 200, 220, 0.3);
+        }
+
+        /* Tab Content */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Project Sub-Tabs */
+        .sub-tab-nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            padding: 10px 16px 8px;
+            overflow-x: visible;
+            background: #E0F7FA;
+            border-bottom: 1px solid #FFFFFF;
+        }
+        .sub-tab-btn {
+            flex-shrink: 0;
+            padding: 5px 10px;
+            border: 1.5px solid #F5DBA8;
+            background: #FFFFFF;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #6366f1;
+            cursor: pointer;
+            transition: all 0.2s;
+            /* white-space: nowrap; */
+        }
+        .sub-tab-btn:hover { background: #FFFFFF; }
+        .sub-tab-btn.active {
+            background: linear-gradient(135deg, #17B5C8, #1BC8DC, #17B5C8);
+            color: white;
+            border-color: transparent;
+            box-shadow: 0 2px 6px rgba(27, 200, 220, 0.35);
+        }
+
+        /* Table Styles */
+        .table-container {
+            background: #FFFFFF;
+            border-radius: 16px;
+            margin: 0 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .table-header {
+            background: linear-gradient(135deg, #17B5C8, #1BC8DC, #17B5C8);
+            color: white;
+            padding: 12px 16px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .table-wrapper {
+            max-height: 400px;
+            overflow-y: auto;
+            overflow-x: auto;
+        }
+
+        .data-table {
+            width: auto;
+            border-collapse: collapse;
+            min-width: fit-content;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 8px 12px;
+            text-align: right;
+            border-bottom: 1px solid #FFFFFF;
+            font-size: 11px;
+            white-space: nowrap;
+            width: auto;
+        }
+
+        /* Customer & Salesman → rata kiri */
+        .data-table td.sticky-col,
+        .data-table th.sticky-col,
+        .data-table td.col-medium,
+        .data-table th.col-medium { text-align: left; }
+
+        /* Ach% → rata tengah */
+        .data-table td.value-percentage,
+        .data-table th.value-percentage { text-align: center; }
+
+        .data-table th {
+            background: #E0F7FA;
+            font-weight: 700;
+            color: #006064;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .data-table tbody tr:hover {
+            background: rgba(27, 200, 220, 0.05);
+        }
+
+        /* Total row styling */
+        .total-row {
+            background: #FFFFFF !important;
+            font-weight: 700;
+            border-top: 2px solid #1BC8DC;
+            border-bottom: 2px solid #1BC8DC;
+        }
+
+        .total-row td {
+            background: #E0F7FA !important;
+            font-weight: 700;
+            color: #006064;
+        }
+
+        .total-row:hover {
+            background: #FFFFFF !important;
+        }
+
+        .total-row .sticky-col {
+            background: #FFFFFF !important;
+            font-weight: 700;
+        }
+
+        /* Sticky Column */
+        .sticky-col {
+            position: sticky;
+            background: #E0F7FA !important;
+            z-index: 15;
+            box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+            width: max-content;
+            min-width: fit-content;
+        }
+
+        .data-table tbody .sticky-col {
+            background: #FFFFFF !important;
+            z-index: 5;
+            box-shadow: 2px 0 4px rgba(0, 0, 0, 0.15);
+        }
+
+        .data-table tbody tr:hover .sticky-col {
+            background: rgba(27, 200, 220, 0.05) !important;
+            z-index: 16;
+        }
+
+        .data-table thead .sticky-col {
+            z-index: 20;
+        }
+
+        /* Column positioning */
+        .salesman-name-col { left: 0; min-width: 120px; max-width: 180px; }
+        .channel-group-col { left: 0; min-width: 80px; }
+        .rank-col { left: 0; min-width: 40px; width: 50px; }
+
+        /* Value formatting */
+        .value-positive { color: #27AE60; font-weight: 600; }
+        .value-negative { color: #E74C3C; font-weight: 600; }
+        .value-currency { 
+            font-family: 'Courier New', monospace; 
+            text-align: right;
+            min-width: 80px;
+        }
+        .value-percentage { 
+            font-weight: 600; 
+            text-align: center;
+            min-width: 60px;
+        }
+
+        /* Gap styling */
+        .gap-positive { 
+            color: #27AE60 !important; 
+            font-weight: 600; 
+        }
+        .gap-negative { 
+            color: #E74C3C !important; 
+            font-weight: 600; 
+        }
+
+        /* Achievement styling */
+        
+        
+        
+
+        /* Status badges */
+        .status-badge {
+            padding: 2px 6px;
+            border-radius: 6px;
+            font-size: 9px;
+            font-weight: 600;
+            text-transform: uppercase;
+            display: inline-block;
+            min-width: 40px;
+            text-align: center;
+        }
+
+        .rank-badge {
+            background: linear-gradient(135deg, #17B5C8, #1BC8DC, #17B5C8);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 600;
+            min-width: 30px;
+            text-align: center;
+            display: inline-block;
+        }
+
+        /* Channel Group Row */
+        .channel-group-row {
+            background: #FFFFFF!important;
+            border-top: 2px solid #F5DBA8;
+            border-bottom: 1px solid #F5DBA8;
+        }
+        .channel-group-row td {
+            background: #FFFFFF!important;
+            font-weight: 700;
+            color: #3730a3;
+            font-size: 11px;
+        }
+        .channel-group-row:hover td { background: #FFFFFF!important; }
+
+        /* Project Sub Row */
+        .project-sub-row td {
+            background: #F0FAFB !important;
+            font-size: 11px;
+            color: #1A1A2E;
+            border-bottom: 1px solid #FFFFFF;
+        }
+        .project-sub-row:hover td { background: #FFFFFF !important; }
+        .project-sub-row .sticky-col { background: #E0F7FA !important; }
+        .project-sub-row:hover .sticky-col { background: #FFFFFF !important; }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #546E7A;
+        }
+
+        .empty-state .icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        /* Column width classes */
+        .col-narrow { min-width: 60px; max-width: 80px; }
+        .col-medium { min-width: 80px; max-width: 120px; }
+        .col-wide { min-width: 40px; max-width: 60px; }
+        .col-text { min-width: 120px; max-width: 200px; }
+
+        /* Bottom Navigation - Updated for 5 items */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 400px;
+            background: #FFFFFF;
+            border-top: 1px solid #FFFFFF;
+            padding: 10px 0;
+            display: flex;
+            justify-content: space-around;
+            box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-decoration: none;
+            color: #90CAD0;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            padding: 6px 4px;
+            border-radius: 12px;
+            min-width: 40px;
+            flex: 1;
+        }
+
+        .nav-item.active {
+            color: #1BC8DC;
+            background: rgba(27, 200, 220, 0.1);
+        }
+
+        .nav-item:hover {
+            color: #1BC8DC;
+            transform: translateY(-2px);
+        }
+
+        .nav-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 2px;
+            font-size: 10px;
+        }
+
+        .nav-icon.home { background: #1BC8DC; color: white; }
+        .nav-icon.activity { background: #E74C3C; color: white; }
+        .nav-icon.incentive { background: #F39C12; color: white; }
+        .nav-icon.mv { background: #8b5cf6; color: white; }
+        .nav-icon.profile { background: #2ECC71; color: white; }
+
+        .nav-label {
+            font-size: 9px;
+            font-weight: 500;
+        }
+
+        /* POM Table Specific Styles */
+        .pom-sku-col {
+            min-width: 70px !important;
+            max-width: 90px !important;
+            font-weight: 600;
+            color: #006064;
+        }
+
+        .pom-table {
+            width: auto;
+            min-width: fit-content;
+        }
+
+        .pom-table th,
+        .pom-table td {
+            text-align: center;
+            padding: 10px 8px;
+            font-size: 11px;
+        }
+
+        .pom-table th:first-child,
+        .pom-table td:first-child {
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .pom-table .col-narrow {
+            min-width: 45px;
+            max-width: 55px;
+        }
+
+        .pom-table .col-wide {
+            min-width: 70px;
+            max-width: 90px;
+        }
+
+        /* ===== VISIT REPORT STYLES ===== */
+        .visit-report-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 16px;
+            background: #FFFFFF;
+            border-bottom: 1px solid #FFFFFF;
+            margin-bottom: 12px;
+        }
+        .visit-report-toolbar input[type="date"] {
+            flex: 1;
+            padding: 9px 12px;
+            border: 2px solid #FFFFFF;
+            border-radius: 10px;
+            font-size: 13px;
+            color: #1A1A2E;
+            background: #E0F7FA;
+        }
+        .btn-load-visit {
+            padding: 9px 16px;
+            background: linear-gradient(135deg, #17B5C8, #1BC8DC, #17B5C8);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .btn-share-wa {
+            padding: 9px 14px;
+            background: linear-gradient(135deg, #25d366, #128c7e);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .btn-share-wa:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* The widescreen report card */
+        .visit-report-scroll-wrapper {
+            padding: 0 16px 16px;
+            overflow-x: auto;
+        }
+        #visitReportCard {
+            min-width: 780px;
+            background: #FFFFFF;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+            font-family: 'Segoe UI', sans-serif;
+        }
+        .vr-header {
+            background: linear-gradient(135deg, #1e3a5f 0%, #2d6a9f 50%, #1BC8DC 100%);
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .vr-header-left h2 {
+            font-size: 17px;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 2px;
+        }
+        .vr-header-left p {
+            font-size: 12px;
+            color: rgba(255,255,255,0.8);
+        }
+        .vr-header-right {
+            text-align: right;
+        }
+        .vr-header-right .vr-date {
+            font-size: 18px;
+            font-weight: 800;
+            color: #1BC8DC;
+        }
+        .vr-header-right .vr-ts {
+            font-size: 10px;
+            color: rgba(255,255,255,0.7);
+            margin-top: 2px;
+        }
+
+        /* Summary metrics bar */
+        .vr-metrics-bar {
+            display: flex;
+            background: #E0F7FA;
+            padding: 10px 16px;
+            gap: 0;
+        }
+        .vr-metric-item {
+            flex: 1;
+            text-align: center;
+            padding: 6px 4px;
+            border-right: 1px solid rgba(255,255,255,0.1);
+        }
+        .vr-metric-item:last-child { border-right: none; }
+        .vr-metric-item .vm-label {
+            font-size: 9px;
+            color: #546E7A;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 3px;
+        }
+        .vr-metric-item .vm-value {
+            font-size: 15px;
+            font-weight: 800;
+            color: #1A1A2E;
+        }
+        .vr-metric-item .vm-value.green { color: #4ade80; }
+        .vr-metric-item .vm-value.yellow { color: #F39C12; }
+        .vr-metric-item .vm-value.red { color: #E74C3C; }
+        .vr-metric-item .vm-value.blue { color: #4FC3F7; }
+
+        /* Report table */
+        .vr-table-wrapper { overflow-x: auto; }
+        .vr-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }
+        .vr-table thead tr {
+            background: #FFFFFF;
+        }
+        .vr-table th {
+            padding: 9px 10px;
+            text-align: center;
+            font-size: 10px;
+            font-weight: 700;
+            color: #006064;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            border-bottom: 2px solid #B2EBF2;
+            white-space: nowrap;
+        }
+        .vr-table th.left { text-align: left; }
+        .vr-table th[rowspan] {
+            white-space: normal !important;
+            vertical-align: middle !important;
+            position: sticky;
+            left: 0;
+            z-index: 5;
+            background: #E0F7FA !important;
+            padding: 9px 10px !important;
+        }
+        .vr-table td {
+            padding: 9px 10px;
+            text-align: center;
+            border-bottom: 1px solid #FFFFFF;
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+        .vr-table td.left { text-align: left; }
+        .vr-table tbody tr:hover { background: #E0F7FA; }
+        .vr-table tbody tr:nth-child(even) { background: #E0F7FA; }
+        .vr-table tbody tr:nth-child(even):hover { background: #FFFFFF; }
+
+        /* Total row */
+        .vr-total-row td {
+            background: #E0F7FA !important;
+            color: #006064 !important;
+            font-weight: 700 !important;
+            border-bottom: none !important;
+            font-size: 12px;
+        }
+
+        /* Column group headers */
+        .vr-col-group-header th {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .vr-col-kunjungan { background: #FFFFFF!important; color: #17B5C8 !important; }
+        .vr-col-penjualan { background: #F1FFF5 !important; color: #065f46 !important; }
+        .vr-col-reason    { background: #E0F7FA !important; color: #9a3412 !important; }
+        .vr-col-reason    { padding: 6px 4px !important; font-size: 9px !important; }
+        .vr-table td.vr-col-reason-cell { padding: 6px 4px !important; font-size: 10px !important; min-width: 0 !important; }
+        .vr-col-sku       { background: #E0F7FA !important; color: #6b21a8 !important; }
+
+        /* Salesman cell */
+        .vr-salesman-cell {
+            min-width: 130px;
+            max-width: 160px;
+        }
+        .vr-salesman-name {
+            font-weight: 700;
+            color: #1A1A2E;
+            font-size: 11px;
+        }
+        .vr-salesman-type {
+            font-size: 9px;
+            color: #546E7A;
+            margin-top: 1px;
+        }
+
+        /* Value badges */
+        .badge-ec { 
+            background: #F1FFF5; color: #166534; 
+            padding: 2px 7px; border-radius: 20px; font-weight: 700;
+        }
+        .badge-ec.warn { background: #FFFDE7; color: #854d0e; }
+        .badge-ec.bad  { background: #FFEBEE; color: #C0392B; }
+        .badge-ach     { 
+            display: inline-block;
+            padding: 2px 7px; border-radius: 20px; font-weight: 700; font-size: 11px;
+        }
+        .badge-ach.high { background: #F1FFF5; color: #166534; }
+        .badge-ach.mid  { background: #FFFDE7; color: #854d0e; }
+        .badge-ach.low  { background: #FFEBEE; color: #C0392B; }
+
+        .vr-currency {
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+            color: #1A1A2E;
+            font-size: 11px;
+        }
+        .vr-currency.dap { color: #17B5C8; }
+        .vr-currency.actual { color: #27AE60; }
+        
+        .vr-count-tutup  { color: #E74C3C; font-weight: 600; }
+        .vr-count-none   { color: #78909C; font-weight: 500; }
+        .vr-sku-list { 
+            font-size: 9px; color: #7c3aed; 
+            max-width: 120px; 
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+
+        /* Footer */
+        .vr-footer {
+            background: #E0F7FA;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid #FFFFFF;
+        }
+        .vr-footer-left { font-size: 10px; color: #546E7A; }
+        .vr-footer-right { font-size: 10px; color: #78909C; }
+
+        /* Loading state inside tab */
+        .vr-loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: #546E7A;
+        }
+        .vr-loading .spinner { margin: 0 auto 12px; }
+        .vr-empty {
+            text-align: center;
+            padding: 60px 20px;
+            color: #78909C;
+            font-size: 13px;
+        }
+
+        /* Responsive */
+        @media (max-width: 380px) {
+            .metrics-grid { gap: 8px; }
+            .metric-card { padding: 12px; }
+            .metric-value { font-size: 18px; }
+            .data-table th, .data-table td { padding: 6px 8px; font-size: 10px; }
+            .salesman-name-col { min-width: 100px; max-width: 140px; }
+            .channel-group-col { min-width: 70px; }
+            .rank-col { min-width: 35px; width: 40px; }
+            .value-currency { min-width: 70px; font-size: 10px; }
+            .value-percentage { min-width: 50px; }
+            .nav-icon { width: 18px; height: 18px; font-size: 9px; }
+            .nav-label { font-size: 8px; }
+        }
+    
+        
+
+        
+        
+
+
+        
+        /* ════════════════════════════════════════════════════
+           LIGHT CYAN THEME - Complete Override
+           ════════════════════════════════════════════════════ */
+
+        /* BASE */
+        html, body {
+            background: linear-gradient(135deg, #E0F7FA 0%, #B2EBF2 50%, #E8F5F9 100%) !important;
+            color: #1A1A2E !important;
+        }
+        .container, .app-container, .main-wrapper {
+            background: linear-gradient(135deg, #E0F7FA, #CCF2F7) !important;
+            min-height: 100vh;
+        }
+        .main-content { background: transparent !important; }
+
+        /* HEADER */
+        .header, .detail-header {
+            background: linear-gradient(135deg, #17B5C8, #1BC8DC) !important;
+            border-radius: 0 0 24px 24px !important;
+            box-shadow: 0 4px 16px rgba(27,200,220,0.25) !important;
+            border-bottom: none !important;
+        }
+        .header *, .detail-header * { color: #FFFFFF !important; }
+        .depo-name, .detail-title, .salesman-name, .page-title {
+            color: #FFFFFF !important; font-weight: 800 !important;
+        }
+        .region-name, .subtitle { color: rgba(255,255,255,0.85) !important; }
+        .menu-btn, .notification-btn, .back-btn, .user-btn, .more-btn, .refresh-btn {
+            background: rgba(255,255,255,0.25) !important;
+            border: 1px solid rgba(255,255,255,0.4) !important;
+            color: #FFFFFF !important;
+        }
+        .menu-btn:hover, .back-btn:hover, .notification-btn:hover {
+            background: rgba(255,255,255,0.4) !important;
+        }
+        .notification-dot { background: #E74C3C !important; }
+
+        /* ══ SEMUA CARD / FRAME → PUTIH ══ */
+        .card, .info-card, .metric-card, .stat-card, .summary-card,
+        .detail-card, .visit-card, .profile-card, .insight-card,
+        .performance-card, .outlet-card, .plan-card, .sku-card,
+        .report-card, .journey-card, .compliance-card, .device-card,
+        .user-card, .db-card, .insentif-card, .period-card,
+        .location-card, .filter-frame, .login-card, .salesman-section,
+        .chart-section, .activity-menu, .logout-modal, .metrics-container,
+        .section-card, .content-box, .info-box, .process-section,
+        .donut-section, .chart-container, .tab-panel, .panel-content,
+        .list-card, .searchable-select, .customer-card, .sku-frame,
+        .visit-form, .plan-form-section, .outlet-list-section,
+        .ai-container, .chat-container, .provider-bar,
+        .quick-chips-container, .map-info-panel, .analytics-card,
+        .db-section, .device-section, .compliance-card,
+        .lob-section, .process-card, .summary-box {
+            background: #FFFFFF !important;
+            border: none !important;
+            box-shadow: 0 6px 20px rgba(27,200,220,0.12), 0 2px 8px rgba(0,0,0,0.06) !important;
+            border-radius: 16px !important;
+            color: #1A1A2E !important;
+        }
+
+        /* Teks di dalam card */
+        .card *, .info-card *, .metric-card *, .stat-card *,
+        .summary-card *, .detail-card *, .salesman-section *,
+        .chart-section *, .performance-card *, .activity-menu *,
+        .logout-modal *, .metrics-container *, .process-section *,
+        .filter-frame *, .profile-card *, .ai-container *,
+        .chat-container *, .db-section *, .device-section *,
+        .analytics-card *, .lob-section * { color: #1A1A2E !important; }
+
+        /* Label & judul dalam card */
+        .metric-label, .card-label, .stat-label, .section-label,
+        .chart-title, .card-title, .section-title, .panel-title {
+            color: #17B5C8 !important; font-weight: 700 !important;
+        }
+        .metric-value, .card-value, .stat-value, .big-number {
+            color: #1A1A2E !important; font-weight: 800 !important;
+        }
+        .metric-subtitle, .card-subtitle, .helper-text { color: #546E7A !important; }
+        .depo-name-inner { color: #17B5C8 !important; }
+
+        /* Metric card border kiri */
+        .metric-card.total      { border-left: 4px solid #1BC8DC !important; }
+        .metric-card.wholesaler { border-left: 4px solid #27AE60 !important; }
+        .metric-card.retail     { border-left: 4px solid #F39C12 !important; }
+        .metric-card.mti        { border-left: 4px solid #E74C3C !important; }
+
+        /* ══ LOB CARDS ══ */
+        .lob-card,
+        .lob-card.color-0, .lob-card.color-1, .lob-card.color-2,
+        .lob-card.color-3, .lob-card.color-4, .lob-card.color-5,
+        .lob-card.color-6, .lob-card.color-7, .lob-card.color-8 {
+            background: #FFFFFF !important;
+            border: 2px solid #B2EBF2 !important;
+            box-shadow: 0 4px 12px rgba(27,200,220,0.1) !important;
+        }
+        .lob-card * { color: #1A1A2E !important; }
+
+        .lob-card.achievement-high {
+            background: #E8F5E9 !important; border-color: #81C784 !important;
+            box-shadow: 0 4px 12px rgba(39,174,96,0.15) !important;
+        }
+        .lob-card.achievement-high * { color: #1B5E20 !important; }
+        .lob-card.achievement-medium {
+            background: #FFFDE7 !important; border-color: #FFD54F !important;
+            box-shadow: 0 4px 12px rgba(243,156,18,0.15) !important;
+        }
+        .lob-card.achievement-medium * { color: #5A3E00 !important; }
+        .lob-card.achievement-low {
+            background: #FFEBEE !important; border-color: #EF9A9A !important;
+            box-shadow: 0 4px 12px rgba(231,76,60,0.15) !important;
+        }
+        .lob-card.achievement-low * { color: #B71C1C !important; }
+
+        /* Total card - cyan */
+        .total-card-first {
+            background: linear-gradient(135deg, #1BC8DC, #17B5C8) !important;
+            border: none !important;
+            box-shadow: 0 8px 24px rgba(27,200,220,0.35) !important;
+        }
+        .total-card-first * { color: #FFFFFF !important; }
+        .total-card-first .achievement-percentage { color: #FFE500 !important; font-size: 28px !important; }
+        .total-card-first .lob-name { color: #FFFFFF !important; }
+
+        /* Achievement text */
+        .achievement-percentage { color: #17B5C8 !important; text-shadow: none !important; font-weight: 900 !important; }
+        .achievement-text { color: #1BC8DC !important; opacity: 1 !important; text-transform: uppercase !important; }
+        .lob-name { color: #1A1A2E !important; font-weight: 800 !important; }
+        .actual-info { color: #444 !important; opacity: 1 !important; }
+        .gap-info { color: #777 !important; opacity: 1 !important; }
+        .vs-label { color: #78909C !important; opacity: 1 !important; }
+        .vs-value { color: #17B5C8 !important; }
+
+        /* ══ TABEL ══ */
+        .table-container, .table-wrapper, .vr-table-wrapper, .data-table-wrapper {
+            background: #FFFFFF !important;
+            border-radius: 16px !important;
+            box-shadow: 0 6px 20px rgba(27,200,220,0.12) !important;
+        }
+        .table-header {
+            background: linear-gradient(135deg, #17B5C8, #1BC8DC) !important;
+            color: #FFFFFF !important; font-weight: 700 !important;
+        }
+        .data-table th, .vr-table th, table thead th {
+            background: #E0F7FA !important; color: #006064 !important;
+            border-bottom: 2px solid #B2EBF2 !important; font-weight: 700 !important;
+        }
+        .data-table td, .vr-table td, table tbody td {
+            background: #FFFFFF !important; color: #1A1A2E !important;
+            border-bottom: 1px solid #E8F8FA !important;
+        }
+        table tbody tr:nth-child(even) td { background: #F5FDFE !important; }
+        table tbody tr:hover td { background: #E0F7FA !important; }
+        .sticky-col { background: #E0F7FA !important; color: #006064 !important; }
+        .data-table tbody .sticky-col { background: #FFFFFF !important; color: #1A1A2E !important; }
+        .data-table tbody tr:nth-child(even) .sticky-col { background: #F5FDFE !important; }
+        .data-table tbody tr:hover .sticky-col { background: #E0F7FA !important; }
+        .total-row, .total-row td {
+            background: #E0F7FA !important; color: #006064 !important;
+            font-weight: 700 !important; border-top: 2px solid #1BC8DC !important;
+        }
+        .total-row .sticky-col { background: #E0F7FA !important; }
+        .total-row:hover td { background: #B2EBF2 !important; }
+        .vr-table thead tr { background: #E0F7FA !important; }
+        .vr-table tbody tr:nth-child(even) { background: #F5FDFE !important; }
+        .vr-table tbody tr:hover { background: #E0F7FA !important; }
+
+        /* Value colors */
+        .value-positive { color: #27AE60 !important; font-weight: 700 !important; }
+        .value-negative { color: #E74C3C !important; font-weight: 700 !important; }
+        .value-percentage { font-weight: 700 !important; text-align: center; }
+        /* ach colors defined below */
+
+        /* ══ TABS / FILTER ══ */
+        .tab-btn, .filter-btn, .period-btn, .chart-period,
+        .tab-scroll button, .tabs-container button, .tab-item {
+            background: rgba(255,255,255,0.7) !important;
+            border: 1px solid rgba(27,200,220,0.3) !important;
+            color: #17B5C8 !important; border-radius: 10px !important;
+        }
+        .tab-btn.active, .filter-btn.active, .period-btn.active,
+        .tab-item.active, .chart-period.active {
+            background: #1BC8DC !important; color: #FFFFFF !important;
+            border-color: #1BC8DC !important; font-weight: 700 !important;
+        }
+        .tabs-container, .tab-scroll, .filter-row, .filter-tabs {
+            background: rgba(255,255,255,0.5) !important;
+            border-radius: 14px !important;
+        }
+
+        /* ══ INPUT / SELECT ══ */
+        input[type="text"], input[type="search"], input[type="number"],
+        input[type="password"], input[type="email"], input[type="date"],
+        select, textarea, .search-input, .search-select, .input-field {
+            background: #F0FAFB !important; color: #1A1A2E !important;
+            border: 2px solid #B2EBF2 !important; border-radius: 10px !important;
+        }
+        input:focus, select:focus, textarea:focus, .search-input:focus {
+            border-color: #1BC8DC !important;
+            box-shadow: 0 0 0 3px rgba(27,200,220,0.15) !important;
+            outline: none !important; background: #FFFFFF !important;
+        }
+        input::placeholder, textarea::placeholder, .search-input::placeholder {
+            color: rgba(26,26,46,0.4) !important;
+        }
+        select option { background: #FFFFFF !important; color: #1A1A2E !important; }
+
+        /* ══ DROPDOWN ══ */
+        .search-dropdown { background: #FFFFFF !important; border: 1px solid #B2EBF2 !important; box-shadow: 0 8px 20px rgba(0,0,0,0.1) !important; }
+        .search-option { background: #FFFFFF !important; color: #1A1A2E !important; }
+        .search-option:hover, .search-option.selected { background: #E0F7FA !important; color: #006064 !important; }
+
+        /* ══ BUTTONS ══ */
+        .btn-primary, .btn-auto, .login-btn, .submit-btn, .action-btn-primary {
+            background: linear-gradient(135deg, #17B5C8, #1BC8DC) !important;
+            color: #FFFFFF !important; border: none !important;
+            box-shadow: 0 4px 14px rgba(27,200,220,0.35) !important;
+        }
+        .btn-secondary, .action-btn-secondary {
+            background: #F0FAFB !important; color: #17B5C8 !important;
+            border: 2px solid #1BC8DC !important;
+        }
+        .btn-danger  { background: #FFEBEE !important; color: #B71C1C !important; border: 1px solid #EF9A9A !important; }
+        .btn-warning { background: #FFFDE7 !important; color: #5A3E00 !important; border: 1px solid #FFD54F !important; }
+        .btn-success { background: #E8F5E9 !important; color: #1B5E20 !important; border: 1px solid #81C784 !important; }
+
+        /* ══ BOTTOM NAV ══ */
+        .bottom-nav {
+            background: #FFFFFF !important;
+            border-top: 1px solid #B2EBF2 !important;
+            box-shadow: 0 -4px 16px rgba(27,200,220,0.12) !important;
+        }
+        .nav-item { color: #90CAD0 !important; }
+        .nav-item.active {
+            color: #1BC8DC !important; background: transparent !important;
+            border-bottom: 2.5px solid #1BC8DC !important;
+        }
+        .nav-item.active .nav-label, .nav-item.active .nav-icon { color: #1BC8DC !important; }
+        .nav-item:hover:not(.disabled) { color: #17B5C8 !important; }
+        .nav-label { color: inherit !important; }
+        .nav-icon.home { background: #1BC8DC !important; color: white !important; }
+        .nav-icon.visit { background: #E74C3C !important; color: white !important; }
+        .nav-icon.data  { background: #27AE60 !important; color: white !important; }
+        .nav-icon.profile { background: #F39C12 !important; color: white !important; }
+
+        /* ══ ACTIVITY MENU ══ */
+        .activity-menu-item {
+            background: #F0FAFB !important; border: 1px solid #B2EBF2 !important;
+            border-radius: 12px !important; color: #1A1A2E !important;
+        }
+        .activity-menu-item:hover { background: #E0F7FA !important; border-color: #80DEEA !important; }
+        .activity-menu-item-title { color: #006064 !important; font-weight: 600 !important; }
+        .activity-menu-item-desc  { color: #546E7A !important; }
+        .activity-menu-title { color: #17B5C8 !important; font-weight: 700 !important; }
+        .activity-menu-header { background: #FFFFFF !important; }
+        .activity-menu-footer button, .activity-menu-close-btn {
+            background: #1BC8DC !important; color: #FFFFFF !important;
+            border: none !important; border-radius: 12px !important;
+        }
+
+        /* ══ LOGOUT MODAL ══ */
+        .logout-modal { background: #FFFFFF !important; }
+        .logout-modal-header { background: linear-gradient(135deg, #17B5C8, #1BC8DC) !important; color: #FFFFFF !important; }
+        .logout-modal-header * { color: #FFFFFF !important; }
+        .logout-modal-body, .logout-modal-footer { background: #FFFFFF !important; }
+        .logout-modal-title { color: #17B5C8 !important; }
+
+        /* ══ AI / CHAT ══ */
+        .chat-messages, #chatMessages, .messages-area {
+            background: #F0FAFB !important;
+        }
+        .message-bubble.user { background: #1BC8DC !important; color: #FFFFFF !important; border-radius: 16px 16px 4px 16px !important; }
+        .message-bubble.ai, .message-bubble.assistant {
+            background: #FFFFFF !important; color: #1A1A2E !important;
+            border: 1px solid #B2EBF2 !important; border-radius: 16px 16px 16px 4px !important;
+        }
+        .chat-input-container, .input-area, .bottom-input {
+            background: #FFFFFF !important; border-top: 1px solid #B2EBF2 !important;
+        }
+        .provider-btn, .provider-tab {
+            background: #F0FAFB !important; border: 1px solid #B2EBF2 !important; color: #546E7A !important;
+        }
+        .provider-btn.active, .provider-tab.active {
+            background: #1BC8DC !important; color: #FFFFFF !important; border-color: #1BC8DC !important;
+        }
+        .quick-chip {
+            background: #E0F7FA !important; color: #006064 !important;
+            border: 1px solid #80DEEA !important; border-radius: 20px !important;
+        }
+        .quick-chip:hover { background: #B2EBF2 !important; }
+
+        /* ══ CHARTS ══ */
+        .chart-line-so     { stroke: #1BC8DC !important; }
+        .chart-line-do     { stroke: #FF6B9D !important; }
+        .chart-line-target { stroke: #F39C12 !important; stroke-dasharray: 5,3 !important; }
+        .chart-grid-line   { stroke: rgba(27,200,220,0.15) !important; }
+        .chart-axis-text   { fill: #78909C !important; }
+
+        /* ══ PROGRESS BAR ══ */
+        .progress-bar, .progress-track { background: #E0F7FA !important; border-radius: 8px !important; }
+        .progress-fill { background: linear-gradient(90deg, #17B5C8, #1BC8DC) !important; }
+
+        /* ══ BADGES ══ */
+        .badge-success, [class*="status"][class*="good"] { background: #E8F5E9 !important; color: #1B5E20 !important; border: 1px solid #81C784 !important; }
+        .badge-danger, [class*="status"][class*="bad"]   { background: #FFEBEE !important; color: #B71C1C !important; border: 1px solid #EF9A9A !important; }
+        .badge-warning { background: #FFFDE7 !important; color: #5A3E00 !important; border: 1px solid #FFD54F !important; }
+        .badge-info    { background: #E0F7FA !important; color: #006064 !important; border: 1px solid #80DEEA !important; }
+
+        /* ══ LOADING / SPINNER ══ */
+        .spinner { border-color: rgba(27,200,220,0.2) !important; border-top-color: #1BC8DC !important; }
+        .loading-text { color: #17B5C8 !important; }
+
+        /* ══ ERRORS ══ */
+        .error-message, .error-box {
+            background: #FFEBEE !important; border: 1px solid #EF9A9A !important; color: #B71C1C !important;
+        }
+
+        /* ══ MAP / LOCATION ══ */
+        .map-container { border: 2px solid #B2EBF2 !important; border-radius: 16px !important; overflow: hidden !important; }
+        .location-info, .map-legend { background: #FFFFFF !important; color: #1A1A2E !important; }
+
+        /* ══ SCROLLBAR ══ */
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: #E0F7FA; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #1BC8DC; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #17B5C8; }
+
+        /* ══ DIVIDERS ══ */
+        hr, .divider { border-color: #B2EBF2 !important; }
+        .section-header { border-bottom: 2px solid rgba(27,200,220,0.2) !important; }
+
+        /* ══ LINKS ══ */
+        a { color: #17B5C8 !important; }
+        a:hover { color: #1BC8DC !important; }
+
+        /* ══ ADMIN BADGE ══ */
+        .admin-badge { background: linear-gradient(135deg, #F39C12, #E67E22) !important; color: white !important; }
+
+        
+        
+
+        /* ══ GAP COLOR CODING ══ */
+        .gap-positive { color: #1B8A3E !important; font-weight: 700 !important; }
+        .gap-negative { color: #C0392B !important; font-weight: 700 !important; }
+
+        /* value-positive / value-negative */
+        .value-positive { color: #1B8A3E !important; font-weight: 700 !important; }
+        .value-negative { color: #C0392B !important; font-weight: 700 !important; }
+
+        /* achievement badge di metric cards */
+        .achievement.high   { color: #1B8A3E !important; background: rgba(39,174,96,0.12) !important; }
+        .achievement.medium { color: #9A6200 !important; background: rgba(243,156,18,0.12) !important; }
+        .achievement.low    { color: #C0392B !important; background: rgba(231,76,60,0.12) !important; }
+
+        /* value-percentage default → akan di-override oleh ach-high/medium/low */
+        .value-percentage { font-weight: 700 !important; }
+    
+        
+        /* ══════════════════════════════════════════════
+           FINAL COLOR CODING - Achievement & Gap
+           ══════════════════════════════════════════════ */
+        /* Achievement % */
+        .ach-high   { color: #1B8A3E !important; font-weight: 700 !important; background: rgba(39,174,96,0.12) !important; border-radius: 4px; padding: 1px 5px; }
+        .ach-medium { color: #9A6200 !important; font-weight: 700 !important; background: rgba(243,156,18,0.12) !important; border-radius: 4px; padding: 1px 5px; }
+        .ach-low    { color: #C0392B !important; font-weight: 700 !important; background: rgba(231,76,60,0.12)  !important; border-radius: 4px; padding: 1px 5px; }
+
+        /* Gap +/- */
+        .gap-positive { color: #1B8A3E !important; font-weight: 700 !important; }
+        .gap-negative { color: #C0392B !important; font-weight: 700 !important; }
+        td.gap-positive, td.gap-negative { font-weight: 700 !important; }
+
+        /* value-percentage TIDAK boleh punya warna sendiri - biar ach-* yang atur */
+        .value-percentage { font-weight: 700 !important; }
+
+        /* Achievement badge di metric cards */
+        .achievement.high   { color: #1B8A3E !important; background: rgba(39,174,96,0.12) !important; font-weight: 700 !important; }
+        .achievement.medium { color: #9A6200 !important; background: rgba(243,156,18,0.12) !important; font-weight: 700 !important; }
+        .achievement.low    { color: #C0392B !important; background: rgba(231,76,60,0.12)  !important; font-weight: 700 !important; }
+
+        /* Pastikan td yang punya ach-* class teks-nya terlihat */
+        td.ach-high   { color: #1B8A3E !important; }
+        td.ach-medium { color: #9A6200 !important; }
+        td.ach-low    { color: #C0392B !important; }
+
+        
+        /* ══ GAP COLOR - Override value-currency ══ */
+        td.gap-positive,
+        td.gap-positive strong,
+        .data-table td.gap-positive,
+        .data-table td.value-currency.gap-positive { color: #1B8A3E !important; font-weight: 700 !important; }
+
+        td.gap-negative,
+        td.gap-negative strong,
+        .data-table td.gap-negative,
+        .data-table td.value-currency.gap-negative { color: #C0392B !important; font-weight: 700 !important; }
+
+        
+        /* ══ PERFORMANCE_ALL TEXT VISIBILITY FIX ══ */
+        body { color: #1A1A2E !important; }
+
+        /* Table headers */
+        .data-table th { background: #E0F7FA !important; color: #006064 !important; font-weight: 700 !important; border-bottom: 2px solid #B2EBF2 !important; }
+        .data-table td { color: #1A1A2E !important; }
+        .total-row td  { background: #E0F7FA !important; color: #006064 !important; font-weight: 700 !important; }
+        .project-sub-row td { background: #F0FAFB !important; color: #1A1A2E !important; }
+
+        /* POM table */
+        .pom-sku-col { color: #006064 !important; font-weight: 700 !important; }
+        .pom-table th { background: #E0F7FA !important; color: #006064 !important; }
+        .pom-table td { color: #1A1A2E !important; }
+
+        /* Visit Report section */
+        .vr-table th { color: #006064 !important; background: #E0F7FA !important; border-bottom: 2px solid #B2EBF2 !important; }
+        .vr-table td { color: #1A1A2E !important; }
+        .vr-total-row td { color: #006064 !important; background: #E0F7FA !important; font-weight: 700 !important; }
+        .vr-salesman-name { color: #1A1A2E !important; font-weight: 700 !important; }
+        .vr-currency { color: #1A1A2E !important; }
+        .vr-currency.dap    { color: #17B5C8 !important; }
+        .vr-currency.actual { color: #1B8A3E !important; }
+
+        /* VR metrics bar: bg cyan muda → teks gelap */
+        .vr-metrics-bar { background: #E0F7FA !important; }
+        .vm-label { color: #546E7A !important; font-weight: 600 !important; }
+        .vm-value { color: #1A1A2E !important; font-weight: 800 !important; }
+        .vm-value.green  { color: #1B8A3E !important; }
+        .vm-value.yellow { color: #9A6200 !important; }
+        .vm-value.red    { color: #C0392B !important; }
+        .vm-value.blue   { color: #17B5C8 !important; }
+
+        /* Badges */
+        .badge-ach.low { background: #FFEBEE !important; color: #C0392B !important; }
+        .badge-ach.mid { background: #FFFDE7 !important; color: #9A6200 !important; }
+        .badge-ach.high { background: #E8F5E9 !important; color: #1B8A3E !important; }
+        .badge-ec.bad  { background: #FFEBEE !important; color: #C0392B !important; }
+
+        /* Header VR tetap putih (bg gradient gelap) */
+        .vr-header * { color: #FFFFFF !important; }
+        .vr-header .vr-date { color: #FFE500 !important; }
+
+        /* Tabel header & section header */
+        .table-header { color: #FFFFFF !important; }
+        .section-title { color: #17B5C8 !important; }
+
+        
+        /* ══ BREAKDOWN SKU POM TABEL FIX ══ */
+        .vr-table td { color: #1A1A2E !important; }
+        .vr-salesman-name, .vr-table td div:first-child { color: #1A1A2E !important; font-weight: 700 !important; }
+        .vr-total-row td { color: #006064 !important; background: #E0F7FA !important; font-weight: 700 !important; }
+
+        </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <a href="dashboard.html" class="back-btn" id="backBtn">←</a>
+            <div class="header-title">
+                <h1>Performance Summary</h1>
+                <p>All Salesman Overview</p>
+            </div>
+            <button class="menu-btn">⋮</button>
+        </div>
+
+        <!-- Loading State -->
+        <div class="loading-spinner" id="loadingSpinner">
+            <div class="spinner"></div>
+            <div>Loading performance data...</div>
+        </div>
+
+        <!-- Error State -->
+        <div class="error-message" id="errorMessage" style="display: none;">
+            <h3>🚨 Data Loading Error</h3>
+            <p>Unable to load performance data. Please check your connection.</p>
+            <button onclick="loadPerformanceData()" style="margin-top: 10px; padding: 8px 16px; background: #1BC8DC; color: white; border: none; border-radius: 8px; cursor: pointer;">Retry</button>
+        </div>
+
+        <!-- Main Content -->
+        <div id="mainContent" style="display: none;">
+            <!-- Metrics Cards -->
+            <div class="metrics-container">
+                <div class="metrics-grid">
+                    <div class="metric-card total">
+                        <div class="metric-label">Total</div>
+                        <div class="metric-value" id="totalValue">0</div>
+                        <div class="metric-subtitle">
+                            <span>Target: <span id="totalTarget">0</span></span>
+                            <span class="achievement" id="totalAch">0%</span>
+                        </div>
+                    </div>
+                    
+                    <div class="metric-card wholesaler">
+                        <div class="metric-label">Wholesaler</div>
+                        <div class="metric-value" id="wholesalerValue">0</div>
+                        <div class="metric-subtitle">
+                            <span>Target: <span id="wholesalerTarget">0</span></span>
+                            <span class="achievement" id="wholesalerAch">0%</span>
+                        </div>
+                    </div>
+                    
+                    <div class="metric-card retail">
+                        <div class="metric-label">Retail</div>
+                        <div class="metric-value" id="retailValue">0</div>
+                        <div class="metric-subtitle">
+                            <span>Target: <span id="retailTarget">0</span></span>
+                            <span class="achievement" id="retailAch">0%</span>
+                        </div>
+                    </div>
+                    
+                    <div class="metric-card mti">
+                        <div class="metric-label">MTI</div>
+                        <div class="metric-value" id="mtiValue">0</div>
+                        <div class="metric-subtitle">
+                            <span>Target: <span id="mtiTarget">0</span></span>
+                            <span class="achievement" id="mtiAch">0%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Navigation -->
+            <div class="tab-container">
+                <div class="tab-nav">
+                    <button class="tab-btn active" onclick="switchTab('summary')">30 Pareto</button>
+                    <button class="tab-btn" onclick="switchTab('channel')">By Channel</button>
+                    <button class="tab-btn" onclick="switchTab('ranking')">By Salesman</button>
+                    <button class="tab-btn" onclick="switchTab('project')">Projects</button>
+                    <button class="tab-btn" onclick="switchTab('pom')">CA POM</button>
+                    <button class="tab-btn" id="tabBtnVisitReport" onclick="switchTab('visitReport')">📋 Visit</button>
+                </div>
+            </div>
+
+            <!-- Tab Contents -->
+            <div class="tab-content active" id="summaryContent">
+                <div class="table-container">
+                    <div class="table-header">📊 Top 30 Pareto Outlets</div>
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th class="sticky-col salesman-name-col">Nama Pelanggan</th>
+                                    <th class="col-wide value-currency">Target</th>
+                                    <th class="col-wide value-currency">Actual</th>
+                                    <th class="col-wide value-currency">Gap</th>
+                                    <th class="col-wide value-percentage">Ach%</th>
+                                    <th class="col-wide value-currency">LM</th>
+                                    <th class="col-narrow">Rank</th>
+                                </tr>
+                            </thead>
+                            <tbody id="summaryTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="channelContent">
+                <div class="table-container">
+                    <div class="table-header">📈 Channel Performance Summary</div>
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th class="sticky-col channel-group-col">Channel</th>
+                                    <th class="col-wide value-currency">Target</th>
+                                    <th class="col-wide value-currency">Actual</th>
+                                    <th class="col-wide value-currency">Gap</th>
+                                    <th class="col-wide value-percentage">Ach%</th>
+                                    <th class="col-wide value-currency">LY</th>
+                                    <th class="col-wide value-currency">LM</th>
+                                </tr>
+                            </thead>
+                            <tbody id="channelTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="rankingContent">
+                <div class="table-container">
+                    <div class="table-header">🏆 Ranking Salesman</div>
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th class="sticky-col rank-col">Rank</th>
+                                    <th class="sticky-col salesman-name-col">Salesman</th>
+                                    <th class="col-wide value-percentage">Ach%</th>
+                                    <th class="col-wide value-currency">Actual</th>
+                                    <th class="col-wide value-currency">Gap</th>
+                                    <th class="col-wide value-currency">vs LM</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rankingTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="projectContent">
+                <!-- ITG Sub-tabs -->
+                <div class="sub-tab-nav" id="projectSubTabs">
+                    <!-- Sub-tab otomatis diisi dari data ITG -->
+                </div>
+                <div class="table-container">
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr id="projectTableHead">
+                                    <th class="sticky-col salesman-name-col">Customer</th>
+                                    <th class="col-wide value-currency">Gap Qrt</th>
+                                    <th class="col-wide value-currency">T.MTD</th>
+                                    <th class="col-wide value-currency">A.MTD</th>
+                                    <th class="col-wide value-currency">Gap</th>
+                                    <th class="col-wide value-percentage">Ach%</th>
+                                    <th class="col-medium">Salesman</th>
+                                </tr>
+                            </thead>
+                            <tbody id="projectTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="pomContent">
+                <div class="table-container">
+                    <div class="table-header">📋 CA POM Performance - Total Depo</div>
+                    <div class="table-wrapper">
+                        <table class="data-table pom-table">
+                            <thead>
+                                <tr>
+                                    <th class="sticky-col pom-sku-col">SKU</th>
+                                    <th class="col-wide value-currency">Tgt</th>
+                                    <th class="col-wide value-currency">Act</th>
+                                    <th class="col-wide value-percentage">Ach</th>
+                                    <th class="col-wide value-currency">Gap</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pomTableBody">
+                                <tr>
+                                    <td colspan="5" class="empty-state">
+                                        <div class="icon">⏳</div>
+                                        <div>Memuat data CA POM...</div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== VISIT REPORT TAB ===== -->
+            <div class="tab-content" id="visitReportContent">
+                <!-- Toolbar: Date picker + buttons -->
+                <div class="visit-report-toolbar">
+                    <input type="date" id="visitReportDate" />
+                    <button class="btn-load-visit" onclick="loadVisitReport()">🔍 Load</button>
+                    <button class="btn-share-wa" id="btnShareWA" onclick="shareVisitReportAsImage()" disabled title="Share via WhatsApp">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.117.554 4.107 1.523 5.832L.057 23.676a.75.75 0 00.918.919l5.844-1.465A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.9 0-3.681-.506-5.215-1.389l-.374-.224-3.882.973.983-3.883-.232-.384A10.004 10.004 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+                    </button>
+                </div>
+
+                <!-- Loading / empty / report card -->
+                <div id="visitReportLoading" class="vr-loading" style="display:none;">
+                    <div class="spinner"></div>
+                    <div>Memuat data kunjungan dari Firebase...</div>
+                </div>
+                <div id="visitReportEmpty" class="vr-empty">
+                    <div style="font-size:40px;margin-bottom:12px;">📋</div>
+                    <div>Pilih tanggal & klik <strong>Load</strong> untuk melihat<br>laporan kunjungan semua salesman</div>
+                </div>
+
+                <div class="visit-report-scroll-wrapper">
+                    <div id="visitReportCard" style="display:none;">
+                        <!-- Dynamically rendered -->
+                    </div>
+                </div>
+            </div>
+
+        </div><!-- end mainContent -->
+        <div class="bottom-nav">
+            <div class="nav-item" onclick="goHome()">
+                <div class="nav-icon home">🏠</div>
+                <div class="nav-label">Home</div>
+            </div>
+            <div class="nav-item" onclick="showMV()">
+                <div class="nav-icon mv">👥</div>
+                <div class="nav-label">MV</div>
+            </div>
+            <div class="nav-item" id="navVisitReport" onclick="switchToVisitReport()">
+                <div class="nav-icon" style="background:#2ECC71;color:white;">📋</div>
+                <div class="nav-label">Visit Rep.</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== GLOBAL VARIABLES =====
+        let jksData = [];
+        let channelData = [];
+        let channelProjData = [];
+        let projectData = [];
+        let currentProjectITG = 'ITG Arjuna';
+        let paretoData = [];
+        let pomData = [];
+        let performanceData = [];
+        let skupelangganData = []; // For PC calculation
+
+        // ===== UTILITY FUNCTIONS =====
+        function formatCurrencyIndonesia(value) {
+            const val = Math.abs(parseFloat(value) || 0);
+            if (val >= 1000000000) return `${(val/1000000000).toFixed(1)}M`;
+            if (val >= 1000000) return `${(val/1000000).toFixed(1)}jt`;
+            if (val >= 1000) return `${(val/1000).toFixed(0)}rb`;
+            return `${val.toFixed(0)}`;
+        }
+        function formatGap(value) {
+            const num = parseFloat(value || 0);
+            const formatted = formatCurrencyIndonesia(Math.abs(num));
+            if (num > 0) return '+' + formatted;
+            if (num < 0) return '-' + formatted;
+            return '0';
+        }
+
+        // Format angka dengan pemisah titik ribuan (untuk ITG SC): 1570 → 1.570
+        function formatThousand(value) {
+            const num = Math.round(parseFloat(value) || 0);
+            return num.toLocaleString('id-ID');
+        }
+
+        // Format gap dengan tanda +/- dan format titik (untuk ITG SC)
+        function formatGapFull(value) {
+            const num = parseFloat(value || 0);
+            const formatted = formatThousand(Math.abs(num));
+            if (num > 0) return '+' + formatted;
+            if (num < 0) return '-' + formatted;
+            return '0';
+        }
+
+
+
+        // Format angka penuh dengan pemisah ribuan titik (tanpa singkatan), e.g. 2.320
+        function formatNumberFull(value) {
+            const val = Math.abs(parseFloat(value) || 0);
+            return Math.round(val).toLocaleString('id-ID');
+        }
+
+        function calculateAchievementPercentage(target, actual) {
+            const targetValue = parseFloat(target || 0);
+            const actualValue = parseFloat(actual || 0);
+            if (targetValue === 0 && actualValue > 0) return 100;
+            if (targetValue > 0) return Math.round((actualValue / targetValue) * 100);
+            return 0;
+        }
+
+        function getAchievementClass(percentage) {
+            if (percentage >= 100) return 'ach-high';
+            if (percentage >= 90) return 'ach-medium';
+            return 'ach-low';
+        }
+
+        function getGapClass(gap) {
+            const v = parseFloat(String(gap).replace(/[^0-9.\-]/g, ''));
+            return v < 0 ? 'gap-negative' : (v > 0 ? 'gap-positive' : '');
+        }
+
+        // ===== DATA LOADING =====
+        async function loadJSONData() {
+            const possiblePaths = [
+                'data/',
+                './data/',
+                './',
+                ''
+            ];
+
+            async function loadFile(filename) {
+                for (const basePath of possiblePaths) {
+                    const fullPath = basePath + filename;
+                    try {
+                        if (window.fs && window.fs.readFile) {
+                            const text = await window.fs.readFile(fullPath, { encoding: 'utf8' });
+                            return text;
+                        }
+                        const response = await fetch(fullPath);
+                        if (response.ok) {
+                            return await response.text();
+                        }
+                    } catch (error) {
+                        continue;
+                    }
+                }
+                throw new Error(`Cannot load ${filename}`);
+            }
+
+            function parseJSONLines(text) {
+                return text.split('\n')
+                    .filter(line => line.trim())
+                    .map(line => {
+                        try {
+                            return JSON.parse(line);
+                        } catch {
+                            return null;
+                        }
+                    })
+                    .filter(item => item !== null);
+            }
+
+            // Load all data files
+            try {
+                const jksText = await loadFile('d.jks.json');
+                jksData = parseJSONLines(jksText);
+            } catch (error) {
+                console.error('JKS data loading failed:', error.message);
+            }
+
+            // d.channel.json tetap dimuat sebagai fallback metrics
+            try {
+                const channelText = await loadFile('d.channel.json');
+                channelData = parseJSONLines(channelText);
+            } catch (error) {
+                console.error('Channel data loading failed:', error.message);
+            }
+
+            // d.channelproj.json — sumber utama (channel + project)
+            try {
+                const channelProjText = await loadFile('d.channelproj.json');
+                channelProjData = parseJSONLines(channelProjText);
+                console.log('ChannelProj data loaded:', channelProjData.length, 'records');
+            } catch (error) {
+                console.error('ChannelProj data loading failed:', error.message);
+                // Fallback: gunakan channelData jika channelProjData gagal
+                channelProjData = channelData;
+            }
+
+            try {
+                const projectText = await loadFile('d.project.json');
+                projectData = parseJSONLines(projectText);
+            } catch (error) {
+                console.error('Project data loading failed:', error.message);
+            }
+
+            try {
+                const paretoText = await loadFile('d.30pareto.json');
+                paretoData = parseJSONLines(paretoText);
+            } catch (error) {
+                console.error('Pareto data loading failed:', error.message);
+            }
+
+            try {
+                const pomText = await loadFile('d.tpom.json');
+                pomData = parseJSONLines(pomText);
+                console.log('POM data loaded:', pomData.length, 'records');
+            } catch (error) {
+                console.error('POM data loading failed:', error.message);
+            }
+
+            // d.skupelanggan.json — for PC (Plan Call) calculation in Visit Report
+            try {
+                const perfText = await loadFile('d.performance.json');
+                performanceData = parseJSONLines(perfText);
+                console.log('Performance data loaded:', performanceData.length, 'records');
+            } catch (error) {
+                console.error('Performance data loading failed:', error.message);
+            }
+
+            try {
+                const skupelangganText = await loadFile('d.skupelanggan.json');
+                skupelangganData = parseJSONLines(skupelangganText);
+                window.pelangganData = skupelangganData; // expose to window
+                console.log('Skupelanggan data loaded:', skupelangganData.length, 'records');
+            } catch (error) {
+                console.error('Skupelanggan data loading failed:', error.message);
+            }
+        }
+
+        // ===== SUMMARY CALCULATIONS =====
+        function calculateSalesmanSummary() {
+            // Gunakan HANYA channelProjData untuk menghindari double-count
+            const salesmanMap = new Map();
+
+            channelProjData.forEach(item => {
+                const name = item.szname;
+                if (!salesmanMap.has(name)) {
+                    salesmanMap.set(name, {
+                        name: name,
+                        id: item.szEmployeeId,
+                        target: 0,
+                        actual: 0,
+                        lm: 0,
+                        ly: 0,
+                        gap: 0,
+                        ach: 0
+                    });
+                }
+                const s = salesmanMap.get(name);
+                s.target += parseFloat(item[' T.MTD']   || 0);
+                s.actual += parseFloat(item[' A.MTD']   || 0);
+                s.lm     += parseFloat(item[' LM']      || 0);
+                s.ly     += parseFloat(item[' LY']      || 0);
+                s.gap    += parseFloat(item[' Gap MTD'] || 0);
+            });
+
+            salesmanMap.forEach(s => {
+                s.ach = calculateAchievementPercentage(s.target, s.actual);
+            });
+
+            return Array.from(salesmanMap.values());
+        }
+
+        function calculateChannelProjGrouped() {
+            // Agregasi dari channelProjData (sumber tunggal)
+            const groupMap = {};
+            channelProjData.forEach(item => {
+                const ch   = item['Channel Group'] || 'Lainnya';
+                const proj = item['Project']       || '-';
+                if (!groupMap[ch]) {
+                    groupMap[ch] = { target:0, actual:0, gap:0, ly:0, threeLM:0, lm:0, projects:{} };
+                }
+                const g = groupMap[ch];
+                g.target  += parseFloat(item[' T.MTD']   || 0);
+                g.actual  += parseFloat(item[' A.MTD']   || 0);
+                g.gap     += parseFloat(item[' Gap MTD'] || 0);
+                g.ly      += parseFloat(item[' LY']      || 0);
+                g.threeLM += parseFloat(item[' 3LM']     || 0);
+                g.lm      += parseFloat(item[' LM']      || 0);
+                if (!g.projects[proj]) {
+                    g.projects[proj] = { target:0, actual:0, gap:0, ly:0, threeLM:0, lm:0, cr:0, ca:0 };
+                }
+                const p = g.projects[proj];
+                p.target  += parseFloat(item[' T.MTD']   || 0);
+                p.actual  += parseFloat(item[' A.MTD']   || 0);
+                p.gap     += parseFloat(item[' Gap MTD'] || 0);
+                p.ly      += parseFloat(item[' LY']      || 0);
+                p.threeLM += parseFloat(item[' 3LM']     || 0);
+                p.lm      += parseFloat(item[' LM']      || 0);
+                p.cr      += parseInt(item['CR']         || 0);
+                p.ca      += parseInt(item['CA']         || 0);
+            });
+            return groupMap;
+        }
+
+        // ===== UI UPDATE FUNCTIONS =====
+        function updateMetricsCards() {
+            // Gunakan channelProjData sebagai sumber tunggal
+            const channelTotals = {};
+            let totalTarget = 0, totalActual = 0;
+
+            channelProjData.forEach(item => {
+                const ch = item['Channel Group'];
+                if (!channelTotals[ch]) channelTotals[ch] = { target: 0, actual: 0 };
+                channelTotals[ch].target += parseFloat(item[' T.MTD'] || 0);
+                channelTotals[ch].actual += parseFloat(item[' A.MTD'] || 0);
+                totalTarget += parseFloat(item[' T.MTD'] || 0);
+                totalActual += parseFloat(item[' A.MTD'] || 0);
+            });
+
+            // Update total card
+            document.getElementById('totalValue').textContent = formatCurrencyIndonesia(totalActual);
+            document.getElementById('totalTarget').textContent = formatCurrencyIndonesia(totalTarget);
+            const totalAchPct = calculateAchievementPercentage(totalTarget, totalActual);
+            const totalAchEl = document.getElementById('totalAch');
+            totalAchEl.textContent = `${totalAchPct}%`;
+            totalAchEl.className = `achievement ${getAchievementClass(totalAchPct).replace('ach-', '')}`;
+
+            // Update per-channel cards
+            ['Wholesaler', 'Retail', 'MTI'].forEach(ch => {
+                const data = channelTotals[ch] || { target: 0, actual: 0 };
+                const key  = ch.toLowerCase();
+                document.getElementById(`${key}Value`).textContent  = formatCurrencyIndonesia(data.actual);
+                document.getElementById(`${key}Target`).textContent = formatCurrencyIndonesia(data.target);
+                const achPct = calculateAchievementPercentage(data.target, data.actual);
+                const achEl  = document.getElementById(`${key}Ach`);
+                achEl.textContent = `${achPct}%`;
+                achEl.className   = `achievement ${getAchievementClass(achPct).replace('ach-', '')}`;
+            });
+        }
+
+        function updateSummaryTable() {
+            const tbody = document.getElementById('summaryTableBody');
+            
+            if (paretoData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">📊</div><div>No pareto data available</div></td></tr>';
+                return;
+            }
+
+            // Sort by " T.MTD" (with leading space) descending and take top 30
+            const top30Outlets = paretoData
+                .sort((a, b) => parseFloat(b[' T.MTD'] || 0) - parseFloat(a[' T.MTD'] || 0))
+                .slice(0, 30);
+
+            // Calculate totals from top 30
+            let totalTarget = 0, totalActual = 0, totalGap = 0, totalLM = 0;
+            top30Outlets.forEach(outlet => {
+                totalTarget += parseFloat(outlet[' T.MTD'] || 0);
+                totalActual += parseFloat(outlet[' A.MTD'] || 0);
+                totalGap += parseFloat(outlet[' Gap MTD'] || 0);
+                totalLM += parseFloat(outlet[' LM'] || 0);
+            });
+
+            const totalAchPercentage = calculateAchievementPercentage(totalTarget, totalActual);
+
+            let html = `
+                <tr class="total-row">
+                    <td class="sticky-col salesman-name-col"><strong>TOTAL</strong></td>
+                    <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(totalTarget)}</strong></td>
+                    <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(totalActual)}</strong></td>
+                    <td class="value-currency col-wide ${getGapClass(totalGap)}"><strong>${formatGap(totalGap)}</strong></td>
+                    <td class="value-percentage col-wide ${getAchievementClass(totalAchPercentage)}"><strong>${totalAchPercentage}%</strong></td>
+                    <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(totalLM)}</strong></td>
+                    <td class="col-narrow">-</td>
+                </tr>
+            `;
+
+            top30Outlets.forEach((outlet, index) => {
+                const target = parseFloat(outlet[' T.MTD'] || 0);
+                const actual = parseFloat(outlet[' A.MTD'] || 0);
+                const gap = parseFloat(outlet[' Gap MTD'] || 0);
+                const lm = parseFloat(outlet[' LM'] || 0);
+                const achPercentage = calculateAchievementPercentage(target, actual);
+                const customerName = outlet['Nama Pelanggan'] || 'Unknown';
+                
+                html += `
+                    <tr>
+                        <td class="sticky-col salesman-name-col">
+                            <strong style="font-size: 11px;">${customerName}</strong>
+                        </td>
+                        <td class="value-currency col-wide">${formatCurrencyIndonesia(target)}</td>
+                        <td class="value-currency col-wide">${formatCurrencyIndonesia(actual)}</td>
+                        <td class="value-currency col-wide ${getGapClass(gap)}">${formatGap(gap)}</td>
+                        <td class="value-percentage col-wide ${getAchievementClass(achPercentage)}">${achPercentage}%</td>
+                        <td class="value-currency col-wide">${formatCurrencyIndonesia(lm)}</td>
+                        <td class="col-narrow"><span class="rank-badge">#${index + 1}</span></td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+        }
+
+        function updateChannelTable() {
+            const groupMap = calculateChannelProjGrouped();
+            const tbody = document.getElementById('channelTableBody');
+
+            if (Object.keys(groupMap).length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">📈</div><div>No channel data available</div></td></tr>';
+                return;
+            }
+
+            // Grand totals
+            let totalTarget=0, totalActual=0, totalGap=0, totalLY=0, totalLM=0;
+            Object.values(groupMap).forEach(g => {
+                totalTarget += g.target; totalActual += g.actual; totalGap += g.gap;
+                totalLY += g.ly; totalLM += g.lm;
+            });
+            const totalAch = calculateAchievementPercentage(totalTarget, totalActual);
+
+            let html = `
+                <tr class="total-row">
+                    <td class="sticky-col channel-group-col"><strong>TOTAL</strong></td>
+                    <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(totalTarget)}</strong></td>
+                    <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(totalActual)}</strong></td>
+                    <td class="value-currency col-wide ${getGapClass(totalGap)}"><strong>${formatGap(totalGap)}</strong></td>
+                    <td class="value-percentage col-wide ${getAchievementClass(totalAch)}"><strong>${totalAch}%</strong></td>
+                    <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(totalLY)}</strong></td>
+                    <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(totalLM)}</strong></td>
+                </tr>`;
+
+            Object.entries(groupMap).forEach(([chName, g]) => {
+                const chAch = calculateAchievementPercentage(g.target, g.actual);
+                html += `
+                <tr class="channel-group-row">
+                    <td class="sticky-col channel-group-col"><strong>📂 ${chName}</strong></td>
+                    <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(g.target)}</strong></td>
+                    <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(g.actual)}</strong></td>
+                    <td class="value-currency col-wide ${getGapClass(g.gap)}"><strong>${formatGap(g.gap)}</strong></td>
+                    <td class="value-percentage col-wide ${getAchievementClass(chAch)}"><strong>${chAch}%</strong></td>
+                    <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(g.ly)}</strong></td>
+                    <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(g.lm)}</strong></td>
+                </tr>`;
+
+                Object.entries(g.projects).forEach(([projName, p]) => {
+                    const projAch = calculateAchievementPercentage(p.target, p.actual);
+                    html += `
+                <tr class="project-sub-row">
+                    <td class="sticky-col channel-group-col" style="padding-left:22px;">
+                        <span style="color:#78909C;">↳</span> <strong>${projName}</strong>
+                        <small style="color:#78909C;font-size:9px;margin-left:4px;">CR:${p.cr} CA:${p.ca}</small>
+                    </td>
+                    <td class="value-currency col-wide">${formatCurrencyIndonesia(p.target)}</td>
+                    <td class="value-currency col-wide">${formatCurrencyIndonesia(p.actual)}</td>
+                    <td class="value-currency col-wide ${getGapClass(p.gap)}">${formatGap(p.gap)}</td>
+                    <td class="value-percentage col-wide ${getAchievementClass(projAch)}">${projAch}%</td>
+                    <td class="value-currency col-wide">${formatCurrencyIndonesia(p.ly)}</td>
+                    <td class="value-currency col-wide">${formatCurrencyIndonesia(p.lm)}</td>
+                </tr>`;
+                });
+            });
+
+            tbody.innerHTML = html;
+        }
+
+        function updateRankingTable() {
+            const salesmanSummary = calculateSalesmanSummary();
+            const tbody = document.getElementById('rankingTableBody');
+            
+            if (salesmanSummary.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><div class="icon">🏆</div><div>No ranking data available</div></td></tr>';
+                return;
+            }
+
+            // Sort by achievement percentage descending
+            salesmanSummary.sort((a, b) => b.ach - a.ach);
+            
+            // Take top 20
+            const topSalesman = salesmanSummary.slice(0, 20);
+
+            let html = '';
+            topSalesman.forEach((salesman, index) => {
+                const vsLM = salesman.lm > 0 ? salesman.actual - salesman.lm : 0;
+                const vsLMPercentage = salesman.lm > 0 ? Math.round(((salesman.actual - salesman.lm) / salesman.lm) * 100) : 0;
+                
+                html += `
+                    <tr onclick="viewSalesmanDetail('${salesman.name}')" style="cursor: pointer;">
+                        <td class="sticky-col rank-col"><span class="rank-badge">#${index + 1}</span></td>
+                        <td class="sticky-col salesman-name-col">
+                            <strong style="font-size: 11px;">${salesman.name}</strong>
+                        </td>
+                        <td class="value-percentage col-wide ${getAchievementClass(salesman.ach)}">${salesman.ach}%</td>
+                        <td class="value-currency col-wide">${formatCurrencyIndonesia(salesman.actual)}</td>
+                        <td class="value-currency col-wide ${getGapClass(salesman.gap)}">${formatGap(salesman.gap)}</td>
+                        <td class="value-currency col-wide ${getGapClass(vsLM)}">${vsLMPercentage > 0 ? '+' : ''}${vsLMPercentage}%</td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+        }
+
+        // ===== DYNAMIC ITG SUB-TABS =====
+        // Program ITG yang datanya dalam satuan (bukan rupiah) => format angka penuh tanpa rb/jt
+        const ITG_UNIT_PROGRAMS = ['ITG SC'];
+
+        function buildITGSubTabs() {
+            const container = document.getElementById('projectSubTabs');
+            if (!container) return;
+
+            // Kumpulkan semua nilai ITG unik dari data
+            const itgSet = new Set();
+            projectData.forEach(p => {
+                const name = (p.ITG || '').trim();
+                if (name) itgSet.add(name);
+            });
+
+            // Urutan yang dikenal lebih dulu, sisanya alfabet
+            const KNOWN_ORDER = ['ITG Arjuna', 'ITG Bima', 'ITG SC', 'Kantinku', 'Kantinku GBS', 'CLBK Bima', 'LCLB Arjuna'];
+            const sorted = [
+                ...KNOWN_ORDER.filter(k => itgSet.has(k)),
+                ...[...itgSet].filter(k => !KNOWN_ORDER.includes(k)).sort()
+            ];
+
+            if (sorted.length === 0) return;
+
+            container.innerHTML = sorted.map((itg, i) =>
+                `<button class="sub-tab-btn${i === 0 ? ' active' : ''}" onclick="switchProjectITG('${itg}')">${itg}</button>`
+            ).join('');
+
+            // Set program pertama sebagai aktif
+            currentProjectITG = sorted[0];
+        }
+
+        function switchProjectITG(itg) {
+            currentProjectITG = itg;
+            document.querySelectorAll('.sub-tab-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.textContent.trim() === itg);
+            });
+            // showGapQrt: tampilkan kolom Gap Qrt jika ada data non-zero untuk program ini
+            const itgRecords = projectData.filter(p => (p.ITG || '').trim() === itg);
+            const showGapQrt = itgRecords.some(p => parseFloat(p['Gap Qrt'] || 0) !== 0);
+            const thead = document.getElementById('projectTableHead');
+            if (thead) {
+                thead.innerHTML = `
+                    <th class="sticky-col salesman-name-col">Customer</th>
+                    ${showGapQrt ? '<th class="col-wide value-currency">Gap Qrt</th>' : ''}
+                    <th class="col-wide value-currency">T.MTD</th>
+                    <th class="col-wide value-currency">A.MTD</th>
+                    <th class="col-wide value-currency">Gap</th>
+                    <th class="col-wide value-percentage">Ach%</th>
+                    <th class="col-medium">Salesman</th>
+                `;
+            }
+            updateProjectTable();
+        }
+
+        function updateProjectTable() {
+            const tbody = document.getElementById('projectTableBody');
+            // useFullFormat: format angka penuh (tanpa rb/jt) untuk program satuan seperti ITG SC
+            const useFullFormat = ITG_UNIT_PROGRAMS.includes(currentProjectITG);
+            const itgRecords = projectData.filter(p => (p.ITG || '').trim() === currentProjectITG);
+            const showGapQrt = itgRecords.some(p => parseFloat(p['Gap Qrt'] || 0) !== 0);
+            const fmt = (val) => useFullFormat ? formatThousand(val) : formatCurrencyIndonesia(val);
+            const fmtGap = (val) => useFullFormat ? formatGapFull(val) : formatGap(val);
+            const colSpan = showGapQrt ? 7 : 6;
+
+            if (projectData.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="${colSpan}" class="empty-state"><div class="icon">🎯</div><div>No project data available</div></td></tr>`;
+                return;
+            }
+
+            const filtered = projectData.filter(p => (p.ITG || '').trim() === currentProjectITG);
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="${colSpan}" class="empty-state"><div class="icon">🎯</div><div>Tidak ada data untuk ${currentProjectITG}</div></td></tr>`;
+                return;
+            }
+
+            const sortedProjects = [...filtered].sort((a, b) => 
+                parseFloat(b['A.MTD'] || 0) - parseFloat(a['A.MTD'] || 0)
+            );
+
+            let html = '';
+            sortedProjects.forEach(project => {
+                const target   = parseFloat(project['T.MTD']   || 0);
+                const actual   = parseFloat(project['A.MTD']   || 0);
+                const gap      = parseFloat(project['Gap MTD'] || 0);
+                const gapQrt   = parseFloat(project['Gap Qrt'] || 0);
+                const achPercentage = calculateAchievementPercentage(target, actual);
+                
+                html += `
+                    <tr>
+                        <td class="sticky-col salesman-name-col">
+                            <strong style="font-size: 10px;">${(project['CUST NAME'] || '').substring(0, 20)}</strong>
+                        </td>
+                        ${showGapQrt ? `<td class="value-currency col-wide ${getGapClass(gapQrt)}">${fmtGap(gapQrt)}</td>` : ''}
+                        <td class="value-currency col-wide">${fmt(target)}</td>
+                        <td class="value-currency col-wide">${fmt(actual)}</td>
+                        <td class="value-currency col-wide ${getGapClass(gap)}">${fmtGap(gap)}</td>
+                        <td class="value-percentage col-wide ${getAchievementClass(achPercentage)}">${achPercentage}%</td>
+                        <td class="col-medium">
+                            <small style="font-size: 9px;">${(project.szname || '').substring(0, 10)}</small>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+        }
+
+        function updatePOMTable() {
+            const tbody = document.getElementById('pomTableBody');
+            
+            if (pomData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><div class="icon">📋</div><div>Data CA POM tidak tersedia</div></td></tr>';
+                return;
+            }
+
+            // Aggregate POM data by SKU
+            const skuMap = new Map();
+            
+            pomData.forEach(item => {
+                const sku = item.SKU || 'UNKNOWN';
+                
+                if (!skuMap.has(sku)) {
+                    skuMap.set(sku, {
+                        sku: sku,
+                        target: 0,
+                        actual: 0,
+                        gap: 0,
+                        achSum: 0,
+                        count: 0
+                    });
+                }
+                
+                const skuData = skuMap.get(sku);
+                skuData.cr += parseFloat(item['CR JKS'] || 0);
+                skuData.target += parseFloat(item['T.POMAdj'] || 0);
+                skuData.actual += parseFloat(item['A.POM'] || 0);
+                skuData.achSum += parseFloat(item['Ach_POM'] || 0);
+                skuData.count += 1;
+            });
+
+            // Calculate totals
+            let totalCR = 0, totalTarget = 0, totalActual = 0, totalGap = 0;
+            let totalAchSum = 0, totalCount = 0;
+
+            skuMap.forEach(skuData => {
+                skuData.gap = skuData.actual - skuData.target;
+                totalTarget += skuData.target;
+                totalActual += skuData.actual;
+                totalGap += skuData.gap;
+                totalAchSum += skuData.achSum;
+                totalCount += skuData.count;
+            });
+
+            const avgAchPercentage = totalTarget > 0 ? Math.round((totalActual / totalTarget) * 100) : 0;
+
+            // Format angka POM: titik ribuan, misal 1.250 bukan 1rb
+            const fmtPOM = (val) => Math.round(parseFloat(val) || 0).toLocaleString('id-ID');
+            const fmtGapPOM = (num) => {
+                const n = parseFloat(num || 0);
+                const abs = fmtPOM(Math.abs(n));
+                if (n > 0) return '+' + abs;
+                if (n < 0) return '-' + abs;
+                return '0';
+            };
+
+            // Convert map to array and sort by actual descending
+            const skuArray = Array.from(skuMap.values()).sort((a, b) => b.actual - a.actual);
+
+            // Build HTML with total row first
+            let html = `
+                <tr class="total-row">
+                    <td class="sticky-col pom-sku-col"><strong>TOTAL</strong></td>
+                    <td><strong>${fmtPOM(totalTarget)}</strong></td>
+                    <td><strong>${fmtPOM(totalActual)}</strong></td>
+                    <td class="${getAchievementClass(avgAchPercentage)}"><strong>${avgAchPercentage}%</strong></td>
+                    <td class="${getGapClass(totalGap)}"><strong>${fmtGapPOM(totalGap)}</strong></td>
+                </tr>
+            `;
+
+            // Add individual SKU rows
+            skuArray.forEach(skuData => {
+                const achPercentage = skuData.target > 0 ? Math.round((skuData.actual / skuData.target) * 100) : 0;
+                
+                html += `
+                    <tr>
+                        <td class="sticky-col pom-sku-col">
+                            <strong style="font-size: 10px;">${skuData.sku}</strong>
+                        </td>
+                        <td>${fmtPOM(skuData.target)}</td>
+                        <td>${fmtPOM(skuData.actual)}</td>
+                        <td class="${getAchievementClass(achPercentage)}">${achPercentage}%</td>
+                        <td class="${getGapClass(skuData.gap)}">${fmtGapPOM(skuData.gap)}</td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+        }
+
+        // ===== TAB SWITCHING =====
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(tabName + 'Content').classList.add('active');
+        }
+
+        // ===== NAVIGATION FUNCTIONS =====
+        function viewSalesmanDetail(salesmanName) {
+            const salesman = channelProjData.find(item => item.szname === salesmanName) ||
+                             jksData.find(item => item.szname === salesmanName);
+            if (salesman && salesman.szEmployeeId) {
+                window.location.href = `performance.html?id=${salesman.szEmployeeId}`;
+            }
+        }
+
+        function goHome() { window.location.href = 'dashboard.html'; }
+        function showVisitOutlet() { window.location.href = 'visit.html'; }
+        function showIncentive() { window.location.href = 'dashboard_insentif_sales.html'; }
+        function showMV() { window.location.href = 'MV.html'; }
+        function showProfile() { window.location.href = 'profile.html'; }
+
+        // ===== MAIN LOAD FUNCTION =====
+        async function loadPerformanceData() {
+            try {
+                showLoading(true);
+                hideError();
+
+                await loadJSONData();
+                
+                // Update all sections
+                updateMetricsCards();
+                updateSummaryTable();
+                updateChannelTable();
+                updateRankingTable();
+                buildITGSubTabs();                   // bangun sub-tab otomatis dari data
+                switchProjectITG(currentProjectITG); // init program pertama
+                updatePOMTable();
+                
+                showLoading(false);
+                showMainContent(true);
+
+            } catch (error) {
+                console.error('Error loading performance data:', error);
+                showLoading(false);
+                showError(true, error.message);
+            }
+        }
+
+        // ===== UI CONTROL FUNCTIONS =====
+        function showLoading(show) {
+            document.getElementById('loadingSpinner').style.display = show ? 'flex' : 'none';
+        }
+
+        function showError(show, message = '') {
+            const errorElement = document.getElementById('errorMessage');
+            errorElement.style.display = show ? 'block' : 'none';
+            if (show && message) {
+                errorElement.querySelector('p').textContent = message;
+            }
+        }
+
+        function hideError() { showError(false); }
+
+        function showMainContent(show) {
+            document.getElementById('mainContent').style.display = show ? 'block' : 'none';
+        }
+
+        // ===== LOGIN CHECK =====
+        function checkLoginStatus() {
+            const isLoggedIn = sessionStorage.getItem('isLoggedIn');
+            const currentUser = sessionStorage.getItem('currentUser');
+            
+            if (!isLoggedIn || !currentUser) {
+                window.location.href = 'index.html';
+                return false;
+            }
+            return true;
+        }
+
+        // ===== VISIT REPORT FUNCTIONS =====
+
+        function switchToVisitReport() {
+            // Activate tab button
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('tabBtnVisitReport').classList.add('active');
+            // Show tab content
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById('visitReportContent').classList.add('active');
+            // Scroll to top
+            document.getElementById('mainContent').scrollTop = 0;
+            // Set default date = today if not already set
+            const dateInput = document.getElementById('visitReportDate');
+            if (!dateInput.value) {
+                const today = new Date();
+                const y = today.getFullYear();
+                const m = String(today.getMonth()+1).padStart(2,'0');
+                const d = String(today.getDate()).padStart(2,'0');
+                dateInput.value = `${y}-${m}-${d}`;
+            }
+        }
+
+        function fmtIDDate(dateStr) {
+            const months = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+            const days   = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+            const d = new Date(dateStr + 'T00:00:00');
+            return `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+        }
+
+        function fmtRp(val) {
+            const n = Math.abs(parseFloat(val) || 0);
+            if (n >= 1e9) return `${(n/1e9).toFixed(2)}M`;
+            if (n >= 1e6) return `${(n/1e6).toFixed(2)}jt`;
+            if (n >= 1e3) return `${(n/1e3).toFixed(0)}rb`;
+            return `${n.toFixed(0)}`;
+        }
+
+        function getECBadgeClass(ecPct) {
+            if (ecPct >= 90) return 'badge-ec';
+            if (ecPct >= 75) return 'badge-ec warn';
+            return 'badge-ec bad';
+        }
+        function getAchBadgeClass(pct) {
+            if (pct >= 100) return 'badge-ach high';
+            if (pct >= 90)  return 'badge-ach mid';
+            return 'badge-ach low';
+        }
+
+        async function loadVisitReport() {
+            const dateStr = document.getElementById('visitReportDate').value;
+            if (!dateStr) { alert('Pilih tanggal terlebih dahulu'); return; }
+
+            // Wait for Firebase to be ready (module loads async)
+            let attempts = 0;
+            while (!window.firebaseDB && attempts < 20) {
+                await new Promise(r => setTimeout(r, 200));
+                attempts++;
+            }
+
+            if (!window.firebaseDB) {
+                alert('⚠️ Firebase belum siap. Tunggu beberapa detik lalu coba lagi.');
+                return;
+            }
+
+            document.getElementById('visitReportEmpty').style.display = 'none';
+            document.getElementById('visitReportCard').style.display = 'none';
+            document.getElementById('visitReportLoading').style.display = 'flex';
+            document.getElementById('btnShareWA').disabled = true;
+
+            try {
+                // Build salesman list from channelProjData
+                const salesmanMap = new Map();
+                channelProjData.forEach(item => {
+                    const rawId = (item.szEmployeeId || '').toString().trim();
+                    if (rawId && item.szname) {
+                        if (!salesmanMap.has(rawId)) {
+                            salesmanMap.set(rawId, {
+                                id: rawId,
+                                name: (item.szname || '').trim(),
+                                type: (item['Tipe Salesman'] || item.tipe || '').trim() || '-',
+                                firebaseId: null  // will be resolved below
+                            });
+                        }
+                    }
+                });
+                if (jksData && jksData.length > 0) {
+                    jksData.forEach(item => {
+                        const id = (item.szEmployeeId || '').toString().trim();
+                        if (salesmanMap.has(id) && item['Tipe Salesman']) {
+                            salesmanMap.get(id).type = item['Tipe Salesman'];
+                        }
+                    });
+                }
+                const salesmanList = Array.from(salesmanMap.values());
+
+                // ── pelangganData for PC ──
+                const pelangganData = skupelangganData.length > 0 ? skupelangganData : (window.pelangganData || []);
+                const pelangganByNormName = {};
+                const pelangganByEmpId    = {};
+                pelangganData.forEach(p => {
+                    const nm = (p.szname || '').trim().toLowerCase();
+                    if (nm) {
+                        if (!pelangganByNormName[nm]) pelangganByNormName[nm] = [];
+                        pelangganByNormName[nm].push(p);
+                    }
+                    const eid = (p.szEmployeeId || '').toString().trim();
+                    if (eid) {
+                        if (!pelangganByEmpId[eid]) pelangganByEmpId[eid] = [];
+                        pelangganByEmpId[eid].push(p);
+                    }
+                });
+                console.log('📋 pelangganData rows:', pelangganData.length,
+                    '| distinct names:', Object.keys(pelangganByNormName).length);
+
+                // ═══════════════════════════════════════════════════════════
+                // 🔑 DISCOVER REAL FIREBASE IDs from visits node
+                // visits/{firebaseId}/{visitKey}.salesman_id (or salesman_name)
+                // This resolves ID format mismatch between JSON files and Firebase
+                // ═══════════════════════════════════════════════════════════
+                // nameToFirebaseId: normalized_salesman_name → firebaseId
+                const nameToFirebaseId = {};
+
+                try {
+                    const visitsRootRef  = window.firebaseRef(window.firebaseDB, `visits`);
+                    const visitsRootSnap = await window.firebaseGet(visitsRootRef);
+                    if (visitsRootSnap.exists()) {
+                        visitsRootSnap.forEach(idNode => {
+                            const fbId = idNode.key;
+                            // Grab any child to read salesman_name / salesman_id
+                            idNode.forEach(visitNode => {
+                                const v = visitNode.val();
+                                if (v && v.salesman_name) {
+                                    const normName = v.salesman_name.trim().toLowerCase();
+                                    nameToFirebaseId[normName] = fbId;
+                                }
+                                return true; // stop after first child
+                            });
+                        });
+                    }
+                    console.log('🔑 Firebase ID map built from visits:', nameToFirebaseId);
+                } catch(e) {
+                    console.warn('⚠️ Could not build Firebase ID map from visits:', e.message);
+                }
+
+                // Also build from sku_pom_checklist (has salesman_name inside)
+                try {
+                    const skuRootRef  = window.firebaseRef(window.firebaseDB, `sku_pom_checklist`);
+                    const skuRootSnap = await window.firebaseGet(skuRootRef);
+                    if (skuRootSnap.exists()) {
+                        skuRootSnap.forEach(idNode => {
+                            const fbId = idNode.key;
+                            idNode.forEach(dateNode => {
+                                dateNode.forEach(outletNode => {
+                                    const v = outletNode.val();
+                                    if (v && v.salesman_name) {
+                                        const normName = v.salesman_name.trim().toLowerCase();
+                                        if (!nameToFirebaseId[normName]) {
+                                            nameToFirebaseId[normName] = fbId;
+                                        }
+                                    }
+                                    return true;
+                                });
+                                return true;
+                            });
+                        });
+                    }
+                    console.log('🔑 Firebase ID map enriched from sku_pom_checklist:', nameToFirebaseId);
+                } catch(e) {
+                    console.warn('⚠️ Could not enrich from sku_pom_checklist:', e.message);
+                }
+
+                // Assign resolved firebaseId to each salesman
+                salesmanList.forEach(sm => {
+                    const normName = sm.name.toLowerCase();
+                    sm.firebaseId = nameToFirebaseId[normName] || sm.id; // fallback to json id
+                    if (sm.firebaseId !== sm.id) {
+                        console.log(`🔑 ID resolved: ${sm.name} → json:${sm.id} → firebase:${sm.firebaseId}`);
+                    }
+                });
+
+                // ── Plan DAP: fetch parallel using firebaseId ──
+                const planDapByFirebaseId = {};
+                await Promise.all(salesmanList.map(async sm => {
+                    const ids = [...new Set([sm.firebaseId, sm.id, parseInt(sm.id,10).toString()])];
+                    for (const tryId of ids) {
+                        try {
+                            const ref1  = window.firebaseRef(window.firebaseDB, `plan_dap/${tryId}/${dateStr}`);
+                            const snap1 = await window.firebaseGet(ref1);
+                            if (snap1.exists()) {
+                                planDapByFirebaseId[sm.firebaseId] = Number(snap1.val().amount || 0);
+                                console.log(`💰 Plan DAP ${sm.name}: Rp ${planDapByFirebaseId[sm.firebaseId].toLocaleString('id-ID')}`);
+                                break;
+                            }
+                        } catch(e) { /* skip */ }
+                    }
+                    if (!planDapByFirebaseId[sm.firebaseId]) {
+                        console.warn(`⚠️ Plan DAP not found for ${sm.name} (tried: ${[...new Set([sm.firebaseId, sm.id])].join(', ')})`);
+                    }
+                }));
+                console.log('💰 Plan DAP loaded:', Object.keys(planDapByFirebaseId).length, 'entries');
+
+                // Fetch visits for each salesman from Firebase
+                const reportRows = [];
+
+                for (const sm of salesmanList) {
+                    try {
+                        // ── Fetch visits using resolved firebaseId ──
+                        let snap = null;
+                        try {
+                            const visitsRef = window.firebaseRef(window.firebaseDB, `visits/${sm.firebaseId}`);
+                            snap = await window.firebaseGet(visitsRef);
+                        } catch(e) {
+                            console.warn(`⚠️ Cannot read visits for ${sm.name} (${sm.firebaseId}):`, e.message);
+                        }
+
+                        // ── PC calculation ──
+                        const todayDayMap = { 0:'MINGGU',1:'SENIN',2:'SELASA',3:'RABU',4:'KAMIS',5:'JUMAT',6:'SABTU' };
+                        const dateObj  = new Date(dateStr + 'T00:00:00');
+                        const todayDay = todayDayMap[dateObj.getDay()];
+                        const normName = sm.name.toLowerCase();
+                        const candidates = pelangganByNormName[normName]
+                                        || pelangganByEmpId[sm.firebaseId]
+                                        || pelangganByEmpId[sm.id]
+                                        || [];
+                        const uniquePCOutlets = new Set();
+                        candidates.forEach(p => {
+                            if (!p.Nama_Pelanggan) return;
+                            const hk = (p.Hari_Kunjungan || '').toUpperCase().trim();
+                            if (hk === todayDay || (hk.includes('2&4') && hk.includes(todayDay))) {
+                                uniquePCOutlets.add(p.Nama_Pelanggan);
+                            }
+                        });
+                        const pc = uniquePCOutlets.size;
+                        if (pc === 0) console.warn(`⚠️ PC=0 for ${sm.name} | normName:"${normName}" | candidates:${candidates.length} | day:${todayDay}`);
+
+                        // Process visits
+                        let ac = 0, ec = 0, actualSO = 0;
+                        let tokoTutupList = [], tokoTidakOrderList = [], tokoTidakSelesaiList = [];
+                        const visitedSet = new Set();
+
+                        if (snap && snap.exists()) {
+                            Object.values(snap.val()).forEach(v => {
+                                if (!v.start_time) return;
+                                const vDate = v.start_time.split('T')[0];
+                                if (vDate !== dateStr) return;
+
+                                const name   = v.outlet_name || '';
+                                const status = v.visit_status || '';
+                                const order  = v.order_status || '';
+                                const amt    = Number(v.so_amount || 0);
+
+                                if (status === 'completed') {
+                                    visitedSet.add(name);
+                                    if (order === 'ada_so') {
+                                        ec++;
+                                        actualSO += amt;
+                                    } else if (order === 'toko_tutup') {
+                                        tokoTutupList.push(name);
+                                    } else if (order === 'toko_tidak_order') {
+                                        tokoTidakOrderList.push(name);
+                                    }
+                                } else if (['started','paused','resumed'].includes(status)) {
+                                    tokoTidakSelesaiList.push(name);
+                                }
+                            });
+                            ac = visitedSet.size;
+                        }
+
+                        // ── Plan DAP from prefetched map ──
+                        const planDAP = planDapByFirebaseId[sm.firebaseId] || 0;
+
+                        // ── SKU POM from Firebase using resolved firebaseId ──
+                        const skuMap = {};
+                        try {
+                            const skuRef  = window.firebaseRef(window.firebaseDB, `sku_pom_checklist/${sm.firebaseId}/${dateStr}`);
+                            const skuSnap = await window.firebaseGet(skuRef);
+                            if (skuSnap.exists()) {
+                                console.log(`🏷️ SKU POM found for ${sm.name}:`, Object.keys(skuSnap.val()).length, 'outlets');
+                                Object.values(skuSnap.val()).forEach(outletData => {
+                                    const chk = outletData.checklist || outletData || {};
+                                    Object.keys(chk).forEach(rawSku => {
+                                        if (chk[rawSku] === true) {
+                                            const sku = rawSku.split('/')[0].trim();
+                                            skuMap[sku] = (skuMap[sku] || 0) + 1;
+                                        }
+                                    });
+                                });
+                            } else {
+                                console.warn(`⚠️ No SKU POM for ${sm.name} (firebaseId:${sm.firebaseId}) on ${dateStr}`);
+                            }
+                        } catch(e) {
+                            console.warn(`⚠️ SKU POM error for ${sm.name}:`, e.message);
+                        }
+                        const ecPct  = pc > 0 ? Math.round((ec/pc)*100) : (ec > 0 ? 100 : 0);
+                        const achPct = planDAP > 0 ? Math.round((actualSO/planDAP)*100) : (actualSO > 0 ? 100 : 0);
+
+                        // Only add rows that had some activity or have PC outlets
+                        if (pc > 0 || ac > 0) {
+                            reportRows.push({ sm, pc, ac, ec, ecPct, planDAP, actualSO, achPct,
+                                tokoTutupList, tokoTidakOrderList, tokoTidakSelesaiList, skuMap });
+                        }
+                    } catch(e) {
+                        console.error('Error loading visits for', sm.name, e);
+                    }
+                }
+
+                // Sort by ec descending
+                reportRows.sort((a,b) => b.ec - a.ec || b.actualSO - a.actualSO);
+
+                // Totals
+                const totals = reportRows.reduce((t, r) => ({
+                    pc: t.pc + r.pc, ac: t.ac + r.ac, ec: t.ec + r.ec,
+                    planDAP: t.planDAP + r.planDAP, actualSO: t.actualSO + r.actualSO,
+                    tutup: t.tutup + r.tokoTutupList.length,
+                    tidakOrder: t.tidakOrder + r.tokoTidakOrderList.length,
+                    tidakSelesai: t.tidakSelesai + r.tokoTidakSelesaiList.length
+                }), { pc:0, ac:0, ec:0, planDAP:0, actualSO:0, tutup:0, tidakOrder:0, tidakSelesai:0 });
+
+                const totalECPct  = totals.pc > 0 ? Math.round((totals.ec/totals.pc)*100) : 0;
+                const totalAchPct = totals.planDAP > 0 ? Math.round((totals.actualSO/totals.planDAP)*100) : 0;
+
+                renderVisitReportCard(dateStr, reportRows, totals, totalECPct, totalAchPct);
+
+            } catch(err) {
+                console.error('Visit report error:', err);
+                alert('Gagal memuat data: ' + err.message);
+                document.getElementById('visitReportEmpty').style.display = 'block';
+            } finally {
+                document.getElementById('visitReportLoading').style.display = 'none';
+            }
+        }
+
+        function renderVisitReportCard(dateStr, rows, totals, totalECPct, totalAchPct) {
+            const card = document.getElementById('visitReportCard');
+            const now  = new Date();
+            const tsStr = now.toLocaleTimeString('id-ID', {hour:'2-digit',minute:'2-digit'});
+
+            // Ach MTD Total Depo — dari d.performance.json record szname === "Total Depo"
+            const totalDepoPerf = performanceData.find(p => (p.szname || '').trim() === 'Total Depo');
+            const totalAchMTD   = totalDepoPerf ? Math.round(parseFloat(totalDepoPerf['Ach'] || 0) * 100) : null;
+            const totalAchMTDCell = totalAchMTD !== null
+                ? `<span class="${getAchBadgeClass(totalAchMTD)}">${totalAchMTD}%</span>`
+                : '-';
+
+            // ── Main table rows (NO SKU POM column) ──
+            let tableRows = '';
+            rows.forEach(r => {
+                const ttCount  = r.tokoTutupList.length;
+                const ttoCount = r.tokoTidakOrderList.length;
+                const ttsCount = r.tokoTidakSelesaiList.length;
+                // Ambil Ach MTD dari d.performance.json berdasarkan nama salesman
+                const perfRec  = performanceData.find(p => (p.szname || '').trim() === r.sm.name.trim());
+                const achMTD   = perfRec ? Math.round((parseFloat(perfRec['Ach'] || 0)) * 100) : null;
+                const achMTDCell = achMTD !== null
+                    ? `<span class="${getAchBadgeClass(achMTD)}">${achMTD}%</span>`
+                    : `<span style="color:#78909C">-</span>`;
+                tableRows += `
+                <tr>
+                    <td class="left" style="padding-left:14px;">
+                        <div class="vr-salesman-name">${r.sm.name}</div>
+                        <div class="vr-salesman-type">${r.sm.type}</div>
+                    </td>
+                    <td><strong>${r.pc}</strong></td>
+                    <td><strong style="color:${r.ac>=r.pc?'#27AE60':'#E67E22'}">${r.ac}</strong></td>
+                    <td><strong style="color:#17B5C8">${r.ec}</strong></td>
+                    <td><span class="${getECBadgeClass(r.ecPct)}">${r.ecPct}%</span></td>
+                    <td style="border-left:2px solid #bbf7d0;">${achMTDCell}</td>
+                    <td><span class="vr-currency dap">${r.planDAP > 0 ? fmtRp(r.planDAP) : '<span style="color:#78909C">-</span>'}</span></td>
+                    <td><span class="vr-currency actual">${r.actualSO > 0 ? fmtRp(r.actualSO) : '<span style="color:#78909C">-</span>'}</span></td>
+                    <td><span class="${getAchBadgeClass(r.achPct)}">${r.achPct}%</span></td>
+                    <td class="${ttCount>0?'vr-count-tutup':'vr-count-none'}" style="padding:6px 4px;">${ttCount > 0 ? ttCount : '—'}</td>
+                    <td class="${ttoCount>0?'vr-count-tutup':'vr-count-none'}" style="padding:6px 4px;">${ttoCount > 0 ? ttoCount : '—'}</td>
+                    <td class="${ttsCount>0?'vr-count-tutup':'vr-count-none'}" style="padding:6px 4px;">${ttsCount > 0 ? `<span style="color:#E67E22">${ttsCount}</span>` : '—'}</td>
+                </tr>`;
+            });
+
+            if (rows.length === 0) {
+                tableRows = `<tr><td colspan="12" style="padding:30px;color:#78909C;text-align:center;">
+                    Tidak ada data kunjungan untuk tanggal ini</td></tr>`;
+            }
+
+            // ── SKU POM section: rows=salesman, columns=SKU ──
+            // Collect all unique SKUs across all salesman
+            const allSkus = [];
+            rows.forEach(r => {
+                Object.keys(r.skuMap).forEach(sku => {
+                    if (!allSkus.includes(sku)) allSkus.push(sku);
+                });
+            });
+            // Sort SKUs by total outlets descending
+            allSkus.sort((a, b) => {
+                const totalA = rows.reduce((s, r) => s + (r.skuMap[a] || 0), 0);
+                const totalB = rows.reduce((s, r) => s + (r.skuMap[b] || 0), 0);
+                return totalB - totalA;
+            });
+
+            let skuTableRows = '';
+            if (allSkus.length === 0) {
+                skuTableRows = `<tr><td colspan="20" style="padding:20px;color:#78909C;text-align:center;">Belum ada data SKU POM untuk tanggal ini</td></tr>`;
+            } else {
+                // Header: SALESMAN | SKU1 | SKU2 | ... | TOTAL
+                const skuHeaders = allSkus.map(sku =>
+                    `<th class="vr-col-sku" style="background:#E0F7FA;color:#6b21a8;text-align:center;min-width:65px;font-size:10px;">${sku}</th>`
+                ).join('');
+
+                skuTableRows = `
+                <tr style="background:#E0F7FA;">
+                    <th class="left" style="padding-left:14px;color:#6b21a8;min-width:150px;background: #FFFFFF;">SALESMAN</th>
+                    ${skuHeaders}
+                    <th style="color:#6b21a8;text-align:center;min-width:65px;background: #FFFFFF;font-size:10px;">TOTAL</th>
+                </tr>`;
+
+                // One row per salesman
+                rows.forEach(r => {
+                    const skuCells = allSkus.map(sku => {
+                        const cnt = r.skuMap[sku] || 0;
+                        return `<td style="text-align:center;font-weight:${cnt>0?'700':'400'};color:${cnt>0?'#6b21a8':'#90A4AE'};font-size:12px;">${cnt > 0 ? cnt : '—'}</td>`;
+                    }).join('');
+                    const rowTotal = Object.values(r.skuMap).reduce((s,v) => s+v, 0);
+                    skuTableRows += `
+                    <tr>
+                        <td class="left" style="padding-left:14px;">
+                            <div style="font-weight:700;color:#1A1A2E;font-size:11px;">${r.sm.name}</div>
+                            <div style="font-size:9px;color:#546E7A;">${r.sm.type}</div>
+                        </td>
+                        ${skuCells}
+                        <td style="text-align:center;font-weight:800;color:#7c3aed;background:#E0F7FA;font-size:12px;">${rowTotal > 0 ? rowTotal : '—'}</td>
+                    </tr>`;
+                });
+
+                // Grand total row
+                const totalSkuCells = allSkus.map(sku => {
+                    const t = rows.reduce((s, r) => s + (r.skuMap[sku] || 0), 0);
+                    return `<td style="text-align:center;font-weight:700;color:#FFFFFF;font-size:12px;">${t > 0 ? t : '—'}</td>`;
+                }).join('');
+                const grandTotal = rows.reduce((s, r) => s + Object.values(r.skuMap).reduce((x,v) => x+v, 0), 0);
+                skuTableRows += `
+                <tr class="vr-total-row">
+                    <td class="left" style="padding-left:14px;">GRAND TOTAL</td>
+                    ${totalSkuCells}
+                    <td style="text-align:center;font-weight:800;color:#006064;font-size:12px;">${grandTotal > 0 ? grandTotal : '—'}</td>
+                </tr>`;
+            }
+
+            card.innerHTML = `
+            <div class="vr-header">
+                <div class="vr-header-left">
+                    <h2>📋 SUMMARY VISIT REPORT HARIAN</h2>
+                    <p>Rekapan Kunjungan Semua Salesman &nbsp;•&nbsp; ${rows.length} salesman aktif</p>
+                </div>
+                <div class="vr-header-right">
+                    <div class="vr-date">${fmtIDDate(dateStr)}</div>
+                    <div class="vr-ts">Generated ${tsStr} WIB • Sales Dashboard WebApp</div>
+                </div>
+            </div>
+
+            <div class="vr-metrics-bar">
+                <div class="vr-metric-item">
+                    <div class="vm-label">Total PC</div>
+                    <div class="vm-value blue">${totals.pc}</div>
+                </div>
+                <div class="vr-metric-item">
+                    <div class="vm-label">Total AC</div>
+                    <div class="vm-value ${totals.ac >= totals.pc ? 'green':'yellow'}">${totals.ac}</div>
+                </div>
+                <div class="vr-metric-item">
+                    <div class="vm-label">Total EC</div>
+                    <div class="vm-value green">${totals.ec}</div>
+                </div>
+                <div class="vr-metric-item">
+                    <div class="vm-label">EC vs PC</div>
+                    <div class="vm-value ${totalECPct>=90?'green':totalECPct>=75?'yellow':'red'}">${totalECPct}%</div>
+                </div>
+                <div class="vr-metric-item">
+                    <div class="vm-label">Total DAP</div>
+                    <div class="vm-value blue">${totals.planDAP > 0 ? fmtRp(totals.planDAP) : '-'}</div>
+                </div>
+                <div class="vr-metric-item">
+                    <div class="vm-label">Total SO</div>
+                    <div class="vm-value green">${fmtRp(totals.actualSO)}</div>
+                </div>
+                <div class="vr-metric-item">
+                    <div class="vm-label">Ach SO</div>
+                    <div class="vm-value ${totalAchPct>=100?'green':totalAchPct>=90?'yellow':'red'}">${totalAchPct > 0 ? totalAchPct+'%' : '-'}</div>
+                </div>
+                <div class="vr-metric-item">
+                    <div class="vm-label">Toko Tutup</div>
+                    <div class="vm-value red">${totals.tutup}</div>
+                </div>
+                <div class="vr-metric-item">
+                    <div class="vm-label">Tidak Order</div>
+                    <div class="vm-value yellow">${totals.tidakOrder}</div>
+                </div>
+                <div class="vr-metric-item">
+                    <div class="vm-label">Tdk Selesai</div>
+                    <div class="vm-value ${totals.tidakSelesai>0?'yellow':'green'}">${totals.tidakSelesai}</div>
+                </div>
+            </div>
+
+            <!-- ═══ TABLE 1: PERFORMA KUNJUNGAN ═══ -->
+            <div style="padding:10px 16px 4px;background:#E0F7FA;border-top:1px solid #FFFFFF;">
+                <span style="font-size:11px;font-weight:700;color:#6A1FA7;text-transform:uppercase;letter-spacing:0.5px;">
+                    📊 Produktifitas dan Aktual SO By Salesman
+                </span>
+            </div>
+            <div class="vr-table-wrapper">
+                <table class="vr-table">
+                    <thead>
+                        <tr class="vr-col-group-header">
+                            <th class="left" rowspan="2" style="min-width:130px;max-width:160px;">Salesman</th>
+                            <th colspan="4" class="vr-col-kunjungan" style="border-left:2px solid #bfdbfe;">📍 Data Kunjungan</th>
+                            <th colspan="4" class="vr-col-penjualan" style="border-left:2px solid #bbf7d0;">💰 Performa Penjualan</th>
+                            <th colspan="3" class="vr-col-reason" style="border-left:2px solid #fed7aa;">⚠️ Alasan Tidak EC</th>
+                        </tr>
+                        <tr>
+                            <th class="vr-col-kunjungan" style="border-left:2px solid #bfdbfe;">PC</th>
+                            <th class="vr-col-kunjungan">AC</th>
+                            <th class="vr-col-kunjungan">EC</th>
+                            <th class="vr-col-kunjungan">EC%</th>
+                            <th class="vr-col-penjualan" style="border-left:2px solid #bbf7d0;">Ach MTD</th>
+                            <th class="vr-col-penjualan">Plan DAP</th>
+                            <th class="vr-col-penjualan">Actual SO</th>
+                            <th class="vr-col-penjualan">Ach%</th>
+                            <th class="vr-col-reason" style="border-left:2px solid #fed7aa;padding:6px 4px;">Tutup</th>
+                            <th class="vr-col-reason" style="padding:6px 4px;">Stok</th>
+                            <th class="vr-col-reason" style="padding:6px 4px;">Visit Tunda</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${tableRows}
+                        <tr class="vr-total-row">
+                            <td class="left" style="padding-left:14px;">📊 TOTAL (${rows.length} Salesman)</td>
+                            <td>${totals.pc}</td>
+                            <td>${totals.ac}</td>
+                            <td>${totals.ec}</td>
+                            <td>${totalECPct}%</td>
+                            <td style="border-left:2px solid #bbf7d0;">${totalAchMTDCell}</td>
+                            <td>${totals.planDAP > 0 ? fmtRp(totals.planDAP) : '-'}</td>
+                            <td>${fmtRp(totals.actualSO)}</td>
+                            <td><span class="${getAchBadgeClass(totalAchPct)}">${totalAchPct > 0 ? totalAchPct+'%' : '-'}</span></td>
+                            <td style="padding:6px 4px;">${totals.tutup}</td>
+                            <td style="padding:6px 4px;">${totals.tidakOrder}</td>
+                            <td style="padding:6px 4px;">${totals.tidakSelesai}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- ═══ TABLE 2: SKU POM BREAKDOWN ═══ -->
+            <div style="padding:10px 16px 4px;background:#E0F7FA;border-top:3px solid #c4b5fd;margin-top:8px;">
+                <span style="font-size:11px;font-weight:700;color:#6b21a8;text-transform:uppercase;letter-spacing:0.5px;">
+                    🏷️ Aktual New CA POM By Salesman
+                </span>
+            </div>
+            <div class="vr-table-wrapper">
+                <table class="vr-table">
+                    <tbody>
+                        ${skuTableRows}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="vr-footer">
+                <div class="vr-footer-left">
+                    🔥 Semua data bersumber dari <strong>Firebase Real-time</strong> — Kunjungan • Plan DAP • SKU POM
+                </div>
+                <div class="vr-footer-right">Sales Dashboard WebApp © ${new Date().getFullYear()}</div>
+            </div>`;
+
+            card.style.display = 'block';
+            document.getElementById('btnShareWA').disabled = false;
+        }
+
+        async function shareVisitReportAsImage() {
+            const card = document.getElementById('visitReportCard');
+            if (!card || card.style.display === 'none') return;
+
+            const btn = document.getElementById('btnShareWA');
+            btn.disabled = true;
+            btn.innerHTML = '⏳';
+
+            try {
+                // Temporarily expand card to full width for capture
+                const origStyle = card.style.cssText;
+                card.style.width = card.scrollWidth + 'px';
+                card.style.minWidth = 'unset';
+
+                const canvas = await html2canvas(card, {
+                    scale: 2,
+                    useCORS: true,
+                    backgroundColor: '#E0F7FA',
+                    logging: false,
+                    width: card.scrollWidth,
+                    windowWidth: card.scrollWidth + 40
+                });
+
+                card.style.cssText = origStyle;
+
+                canvas.toBlob(async (blob) => {
+                    const dateStr = document.getElementById('visitReportDate').value;
+                    const fileName = `visit_report_${dateStr}.png`;
+
+                    // Try Web Share API first (mobile)
+                    if (navigator.share && navigator.canShare) {
+                        const file = new File([blob], fileName, { type: 'image/png' });
+                        if (navigator.canShare({ files: [file] })) {
+                            await navigator.share({
+                                files: [file],
+                                title: `Visit Report ${dateStr}`,
+                                text: `Laporan Kunjungan Harian Salesman - ${dateStr}`
+                            });
+                            btn.disabled = false;
+                            btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.117.554 4.107 1.523 5.832L.057 23.676a.75.75 0 00.918.919l5.844-1.465A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.9 0-3.681-.506-5.215-1.389l-.374-.224-3.882.973.983-3.883-.232-.384A10.004 10.004 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>`;
+                            return;
+                        }
+                    }
+
+                    // Fallback: download + open WA Web
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = fileName;
+                    a.click();
+                    URL.revokeObjectURL(url);
+
+                    setTimeout(() => {
+                        const dateStr = document.getElementById('visitReportDate').value;
+                        const msg = encodeURIComponent(`📋 *SUMMARY VISIT REPORT HARIAN*\n🗓️ ${fmtIDDate(dateStr)}\n\n_(Silahkan lihat gambar yang baru diunduh)_`);
+                        window.open(`https://wa.me/?text=${msg}`, '_blank');
+                    }, 800);
+
+                    btn.disabled = false;
+                    btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.117.554 4.107 1.523 5.832L.057 23.676a.75.75 0 00.918.919l5.844-1.465A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.9 0-3.681-.506-5.215-1.389l-.374-.224-3.882.973.983-3.883-.232-.384A10.004 10.004 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>`;
+                }, 'image/png', 0.95);
+
+            } catch(err) {
+                console.error('Share error:', err);
+                alert('Gagal membuat gambar: ' + err.message);
+                btn.disabled = false;
+                btn.innerHTML = '📤';
+            }
+        }
+
+        // Initialize visit report date on DOM ready
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date();
+            const y = today.getFullYear();
+            const m = String(today.getMonth()+1).padStart(2,'0');
+            const d = String(today.getDate()).padStart(2,'0');
+            const dateInput = document.getElementById('visitReportDate');
+            if (dateInput) dateInput.value = `${y}-${m}-${d}`;
+        });
+
+        // ===== INITIALIZE =====
+        document.addEventListener('DOMContentLoaded', function() {
+            if (checkLoginStatus()) {
+                loadPerformanceData();
+            }
+        });
+    </script>
+</body>
+</html>

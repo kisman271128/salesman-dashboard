@@ -4819,7 +4819,9 @@
                     accumulated_duration: visitSession.accumulatedDuration
                 };
                 
-                const updated = await updateVisitInFirebase(visitSession.firebaseKey, pauseUpdateData);
+                const updated = await withFirebaseTimeout(
+                    updateVisitInFirebase(visitSession.firebaseKey, pauseUpdateData)
+                ).catch(err => { console.warn('⏳ Firebase pause timeout:', err.message); return false; });
                 if (updated) {
                     console.log('🔥 Visit status updated to PAUSED in Firebase');
                 } else {
@@ -4949,7 +4951,9 @@
                     resume_location: { ...currentLocation }
                 };
                 
-                const updated = await updateVisitInFirebase(visitSession.firebaseKey, resumeUpdateData);
+                const updated = await withFirebaseTimeout(
+                    updateVisitInFirebase(visitSession.firebaseKey, resumeUpdateData)
+                ).catch(err => { console.warn('⏳ Firebase resume timeout:', err.message); return false; });
                 if (updated) {
                     console.log('🔥 Visit status updated to RESUMED in Firebase');
                 } else {
@@ -5459,7 +5463,9 @@
             saveVisitSessionToLocal('session_start', visitDataForFirebase);
             
             // ✅ SAVE TO FIREBASE IMMEDIATELY (status: started)
-            const firebaseKey = await syncVisitToFirebase(visitDataForFirebase);
+            const firebaseKey = await withFirebaseTimeout(
+                syncVisitToFirebase(visitDataForFirebase)
+            ).catch(err => { console.warn('⏳ Firebase start timeout:', err.message); return null; });
             
             if (firebaseKey) {
                 visitSession.firebaseKey = firebaseKey; // Store key for future updates
@@ -5469,6 +5475,20 @@
                 saveToPendingFirebaseQueue(visitDataForFirebase);
             }
         }
+
+        // ─── Firebase timeout wrapper ────────────────────────────────────────────
+        // Mencegah endVisitSession() hang selamanya saat jaringan terputus.
+        // Firebase SDK kadang tidak me-resolve maupun me-reject promise jika
+        // koneksi hilang di tengah operasi — Promise.race() memaksa timeout.
+        function withFirebaseTimeout(promise, ms = 10000) {
+            return Promise.race([
+                promise,
+                new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('Firebase timeout after ' + ms + 'ms')), ms)
+                )
+            ]);
+        }
+        // ────────────────────────────────────────────────────────────────────────
 
         async function endVisitSession() {
             if (!visitSession.isActive) {
@@ -5541,26 +5561,40 @@
             saveVisitSessionToLocal('session_end', visitDataForFirebase);
             
             // ✅ UPDATE OR CREATE IN FIREBASE
+            // withFirebaseTimeout() mencegah hang jika jaringan putus — timeout 10 detik,
+            // lalu data masuk pending queue dan session tetap bisa di-reset.
             let firebaseSuccess = false;
             if (visitSession.firebaseKey) {
-                // Update existing visit
                 console.log(`🔥 Updating existing visit in Firebase: ${visitSession.firebaseKey}`);
-                firebaseSuccess = await updateVisitInFirebase(visitSession.firebaseKey, visitDataForFirebase);
+                firebaseSuccess = await withFirebaseTimeout(
+                    updateVisitInFirebase(visitSession.firebaseKey, visitDataForFirebase)
+                ).catch(err => {
+                    console.warn('⏳ Firebase update timeout/error:', err.message);
+                    return false;
+                });
             } else {
-                // Create new visit (fallback for visits without initial sync)
                 console.log('🔥 Creating new visit in Firebase (no initial key)');
-                const firebaseKey = await syncVisitToFirebase(visitDataForFirebase);
+                const firebaseKey = await withFirebaseTimeout(
+                    syncVisitToFirebase(visitDataForFirebase)
+                ).catch(err => {
+                    console.warn('⏳ Firebase sync timeout/error:', err.message);
+                    return null;
+                });
                 firebaseSuccess = !!firebaseKey;
             }
-            
+
             if (!firebaseSuccess) {
                 console.log('⏳ Adding visit to pending Firebase sync queue...');
                 saveToPendingFirebaseQueue(visitDataForFirebase);
             }
-            
-            // Also update daily summary
+
+            // Also update daily summary (skip jika Firebase gagal/timeout)
             if (firebaseSuccess) {
-                await syncDailySummaryToFirebase(visitDataForFirebase);
+                await withFirebaseTimeout(
+                    syncDailySummaryToFirebase(visitDataForFirebase)
+                ).catch(err => {
+                    console.warn('⏳ Daily summary sync timeout/error:', err.message);
+                });
             }
             
             // Reset session
