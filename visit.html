@@ -3043,6 +3043,30 @@
             </div>
         </div>
 
+        <!-- Modal: Konfirmasi Durasi Kunjungan Singkat -->
+        <div class="visit-modal" id="shortDurationModal">
+            <div class="visit-modal-content">
+                <div class="visit-modal-title" style="color:#E67E22;">⚠️ Durasi Sangat Singkat</div>
+                <div class="visit-modal-subtitle">Konfirmasi Kunjungan</div>
+                <div class="visit-modal-customer">
+                    <div class="visit-modal-customer-name" id="shortDurationOutletName"></div>
+                    <div class="visit-modal-customer-details" id="shortDurationText"></div>
+                </div>
+                <div style="background:#FFF8E1;border:1px solid #FFD54F;border-radius:10px;padding:12px 14px;margin:12px 0;font-size:13px;color:#795548;line-height:1.5;">
+                    Kunjungan kurang dari <strong>2 menit</strong>. Pastikan salesman benar-benar telah mengunjungi toko dan melakukan aktivitas penjualan.
+                </div>
+                <div class="visit-modal-buttons">
+                    <button class="visit-modal-btn visit-modal-btn-secondary" onclick="cancelShortDuration()">
+                        ↩ Kembali
+                    </button>
+                    <button class="visit-modal-btn" onclick="confirmShortDuration()"
+                        style="background:linear-gradient(135deg,#E67E22,#F39C12);color:white;border:none;border-radius:10px;padding:12px 16px;font-weight:600;cursor:pointer;flex:1;">
+                        ⚠️ Tetap Akhiri
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Floating Action Buttons -->
         <div class="floating-actions" id="floatingActions">
             <button class="floating-btn btn-pause-visit" onclick="showPauseVisitModal()">
@@ -5360,9 +5384,54 @@
             }
         }
 
+        // ── Durasi minimum kunjungan ────────────────────────────────────────────
+        // Kunjungan di bawah batas ini akan meminta konfirmasi tambahan sebelum
+        // diakhiri, sebagai pencegahan salesman yang tidak benar-benar mengunjungi toko.
+        const MIN_VISIT_SECONDS = 120; // 2 menit
+
         function cancelVisitEnd() {
             document.getElementById('visitEndModal').classList.remove('show');
             console.log('❌ Visit end cancelled, continuing visit');
+        }
+
+        // Dipanggil saat durasi < MIN_VISIT_SECONDS — simpan data order sementara
+        // lalu tunjukkan modal peringatan.
+        let _pendingOrderStatus = null;
+        let _pendingSoAmount    = null;
+
+        function showShortDurationWarning(orderStatus, soAmount, totalDuration) {
+            _pendingOrderStatus = orderStatus;
+            _pendingSoAmount    = soAmount;
+
+            const menit  = Math.floor(totalDuration / 60);
+            const detik  = totalDuration % 60;
+            const label  = menit > 0
+                ? `${menit} mnt ${detik} dtk`
+                : `${detik} detik`;
+
+            document.getElementById('shortDurationOutletName').textContent = visitSession.outletName || '';
+            document.getElementById('shortDurationText').textContent =
+                `Durasi kunjungan: ${label} (minimum ${MIN_VISIT_SECONDS / 60} menit)`;
+
+            document.getElementById('visitEndModal').classList.remove('show');
+            document.getElementById('shortDurationModal').classList.add('show');
+
+            console.warn(`⚠️ Kunjungan singkat: ${totalDuration}s < ${MIN_VISIT_SECONDS}s — menunggu konfirmasi`);
+        }
+
+        function cancelShortDuration() {
+            document.getElementById('shortDurationModal').classList.remove('show');
+            _pendingOrderStatus = null;
+            _pendingSoAmount    = null;
+            console.log('↩ Salesman kembali melanjutkan kunjungan');
+        }
+
+        function confirmShortDuration() {
+            document.getElementById('shortDurationModal').classList.remove('show');
+            console.warn(`⚠️ Konfirmasi paksa: kunjungan singkat diakhiri oleh salesman`);
+            endVisitSession(_pendingOrderStatus, _pendingSoAmount);
+            _pendingOrderStatus = null;
+            _pendingSoAmount    = null;
         }
 
         function confirmVisitEnd() {
@@ -5391,7 +5460,18 @@
                     saveInactiveCustomer(outletId, outletName, reasonText);
                 }
             }
-            
+
+            // ── Cek durasi minimum ───────────────────────────────────────────────
+            const currentSessionDuration = Math.floor((Date.now() - visitSession.startTime) / 1000);
+            const totalDuration = visitSession.accumulatedDuration + currentSessionDuration;
+
+            if (totalDuration < MIN_VISIT_SECONDS) {
+                // Durasi terlalu singkat — tampilkan modal konfirmasi tambahan
+                showShortDurationWarning(orderStatus, soAmount, totalDuration);
+                return; // jangan lanjut dulu, tunggu pilihan salesman
+            }
+            // ────────────────────────────────────────────────────────────────────
+
             document.getElementById('visitEndModal').classList.remove('show');
             endVisitSession();
         }
@@ -5490,7 +5570,7 @@
         }
         // ────────────────────────────────────────────────────────────────────────
 
-        async function endVisitSession() {
+        async function endVisitSession(overrideOrderStatus = null, overrideSoAmount = null) {
             if (!visitSession.isActive) {
                 console.warn('🚫 Cannot end session - not active');
                 return;
@@ -5503,10 +5583,16 @@
                 timestamp: new Date().toISOString()
             };
             
+            // Gunakan nilai override jika kunjungan dikonfirmasi dari shortDurationModal
+            if (overrideOrderStatus !== null) {
+                visitSession.orderStatus = overrideOrderStatus;
+                visitSession.soAmount = overrideOrderStatus === 'ada_so' ? parseFloat(overrideSoAmount || 0) : 0;
+            }
+
             const endTime = Date.now();
             const currentSessionDuration = Math.floor((endTime - visitSession.startTime) / 1000);
             const totalDuration = visitSession.accumulatedDuration + currentSessionDuration;
-            
+
             visitSession.endTime = endTime;
             visitSession.duration = totalDuration;
             visitSession.endLocation = endLocation;
@@ -5539,7 +5625,8 @@
                 start_time: new Date(visitSession.startTime - visitSession.accumulatedDuration * 1000).toISOString(),
                 end_time: new Date(endTime).toISOString(),
                 total_duration_seconds: totalDuration,
-                active_duration_seconds: totalDuration, // Time actually spent in store
+                active_duration_seconds: totalDuration,
+                short_visit_confirmed: totalDuration < MIN_VISIT_SECONDS, // flag untuk audit supervisor
                 pause_count: pauseCount,
                 total_pause_duration: totalPauseDuration,
                 pause_history: visitSession.pauseHistory,
