@@ -3253,50 +3253,67 @@
                     
                     if (snapshot.exists()) {
                         const allVisits = snapshot.val();
-                        var visitCount = 0;
-                        
+
+                        // FIX: Deduplikasi per outlet — ambil record TERBARU per outlet_name
+                        // ROOT CAUSE: Saat app restart, endVisitSession() membuat record BARU
+                        // (completed) tanpa menghapus record lama (paused/started).
+                        // Akibatnya outlet yang sama muncul di tokoTutupList DAN tokoTidakSelesaiList.
+                        // Contoh: "FARIS" muncul 19x di Toko Tutup karena ada 19 record duplikat.
+                        const outletLatest = {};
                         Object.keys(allVisits).forEach(function(key) {
                             const visit = allVisits[key];
-                            
-                            // Filter by today's date
-                            if (visit.start_time) {
-                                const visitDate = visit.start_time.split('T')[0];
-                                
-                                if (visitDate === todayYMD) {
-                                    visitCount++;
-                                    const outletName = visit.outlet_name;
-                                    const visitStatus = visit.visit_status;
-                                    const orderStatus = visit.order_status;
-                                    const soAmount = Number(visit.so_amount || 0);
-                                    
-                                    console.log(`   Visit: ${outletName}, status: ${visitStatus}, order: ${orderStatus}`);
-                                    
-                                    // COMPLETED VISITS
-                                    if (visitStatus === 'completed') {
-                                        visited.add(outletName);
-                                        
-                                        if (orderStatus === 'ada_so') {
-                                            ordered.add(outletName);
-                                            actual += soAmount;
-                                            console.log('   ✓ EC outlet:', outletName, '→ Rp', soAmount);
-                                        } else if (orderStatus === 'toko_tutup') {
-                                            tokoTutupList.push(outletName);
-                                        } else if (orderStatus === 'toko_tidak_order') {
-                                            tokoTidakOrderList.push(outletName);
-                                        }
-                                    } 
-                                    // INCOMPLETE VISITS (started/paused/resumed but not completed)
-                                    else if (visitStatus === 'started' || visitStatus === 'paused' || visitStatus === 'resumed') {
-                                        if (!tokoTidakSelesaiList.includes(outletName)) {
-                                            tokoTidakSelesaiList.push(outletName);
-                                            console.log('   ⚠️ Tidak selesai:', outletName, '(status:', visitStatus + ')');
-                                        }
-                                    }
+                            if (!visit.start_time || !visit.outlet_name) return;
+                            const visitDate = visit.start_time.split('T')[0];
+                            if (visitDate !== todayYMD) return;
+
+                            const name = visit.outlet_name;
+                            const existing = outletLatest[name];
+                            if (!existing) {
+                                outletLatest[name] = visit;
+                            } else {
+                                // 'completed' selalu menang; jika sama, ambil yang end_time lebih baru
+                                const newDone  = visit.visit_status === 'completed';
+                                const prevDone = existing.visit_status === 'completed';
+                                if (newDone && !prevDone) {
+                                    outletLatest[name] = visit;
+                                } else if (!newDone && prevDone) {
+                                    // pertahankan yang completed
+                                } else {
+                                    const newTime  = visit.end_time || visit.start_time || '';
+                                    const prevTime = existing.end_time || existing.start_time || '';
+                                    if (newTime > prevTime) outletLatest[name] = visit;
                                 }
                             }
                         });
-                        
-                        console.log(`🔥 Loaded ${visitCount} visits from Firebase for today`);
+
+                        var visitCount = 0;
+                        Object.values(outletLatest).forEach(function(visit) {
+                            visitCount++;
+                            const outletName  = visit.outlet_name;
+                            const visitStatus = visit.visit_status;
+                            const orderStatus = visit.order_status;
+                            const soAmount    = Number(visit.so_amount || 0);
+
+                            console.log(`   Visit: ${outletName}, status: ${visitStatus}, order: ${orderStatus}`);
+
+                            if (visitStatus === 'completed') {
+                                visited.add(outletName);
+                                if (orderStatus === 'ada_so') {
+                                    ordered.add(outletName);
+                                    actual += soAmount;
+                                    console.log('   ✓ EC outlet:', outletName, '→ Rp', soAmount);
+                                } else if (orderStatus === 'toko_tutup') {
+                                    tokoTutupList.push(outletName);
+                                } else if (orderStatus === 'toko_tidak_order') {
+                                    tokoTidakOrderList.push(outletName);
+                                }
+                            } else if (['started','paused','resumed'].includes(visitStatus)) {
+                                tokoTidakSelesaiList.push(outletName);
+                                console.log('   ⚠️ Tidak selesai:', outletName, '(status:', visitStatus + ')');
+                            }
+                        });
+
+                        console.log(`🔥 Loaded ${visitCount} unique outlets from Firebase for today`);
                     } else {
                         console.log('🔥 No visits found in Firebase for today');
                     }
@@ -3572,7 +3589,33 @@
                             });
                         });
                         
+                        // FIX: Deduplikasi per outlet — ambil record TERBARU per outlet_name
+                        // localStorage bisa punya banyak entry untuk outlet yang sama
+                        // (kunjungan gagal + retry), menyebabkan nama muncul berulang di laporan.
+                        var outletLatestLS = {};
                         visits.forEach(function(visit) {
+                            if (!visit.outlet_name) return;
+                            var name = visit.outlet_name;
+                            var existing = outletLatestLS[name];
+                            if (!existing) {
+                                outletLatestLS[name] = visit;
+                            } else {
+                                // completed menang; jika sama, ambil yang end_time lebih baru
+                                var newDone  = !!visit.visit_completed;
+                                var prevDone = !!existing.visit_completed;
+                                if (newDone && !prevDone) {
+                                    outletLatestLS[name] = visit;
+                                } else if (!newDone && prevDone) {
+                                    // pertahankan yang completed
+                                } else {
+                                    var newTime  = visit.end_time || visit.start_time || '';
+                                    var prevTime = existing.end_time || existing.start_time || '';
+                                    if (newTime > prevTime) outletLatestLS[name] = visit;
+                                }
+                            }
+                        });
+
+                        Object.values(outletLatestLS).forEach(function(visit) {
                             if (visit.outlet_name && visit.visit_completed) {
                                 visited.add(visit.outlet_name);
                                 
@@ -3589,7 +3632,6 @@
                                     tokoTidakOrderList.push(visit.outlet_name);
                                 }
                             } else if (visit.outlet_name && !visit.visit_completed) {
-                                // NEW: Track visits that were started but not completed
                                 tokoTidakSelesaiList.push(visit.outlet_name);
                                 console.log('   ⚠️ Tidak selesai:', visit.outlet_name);
                             }
