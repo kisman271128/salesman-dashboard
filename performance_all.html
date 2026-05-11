@@ -557,6 +557,7 @@
         .nav-icon.activity { background: #E74C3C; color: white; }
         .nav-icon.incentive { background: #F39C12; color: white; }
         .nav-icon.mv { background: #8b5cf6; color: white; }
+        .nav-icon.bukusaku { background: #e8392a; color: white; }
         .nav-icon.profile { background: #2ECC71; color: white; }
 
         .nav-label {
@@ -1567,12 +1568,35 @@
                 <div class="nav-icon mv">👥</div>
                 <div class="nav-label">MV</div>
             </div>
+            <div class="nav-item" onclick="openBukuSaku()">
+                <div class="nav-icon bukusaku">📒</div>
+                <div class="nav-label">Buku Saku</div>
+            </div>
             <div class="nav-item" id="navVisitReport" onclick="switchToVisitReport()">
                 <div class="nav-icon" style="background:#2ECC71;color:white;">📋</div>
                 <div class="nav-label">Visit Rep.</div>
             </div>
         </div>
     </div>
+
+        <!-- ===== BUKU SAKU MODAL ===== -->
+        <div id="bukuSakuModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; z-index:9999; background:rgba(15,32,87,0.55); backdrop-filter:blur(4px);">
+            <div style="position:relative; margin:0 auto; width:100%; max-width:480px; height:100%; display:flex; flex-direction:column; background:#f1f5f9; box-shadow:0 0 40px rgba(0,0,0,0.3);">
+                <!-- Modal Header -->
+                <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:linear-gradient(135deg,#0f2057,#1d3a8a); color:white; flex-shrink:0;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <div style="width:34px; height:34px; background:#e8392a; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:16px;">📒</div>
+                        <div>
+                            <div style="font-size:14px; font-weight:700;">Buku Saku ITG</div>
+                            <div style="font-size:10px; opacity:0.6;">Panduan & Referensi Salesman</div>
+                        </div>
+                    </div>
+                    <button onclick="closeBukuSaku()" style="background:rgba(255,255,255,0.15); border:none; color:white; width:36px; height:36px; border-radius:10px; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'">✕</button>
+                </div>
+                <!-- Iframe Content -->
+                <iframe id="bukuSakuFrame" src="" style="flex:1; border:none; width:100%;"></iframe>
+            </div>
+        </div>
 
     <script>
         // ===== GLOBAL VARIABLES =====
@@ -1584,7 +1608,6 @@
         let paretoData = [];
         let pomData = [];
         let performanceData = [];
-        let skupelangganData = []; // For PC calculation
 
         // ===== UTILITY FUNCTIONS =====
         function formatCurrencyIndonesia(value) {
@@ -1734,22 +1757,12 @@
                 console.error('POM data loading failed:', error.message);
             }
 
-            // d.skupelanggan.json — for PC (Plan Call) calculation in Visit Report
             try {
                 const perfText = await loadFile('d.performance.json');
                 performanceData = parseJSONLines(perfText);
                 console.log('Performance data loaded:', performanceData.length, 'records');
             } catch (error) {
                 console.error('Performance data loading failed:', error.message);
-            }
-
-            try {
-                const skupelangganText = await loadFile('d.skupelanggan.json');
-                skupelangganData = parseJSONLines(skupelangganText);
-                window.pelangganData = skupelangganData; // expose to window
-                console.log('Skupelanggan data loaded:', skupelangganData.length, 'records');
-            } catch (error) {
-                console.error('Skupelanggan data loading failed:', error.message);
             }
         }
 
@@ -1834,29 +1847,32 @@
                 totalActual += parseFloat(item[' A.MTD'] || 0);
             });
 
+            // Helper: safe set text
+            const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+            const setClass = (id, cls) => { const el = document.getElementById(id); if (el) el.className = cls; };
+
             // Update total card
-            document.getElementById('totalValue').textContent = formatCurrencyIndonesia(totalActual);
-            document.getElementById('totalTarget').textContent = formatCurrencyIndonesia(totalTarget);
+            setText('totalValue',  formatCurrencyIndonesia(totalActual));
+            setText('totalTarget', formatCurrencyIndonesia(totalTarget));
             const totalAchPct = calculateAchievementPercentage(totalTarget, totalActual);
-            const totalAchEl = document.getElementById('totalAch');
-            totalAchEl.textContent = `${totalAchPct}%`;
-            totalAchEl.className = `achievement ${getAchievementClass(totalAchPct).replace('ach-', '')}`;
+            setText('totalAch', `${totalAchPct}%`);
+            setClass('totalAch', `achievement ${getAchievementClass(totalAchPct).replace('ach-', '')}`);
 
             // Update per-channel cards
             ['Wholesaler', 'Retail', 'MTI'].forEach(ch => {
                 const data = channelTotals[ch] || { target: 0, actual: 0 };
                 const key  = ch.toLowerCase();
-                document.getElementById(`${key}Value`).textContent  = formatCurrencyIndonesia(data.actual);
-                document.getElementById(`${key}Target`).textContent = formatCurrencyIndonesia(data.target);
+                setText(`${key}Value`,  formatCurrencyIndonesia(data.actual));
+                setText(`${key}Target`, formatCurrencyIndonesia(data.target));
                 const achPct = calculateAchievementPercentage(data.target, data.actual);
-                const achEl  = document.getElementById(`${key}Ach`);
-                achEl.textContent = `${achPct}%`;
-                achEl.className   = `achievement ${getAchievementClass(achPct).replace('ach-', '')}`;
+                setText(`${key}Ach`, `${achPct}%`);
+                setClass(`${key}Ach`, `achievement ${getAchievementClass(achPct).replace('ach-', '')}`);
             });
         }
 
         function updateSummaryTable() {
             const tbody = document.getElementById('summaryTableBody');
+            if (!tbody) return;
             
             if (paretoData.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">📊</div><div>No pareto data available</div></td></tr>';
@@ -1920,6 +1936,7 @@
         function updateChannelTable() {
             const groupMap = calculateChannelProjGrouped();
             const tbody = document.getElementById('channelTableBody');
+            if (!tbody) return;
 
             if (Object.keys(groupMap).length === 0) {
                 tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">📈</div><div>No channel data available</div></td></tr>';
@@ -1982,6 +1999,7 @@
         function updateRankingTable() {
             const salesmanSummary = calculateSalesmanSummary();
             const tbody = document.getElementById('rankingTableBody');
+            if (!tbody) return;
             
             if (salesmanSummary.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><div class="icon">🏆</div><div>No ranking data available</div></td></tr>';
@@ -2057,6 +2075,7 @@
             const itgRecords = projectData.filter(p => (p.ITG || '').trim() === itg);
             const showGapQrt = itgRecords.some(p => parseFloat(p['Gap Qrt'] || 0) !== 0);
             const thead = document.getElementById('projectTableHead');
+            if (!thead) return;
             if (thead) {
                 thead.innerHTML = `
                     <th class="sticky-col salesman-name-col">Customer</th>
@@ -2073,6 +2092,7 @@
 
         function updateProjectTable() {
             const tbody = document.getElementById('projectTableBody');
+            if (!tbody) return;
             // useFullFormat: format angka penuh (tanpa rb/jt) untuk program satuan seperti ITG SC
             const useFullFormat = ITG_UNIT_PROGRAMS.includes(currentProjectITG);
             const itgRecords = projectData.filter(p => (p.ITG || '').trim() === currentProjectITG);
@@ -2127,6 +2147,7 @@
 
         function updatePOMTable() {
             const tbody = document.getElementById('pomTableBody');
+            if (!tbody) return;
             
             if (pomData.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><div class="icon">📋</div><div>Data CA POM tidak tersedia</div></td></tr>';
@@ -2270,21 +2291,25 @@
 
         // ===== UI CONTROL FUNCTIONS =====
         function showLoading(show) {
-            document.getElementById('loadingSpinner').style.display = show ? 'flex' : 'none';
+            const el = document.getElementById('loadingSpinner');
+            if (el) el.style.display = show ? 'flex' : 'none';
         }
 
         function showError(show, message = '') {
             const errorElement = document.getElementById('errorMessage');
+            if (!errorElement) return;
             errorElement.style.display = show ? 'block' : 'none';
             if (show && message) {
-                errorElement.querySelector('p').textContent = message;
+                const p = errorElement.querySelector('p');
+                if (p) p.textContent = message;
             }
         }
 
         function hideError() { showError(false); }
 
         function showMainContent(show) {
-            document.getElementById('mainContent').style.display = show ? 'block' : 'none';
+            const el = document.getElementById('mainContent');
+            if (el) el.style.display = show ? 'block' : 'none';
         }
 
         // ===== LOGIN CHECK =====
@@ -2309,7 +2334,7 @@
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
             document.getElementById('visitReportContent').classList.add('active');
             // Scroll to top
-            document.getElementById('mainContent').scrollTop = 0;
+            const _mc = document.getElementById('mainContent'); if (_mc) _mc.scrollTop = 0;
             // Set default date = today if not already set
             const dateInput = document.getElementById('visitReportDate');
             if (!dateInput.value) {
@@ -2394,24 +2419,10 @@
                 }
                 const salesmanList = Array.from(salesmanMap.values());
 
-                // ── pelangganData for PC ──
-                const pelangganData = skupelangganData.length > 0 ? skupelangganData : (window.pelangganData || []);
+                // PC (Plan Call) dihitung dari d.skupelanggan — tidak diload di sini
+                // (data ada di Buku Saku untuk 30 Pareto)
                 const pelangganByNormName = {};
                 const pelangganByEmpId    = {};
-                pelangganData.forEach(p => {
-                    const nm = (p.szname || '').trim().toLowerCase();
-                    if (nm) {
-                        if (!pelangganByNormName[nm]) pelangganByNormName[nm] = [];
-                        pelangganByNormName[nm].push(p);
-                    }
-                    const eid = (p.szEmployeeId || '').toString().trim();
-                    if (eid) {
-                        if (!pelangganByEmpId[eid]) pelangganByEmpId[eid] = [];
-                        pelangganByEmpId[eid].push(p);
-                    }
-                });
-                console.log('📋 pelangganData rows:', pelangganData.length,
-                    '| distinct names:', Object.keys(pelangganByNormName).length);
 
                 // ═══════════════════════════════════════════════════════════
                 // 🔑 DISCOVER REAL FIREBASE IDs from visits node
@@ -3004,6 +3015,32 @@
             if (checkLoginStatus()) {
                 loadPerformanceData();
             }
+        });
+
+        // ===== BUKU SAKU =====
+        function openBukuSaku() {
+            const modal = document.getElementById('bukuSakuModal');
+            const frame = document.getElementById('bukuSakuFrame');
+            if (!frame.src || frame.src === window.location.href) {
+                frame.src = 'buku_saku.html';
+            }
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+        function closeBukuSaku() {
+            document.getElementById('bukuSakuModal').style.display = 'none';
+            document.body.style.overflow = '';
+        }
+        document.addEventListener('DOMContentLoaded', function() {
+            const modal = document.getElementById('bukuSakuModal');
+            if (modal) {
+                modal.addEventListener('click', function(e) {
+                    if (e.target === this) closeBukuSaku();
+                });
+            }
+        });
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeBukuSaku();
         });
     </script>
 </body>

@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Buku Saku ITG</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
+<style>
+  :root {
+    --navy:   #0f2057;
+    --blue:   #1d3a8a;
+    --accent: #e8392a;
+    --gold:   #f59e0b;
+    --teal:   #0ea5e9;
+    --green:  #22c55e;
+    --bg:     #f1f5f9;
+    --card:   #ffffff;
+    --text:   #1e293b;
+    --muted:  #64748b;
+    --border: #e2e8f0;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Segoe UI',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+
+  /* ── TOP BAR ── */
+  .top-bar {
+    background:var(--navy); padding:13px 16px;
+    display:flex; align-items:center; justify-content:space-between;
+    position:sticky; top:0; z-index:100;
+  }
+  .top-bar-left { display:flex; align-items:center; gap:10px; }
+  .top-bar-icon { width:32px; height:32px; background:var(--accent); border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:15px; }
+  .top-bar-title { color:white; font-size:13px; font-weight:700; }
+  .top-bar-sub   { color:rgba(255,255,255,0.45); font-size:10px; margin-top:1px; }
+  .top-bar-badge { background:var(--gold); color:#000; font-size:11px; font-weight:800; padding:3px 10px; border-radius:20px; white-space:nowrap; }
+
+  /* ── SEARCH BAR ── */
+  .search-bar { background:var(--blue); padding:9px 12px; display:flex; gap:7px; align-items:center; }
+  .search-input {
+    flex:1; background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.2);
+    border-radius:8px; padding:7px 11px; color:white; font-size:12px; outline:none;
+  }
+  .search-input::placeholder { color:rgba(255,255,255,0.45); }
+  .nav-btn {
+    background:rgba(255,255,255,0.15); border:none; color:white;
+    border-radius:8px; width:30px; height:30px; cursor:pointer; font-size:14px;
+    display:flex; align-items:center; justify-content:center; transition:background .2s;
+  }
+  .nav-btn:hover { background:rgba(255,255,255,0.28); }
+  .nav-btn:disabled { opacity:.35; cursor:default; }
+
+  /* ── OUTLET LIST ── */
+  .outlet-list { background:white; border-bottom:2px solid var(--border); max-height:150px; overflow-y:auto; }
+  .outlet-list::-webkit-scrollbar { width:3px; }
+  .outlet-list::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:2px; }
+  .outlet-item {
+    padding:8px 14px; font-size:11px; border-bottom:1px solid #f1f5f9;
+    cursor:pointer; display:flex; justify-content:space-between; align-items:center;
+    transition:background .15s;
+  }
+  .outlet-item:hover { background:#f8fafc; }
+  .outlet-item.active { background:#eff6ff; color:var(--blue); font-weight:700; }
+  .outlet-item-name { font-weight:600; }
+  .outlet-item-meta { font-size:9px; color:var(--muted); margin-top:1px; }
+  .rank-sm { background:var(--bg); color:var(--muted); font-size:9px; font-weight:700; padding:2px 7px; border-radius:10px; }
+  .rank-sm.top5 { background:#fef9c3; color:#854d0e; }
+  .rank-sm.top10 { background:#f0fdf4; color:#166534; }
+
+  /* ── DETAIL SCROLL ── */
+  .detail-area { overflow-y:auto; }
+  .detail-area::-webkit-scrollbar { width:3px; }
+  .detail-area::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:2px; }
+
+  /* ── OUTLET HEADER ── */
+  .outlet-header {
+    background:linear-gradient(135deg, var(--blue) 0%, var(--navy) 100%);
+    padding:14px 16px 12px; position:relative; overflow:hidden;
+  }
+  .outlet-header::before {
+    content:''; position:absolute; right:-20px; top:-20px;
+    width:110px; height:110px; border-radius:50%; background:rgba(255,255,255,0.04);
+  }
+  .oh-rank-badge {
+    display:inline-flex; align-items:center; gap:5px;
+    background:var(--accent); color:white; font-size:10px; font-weight:700;
+    padding:3px 10px; border-radius:20px; margin-bottom:7px;
+  }
+  .oh-name  { color:white; font-size:15px; font-weight:800; line-height:1.25; }
+  .oh-meta  { color:rgba(255,255,255,0.55); font-size:10px; margin-top:4px; }
+  .oh-meta span { margin-right:10px; }
+  .oh-update { position:absolute; top:12px; right:12px; background:rgba(255,255,255,0.1); color:rgba(255,255,255,0.65); font-size:9px; padding:3px 8px; border-radius:10px; }
+
+  /* ── KPI STRIP ── */
+  .kpi-strip { display:grid; grid-template-columns:repeat(4,1fr); background:#0a1840; gap:1px; }
+  .kpi-item { padding:9px 6px; text-align:center; background:#0f2057; }
+  .kpi-label { color:rgba(255,255,255,0.45); font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:.4px; }
+  .kpi-value { color:white; font-size:12px; font-weight:800; margin-top:3px; }
+  .kpi-value.up { color:#86efac; }
+  .kpi-value.dn { color:#fca5a5; }
+  .kpi-pct  { font-size:9px; margin-top:2px; color:rgba(255,255,255,0.35); }
+  .kpi-pct.up { color:#86efac; }
+  .kpi-pct.dn { color:#fca5a5; }
+
+  /* ── ACH BAR ── */
+  .ach-wrap { padding:8px 14px; background:#0a1840; }
+  .ach-label { color:rgba(255,255,255,0.5); font-size:9px; font-weight:600; display:flex; justify-content:space-between; margin-bottom:4px; }
+  .ach-bar-bg { height:6px; background:rgba(255,255,255,0.1); border-radius:3px; overflow:hidden; }
+  .ach-bar-fill { height:100%; border-radius:3px; transition:width .5s; }
+
+  /* ── SECTION ── */
+  .section { padding:12px 14px 4px; }
+  .section-title { display:flex; align-items:center; justify-content:space-between; margin-bottom:9px; }
+  .section-title h3 { font-size:11.5px; font-weight:700; color:var(--navy); display:flex; align-items:center; gap:6px; }
+  .section-title h3::before { content:''; display:block; width:3px; height:13px; background:var(--accent); border-radius:2px; }
+  .section-badge { background:var(--bg); color:var(--muted); font-size:9px; font-weight:600; padding:2px 8px; border-radius:10px; border:1px solid var(--border); }
+
+  /* ── PROGRAM CHIPS ── */
+  .prog-grid { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+  .prog-dot { width:6px; height:6px; border-radius:50%; background:currentColor; flex-shrink:0; }
+
+  /* ── PROGRAM TABS ── */
+  .prog-tab-bar { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; }
+  .prog-tab {
+    padding:5px 12px; border-radius:20px; font-size:10px; font-weight:700;
+    border:1.5px solid; cursor:pointer; transition:all .2s; white-space:nowrap;
+    display:flex; align-items:center; gap:5px;
+  }
+  .prog-tab.selected { box-shadow:0 2px 8px rgba(0,0,0,.15); transform:translateY(-1px); }
+  .prog-tab-itga   { background:#eff6ff; border-color:#93c5fd; color:#1e40af; }
+  .prog-tab-itga.selected   { background:#1e40af; color:white; border-color:#1e40af; }
+  .prog-tab-itgsc  { background:#f0fdfa; border-color:#5eead4; color:#115e59; }
+  .prog-tab-itgsc.selected  { background:#115e59; color:white; border-color:#115e59; }
+  .prog-tab-lclb   { background:#f0fdf4; border-color:#86efac; color:#166534; }
+  .prog-tab-lclb.selected   { background:#166534; color:white; border-color:#166534; }
+  .prog-tab-clbk   { background:#fef2f2; border-color:#fca5a5; color:#991b1b; }
+  .prog-tab-clbk.selected   { background:#991b1b; color:white; border-color:#991b1b; }
+  .prog-tab-kantin { background:#faf5ff; border-color:#c4b5fd; color:#6b21a8; }
+  .prog-tab-kantin.selected { background:#6b21a8; color:white; border-color:#6b21a8; }
+  .prog-tab-other  { background:#fff7ed; border-color:#fdba74; color:#9a3412; }
+  .prog-tab-other.selected  { background:#9a3412; color:white; border-color:#9a3412; }
+
+  /* ── PROGRAM DETAIL CARD ── */
+  .prog-detail-card {
+    background:linear-gradient(135deg,#0f2057,#1d3a8a);
+    border-radius:12px; padding:12px 14px; margin-bottom:10px;
+  }
+  .pdc-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; }
+  .pdc-label  { color:rgba(255,255,255,.45); font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; margin-bottom:3px; }
+  .pdc-name   { color:white; font-size:13px; font-weight:800; }
+  .pdc-status { font-size:9px; font-weight:700; padding:3px 9px; border-radius:10px; flex-shrink:0; }
+  .sts-active  { background:rgba(134,239,172,.2); color:#86efac; }
+  .sts-passive { background:rgba(252,165,165,.2); color:#fca5a5; }
+  .pdc-metrics { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom:8px; }
+  .pdc-metric { text-align:center; }
+  .pdm-label  { color:rgba(255,255,255,.45); font-size:8.5px; font-weight:600; text-transform:uppercase; }
+  .pdm-value  { color:white; font-size:12px; font-weight:800; margin-top:2px; }
+  .pdm-value.ok   { color:#86efac; }
+  .pdm-value.warn { color:#fca5a5; }
+  .pdc-ach-row { display:flex; justify-content:space-between; font-size:9px; margin-bottom:3px; }
+  .pdc-ach-row span:first-child { color:rgba(255,255,255,.5); }
+  .pdc-ach-bg   { height:5px; background:rgba(255,255,255,.1); border-radius:3px; overflow:hidden; margin-bottom:10px; }
+  .pdc-ach-fill { height:100%; border-radius:3px; }
+  .pdc-period-table { width:100%; border-collapse:collapse; font-size:10px; }
+  .pdc-period-table th { background:rgba(0,0,0,.25); color:rgba(255,255,255,.6); padding:5px 8px; text-align:right; font-size:9px; font-weight:600; }
+  .pdc-period-table th:first-child { text-align:left; border-radius:5px 0 0 0; }
+  .pdc-period-table th:last-child  { border-radius:0 5px 0 0; }
+  .pdc-period-table td { padding:5px 8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.07); color:rgba(255,255,255,.85); }
+  .pdc-period-table td:first-child { text-align:left; font-weight:600; color:rgba(255,255,255,.7); }
+  .pdc-period-table tr:last-child td { border-bottom:none; }
+
+
+  /* ── MINI BAR ── */
+  .mini-bar-wrap { display:flex; align-items:center; gap:4px; }
+  .mini-bar-bg   { flex:1; height:4px; background:#e2e8f0; border-radius:2px; overflow:hidden; }
+  .mini-bar-fill { height:100%; border-radius:2px; }
+
+  /* ── CHART ── */
+  .chart-wrap { background:var(--bg); border-radius:10px; padding:10px; margin-bottom:10px; }
+  .chart-legend { display:flex; gap:10px; margin-bottom:7px; flex-wrap:wrap; }
+  .legend-item { display:flex; align-items:center; gap:4px; font-size:9px; color:var(--muted); font-weight:600; }
+  .legend-dot  { width:8px; height:8px; border-radius:2px; }
+
+  /* ── METRIC CARDS ROW ── */
+  .metric-row { display:grid; grid-template-columns:repeat(3,1fr); gap:7px; margin-bottom:10px; }
+  .metric-card { background:var(--bg); border-radius:10px; padding:9px 10px; text-align:center; }
+  .mc-label { font-size:9px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.4px; }
+  .mc-value { font-size:13px; font-weight:800; color:var(--navy); margin-top:3px; }
+  .mc-sub   { font-size:9px; color:var(--muted); margin-top:1px; }
+  .mc-value.ok { color:#166534; }
+  .mc-value.warn { color:#9a3412; }
+
+  /* ── DIVIDER ── */
+  .divider { height:6px; background:var(--bg); border-top:1px solid var(--border); border-bottom:1px solid var(--border); }
+
+  /* ── LOADING STATE ── */
+  .loading-state { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:60px 20px; gap:14px; }
+  .spinner { width:36px; height:36px; border:3px solid #e2e8f0; border-top-color:var(--teal); border-radius:50%; animation:spin 1s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .loading-text { color:var(--muted); font-size:12px; font-weight:600; }
+  .error-box { background:#fef2f2; border:1px solid #fca5a5; color:var(--accent); padding:14px; border-radius:10px; margin:16px; font-size:12px; text-align:center; }
+
+  /* ── PLAN SKU TABLE ── */
+  .sku-container {
+    column-count: 3;
+    column-gap: 5px;
+    column-fill: balance;
+  }
+  .sku-group {
+    break-inside: avoid;
+    display: inline-block;
+    width: 100%;
+    margin-bottom: 5px;
+    vertical-align: top;
+  }
+  .sku-group-header {
+    font-size:10px; font-weight:800; color:white; padding:4px 7px;
+    border-radius:4px 4px 0 0; display:flex; justify-content:space-between; align-items:center;
+  }
+  .sku-tbl { width:100%; border-collapse:collapse; font-size:9px; border:1px solid #e2e8f0; border-top:none; }
+  .sku-tbl th { background:#f8fafc; color:var(--muted); padding:3px 5px; text-align:right; font-size:8px; font-weight:700; border-bottom:1px solid var(--border); }
+  .sku-tbl th:first-child { text-align:left; }
+  .sku-tbl td { padding:2.5px 5px; text-align:right; border-bottom:1px solid #f8fafc; line-height:1.3; }
+  .sku-tbl td:first-child { text-align:left; font-weight:600; font-family:monospace; font-size:8.5px; color:#334155; }
+  .sku-tbl tr:last-child td { border-bottom:none; }
+  .sku-ok   { color:#166534; font-weight:700; }
+  .sku-warn { color:#dc2626; font-weight:700; }
+  .sku-zero { color:#94a3b8; }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="top-bar">
+  <div class="top-bar-left">
+    <div class="top-bar-icon">📖</div>
+    <div>
+      <div class="top-bar-title">Buku Saku ITG</div>
+      <div class="top-bar-sub" id="topBarSub">Top 30 Pareto · Depo Tanjung</div>
+    </div>
+  </div>
+  <div class="top-bar-badge" id="rankBadge">#1 dari 30</div>
+</div>
+
+<!-- SEARCH + NAV -->
+<div class="search-bar">
+  <input class="search-input" id="searchInput" type="text" placeholder="🔍  Cari nama outlet..." oninput="filterOutlets()">
+  <button class="nav-btn" id="prevBtn" onclick="navigateOutlet(-1)">‹</button>
+  <button class="nav-btn" id="nextBtn" onclick="navigateOutlet(1)">›</button>
+</div>
+
+<!-- OUTLET LIST -->
+<div class="outlet-list" id="outletList"></div>
+
+<!-- LOADING -->
+<div class="loading-state" id="loadingState" style="display:flex;">
+  <div class="spinner"></div>
+  <div class="loading-text">Memuat data pareto...</div>
+</div>
+
+<!-- DETAIL AREA -->
+<div class="detail-area" id="detailArea" style="display:none;"></div>
+
+<script>
+// ── Error validator: tampil di layar & relay ke parent console ──
+window.onerror = function(msg, src, line, col, err) {
+  const box = document.getElementById('loadingState');
+  if (box) box.innerHTML = `
+    <div style="background:#fef2f2;border:1px solid #fca5a5;color:#991b1b;padding:14px 16px;border-radius:10px;margin:16px;font-size:11px;text-align:left;width:90%;">
+      <b style="font-size:13px;">❌ JS Error</b><br><br>
+      <b>Pesan:</b> ${msg}<br>
+      <b>File:</b> ${src}<br>
+      <b>Baris:</b> ${line}:${col}
+    </div>`;
+  // relay ke parent agar muncul di console utama
+  try { window.parent.console.error('[BukuSaku]', msg, src, line, col); } catch(e) {}
+  return false;
+};
+window.addEventListener('unhandledrejection', function(e) {
+  const msg = e.reason?.message || String(e.reason);
+  const box = document.getElementById('loadingState');
+  if (box) box.innerHTML = `
+    <div style="background:#fef2f2;border:1px solid #fca5a5;color:#991b1b;padding:14px 16px;border-radius:10px;margin:16px;font-size:11px;text-align:left;width:90%;">
+      <b style="font-size:13px;">❌ Promise Error</b><br><br>
+      ${msg}<br><br>
+      <button onclick="location.reload()" style="padding:5px 14px;background:#1d3a8a;color:white;border:none;border-radius:7px;cursor:pointer;font-size:11px;">🔄 Reload</button>
+    </div>`;
+  try { window.parent.console.error('[BukuSaku] Unhandled:', msg); } catch(e) {}
+});
+</script>
+<script>
+// ── Global State ──
+let allOutlets      = [];
+let filteredOutlets = [];
+let currentIdx      = 0;
+let trendChart      = null;
+let skupelMap       = {};
+
+const MONTHS = ['','Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+const TODAY     = new Date();
+const CUR_MONTH = TODAY.getMonth() + 1;
+const MTD_LABEL = 'MTD';
+const M3_LABEL  = 'M3';
+const M2_LABEL  = 'M2';
+const M1_LABEL  = 'M1';
+
+// ── Formatters ──
+function fmtRp(v) {
+  const n = Math.abs(parseFloat(v)||0);
+  if (n >= 1e9) return (n/1e9).toFixed(1)+'M';
+  if (n >= 1e6) return (n/1e6).toFixed(1)+'jt';
+  if (n >= 1e3) return (n/1e3).toFixed(0)+'rb';
+  return Math.round(n).toString();
+}
+// Unit formatter for ITG SC (cs/dus) — show exact number with thousand separator
+function fmtUnit(v) {
+  const n = parseFloat(v)||0;
+  return Math.round(n).toLocaleString('id-ID');
+}
+function fmtPct(a,t) { if (!t||t===0) return a>0?'100%':'0%'; return Math.round((a/t)*100)+'%'; }
+function pctNum(a,t) { if (!t||t===0) return a>0?100:0; return Math.round((a/t)*100); }
+
+// ── Data Loading ──
+async function loadFile(filename) {
+  const paths = ['data/','./data/','./',''];
+  for (const base of paths) {
+    try {
+      const res = await fetch(base + filename);
+      if (res.ok) return await res.text();
+    } catch(e) { continue; }
+  }
+  throw new Error('Cannot load ' + filename);
+}
+function parseJSONL(text) {
+  return text.split('\n').filter(l=>l.trim()).map(l=>{ try{return JSON.parse(l);}catch{return null;} }).filter(Boolean);
+}
+
+async function initApp() {
+  console.log('🚀 BukuSaku initApp start');
+  document.getElementById('loadingState').style.display = 'flex';
+  document.getElementById('detailArea').style.display   = 'none';
+
+  try {
+    console.log('📂 Loading d.details.json & d.project.json...');
+    const [detailsTxt, projectTxt] = await Promise.all([
+      loadFile('d.details.json'),
+      loadFile('d.project.json'),
+    ]);
+    console.log('✅ Files loaded — details chars:', detailsTxt.length, '| project chars:', projectTxt.length);
+
+    const details  = parseJSONL(detailsTxt);
+    const projects = parseJSONL(projectTxt);
+    console.log('📊 Parsed — details:', details.length, 'records | projects:', projects.length, 'records');
+
+    // ── Numeric fields to SUM across salesmen ──
+    const SUM_FIELDS = [
+      '3LM','T.MTD','A.MTD','LY','LM','LMALL','Max','BE MTD','Gap MTD',
+      'T.GPPJ','A.GPPJ','T.GEN','A.GEN','T.GBS','A.GBS','T.MBR','A.MBR',
+      'TPOM','CAPOM','PICOS','TMSS','AMSS','CA MTD','SasaranGO','AGO',
+    ];
+
+    // ── Group d.details.json by Nama Pelanggan ──
+    const grouped = {};
+    details.forEach(d => {
+      const nama = d['Nama Pelanggan'].trim();
+      if (!grouped[nama]) {
+        // First record: copy all, init salesman list
+        grouped[nama] = { ...d, _salesmen: [d['szname']] };
+      } else {
+        // Sum numeric fields
+        SUM_FIELDS.forEach(f => {
+          grouped[nama][f] = (parseFloat(grouped[nama][f]||0) + parseFloat(d[f]||0));
+        });
+        // Collect unique salesmen
+        if (!grouped[nama]._salesmen.includes(d['szname'])) {
+          grouped[nama]._salesmen.push(d['szname']);
+        }
+      }
+    });
+    // Recalculate Gap MTD after summing
+    Object.values(grouped).forEach(d => {
+      d['Gap MTD'] = parseFloat(d['A.MTD']||0) - parseFloat(d['T.MTD']||0);
+    });
+
+    // ── projectMap keyed by Nama Pelanggan only ──
+    const projectMap = {};
+    projects.forEach(p => {
+      const k = p['CUST NAME'].trim();
+      if (!projectMap[k]) projectMap[k] = [];
+      projectMap[k].push(p);
+    });
+
+    // ── Sort grouped outlets by T.MTD desc, take top 30 ──
+    console.log('🔢 Grouped outlets:', Object.keys(grouped).length);
+    const top30 = Object.values(grouped)
+      .sort((a,b) => parseFloat(b['T.MTD']||0) - parseFloat(a['T.MTD']||0))
+      .slice(0, 30);
+
+    allOutlets = top30.map((d, i) => {
+      const nama = d['Nama Pelanggan'].trim();
+      const pArr = projectMap[nama] || [];
+      const salesmen = d._salesmen || [d['szname']||''];
+      return {
+        rank:    i + 1,
+        nama,
+        salesman: salesmen.join(' / '),
+        jks:     d['Hari JKS']||d['JKS']||'-',
+        tMTD:    parseFloat(d['T.MTD']||0),
+        aMTD:    parseFloat(d['A.MTD']||0),
+        lm:      parseFloat(d['LMALL']||d['LM']||0),
+        lm3:     parseFloat(d['3LM']||0),
+        ly:      parseFloat(d['LY']||0),
+        gapMTD:  parseFloat(d['Gap MTD']||0),
+        alamat:       d['Alamat']||'-',
+        depo:         d['Depo']||'DEPO TANJUNG',
+        channel:      d['Channel Group']||d['CC1']||'-',
+        kabupaten:    d['Kabupaten']||'',
+        kecamatan:    d['Kecamatan']||'',
+        project:      d['Project']||'',
+        projectDetail:d['Project Detail']||'',
+        tPOM:  parseInt(d['TPOM']||0),  caPOM: parseInt(d['CAPOM']||0),
+        picos: parseInt(d['PICOS']||0),
+        tmss:  parseInt(d['TMSS']||0),  amss:  parseInt(d['AMSS']||0),
+        // chart bars (summed from d.details.json)
+        dMax:    parseFloat(d['Max']||0),
+        d3LM:    parseFloat(d['3LM']||0),
+        dLY:     parseFloat(d['LY']||0),
+        dLM:     parseFloat(d['LMALL']||d['LM']||0),
+        dTMTD:   parseFloat(d['T.MTD']||0),
+        dBEMTD:  parseFloat(d['BE MTD']||0),
+        dAMTD:   parseFloat(d['A.MTD']||0),
+        dGapMTD: parseFloat(d['Gap MTD']||0),
+        // programs from d.project.json (all programs for this outlet)
+        projectArr: pArr,
+        hasProject: pArr.length > 0,
+      };
+    });
+
+    filteredOutlets = [...allOutlets];
+    buildOutletList();
+
+    // ── Load d.skupelanggan.json secara terpisah (opsional) ──
+    loadSkupelanggan();
+
+    console.log('✅ BukuSaku ready — top30:', allOutlets.length, 'outlets');
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('detailArea').style.display   = 'block';
+    selectOutlet(0);
+
+  } catch(err) {
+    console.error('initApp error:', err);
+    const ls = document.getElementById('loadingState');
+    if (ls) ls.innerHTML = `
+      <div style="background:#fef2f2;border:1px solid #fca5a5;color:#991b1b;padding:16px;border-radius:10px;margin:16px;font-size:12px;text-align:center;">
+        <div style="font-size:24px;margin-bottom:8px;">❌</div>
+        <div style="font-weight:700;margin-bottom:4px;">Gagal memuat data</div>
+        <div style="opacity:.7;">${err.message}</div>
+        <button onclick="initApp()" style="margin-top:12px;padding:6px 16px;background:#1d3a8a;color:white;border:none;border-radius:8px;cursor:pointer;font-size:11px;">🔄 Coba Lagi</button>
+      </div>`;
+  }
+}
+
+// ── Outlet List ──
+function buildOutletList(searchTerm='') {
+  const list = document.getElementById('outletList');
+  const term = searchTerm.toLowerCase().trim();
+  const items = term
+    ? filteredOutlets.filter(o => o.nama.toLowerCase().includes(term) || o.salesman.toLowerCase().includes(term))
+    : filteredOutlets;
+
+  list.innerHTML = items.map((o,i) => `
+    <div class="outlet-item${i===currentIdx&&!term?' active':''}" onclick="onOutletClick(${filteredOutlets.indexOf(o)})">
+      <div>
+        <div class="outlet-item-name">${o.nama}</div>
+        <div class="outlet-item-meta">👤 ${o.salesman} · 📅 ${o.jks} · ${fmtRp(o.tMTD)}</div>
+      </div>
+      <span class="rank-sm${o.rank<=5?' top5':o.rank<=10?' top10':''}">#${o.rank}</span>
+    </div>`).join('');
+}
+
+function filterOutlets() {
+  const term = document.getElementById('searchInput').value;
+  buildOutletList(term);
+}
+
+function onOutletClick(idx) {
+  document.getElementById('searchInput').value = '';
+  currentIdx = idx;
+  buildOutletList();
+  selectOutlet(idx);
+}
+
+function navigateOutlet(dir) {
+  const next = currentIdx + dir;
+  if (next >= 0 && next < filteredOutlets.length) {
+    currentIdx = next;
+    buildOutletList();
+    selectOutlet(currentIdx);
+    // scroll active item into view
+    const items = document.querySelectorAll('.outlet-item');
+    if (items[currentIdx]) items[currentIdx].scrollIntoView({block:'nearest'});
+  }
+}
+
+// ── Render Detail ──
+function selectOutlet(idx) {
+  const o = filteredOutlets[idx];
+  if (!o) return;
+
+  document.getElementById('rankBadge').textContent = `#${o.rank} dari 30`;
+  document.getElementById('topBarSub').textContent = `${o.depo} · Kalimantan`;
+  document.getElementById('prevBtn').disabled = (idx <= 0);
+  document.getElementById('nextBtn').disabled = (idx >= filteredOutlets.length - 1);
+
+  const achPct   = pctNum(o.aMTD, o.tMTD);
+  const achColor = achPct >= 100 ? '#86efac' : achPct >= 80 ? '#fcd34d' : '#fca5a5';
+  const achClass = achPct >= 100 ? 'up' : 'dn';
+
+  // MTD vs LM
+  const vsLM  = o.lm > 0 ? Math.round(((o.aMTD - o.lm)/o.lm)*100) : null;
+  const vsLMTxt = vsLM !== null ? (vsLM>=0?'▲ ':'▼ ')+Math.abs(vsLM)+'% vs LM' : '';
+  const vsLMCls = vsLM !== null ? (vsLM>=0?'up':'dn') : '';
+
+  // vs LY
+  const vsLY  = o.ly > 0 ? Math.round(((o.aMTD - o.ly)/o.ly)*100) : null;
+  const vsLYTxt = vsLY !== null ? (vsLY>=0?'▲ ':'▼ ')+Math.abs(vsLY)+'%' : '-';
+  const vsLYCls = vsLY !== null ? (vsLY>=0?'up':'dn') : '';
+
+  // Programs
+  // (rendered after innerHTML via renderPrograms)
+
+  // TPOM / MSS / PICOS section
+  const opsSection = buildOpsSection(o);
+
+  document.getElementById('detailArea').innerHTML = `
+    <!-- OUTLET HEADER -->
+    <div class="outlet-header">
+      <div class="oh-rank-badge">🏆 Rank #${o.rank} · Top 30 Pareto</div>
+      <div class="oh-name">${o.nama}</div>
+      <div class="oh-update">Update: ${TODAY.getDate()} ${MONTHS[CUR_MONTH]} ${TODAY.getFullYear()}</div>
+      <div class="oh-meta"><span>📍 ${o.alamat}</span></div>
+      <div class="oh-meta" style="margin-top:3px;">
+        <span>👤 ${o.salesman}</span>
+        <span>📅 ${o.jks}</span>
+        <span>🏦 ${o.depo}</span>
+      </div>
+      ${o.kabupaten ? `<div class="oh-meta" style="margin-top:3px;"><span>🗺️ ${o.kecamatan}, ${o.kabupaten}</span></div>` : ''}
+    </div>
+
+    <!-- KPI STRIP -->
+    <div class="kpi-strip">
+      <div class="kpi-item">
+        <div class="kpi-label">MTD Aktual</div>
+        <div class="kpi-value ${o.aMTD>0?'up':'dn'}">${fmtRp(o.aMTD)}</div>
+        <div class="kpi-pct ${vsLMCls}">${vsLMTxt||'—'}</div>
+      </div>
+      <div class="kpi-item">
+        <div class="kpi-label">Target MTD</div>
+        <div class="kpi-value">${fmtRp(o.tMTD)}</div>
+        <div class="kpi-pct">plan</div>
+      </div>
+      <div class="kpi-item">
+        <div class="kpi-label">3LM Avg</div>
+        <div class="kpi-value">${fmtRp(o.lm3)}</div>
+        <div class="kpi-pct" style="color:rgba(255,255,255,.35);">avg/bln</div>
+      </div>
+      <div class="kpi-item">
+        <div class="kpi-label">LY</div>
+        <div class="kpi-value ${vsLYCls}">${o.ly>0?fmtRp(o.ly):'-'}</div>
+        <div class="kpi-pct ${vsLYCls}">${vsLYTxt}</div>
+      </div>
+    </div>
+
+    <!-- ACH BAR -->
+    <div class="ach-wrap">
+      <div class="ach-label">
+        <span>Achievement MTD</span>
+        <span style="color:${achColor};font-weight:800;">${achPct}%</span>
+      </div>
+      <div class="ach-bar-bg">
+        <div class="ach-bar-fill" style="width:${Math.min(achPct,100)}%;background:${achColor};"></div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- PROGRAM ITG -->
+    <div class="section">
+      <div class="section-title">
+        <h3>Program ITG</h3>
+        <span class="section-badge" id="progBadge"></span>
+      </div>
+      <div id="progContent"></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- PERFORMA METRIK CHART -->
+    <div class="section">
+      <div class="section-title">
+        <h3>Performa Metrik</h3>
+        <span class="section-badge">Dari d.details</span>
+      </div>
+      <div class="chart-wrap" style="padding:10px 8px;">
+        <canvas id="metricsChart" height="220"></canvas>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- AKTIVITAS -->
+    ${opsSection}
+
+    <div style="height:8px;"></div>
+
+    <!-- PLAN BY SKU -->
+    <div id="planSkuSection">
+      <button onclick="togglePlanSKU()" id="planSkuBtn"
+        style="width:100%;padding:11px 14px;background:white;border:none;border-top:2px solid var(--border);
+               border-bottom:2px solid var(--border);display:flex;align-items:center;justify-content:space-between;
+               cursor:pointer;font-size:11px;font-weight:700;color:var(--navy);">
+        <span style="display:flex;align-items:center;gap:8px;">
+          📋 Plan by SKU
+          <span id="skuBadge" style="background:var(--bg);color:var(--muted);font-size:9px;font-weight:700;
+                padding:2px 8px;border-radius:10px;border:1px solid var(--border);">memuat...</span>
+        </span>
+        <span id="skuArrow">▾</span>
+      </button>
+      <div id="skuBody" style="display:none;background:white;padding:10px 12px 6px;"></div>
+    </div>
+
+    <div style="height:16px;"></div>
+  `;
+
+  // Destroy old chart
+  if (trendChart) { trendChart.destroy(); trendChart = null; }
+
+  // ── Render Program Section ──
+  renderPrograms(o);
+
+  // ── Render Plan SKU ──
+  renderPlanSKU(o);
+
+
+  // ── Metrics Bar Chart (horizontal) ──
+  const mCtx = document.getElementById('metricsChart');
+  if (mCtx && typeof Chart !== 'undefined') {
+    const gapPos = o.dGapMTD >= 0;
+    const labels  = ['Max', '3LM', 'LY', 'LM', 'T.MTD', 'BE MTD', 'A.MTD', 'Gap MTD'];
+    const values  = [o.dMax, o.d3LM, o.dLY, o.dLM, o.dTMTD, o.dBEMTD, o.dAMTD, o.dGapMTD];
+    const colors  = [
+      '#94a3b8', // Max  - gray
+      '#7dd3fc', // 3LM  - light blue
+      '#a78bfa', // LY   - purple
+      '#5eead4', // LM   - teal
+      '#fdba74', // T.MTD- orange (target)
+      '#fcd34d', // BE MTD - yellow
+      '#1d3a8a', // A.MTD- navy (actual, highlighted)
+      gapPos ? '#22c55e' : '#e8392a', // Gap - green/red
+    ];
+
+    trendChart = new Chart(mCtx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          data: values,
+          backgroundColor: colors,
+          borderRadius: 4,
+          borderSkipped: false,
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => (ctx.raw < 0 ? '-' : '') + fmtRp(ctx.raw)
+            }
+          }
+        },
+        scales: {
+          x: {
+            ticks: { font:{ size:8 }, callback: v => fmtRp(v) },
+            grid: { color:'#f1f5f9' }
+          },
+          y: { ticks: { font:{ size:10 }, color:'#1e293b' }, grid: { display:false } }
+        }
+      }
+    });
+  }
+
+  // Scroll top
+  document.getElementById('detailArea').scrollTop = 0;
+}
+
+// ── Render Programs from d.project.json — each record = 1 selectable tab ──
+function renderPrograms(o) {
+  const badge   = document.getElementById('progBadge');
+  const content = document.getElementById('progContent');
+  if (!badge || !content) return;
+
+  if (!o.hasProject) {
+    badge.textContent = 'Tidak ada program';
+    badge.style.cssText = 'background:#fef2f2;color:#991b1b;border:1px solid #fca5a5;';
+    content.innerHTML = `
+      <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:10px;padding:14px;text-align:center;margin-bottom:10px;">
+        <div style="font-size:22px;margin-bottom:6px;">📭</div>
+        <div style="font-size:12px;font-weight:700;color:#991b1b;">Outlet ini tidak terdaftar dalam program ITG</div>
+        <div style="font-size:10px;color:#b91c1c;margin-top:4px;">Tidak ditemukan di file d.project.json</div>
+      </div>`;
+    return;
+  }
+
+  const progs = o.projectArr;
+  const aktifCount = progs.filter(p => (p['Status.1']||'').toLowerCase().includes('aktif')).length;
+  badge.textContent = `${progs.length} program · ${aktifCount} aktif`;
+  badge.style.cssText = aktifCount > 0
+    ? 'background:#f0fdf4;color:#166534;border:1px solid #86efac;'
+    : 'background:#fef2f2;color:#991b1b;border:1px solid #fca5a5;';
+
+  // Render with first tab selected by default
+  renderProgContent(o, 0);
+}
+
+function tabClass(itgName) {
+  const l = (itgName||'').toLowerCase();
+  if (l.includes('itg arjuna') || l.includes('itg a')) return 'prog-tab-itga';
+  if (l.includes('itg sc'))   return 'prog-tab-itgsc';
+  if (l.includes('lclb'))     return 'prog-tab-lclb';
+  if (l.includes('clbk'))     return 'prog-tab-clbk';
+  if (l.includes('kantin'))   return 'prog-tab-kantin';
+  return 'prog-tab-other';
+}
+
+function renderProgContent(o, selectedIdx) {
+  const content = document.getElementById('progContent');
+  if (!content) return;
+  const progs = o.projectArr;
+
+  // Build tabs row
+  const tabs = progs.map((p, i) => {
+    const cls = tabClass(p['ITG']||'');
+    const sel = i === selectedIdx ? ' selected' : '';
+    return `<div class="prog-tab ${cls}${sel}" onclick="onProgTabClick(${o.rank-1},${i})">
+      <span class="prog-dot"></span>${p['ITG']||'Program'}
+    </div>`;
+  }).join('');
+
+  const p = progs[selectedIdx];
+  const itgLabel  = p['ITG'] || '-';
+  const stsITG    = p['Sts ITG'] || itgLabel;
+  const isAktif   = (p['Status.1']||'').toLowerCase().includes('aktif');
+  const stsCls    = isAktif ? 'sts-active' : 'sts-passive';
+  const stsTxt    = p['Status.1'] || '-';
+
+  // Detect ITG SC → use unit formatter, otherwise rupiah
+  const isUnit = (itgLabel === 'ITG SC');
+  const fmt = isUnit ? fmtUnit : fmtRp;
+  const unitNote = isUnit ? ' <span style="font-size:8px;opacity:.6;">(cs/dus)</span>' : '';
+
+  const tMTD  = parseFloat(p['T.MTD']||0);
+  const aMTD  = parseFloat(p['A.MTD']||0);
+  const tQrt  = parseFloat(p['T.Qrt']||0);
+  const aQrt  = parseFloat(p['A.Qrt']||0);
+  const achMTD = tMTD > 0 ? Math.round((aMTD/tMTD)*100) : (aMTD > 0 ? 100 : 0);
+  const achQrt = tQrt > 0 ? Math.round((aQrt/tQrt)*100) : (aQrt > 0 ? 100 : 0);
+  const achMTDCls = achMTD >= 100 ? 'ok' : 'warn';
+  const achQrtCls = achQrt >= 100 ? 'ok' : 'warn';
+  const achColor  = achMTD >= 100 ? '#86efac' : achMTD >= 80 ? '#fcd34d' : '#fca5a5';
+
+  const periods = [
+    { label: 'M1', t: parseFloat(p['T.M1']||0), a: parseFloat(p['A.M1']||0) },
+    { label: 'M2', t: parseFloat(p['T.M2']||0), a: parseFloat(p['A.M2']||0) },
+    { label: 'M3', t: parseFloat(p['T.M3']||0), a: parseFloat(p['A.M3']||0) },
+    { label: 'MTD', t: tMTD, a: aMTD },
+  ].filter(r => r.t > 0 || r.a > 0);
+
+  const periodRows = periods.map(r => {
+    const pct = r.t > 0 ? Math.round((r.a/r.t)*100) : (r.a > 0 ? 100 : 0);
+    const cl  = pct >= 100 ? '#86efac' : pct >= 80 ? '#fcd34d' : '#fca5a5';
+    return `<tr>
+      <td>${r.label}</td>
+      <td>${fmt(r.t)}</td>
+      <td>${fmt(r.a)}</td>
+      <td style="font-weight:700;color:${cl};">${pct}%</td>
+    </tr>`;
+  }).join('');
+
+  content.innerHTML = `
+    <div class="prog-tab-bar">${tabs}</div>
+    <div class="prog-detail-card">
+      <div class="pdc-header">
+        <div>
+          <div class="pdc-label">Target Program · ${itgLabel}${unitNote}</div>
+          <div class="pdc-name">${itgLabel}</div>
+        </div>
+        <span class="pdc-status ${stsCls}">${stsTxt}</span>
+      </div>
+      <div class="pdc-metrics">
+        <div class="pdc-metric">
+          <div class="pdm-label">T.MTD</div>
+          <div class="pdm-value">${fmt(tMTD)}</div>
+        </div>
+        <div class="pdc-metric">
+          <div class="pdm-label">A.MTD</div>
+          <div class="pdm-value ${achMTDCls}">${fmt(aMTD)}</div>
+        </div>
+        <div class="pdc-metric">
+          <div class="pdm-label">Ach MTD</div>
+          <div class="pdm-value ${achMTDCls}">${achMTD}%</div>
+        </div>
+        <div class="pdc-metric">
+          <div class="pdm-label">T.Qrt</div>
+          <div class="pdm-value">${fmt(tQrt)}</div>
+        </div>
+        <div class="pdc-metric">
+          <div class="pdm-label">A.Qrt</div>
+          <div class="pdm-value ${achQrtCls}">${fmt(aQrt)}</div>
+        </div>
+        <div class="pdc-metric">
+          <div class="pdm-label">Ach Qrt</div>
+          <div class="pdm-value ${achQrtCls}">${achQrt}%</div>
+        </div>
+      </div>
+      <div class="pdc-ach-row">
+        <span>Achievement MTD</span>
+        <span style="font-weight:800;color:${achColor};">${achMTD}%</span>
+      </div>
+      <div class="pdc-ach-bg">
+        <div class="pdc-ach-fill" style="width:${Math.min(achMTD,100)}%;background:${achColor};"></div>
+      </div>
+      ${periodRows ? `<table class="pdc-period-table">
+        <thead><tr><th>Periode</th><th>Target</th><th>Aktual</th><th>Ach%</th></tr></thead>
+        <tbody>${periodRows}</tbody>
+      </table>` : ''}
+    </div>
+  `;
+}
+
+// Called when a program tab is clicked
+function onProgTabClick(outletIdx, progIdx) {
+  renderProgContent(filteredOutlets[outletIdx], progIdx);
+}
+
+// ── Build Ops Section (TPOM, MSS, PICOS) ──
+function buildOpsSection(o) {
+  const pomPct  = o.tPOM > 0 ? Math.round((o.caPOM/o.tPOM)*100) : 0;
+  const mssPct  = o.tmss > 0 ? Math.round((o.amss/o.tmss)*100) : 0;
+  const pomCls  = pomPct >= 100 ? 'ok' : 'warn';
+  const mssCls  = mssPct >= 100 ? 'ok' : 'warn';
+  const picosCls= o.picos >= 1   ? 'ok' : 'warn';
+
+  return `
+  <div class="section">
+    <div class="section-title">
+      <h3>Aktivitas Kunjungan</h3>
+    </div>
+    <div class="metric-row">
+      <div class="metric-card">
+        <div class="mc-label">TPOM</div>
+        <div class="mc-value ${pomCls}">${o.caPOM}/${o.tPOM}</div>
+        <div class="mc-sub">${pomPct}% tercapai</div>
+      </div>
+      <div class="metric-card">
+        <div class="mc-label">MSS</div>
+        <div class="mc-value ${mssCls}">${o.amss}/${o.tmss}</div>
+        <div class="mc-sub">${mssPct}% tercapai</div>
+      </div>
+      <div class="metric-card">
+        <div class="mc-label">PICOS</div>
+        <div class="mc-value ${picosCls}">${o.picos > 0 ? '✓' : '✗'}</div>
+        <div class="mc-sub">${o.picos > 0 ? 'Comply' : 'Belum'}</div>
+      </div>
+    </div>
+  </div>
+  <div class="divider"></div>`;
+}
+
+
+// ── Start ──
+// ── Plan by SKU ──
+const PROMO_ORDER = ['Bisc','GEN','SF','GBS','GO','PRE','Solmed'];
+const PROMO_COLORS = {
+  Bisc:'#1d3a8a', GBS:'#6b21a8', GEN:'#166534',
+  GO:'#9a3412',   PRE:'#0c4a6e', SF:'#065f46', Solmed:'#7c2d12'
+};
+
+async function loadSkupelanggan() {
+  try {
+    const txt  = await loadFile('d.skupelanggan.json');
+    const rows = parseJSONL(txt);
+    skupelMap  = {};
+    rows.forEach(r => {
+      const nama = (r['Nama_Pelanggan']||'').trim();
+      const sku  = r['SKU']||r['Cek']||'';
+      if (!nama||!sku) return;
+      if (!skupelMap[nama]) skupelMap[nama] = {};
+      if (!skupelMap[nama][sku]) skupelMap[nama][sku] = { sku, promo:r['Promo']||'Other', plan:0, mtd:0 };
+      skupelMap[nama][sku].plan += parseFloat(r['Plan']||0);
+      skupelMap[nama][sku].mtd  += parseFloat(r['UnitMTD']||0);
+    });
+    console.log('📦 Skupelanggan loaded:', rows.length, 'records');
+    // Update badge if outlet already selected
+    if (filteredOutlets[currentIdx]) renderPlanSKU(filteredOutlets[currentIdx]);
+  } catch(e) {
+    console.warn('⚠️ d.skupelanggan.json tidak tersedia');
+  }
+}
+
+function renderPlanSKU(o) {
+  const badge = document.getElementById('skuBadge');
+  const body  = document.getElementById('skuBody');
+  if (!badge||!body) return;
+
+  const skuData = skupelMap[o.nama];
+  if (!skuData) {
+    badge.textContent = 'tidak ada data';
+    body.innerHTML = '<p style="font-size:11px;color:var(--muted);padding:10px 0;text-align:center;">Data SKU belum tersedia</p>';
+    return;
+  }
+
+  // Group by Promo
+  const byPromo = {};
+  Object.values(skuData).forEach(r => {
+    if (!byPromo[r.promo]) byPromo[r.promo] = [];
+    byPromo[r.promo].push(r);
+  });
+  Object.values(byPromo).forEach(arr => arr.sort((a,b) => b.plan - a.plan));
+
+  const keys = [
+    ...PROMO_ORDER.filter(p => byPromo[p]),
+    ...Object.keys(byPromo).filter(p => !PROMO_ORDER.includes(p)).sort()
+  ];
+
+  const totalSKU = Object.keys(skuData).length;
+  badge.textContent = `${totalSKU} SKU · ${keys.length} grup`;
+
+  // Format unit (integer with thousand separator)
+  const fmt = v => {
+    const n = parseFloat(v)||0;
+    if (n === 0) return '-';
+    return Number.isInteger(n) ? n.toLocaleString('id-ID') : n.toFixed(1);
+  };
+
+  const groups = keys.map(promo => {
+    const color = PROMO_COLORS[promo] || '#374151';
+    const items = byPromo[promo];
+    const rows  = items.map(r => {
+      const mtdCls = r.mtd === 0 ? 'sku-zero' : r.mtd >= r.plan ? 'sku-ok' : 'sku-warn';
+      const planFmt = r.plan > 0 ? fmt(r.plan) : '-';
+      const mtdFmt  = r.mtd  > 0 ? fmt(r.mtd)  : '-';
+      return `<tr>
+        <td>${r.sku}</td>
+        <td style="color:var(--muted);">${planFmt}</td>
+        <td class="${mtdCls}">${mtdFmt}</td>
+      </tr>`;
+    }).join('');
+    return `<div class="sku-group">
+      <div class="sku-group-header" style="background:${color};">
+        <span>${promo}</span>
+        <span style="opacity:.6;font-size:8px;">${items.length} SKU</span>
+      </div>
+      <table class="sku-tbl">
+        <thead><tr><th>SKU</th><th>Plan</th><th>MTD</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  }).join('');
+
+  body.innerHTML = `<div class="sku-container">${groups}</div>`;
+}
+
+function togglePlanSKU() {
+  const body  = document.getElementById('skuBody');
+  const arrow = document.getElementById('skuArrow');
+  if (!body||!arrow) return;
+  const open = body.style.display === 'none';
+  body.style.display  = open ? 'block' : 'none';
+  arrow.textContent   = open ? '▴' : '▾';
+}
+
+// Panggil initApp segera atau saat DOM siap
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
+</script>
+</body>
+</html>
