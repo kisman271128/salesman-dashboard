@@ -234,7 +234,7 @@
   <div class="top-bar-left">
     <div class="top-bar-icon">📖</div>
     <div>
-      <div class="top-bar-title">30 Pareto Outlet</div>
+      <div class="top-bar-title">Buku Saku ITG</div>
       <div class="top-bar-sub" id="topBarSub">Top 30 Pareto · Depo Tanjung</div>
     </div>
   </div>
@@ -672,6 +672,7 @@ function selectOutlet(idx) {
       options: {
         indexAxis: 'y',
         responsive: true,
+        layout: { padding: { right: 55 } },
         plugins: {
           legend: { display: false },
           tooltip: {
@@ -687,7 +688,26 @@ function selectOutlet(idx) {
           },
           y: { ticks: { font:{ size:10 }, color:'#1e293b' }, grid: { display:false } }
         }
-      }
+      },
+      plugins: [{
+        id: 'valueLabels',
+        afterDatasetsDraw(chart) {
+          const { ctx, scales: { x, y } } = chart;
+          chart.data.datasets[0].data.forEach((val, i) => {
+            if (val === 0 || val === null) return;
+            const yPos = y.getPixelForValue(i);
+            const xPos = x.getPixelForValue(val);
+            const label = fmtRp(val);
+            ctx.save();
+            ctx.font = 'bold 9px Segoe UI, sans-serif';
+            ctx.fillStyle = val < 0 ? '#e8392a' : '#1e293b';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(label, xPos + 5, yPos);
+            ctx.restore();
+          });
+        }
+      }]
     });
   }
 
@@ -881,7 +901,8 @@ function buildOpsSection(o) {
 
 // ── Start ──
 // ── Plan by SKU ──
-const PROMO_ORDER = ['Bisc','GEN','SF','GBS','GO','PRE','Solmed'];
+const PROMO_ORDER   = ['Bisc','GEN','SF','GBS','GO','PRE','Solmed'];
+const EXCLUDED_PROMO = ['Del'];
 const PROMO_COLORS = {
   Bisc:'#1d3a8a', GBS:'#6b21a8', GEN:'#166534',
   GO:'#9a3412',   PRE:'#0c4a6e', SF:'#065f46', Solmed:'#7c2d12'
@@ -931,8 +952,8 @@ function renderPlanSKU(o) {
 
   const keys = [
     ...PROMO_ORDER.filter(p => byPromo[p]),
-    ...Object.keys(byPromo).filter(p => !PROMO_ORDER.includes(p)).sort()
-  ];
+    ...Object.keys(byPromo).filter(p => !PROMO_ORDER.includes(p) && !EXCLUDED_PROMO.includes(p)).sort()
+  ].filter(p => !EXCLUDED_PROMO.includes(p));
 
   const totalSKU = Object.keys(skuData).length;
   badge.textContent = `${totalSKU} SKU · ${keys.length} grup`;
