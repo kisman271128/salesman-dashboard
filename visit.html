@@ -4175,15 +4175,61 @@
     <script>
         // ===== CLOUDFLARE WORKER CONFIG =====
         const WORKER_URL = 'https://depo-tanjung-api.kisman-pidu.workers.dev';
+        const CF_CACHE_PREFIX = 'cfcache_';
+        const CF_CACHE_TTL_MS = 8 * 60 * 60 * 1000; // 8 jam
+
+        function cfCacheSave(namespace, data) {
+            try {
+                localStorage.setItem(CF_CACHE_PREFIX + namespace, JSON.stringify({
+                    ts: Date.now(),
+                    data
+                }));
+            } catch (e) {
+                // localStorage penuh — tidak kritis, lanjut
+            }
+        }
+
+        function cfCacheLoad(namespace) {
+            try {
+                const raw = localStorage.getItem(CF_CACHE_PREFIX + namespace);
+                if (!raw) return null;
+                const { ts, data } = JSON.parse(raw);
+                if (Date.now() - ts > CF_CACHE_TTL_MS) return null; // expired
+                return data;
+            } catch {
+                return null;
+            }
+        }
 
         async function cfFetch(namespace) {
-            const token = sessionStorage.getItem('cfToken');
-            const resp = await fetch(`${WORKER_URL}/data/${namespace}`, {
-                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-            });
-            if (!resp.ok) throw new Error(`cfFetch ${namespace} → ${resp.status}`);
-            const json = await resp.json();
-            return json.data;
+            // Jika offline, langsung pakai cache
+            if (!navigator.onLine) {
+                const cached = cfCacheLoad(namespace);
+                if (cached) {
+                    console.log(`📦 [offline] cfFetch ${namespace} → dari cache`);
+                    return cached;
+                }
+                throw new Error(`cfFetch ${namespace} → offline & tidak ada cache`);
+            }
+
+            try {
+                const token = sessionStorage.getItem('cfToken');
+                const resp = await fetch(`${WORKER_URL}/data/${namespace}`, {
+                    headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                });
+                if (!resp.ok) throw new Error(`cfFetch ${namespace} → ${resp.status}`);
+                const json = await resp.json();
+                cfCacheSave(namespace, json.data); // simpan ke cache
+                return json.data;
+            } catch (err) {
+                // Jaringan gagal — coba cache meski mungkin expired
+                const cached = cfCacheLoad(namespace);
+                if (cached) {
+                    console.warn(`⚠️ cfFetch ${namespace} gagal (${err.message}), pakai cache`);
+                    return cached;
+                }
+                throw err;
+            }
         }
 
         // ===== GLOBAL VARIABLES =====
@@ -4599,7 +4645,7 @@
             if (statusElement) {
                 statusElement.textContent = message;
                 statusElement.className = `firebase-status ${status}`;
-                
+
                 if (status === 'success' || status === 'error') {
                     setTimeout(() => {
                         statusElement.classList.remove('success', 'error', 'syncing');
@@ -4607,6 +4653,35 @@
                 }
             }
         }
+
+        // ===== NETWORK STATUS =====
+        function updateNetworkStatus(isOnline) {
+            const el = document.getElementById('firebaseStatus');
+            if (!el) return;
+            if (isOnline) {
+                el.textContent = '🌐 Online';
+                el.className = 'firebase-status success';
+                setTimeout(() => el.classList.remove('success'), 3000);
+            } else {
+                el.textContent = '📴 Offline — data tersimpan lokal';
+                el.className = 'firebase-status error';
+                // Tetap tampil selama offline (tidak di-timeout)
+            }
+        }
+
+        window.addEventListener('offline', () => {
+            console.warn('📴 Jaringan terputus');
+            updateNetworkStatus(false);
+        });
+
+        window.addEventListener('online', () => {
+            console.log('🌐 Jaringan kembali');
+            updateNetworkStatus(true);
+            // Langsung sync pending visits tanpa tunggu interval 30 detik
+            if (window.firebaseDB && currentSalesmanId) {
+                syncPendingVisitsToFirebase();
+            }
+        });
 
         async function syncVisitToFirebase(visitData) {
             if (!window.firebaseDB || !currentSalesmanId) {
@@ -7875,10 +7950,23 @@
             // Add manual sync button for testing
             setTimeout(addManualSyncButton, 2000);
             
+            // Tampilkan status jaringan awal
+            if (!navigator.onLine) {
+                updateNetworkStatus(false);
+                console.warn('📴 App dibuka dalam kondisi offline — pakai data cache');
+            }
+
             initializeData();
 
+            // Sync pending visits: segera setelah init + setiap 30 detik
+            setTimeout(() => {
+                if (window.firebaseDB && currentSalesmanId && navigator.onLine) {
+                    syncPendingVisitsToFirebase();
+                }
+            }, 2000);
+
             setInterval(() => {
-                if (window.firebaseDB && currentSalesmanId) {
+                if (window.firebaseDB && currentSalesmanId && navigator.onLine) {
                     syncPendingVisitsToFirebase();
                 }
             }, 30000);

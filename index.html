@@ -1035,9 +1035,43 @@
                 const data = await resp.json();
 
                 if (resp.ok && data.token) {
-                    // ✅ Login berhasil
+                    // ✅ Login CF Worker berhasil — validasi device
                     cfToken = data.token;
                     cfUser  = data.user;
+
+                    if (typeof DeviceAuth !== 'undefined') {
+                        try {
+                            const deviceResult = await DeviceAuth.validateDevice(
+                                data.user.username,
+                                data.user.role
+                            );
+
+                            if (!deviceResult.success) {
+                                // Hard block: device limit tercapai dan mode = 'hard'
+                                const info = (deviceResult.registeredDevices || [])
+                                    .map(d => `• Device ${d.number}: ${d.info?.device} (${d.info?.os}) — terakhir ${d.lastUsed ? new Date(d.lastUsed).toLocaleDateString('id-ID') : '-'}`)
+                                    .join('\n');
+                                showErrorNotification(
+                                    `❌ Device tidak dikenali.\n\n${deviceResult.message}\n\nDevice terdaftar:\n${info}\n\nHubungi administrator untuk reset device.`
+                                );
+                                setLoading(false);
+                                return;
+                            }
+
+                            if (deviceResult.isBypass) {
+                                console.log('👑 Admin — device check bypassed');
+                            } else if (deviceResult.isSoftBlock) {
+                                console.warn('⚠️ [SOFT MODE] Device limit tercapai — login diizinkan sementara');
+                            } else if (deviceResult.isNewRegistration) {
+                                console.log(`📱 Device baru terdaftar (${deviceResult.deviceNumber}/${DeviceAuth.MAX_DEVICES})`);
+                            } else {
+                                console.log(`✅ Device dikenali (${deviceResult.deviceNumber}/${deviceResult.totalDevices})`);
+                            }
+                        } catch (deviceErr) {
+                            // Jangan block login jika DeviceAuth error — log saja
+                            console.warn('⚠️ DeviceAuth error (login tetap lanjut):', deviceErr.message);
+                        }
+                    }
 
                     // Simpan session
                     sessionStorage.setItem('isLoggedIn',  'true');
@@ -1162,13 +1196,12 @@
     <!-- Device Authentication System -->
     <script src="device-auth.js" onerror="console.error('❌ Failed to load device-auth.js'); window.deviceAuthLoadError = true;"></script>
     <script>
-        // Check if device-auth.js loaded successfully
+        // DeviceAuth menggunakan localStorage (tidak butuh Firebase di halaman ini)
         setTimeout(() => {
             if (typeof DeviceAuth === 'undefined') {
-                console.warn('⚠️ DeviceAuth not available - device validation will be skipped');
-                console.log('💡 Login will proceed without device restrictions (fallback mode)');
+                console.warn('⚠️ DeviceAuth tidak tersedia — device validation dilewati');
             } else {
-                console.log('✅ DeviceAuth module loaded and ready');
+                console.log(`✅ DeviceAuth siap (mode: ${DeviceAuth.ENFORCEMENT_MODE}, max: ${DeviceAuth.MAX_DEVICES} devices)`);
             }
         }, 100);
     </script>

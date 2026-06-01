@@ -5,14 +5,22 @@
 const DeviceAuth = {
     // Firebase reference (will be initialized from index.html)
     firebase: null,
-    
+
     // Maximum devices per user
     MAX_DEVICES: 2,
-    
+
+    // ─── MODE SWITCH ──────────────────────────────────────────────────────────
+    // 'soft' : device limit tercapai → login tetap diizinkan, hanya dicatat di log.
+    //          Gunakan mode ini selama periode awal agar semua salesman sempat
+    //          auto-register device mereka.
+    // 'hard'  : device limit tercapai → login DITOLAK. Aktifkan setelah semua
+    //           salesman terdaftar (cek via device-management.html).
+    ENFORCEMENT_MODE: 'soft',
+
     // Initialize Firebase reference
     init(firebaseRef) {
         this.firebase = firebaseRef;
-        console.log('🔐 DeviceAuth: Firebase initialized (Max devices per user: 2)');
+        console.log(`🔐 DeviceAuth: Firebase initialized (Max: ${this.MAX_DEVICES} devices, Mode: ${this.ENFORCEMENT_MODE})`);
     },
     
     // Generate unique device fingerprint
@@ -174,22 +182,34 @@ const DeviceAuth = {
                 };
             } else {
                 // Maximum devices reached
-                console.warn('❌ Maximum devices limit reached');
-                
+                const deviceList = registeredDevices.map((dev, idx) => ({
+                    number: idx + 1,
+                    info: dev.info,
+                    registeredAt: dev.registeredAt,
+                    lastUsed: dev.lastUsed
+                }));
+
+                if (this.ENFORCEMENT_MODE === 'soft') {
+                    console.warn(`⚠️ [SOFT MODE] Device limit (${this.MAX_DEVICES}) tercapai untuk ${userId} — login tetap diizinkan`);
+                    console.warn('   Device baru:', deviceInfo);
+                    console.warn('   Device terdaftar:', deviceList);
+                    return {
+                        success: true,
+                        isSoftBlock: true,
+                        message: `[SOFT] Device ke-${registeredDevices.length + 1} melebihi batas, login diizinkan (soft mode)`,
+                        maxDevices: this.MAX_DEVICES,
+                        registeredDevices: deviceList,
+                        currentDevice: { fingerprint: currentFingerprint, info: deviceInfo }
+                    };
+                }
+
+                console.warn(`❌ [HARD MODE] Device limit (${this.MAX_DEVICES}) tercapai untuk ${userId} — login DITOLAK`);
                 return {
                     success: false,
-                    message: `Maximum ${this.MAX_DEVICES} devices already registered`,
+                    message: `Maksimal ${this.MAX_DEVICES} device sudah terdaftar. Hubungi administrator.`,
                     maxDevices: this.MAX_DEVICES,
-                    registeredDevices: registeredDevices.map((dev, idx) => ({
-                        number: idx + 1,
-                        info: dev.info,
-                        registeredAt: dev.registeredAt,
-                        lastUsed: dev.lastUsed
-                    })),
-                    currentDevice: {
-                        fingerprint: currentFingerprint,
-                        info: deviceInfo
-                    }
+                    registeredDevices: deviceList,
+                    currentDevice: { fingerprint: currentFingerprint, info: deviceInfo }
                 };
             }
             
@@ -264,20 +284,31 @@ const DeviceAuth = {
                     totalDevices: registeredDevices.length
                 };
             } else {
+                const deviceList = registeredDevices.map((dev, idx) => ({
+                    number: idx + 1,
+                    info: dev.info,
+                    registeredAt: dev.registeredAt,
+                    lastUsed: dev.lastUsed
+                }));
+
+                if (this.ENFORCEMENT_MODE === 'soft') {
+                    console.warn(`⚠️ [SOFT MODE/localStorage] Device limit tercapai untuk ${userId} — login tetap diizinkan`);
+                    return {
+                        success: true,
+                        isSoftBlock: true,
+                        message: `[SOFT/localStorage] Device ke-${registeredDevices.length + 1} melebihi batas, login diizinkan`,
+                        maxDevices: this.MAX_DEVICES,
+                        registeredDevices: deviceList,
+                        currentDevice: { fingerprint: currentFingerprint, info: deviceInfo }
+                    };
+                }
+
                 return {
                     success: false,
-                    message: `Maximum ${this.MAX_DEVICES} devices already registered (localStorage)`,
+                    message: `Maksimal ${this.MAX_DEVICES} device sudah terdaftar. Hubungi administrator.`,
                     maxDevices: this.MAX_DEVICES,
-                    registeredDevices: registeredDevices.map((dev, idx) => ({
-                        number: idx + 1,
-                        info: dev.info,
-                        registeredAt: dev.registeredAt,
-                        lastUsed: dev.lastUsed
-                    })),
-                    currentDevice: {
-                        fingerprint: currentFingerprint,
-                        info: deviceInfo
-                    }
+                    registeredDevices: deviceList,
+                    currentDevice: { fingerprint: currentFingerprint, info: deviceInfo }
                 };
             }
             
