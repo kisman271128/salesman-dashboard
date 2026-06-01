@@ -815,6 +815,19 @@
     </div>
 
     <script>
+        // ===== CLOUDFLARE WORKER CONFIG =====
+        const WORKER_URL = 'https://depo-tanjung-api.kisman-pidu.workers.dev';
+
+        async function cfFetch(namespace) {
+            const token = sessionStorage.getItem('cfToken');
+            const resp = await fetch(`${WORKER_URL}/data/${namespace}`, {
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+            });
+            if (!resp.ok) throw new Error(`cfFetch ${namespace} → ${resp.status}`);
+            const json = await resp.json();
+            return json.data;
+        }
+
         // Global variables
         let profileData = [];
         let currentUserId = null;
@@ -844,31 +857,8 @@
         // Load JSON profile data
         async function loadJSONData() {
             try {
-                console.log('📂 Loading profile data from d.profile.json...');
-                
-                const response = await fetch('data/d.profile.json');
-                if (!response.ok) {
-                    throw new Error(`Failed to load profile data: ${response.status} ${response.statusText}`);
-                }
-                
-                const text = await response.text();
-                if (!text.trim()) {
-                    throw new Error('Profile data file is empty');
-                }
-                
-                // Parse JSONL format (each line is a separate JSON object)
-                profileData = text.split('\n')
-                    .filter(line => line.trim())
-                    .map(line => {
-                        try {
-                            return JSON.parse(line);
-                        } catch (parseError) {
-                            console.error('❌ Error parsing line:', line, parseError);
-                            return null;
-                        }
-                    })
-                    .filter(item => item !== null);
-
+                console.log('📂 Loading profile data from CF KV...');
+                profileData = await cfFetch('d.profile');
                 console.log(`✅ Loaded ${profileData.length} profile records`);
                 console.log('📊 Sample profile data:', profileData[0]);
                 return true;

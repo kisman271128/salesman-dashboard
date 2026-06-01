@@ -511,6 +511,19 @@
         </style>
 
     <script>
+      // ===== CLOUDFLARE WORKER CONFIG =====
+      const WORKER_URL = 'https://depo-tanjung-api.kisman-pidu.workers.dev';
+
+      async function cfFetch(namespace) {
+          const token = sessionStorage.getItem('cfToken');
+          const resp = await fetch(`${WORKER_URL}/data/${namespace}`, {
+              headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+          });
+          if (!resp.ok) throw new Error(`cfFetch ${namespace} → ${resp.status}`);
+          const json = await resp.json();
+          return json.data;
+      }
+
       // Global variables
       let insentifData = [];
       let currentSalesmanId = null;
@@ -765,41 +778,19 @@
         `;
       }
 
-      // Load JSON data from file
+      // Load JSON data from CF KV
       async function loadJSONData() {
         try {
-          const jsonFile = isSimMode ? 'data/d.insentifsim.json' : 'data/d.insentif.json';
-          console.log(`📂 Fetching ${jsonFile}...`);
-          const response = await fetch(jsonFile);
-          if (!response.ok) {
-            throw new Error(`Failed to load incentive data: ${response.status} ${response.statusText}`);
-          }
-          const text = await response.text();
-          
-          if (!text.trim()) {
-            throw new Error('Incentive data file is empty');
-          }
-          
-          // Parse JSONL format (each line is a separate JSON object)
-          insentifData = text.split('\n')
-            .filter(line => line.trim())
-            .map(line => {
-              try {
-                return JSON.parse(line);
-              } catch (parseError) {
-                console.error('❌ Error parsing line:', line, parseError);
-                return null;
-              }
-            })
-            .filter(item => item !== null);
+          const namespace = isSimMode ? 'd.insentifsim' : 'd.insentif';
+          console.log(`📂 Fetching ${namespace} from CF KV...`);
+          insentifData = await cfFetch(namespace);
 
           console.log(`✅ Loaded ${insentifData.length} incentive records`);
           console.log('📊 Sample data:', insentifData[0]);
-          
-          // Debug: Show all unique employee IDs in raw data
+
           const uniqueEmployeeIds = [...new Set(insentifData.map(item => item.szEmployeeId?.toString()))];
           console.log(`👥 Unique employee IDs in data: [${uniqueEmployeeIds.join(', ')}]`);
-          
+
           return true;
         } catch (error) {
           console.error('❌ Error loading JSON data:', error);

@@ -1147,6 +1147,19 @@
     </div>
 
     <script>
+        // ===== CLOUDFLARE WORKER CONFIG =====
+        const WORKER_URL = 'https://depo-tanjung-api.kisman-pidu.workers.dev';
+
+        async function cfFetch(namespace) {
+            const token = sessionStorage.getItem('cfToken');
+            const resp = await fetch(`${WORKER_URL}/data/${namespace}`, {
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+            });
+            if (!resp.ok) throw new Error(`cfFetch ${namespace} → ${resp.status}`);
+            const json = await resp.json();
+            return json.data;
+        }
+
         // ===== VARIABEL GLOBAL =====
         let currentSalesman = '';
         let currentSalesmanId = null;
@@ -1239,15 +1252,8 @@
         // ===== FUNGSI PEMUATAN DATA =====
         async function loadSalesmanData() {
             try {
-                console.log('👤 Memuat data salesman...');
-                const response = await fetch('data/d.salesman.json');
-                if (!response.ok) throw new Error('Gagal memuat data salesman');
-                
-                const content = await response.text();
-                salesmanData = parseJSONL(content);
-                
+                salesmanData = await cfFetch('d.salesman');
                 updateSalesmanNameFromData();
-                
             } catch (error) {
                 console.error('Error memuat data salesman:', error);
             }
@@ -1255,15 +1261,8 @@
 
         async function loadJKSData() {
             try {
-                console.log('📊 Memuat data JKS...');
-                const response = await fetch('data/d.jks.json');
-                if (!response.ok) throw new Error('Gagal memuat data JKS');
-                
-                const content = await response.text();
-                jksData = parseJSONL(content);
-                
+                jksData = await cfFetch('d.jks');
                 console.log(`✅ Berhasil memuat ${jksData.length} record JKS`);
-                
             } catch (error) {
                 console.error('Error memuat data JKS:', error);
                 throw error;
@@ -1272,15 +1271,8 @@
 
         async function loadDetailsData() {
             try {
-                console.log('📊 Memuat data detail...');
-                const response = await fetch('data/d.details.json');
-                if (!response.ok) throw new Error('Gagal memuat data detail');
-                
-                const content = await response.text();
-                detailsData = parseJSONL(content);
-                
+                detailsData = await cfFetch('d.details');
                 console.log(`✅ Berhasil memuat ${detailsData.length} record detail`);
-                
             } catch (error) {
                 console.error('Error memuat data detail:', error);
                 throw error;
@@ -1970,10 +1962,8 @@
                     throw new Error('No salesman ID provided');
                 }
                 
-                // Load data sequentially
-                await loadSalesmanData();
-                await loadJKSData(); // Load JKS data
-                await loadDetailsData();
+                // Load data in parallel
+                await Promise.all([loadSalesmanData(), loadJKSData(), loadDetailsData()]);
                 
                 // Update salesman name from details data if not found in salesman data
                 if (!currentSalesman && detailsData.length > 0) {

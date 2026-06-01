@@ -1525,6 +1525,19 @@
     </div>
 
     <script>
+        // ===== CLOUDFLARE WORKER CONFIG =====
+        const WORKER_URL = 'https://depo-tanjung-api.kisman-pidu.workers.dev';
+
+        async function cfFetch(namespace) {
+            const token = sessionStorage.getItem('cfToken');
+            const resp = await fetch(`${WORKER_URL}/data/${namespace}`, {
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+            });
+            if (!resp.ok) throw new Error(`cfFetch ${namespace} → ${resp.status}`);
+            const json = await resp.json();
+            return json.data;
+        }
+
         // ===== GLOBAL VARIABLES =====
         let salesmanData = [];
         let detailsData = [];
@@ -1849,15 +1862,9 @@
         // ===== DATA LOADING FUNCTIONS =====
         async function loadSalesmanData() {
             try {
-                console.log('Loading salesman data...');
-                const response = await fetch('data/d.salesman.json');
-                if (!response.ok) throw new Error('Failed to load salesman data');
-                
-                const content = await response.text();
-                salesmanData = parseJSONL(content);
-                
+                console.log('Loading salesman data from CF KV...');
+                salesmanData = await cfFetch('d.salesman');
                 console.log(`Loaded ${salesmanData.length} salesman records`);
-                
             } catch (error) {
                 console.error('Error loading salesman data:', error);
                 throw error;
@@ -1866,15 +1873,9 @@
 
         async function loadDetailsData() {
             try {
-                console.log('Loading details data...');
-                const response = await fetch('data/d.details.json');
-                if (!response.ok) throw new Error('Failed to load details data');
-                
-                const content = await response.text();
-                detailsData = parseJSONL(content);
-                
+                console.log('Loading details data from CF KV...');
+                detailsData = await cfFetch('d.details');
                 console.log(`Loaded ${detailsData.length} detail records`);
-                
             } catch (error) {
                 console.error('Error loading details data:', error);
                 throw error;
@@ -1883,36 +1884,12 @@
 
         async function loadProjectData() {
             try {
-                console.log('Loading project data...');
-                const response = await fetch('data/d.project.json');
-                if (!response.ok) throw new Error('Failed to load project data');
-                
-                const content = await response.text();
-                projectData = parseJSONL(content);
-                
+                console.log('Loading project data from CF KV...');
+                projectData = await cfFetch('d.project');
                 console.log(`Loaded ${projectData.length} project records`);
-                
             } catch (error) {
                 console.error('Error loading project data:', error);
-                // Don't throw error, just set empty array
                 projectData = [];
-            }
-        }
-
-        async function loadSKUPelangganData() {
-            try {
-                console.log('Loading SKU pelanggan data...');
-                const response = await fetch('data/d.skupelanggan.json');
-                if (!response.ok) throw new Error('Failed to load SKU pelanggan data');
-                
-                const content = await response.text();
-                skuPelangganData = parseJSONL(content);
-                
-                console.log(`Loaded ${skuPelangganData.length} SKU records`);
-                
-            } catch (error) {
-                console.error('Error loading SKU pelanggan data:', error);
-                throw error;
             }
         }
 
@@ -1947,16 +1924,17 @@
             });
         }
 
-        function handleSalesmanSelection() {
+        async function handleSalesmanSelection() {
             const selectedSalesmanId = document.getElementById('salesmanSelect').value;
             currentSalesmanId = selectedSalesmanId;
-            
+
             // Reset customer selection
             currentCustomerName = null;
             currentCustomerId = null;
+            skuPelangganData = [];
             document.getElementById('customerSearch').value = '';
             document.getElementById('customerSearch').disabled = !selectedSalesmanId;
-            
+
             if (!selectedSalesmanId) {
                 hideCustomerData();
                 clearCustomerDropdown();
@@ -1964,7 +1942,16 @@
             }
 
             console.log(`Selected salesman ID: ${selectedSalesmanId}`);
-            
+
+            // Fetch skupelanggan per-salesman from CF KV
+            try {
+                skuPelangganData = await cfFetch(`d.skupelanggan.${selectedSalesmanId}`);
+                console.log(`Loaded ${skuPelangganData.length} SKU records for salesman ${selectedSalesmanId}`);
+            } catch (error) {
+                console.error('Error loading SKU pelanggan data:', error);
+                skuPelangganData = [];
+            }
+
             // Get customers for this salesman
             const salesmanCustomers = detailsData.filter(item => {
                 return item.szEmployeeId && item.szEmployeeId.toString() === selectedSalesmanId.toString();
@@ -2664,7 +2651,6 @@
                 await loadSalesmanData();
                 await loadDetailsData();
                 await loadProjectData();
-                await loadSKUPelangganData();
                 
                 // Populate salesman options
                 populateSalesmanOptions();
@@ -2676,7 +2662,7 @@
                 showMainContent(true);
                 
                 console.log('Customer metrics dashboard ready');
-                console.log(`Loaded ${salesmanData.length} salesman, ${detailsData.length} details, ${projectData.length} projects, ${skuPelangganData.length} SKU records`);
+                console.log(`Loaded ${salesmanData.length} salesman, ${detailsData.length} details, ${projectData.length} projects (SKU loaded per-salesman on select)`);
                 
             } catch (error) {
                 console.error('Critical error in initializeData:', error);

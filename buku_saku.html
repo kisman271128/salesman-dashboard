@@ -319,19 +319,17 @@ function fmtUnit(v) {
 function fmtPct(a,t) { if (!t||t===0) return a>0?'100%':'0%'; return Math.round((a/t)*100)+'%'; }
 function pctNum(a,t) { if (!t||t===0) return a>0?100:0; return Math.round((a/t)*100); }
 
-// ── Data Loading ──
-async function loadFile(filename) {
-  const paths = ['data/','./data/','./',''];
-  for (const base of paths) {
-    try {
-      const res = await fetch(base + filename);
-      if (res.ok) return await res.text();
-    } catch(e) { continue; }
-  }
-  throw new Error('Cannot load ' + filename);
-}
-function parseJSONL(text) {
-  return text.split('\n').filter(l=>l.trim()).map(l=>{ try{return JSON.parse(l);}catch{return null;} }).filter(Boolean);
+// ── Cloudflare Worker Config ──
+const WORKER_URL = 'https://depo-tanjung-api.kisman-pidu.workers.dev';
+
+async function cfFetch(namespace) {
+  const token = sessionStorage.getItem('cfToken');
+  const resp = await fetch(`${WORKER_URL}/data/${namespace}`, {
+    headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+  });
+  if (!resp.ok) throw new Error(`cfFetch ${namespace} → ${resp.status}`);
+  const json = await resp.json();
+  return json.data;
 }
 
 async function initApp() {
@@ -340,16 +338,12 @@ async function initApp() {
   document.getElementById('detailArea').style.display   = 'none';
 
   try {
-    console.log('📂 Loading d.details.json & d.project.json...');
-    const [detailsTxt, projectTxt] = await Promise.all([
-      loadFile('d.details.json'),
-      loadFile('d.project.json'),
+    console.log('📂 Loading d.details & d.project from CF KV...');
+    const [details, projects] = await Promise.all([
+      cfFetch('d.details'),
+      cfFetch('d.project'),
     ]);
-    console.log('✅ Files loaded — details chars:', detailsTxt.length, '| project chars:', projectTxt.length);
-
-    const details  = parseJSONL(detailsTxt);
-    const projects = parseJSONL(projectTxt);
-    console.log('📊 Parsed — details:', details.length, 'records | projects:', projects.length, 'records');
+    console.log('📊 Loaded — details:', details.length, 'records | projects:', projects.length, 'records');
 
     // ── Numeric fields to SUM across salesmen ──
     const SUM_FIELDS = [
@@ -909,25 +903,9 @@ const PROMO_COLORS = {
 };
 
 async function loadSkupelanggan() {
-  try {
-    const txt  = await loadFile('d.skupelanggan.json');
-    const rows = parseJSONL(txt);
-    skupelMap  = {};
-    rows.forEach(r => {
-      const nama = (r['Nama_Pelanggan']||'').trim();
-      const sku  = r['SKU']||r['Cek']||'';
-      if (!nama||!sku) return;
-      if (!skupelMap[nama]) skupelMap[nama] = {};
-      if (!skupelMap[nama][sku]) skupelMap[nama][sku] = { sku, promo:r['Promo']||'Other', plan:0, mtd:0 };
-      skupelMap[nama][sku].plan += parseFloat(r['Plan']||0);
-      skupelMap[nama][sku].mtd  += parseFloat(r['UnitMTD']||0);
-    });
-    console.log('📦 Skupelanggan loaded:', rows.length, 'records');
-    // Update badge if outlet already selected
-    if (filteredOutlets[currentIdx]) renderPlanSKU(filteredOutlets[currentIdx]);
-  } catch(e) {
-    console.warn('⚠️ d.skupelanggan.json tidak tersedia');
-  }
+  // d.skupelanggan di CF KV hanya tersedia per-salesman (d.skupelanggan.{szEmployeeId}).
+  // buku_saku membutuhkan data gabungan semua salesman — belum tersedia, fitur SKU dinonaktifkan.
+  console.warn('⚠️ d.skupelanggan tidak tersedia untuk tampilan supervisor');
 }
 
 function renderPlanSKU(o) {

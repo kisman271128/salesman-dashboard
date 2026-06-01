@@ -1202,6 +1202,19 @@
     </div>
 
     <script>
+        // ===== CLOUDFLARE WORKER CONFIG =====
+        const WORKER_URL = 'https://depo-tanjung-api.kisman-pidu.workers.dev';
+
+        async function cfFetch(namespace) {
+            const token = sessionStorage.getItem('cfToken');
+            const resp = await fetch(`${WORKER_URL}/data/${namespace}`, {
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+            });
+            if (!resp.ok) throw new Error(`cfFetch ${namespace} → ${resp.status}`);
+            const json = await resp.json();
+            return json.data;
+        }
+
         // Global variables
         let salesmanLobData = [];
         let salesmanProcessData = [];
@@ -1321,50 +1334,16 @@
             return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
         }
 
-        // ✅ LOAD JSON DATA FROM FILES
+        // ✅ LOAD JSON DATA FROM CF KV
         async function loadJSONData() {
             try {
-                // Load salesman LOB data
-                const lobResponse = await fetch('data/d.salesmanlob.json');
-                if (!lobResponse.ok) {
-                    throw new Error(`Failed to load LOB data: ${lobResponse.status}`);
-                }
-                const lobText = await lobResponse.text();
-                
-                // Parse JSONL format (each line is a separate JSON object)
-                salesmanLobData = lobText.split('\n')
-                    .filter(line => line.trim())
-                    .map(line => JSON.parse(line));
+                [salesmanLobData, salesmanProcessData, performanceData] = await Promise.all([
+                    cfFetch('d.salesmanlob'),
+                    cfFetch('d.salesmanproses'),
+                    cfFetch('d.performance'),
+                ]);
 
-                console.log(`✅ Loaded ${salesmanLobData.length} LOB records`);
-
-                // Load salesman process data  
-                const processResponse = await fetch('data/d.salesmanproses.json');
-                if (!processResponse.ok) {
-                    throw new Error(`Failed to load process data: ${processResponse.status}`);
-                }
-                const processText = await processResponse.text();
-                
-                // Parse JSONL format
-                salesmanProcessData = processText.split('\n')
-                    .filter(line => line.trim())
-                    .map(line => JSON.parse(line));
-
-                console.log(`✅ Loaded ${salesmanProcessData.length} process records`);
-
-                // 🆕 NEW: Load performance data for TOTAL calculation
-                const performanceResponse = await fetch('data/d.performance.json');
-                if (!performanceResponse.ok) {
-                    throw new Error(`Failed to load performance data: ${performanceResponse.status}`);
-                }
-                const performanceText = await performanceResponse.text();
-                
-                // Parse JSONL format
-                performanceData = performanceText.split('\n')
-                    .filter(line => line.trim())
-                    .map(line => JSON.parse(line));
-
-                console.log(`✅ Loaded ${performanceData.length} performance records`);
+                console.log(`✅ Loaded ${salesmanLobData.length} LOB, ${salesmanProcessData.length} process, ${performanceData.length} performance records`);
 
                 return true;
             } catch (error) {

@@ -1599,19 +1599,6 @@
         </div>
 
     <script>
-        // ===== CLOUDFLARE WORKER CONFIG =====
-        const WORKER_URL = 'https://depo-tanjung-api.kisman-pidu.workers.dev';
-
-        async function cfFetch(namespace) {
-            const token = sessionStorage.getItem('cfToken');
-            const resp = await fetch(`${WORKER_URL}/data/${namespace}`, {
-                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-            });
-            if (!resp.ok) throw new Error(`cfFetch ${namespace} → ${resp.status}`);
-            const json = await resp.json();
-            return json.data;
-        }
-
         // ===== GLOBAL VARIABLES =====
         let jksData = [];
         let channelData = [];
@@ -1682,39 +1669,101 @@
 
         // ===== DATA LOADING =====
         async function loadJSONData() {
-            const results = await Promise.allSettled([
-                cfFetch('d.jks'),
-                cfFetch('d.channel'),
-                cfFetch('d.channelproj'),
-                cfFetch('d.project'),
-                cfFetch('d.30pareto'),
-                cfFetch('d.tpom'),
-                cfFetch('d.performance'),
-            ]);
+            const possiblePaths = [
+                'data/',
+                './data/',
+                './',
+                ''
+            ];
 
-            const [jks, channel, channelProj, project, pareto, pom, perf] = results;
+            async function loadFile(filename) {
+                for (const basePath of possiblePaths) {
+                    const fullPath = basePath + filename;
+                    try {
+                        if (window.fs && window.fs.readFile) {
+                            const text = await window.fs.readFile(fullPath, { encoding: 'utf8' });
+                            return text;
+                        }
+                        const response = await fetch(fullPath);
+                        if (response.ok) {
+                            return await response.text();
+                        }
+                    } catch (error) {
+                        continue;
+                    }
+                }
+                throw new Error(`Cannot load ${filename}`);
+            }
 
-            if (jks.status === 'fulfilled')         { jksData = jks.value; }
-            else console.error('JKS data loading failed:', jks.reason.message);
+            function parseJSONLines(text) {
+                return text.split('\n')
+                    .filter(line => line.trim())
+                    .map(line => {
+                        try {
+                            return JSON.parse(line);
+                        } catch {
+                            return null;
+                        }
+                    })
+                    .filter(item => item !== null);
+            }
 
-            if (channel.status === 'fulfilled')     { channelData = channel.value; }
-            else console.error('Channel data loading failed:', channel.reason.message);
+            // Load all data files
+            try {
+                const jksText = await loadFile('d.jks.json');
+                jksData = parseJSONLines(jksText);
+            } catch (error) {
+                console.error('JKS data loading failed:', error.message);
+            }
 
-            // d.channelproj — sumber utama; fallback ke channelData jika gagal
-            if (channelProj.status === 'fulfilled') { channelProjData = channelProj.value; console.log('ChannelProj data loaded:', channelProjData.length, 'records'); }
-            else { console.error('ChannelProj data loading failed:', channelProj.reason.message); channelProjData = channelData; }
+            // d.channel.json tetap dimuat sebagai fallback metrics
+            try {
+                const channelText = await loadFile('d.channel.json');
+                channelData = parseJSONLines(channelText);
+            } catch (error) {
+                console.error('Channel data loading failed:', error.message);
+            }
 
-            if (project.status === 'fulfilled')     { projectData = project.value; }
-            else console.error('Project data loading failed:', project.reason.message);
+            // d.channelproj.json — sumber utama (channel + project)
+            try {
+                const channelProjText = await loadFile('d.channelproj.json');
+                channelProjData = parseJSONLines(channelProjText);
+                console.log('ChannelProj data loaded:', channelProjData.length, 'records');
+            } catch (error) {
+                console.error('ChannelProj data loading failed:', error.message);
+                // Fallback: gunakan channelData jika channelProjData gagal
+                channelProjData = channelData;
+            }
 
-            if (pareto.status === 'fulfilled')      { paretoData = pareto.value; }
-            else console.error('Pareto data loading failed:', pareto.reason.message);
+            try {
+                const projectText = await loadFile('d.project.json');
+                projectData = parseJSONLines(projectText);
+            } catch (error) {
+                console.error('Project data loading failed:', error.message);
+            }
 
-            if (pom.status === 'fulfilled')         { pomData = pom.value;         console.log('POM data loaded:', pomData.length, 'records'); }
-            else console.error('POM data loading failed:', pom.reason.message);
+            try {
+                const paretoText = await loadFile('d.30pareto.json');
+                paretoData = parseJSONLines(paretoText);
+            } catch (error) {
+                console.error('Pareto data loading failed:', error.message);
+            }
 
-            if (perf.status === 'fulfilled')        { performanceData = perf.value; console.log('Performance data loaded:', performanceData.length, 'records'); }
-            else console.error('Performance data loading failed:', perf.reason.message);
+            try {
+                const pomText = await loadFile('d.tpom.json');
+                pomData = parseJSONLines(pomText);
+                console.log('POM data loaded:', pomData.length, 'records');
+            } catch (error) {
+                console.error('POM data loading failed:', error.message);
+            }
+
+            try {
+                const perfText = await loadFile('d.performance.json');
+                performanceData = parseJSONLines(perfText);
+                console.log('Performance data loaded:', performanceData.length, 'records');
+            } catch (error) {
+                console.error('Performance data loading failed:', error.message);
+            }
         }
 
         // ===== SUMMARY CALCULATIONS =====

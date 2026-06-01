@@ -1260,6 +1260,19 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 
     <script>
+        // ===== CLOUDFLARE WORKER CONFIG =====
+        const WORKER_URL = 'https://depo-tanjung-api.kisman-pidu.workers.dev';
+
+        async function cfFetch(namespace) {
+            const token = sessionStorage.getItem('cfToken');
+            const resp = await fetch(`${WORKER_URL}/data/${namespace}`, {
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+            });
+            if (!resp.ok) throw new Error(`cfFetch ${namespace} → ${resp.status}`);
+            const json = await resp.json();
+            return json.data;
+        }
+
         // ===== GLOBAL VARIABLES =====
         let visitMap = null;
         let mapMarkers = [];
@@ -1472,24 +1485,14 @@
 
         // ===== DATA LOADING FUNCTIONS =====
 
-        // Load d.details.json untuk kalkulasi PC yang akurat
+        // Load d.details untuk kalkulasi PC yang akurat
         async function loadDetailsData() {
             try {
-                addDebugMessage('Memuat data d.details.json...');
-                const response = await fetch('data/d.details.json');
-                if (!response.ok) throw new Error('Gagal load d.details.json: ' + response.status);
-                const text = await response.text();
-                // Support JSONL (per baris) atau JSON array
-                if (text.trim().startsWith('[')) {
-                    detailsData = JSON.parse(text);
-                } else {
-                    detailsData = text.trim().split('\n')
-                        .filter(line => line.trim())
-                        .map(line => JSON.parse(line));
-                }
-                addDebugMessage(`✓ d.details.json dimuat: ${detailsData.length} record`);
+                addDebugMessage('Memuat data d.details dari CF KV...');
+                detailsData = await cfFetch('d.details');
+                addDebugMessage(`✓ d.details dimuat: ${detailsData.length} record`);
             } catch (error) {
-                addDebugMessage(`⚠ Gagal load d.details.json: ${error.message}. PC akan dihitung dari data kunjungan.`);
+                addDebugMessage(`⚠ Gagal load d.details: ${error.message}. PC akan dihitung dari data kunjungan.`);
                 detailsData = [];
             }
         }

@@ -1618,6 +1618,19 @@
     </script>
 
     <script>
+        // ===== CLOUDFLARE WORKER CONFIG =====
+        const WORKER_URL = 'https://depo-tanjung-api.kisman-pidu.workers.dev';
+
+        async function cfFetch(namespace) {
+            const token = sessionStorage.getItem('cfToken');
+            const resp = await fetch(`${WORKER_URL}/data/${namespace}`, {
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+            });
+            if (!resp.ok) throw new Error(`cfFetch ${namespace} → ${resp.status}`);
+            const json = await resp.json();
+            return json.data;
+        }
+
         // ===== GLOBAL VARIABLES =====
         let currentSalesmanId = null;
         let currentSalesmanName = null;
@@ -1657,25 +1670,17 @@
                 
                 let dataLoaded = false;
                 
-                // Load salesman master data from JSON file
-                console.log('📋 Loading salesman master data from d.salesman.json...');
+                // Load salesman master data from CF KV
+                console.log('📋 Loading salesman master data from CF KV...');
                 let salesmanMasterData = {};
                 try {
-                    const response = await fetch('data/d.salesman.json');
-                    if (response.ok) {
-                        const text = await response.text();
-                        const lines = text.trim().split('\n');
-                        lines.forEach(line => {
-                            if (line.trim()) {
-                                const obj = JSON.parse(line.trim());
-                                // Map by szEmployeeId as string
-                                salesmanMasterData[obj.szEmployeeId.toString()] = obj;
-                            }
-                        });
-                        console.log(`✅ Loaded ${Object.keys(salesmanMasterData).length} salesman from JSON`);
-                    }
+                    const rows = await cfFetch('d.salesman');
+                    rows.forEach(obj => {
+                        salesmanMasterData[obj.szEmployeeId.toString()] = obj;
+                    });
+                    console.log(`✅ Loaded ${Object.keys(salesmanMasterData).length} salesman from CF KV`);
                 } catch (jsonError) {
-                    console.warn('⚠️ Could not load d.salesman.json:', jsonError.message);
+                    console.warn('⚠️ Could not load d.salesman:', jsonError.message);
                 }
                 
                 // Try loading from current_positions (your actual database structure)
@@ -1810,23 +1815,16 @@
 
         async function loadSalesmanFromJSON() {
             try {
-                const response = await fetch('data/d.salesman.json');
-                if (!response.ok) throw new Error('Failed to load salesman data');
-                
-                const content = await response.text();
-                const jsonData = parseJSONL(content);
-                
-                salesmanData = jsonData.map(item => ({
+                const rows = await cfFetch('d.salesman');
+                salesmanData = rows.map(item => ({
                     id: item.szEmployeeId,
                     name: item.szname || 'Unknown',
                     team: item['Tipe Salesman'] || 'Unknown'
                 }));
-                
-                console.log(`✅ Loaded ${salesmanData.length} salesman from JSON`);
+                console.log(`✅ Loaded ${salesmanData.length} salesman from CF KV`);
                 populateSalesmanDropdown();
-                
             } catch (error) {
-                console.error('❌ Error loading salesman from JSON:', error);
+                console.error('❌ Error loading salesman data:', error);
                 showToast('Failed to load salesman data', 'error');
             }
         }

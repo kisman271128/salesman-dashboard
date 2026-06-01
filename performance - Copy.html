@@ -1445,19 +1445,6 @@
     </div>
 
     <script>
-        // ===== CLOUDFLARE WORKER CONFIG =====
-        const WORKER_URL = 'https://depo-tanjung-api.kisman-pidu.workers.dev';
-
-        async function cfFetch(namespace) {
-            const token = sessionStorage.getItem('cfToken');
-            const resp = await fetch(`${WORKER_URL}/data/${namespace}`, {
-                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-            });
-            if (!resp.ok) throw new Error(`cfFetch ${namespace} → ${resp.status}`);
-            const json = await resp.json();
-            return json.data;
-        }
-
         // ===== VARIABEL GLOBAL =====
         let jksData = [];
         let channelData = [];
@@ -1533,34 +1520,93 @@
 
         // ===== PEMUATAN DATA =====
         async function loadJSONData() {
-            const results = await Promise.allSettled([
-                cfFetch('d.jks'),
-                cfFetch('d.channel'),
-                cfFetch('d.channelproj'),
-                cfFetch('d.project'),
-                cfFetch('d.30pareto'),
-                cfFetch('d.tpom'),
-            ]);
+            const possiblePaths = [
+                'data/',
+                './data/',
+                './',
+                ''
+            ];
 
-            const [jks, channel, channelProj, project, pareto, pom] = results;
+            async function loadFile(filename) {
+                for (const basePath of possiblePaths) {
+                    const fullPath = basePath + filename;
+                    try {
+                        if (window.fs && window.fs.readFile) {
+                            const text = await window.fs.readFile(fullPath, { encoding: 'utf8' });
+                            return text;
+                        }
+                        const response = await fetch(fullPath);
+                        if (response.ok) {
+                            return await response.text();
+                        }
+                    } catch (error) {
+                        continue;
+                    }
+                }
+                throw new Error(`Tidak dapat memuat ${filename}`);
+            }
 
-            if (jks.status === 'fulfilled')         { jksData = jks.value;               console.log('Data JKS dimuat:', jksData.length, 'records'); }
-            else console.error('Gagal memuat data JKS:', jks.reason.message);
+            function parseJSONLines(text) {
+                return text.split('\n')
+                    .filter(line => line.trim())
+                    .map(line => {
+                        try {
+                            return JSON.parse(line);
+                        } catch {
+                            return null;
+                        }
+                    })
+                    .filter(item => item !== null);
+            }
 
-            if (channel.status === 'fulfilled')     { channelData = channel.value;        console.log('Data Channel dimuat:', channelData.length, 'records'); }
-            else console.error('Gagal memuat data Channel:', channel.reason.message);
+            // Muat semua file data
+            try {
+                const jksText = await loadFile('d.jks.json');
+                jksData = parseJSONLines(jksText);
+                console.log('Data JKS dimuat:', jksData.length, 'records');
+            } catch (error) {
+                console.error('Gagal memuat data JKS:', error.message);
+            }
 
-            if (channelProj.status === 'fulfilled') { channelProjData = channelProj.value; console.log('Data Channel Project dimuat:', channelProjData.length, 'records'); }
-            else { console.error('Gagal memuat data Channel Project:', channelProj.reason.message); channelProjData = channelData; }
+            try {
+                const channelText = await loadFile('d.channel.json');
+                channelData = parseJSONLines(channelText);
+                console.log('Data Channel dimuat:', channelData.length, 'records');
+            } catch (error) {
+                console.error('Gagal memuat data Channel:', error.message);
+            }
 
-            if (project.status === 'fulfilled')     { projectData = project.value;        console.log('Data Project dimuat:', projectData.length, 'records'); }
-            else console.error('Gagal memuat data Project:', project.reason.message);
+            try {
+                const channelProjText = await loadFile('d.channelproj.json');
+                channelProjData = parseJSONLines(channelProjText);
+                console.log('Data Channel Project dimuat:', channelProjData.length, 'records');
+            } catch (error) {
+                console.error('Gagal memuat data Channel Project:', error.message);
+            }
 
-            if (pareto.status === 'fulfilled')      { paretoData = pareto.value;          console.log('Data Pareto dimuat:', paretoData.length, 'records'); }
-            else console.error('Gagal memuat data Pareto:', pareto.reason.message);
+            try {
+                const projectText = await loadFile('d.project.json');
+                projectData = parseJSONLines(projectText);
+                console.log('Data Project dimuat:', projectData.length, 'records');
+            } catch (error) {
+                console.error('Gagal memuat data Project:', error.message);
+            }
 
-            if (pom.status === 'fulfilled')         { pomData = pom.value;                console.log('Data POM dimuat:', pomData.length, 'records'); }
-            else console.error('Gagal memuat data POM:', pom.reason.message);
+            try {
+                const paretoText = await loadFile('d.30pareto.json');
+                paretoData = parseJSONLines(paretoText);
+                console.log('Data Pareto dimuat:', paretoData.length, 'records');
+            } catch (error) {
+                console.error('Gagal memuat data Pareto:', error.message);
+            }
+
+            try {
+                const pomText = await loadFile('d.tpom.json');
+                pomData = parseJSONLines(pomText);
+                console.log('Data POM dimuat:', pomData.length, 'records');
+            } catch (error) {
+                console.error('Gagal memuat data POM:', error.message);
+            }
         }
 
 		// ===== FUNGSI UPDATE UI =====

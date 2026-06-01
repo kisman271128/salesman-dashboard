@@ -1295,37 +1295,52 @@
         }
 
         /* ===== PROMO TAG STYLING ===== */
+        /* Base .promo-tag sekaligus jadi fallback abu-abu untuk tipe yang tidak dikenal.
+           Rule spesifik per-tipe di bawah akan menimpa (override) background-nya.
+           CATATAN: selector :not([class*="promo-"]) TIDAK PERNAH aktif karena setiap
+           elemen pasti sudah punya class "promo-tag" yang mengandung "promo-",
+           sehingga pendekatan lama itu tidak berfungsi. */
         .promo-tag {
             font-weight: 600;
             font-size: 10px;
-            padding: 2px 4px;
+            padding: 2px 6px;
             border-radius: 4px;
             color: white;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+            display: inline-block;
+            min-width: 45px;
+            text-align: center;
+            /* Fallback default abu-abu untuk semua tipe tidak dikenal */
+            background: linear-gradient(135deg, #546E7A, #475569);
         }
 
-        .promo-biscuit, .promo-bisc { 
-            background: linear-gradient(135deg, #E74C3C, #E74C3C);
-        }
-        .promo-snack, .promo-snackfood { 
-            background: linear-gradient(135deg, #7c3aed, #8b5cf6);
-        }
-        .promo-bev { 
-            background: linear-gradient(135deg, #27AE60, #2ECC71);
-        }
-        .promo-others, .promo-sf, .promo-gen, .promo-go { 
-            background: linear-gradient(135deg, #0369a1, #1BC8DC);
-        }
-        .promo-gbs { 
+        /* ── Tipe-tipe yang dikenal ── */
+        .promo-gbs {
             background: linear-gradient(135deg, #7c2d12, #ea580c);
         }
-        .promo-solmed { 
+        .promo-solmed {
             background: linear-gradient(135deg, #E67E22, #F39C12);
         }
-        .promo-rans, .promo-gbev, .promo-mbr { 
-            background: linear-gradient(135deg, #23A0AD, #CBE030);
-            color: #000000;
-            text-shadow: none;
+        .promo-pre, .promo-pr, .promo-itg {
+            background: linear-gradient(135deg, #546E7A, #78909C);
+        }
+        .promo-sf, .promo-gen, .promo-go, .promo-others {
+            background: linear-gradient(135deg, #0369a1, #1BC8DC);
+        }
+        .promo-bev {
+            background: linear-gradient(135deg, #1B8A3E, #27AE60);
+        }
+        .promo-snack, .promo-snackfood {
+            background: linear-gradient(135deg, #7c3aed, #8b5cf6);
+        }
+        .promo-biscuit, .promo-bisc {
+            background: linear-gradient(135deg, #C0392B, #E74C3C);
+        }
+        .promo-rans, .promo-gbev, .promo-mbr {
+            background: linear-gradient(135deg, #23A0AD, #17B5C8);
+        }
+        .promo-apd {
+            background: linear-gradient(135deg, #be123c, #E74C3C);
         }
 
         /* ===== GAP BADGE STYLING ===== */
@@ -3028,6 +3043,30 @@
             </div>
         </div>
 
+        <!-- Modal: Konfirmasi Durasi Kunjungan Singkat -->
+        <div class="visit-modal" id="shortDurationModal">
+            <div class="visit-modal-content">
+                <div class="visit-modal-title" style="color:#E67E22;">⚠️ Durasi Sangat Singkat</div>
+                <div class="visit-modal-subtitle">Konfirmasi Kunjungan</div>
+                <div class="visit-modal-customer">
+                    <div class="visit-modal-customer-name" id="shortDurationOutletName"></div>
+                    <div class="visit-modal-customer-details" id="shortDurationText"></div>
+                </div>
+                <div style="background:#FFF8E1;border:1px solid #FFD54F;border-radius:10px;padding:12px 14px;margin:12px 0;font-size:13px;color:#795548;line-height:1.5;">
+                    Kunjungan kurang dari <strong>2 menit</strong>. Pastikan salesman benar-benar telah mengunjungi toko dan melakukan aktivitas penjualan.
+                </div>
+                <div class="visit-modal-buttons">
+                    <button class="visit-modal-btn visit-modal-btn-secondary" onclick="cancelShortDuration()">
+                        ↩ Kembali
+                    </button>
+                    <button class="visit-modal-btn" onclick="confirmShortDuration()"
+                        style="background:linear-gradient(135deg,#E67E22,#F39C12);color:white;border:none;border-radius:10px;padding:12px 16px;font-weight:600;cursor:pointer;flex:1;">
+                        ⚠️ Tetap Akhiri
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Floating Action Buttons -->
         <div class="floating-actions" id="floatingActions">
             <button class="floating-btn btn-pause-visit" onclick="showPauseVisitModal()">
@@ -3214,50 +3253,67 @@
                     
                     if (snapshot.exists()) {
                         const allVisits = snapshot.val();
-                        var visitCount = 0;
-                        
+
+                        // FIX: Deduplikasi per outlet — ambil record TERBARU per outlet_name
+                        // ROOT CAUSE: Saat app restart, endVisitSession() membuat record BARU
+                        // (completed) tanpa menghapus record lama (paused/started).
+                        // Akibatnya outlet yang sama muncul di tokoTutupList DAN tokoTidakSelesaiList.
+                        // Contoh: "FARIS" muncul 19x di Toko Tutup karena ada 19 record duplikat.
+                        const outletLatest = {};
                         Object.keys(allVisits).forEach(function(key) {
                             const visit = allVisits[key];
-                            
-                            // Filter by today's date
-                            if (visit.start_time) {
-                                const visitDate = visit.start_time.split('T')[0];
-                                
-                                if (visitDate === todayYMD) {
-                                    visitCount++;
-                                    const outletName = visit.outlet_name;
-                                    const visitStatus = visit.visit_status;
-                                    const orderStatus = visit.order_status;
-                                    const soAmount = Number(visit.so_amount || 0);
-                                    
-                                    console.log(`   Visit: ${outletName}, status: ${visitStatus}, order: ${orderStatus}`);
-                                    
-                                    // COMPLETED VISITS
-                                    if (visitStatus === 'completed') {
-                                        visited.add(outletName);
-                                        
-                                        if (orderStatus === 'ada_so') {
-                                            ordered.add(outletName);
-                                            actual += soAmount;
-                                            console.log('   ✓ EC outlet:', outletName, '→ Rp', soAmount);
-                                        } else if (orderStatus === 'toko_tutup') {
-                                            tokoTutupList.push(outletName);
-                                        } else if (orderStatus === 'toko_tidak_order') {
-                                            tokoTidakOrderList.push(outletName);
-                                        }
-                                    } 
-                                    // INCOMPLETE VISITS (started/paused/resumed but not completed)
-                                    else if (visitStatus === 'started' || visitStatus === 'paused' || visitStatus === 'resumed') {
-                                        if (!tokoTidakSelesaiList.includes(outletName)) {
-                                            tokoTidakSelesaiList.push(outletName);
-                                            console.log('   ⚠️ Tidak selesai:', outletName, '(status:', visitStatus + ')');
-                                        }
-                                    }
+                            if (!visit.start_time || !visit.outlet_name) return;
+                            const visitDate = visit.start_time.split('T')[0];
+                            if (visitDate !== todayYMD) return;
+
+                            const name = visit.outlet_name;
+                            const existing = outletLatest[name];
+                            if (!existing) {
+                                outletLatest[name] = visit;
+                            } else {
+                                // 'completed' selalu menang; jika sama, ambil yang end_time lebih baru
+                                const newDone  = visit.visit_status === 'completed';
+                                const prevDone = existing.visit_status === 'completed';
+                                if (newDone && !prevDone) {
+                                    outletLatest[name] = visit;
+                                } else if (!newDone && prevDone) {
+                                    // pertahankan yang completed
+                                } else {
+                                    const newTime  = visit.end_time || visit.start_time || '';
+                                    const prevTime = existing.end_time || existing.start_time || '';
+                                    if (newTime > prevTime) outletLatest[name] = visit;
                                 }
                             }
                         });
-                        
-                        console.log(`🔥 Loaded ${visitCount} visits from Firebase for today`);
+
+                        var visitCount = 0;
+                        Object.values(outletLatest).forEach(function(visit) {
+                            visitCount++;
+                            const outletName  = visit.outlet_name;
+                            const visitStatus = visit.visit_status;
+                            const orderStatus = visit.order_status;
+                            const soAmount    = Number(visit.so_amount || 0);
+
+                            console.log(`   Visit: ${outletName}, status: ${visitStatus}, order: ${orderStatus}`);
+
+                            if (visitStatus === 'completed') {
+                                visited.add(outletName);
+                                if (orderStatus === 'ada_so') {
+                                    ordered.add(outletName);
+                                    actual += soAmount;
+                                    console.log('   ✓ EC outlet:', outletName, '→ Rp', soAmount);
+                                } else if (orderStatus === 'toko_tutup') {
+                                    tokoTutupList.push(outletName);
+                                } else if (orderStatus === 'toko_tidak_order') {
+                                    tokoTidakOrderList.push(outletName);
+                                }
+                            } else if (['started','paused','resumed'].includes(visitStatus)) {
+                                tokoTidakSelesaiList.push(outletName);
+                                console.log('   ⚠️ Tidak selesai:', outletName, '(status:', visitStatus + ')');
+                            }
+                        });
+
+                        console.log(`🔥 Loaded ${visitCount} unique outlets from Firebase for today`);
                     } else {
                         console.log('🔥 No visits found in Firebase for today');
                     }
@@ -3533,7 +3589,33 @@
                             });
                         });
                         
+                        // FIX: Deduplikasi per outlet — ambil record TERBARU per outlet_name
+                        // localStorage bisa punya banyak entry untuk outlet yang sama
+                        // (kunjungan gagal + retry), menyebabkan nama muncul berulang di laporan.
+                        var outletLatestLS = {};
                         visits.forEach(function(visit) {
+                            if (!visit.outlet_name) return;
+                            var name = visit.outlet_name;
+                            var existing = outletLatestLS[name];
+                            if (!existing) {
+                                outletLatestLS[name] = visit;
+                            } else {
+                                // completed menang; jika sama, ambil yang end_time lebih baru
+                                var newDone  = !!visit.visit_completed;
+                                var prevDone = !!existing.visit_completed;
+                                if (newDone && !prevDone) {
+                                    outletLatestLS[name] = visit;
+                                } else if (!newDone && prevDone) {
+                                    // pertahankan yang completed
+                                } else {
+                                    var newTime  = visit.end_time || visit.start_time || '';
+                                    var prevTime = existing.end_time || existing.start_time || '';
+                                    if (newTime > prevTime) outletLatestLS[name] = visit;
+                                }
+                            }
+                        });
+
+                        Object.values(outletLatestLS).forEach(function(visit) {
                             if (visit.outlet_name && visit.visit_completed) {
                                 visited.add(visit.outlet_name);
                                 
@@ -3550,7 +3632,6 @@
                                     tokoTidakOrderList.push(visit.outlet_name);
                                 }
                             } else if (visit.outlet_name && !visit.visit_completed) {
-                                // NEW: Track visits that were started but not completed
                                 tokoTidakSelesaiList.push(visit.outlet_name);
                                 console.log('   ⚠️ Tidak selesai:', visit.outlet_name);
                             }
@@ -4804,7 +4885,9 @@
                     accumulated_duration: visitSession.accumulatedDuration
                 };
                 
-                const updated = await updateVisitInFirebase(visitSession.firebaseKey, pauseUpdateData);
+                const updated = await withFirebaseTimeout(
+                    updateVisitInFirebase(visitSession.firebaseKey, pauseUpdateData)
+                ).catch(err => { console.warn('⏳ Firebase pause timeout:', err.message); return false; });
                 if (updated) {
                     console.log('🔥 Visit status updated to PAUSED in Firebase');
                 } else {
@@ -4934,7 +5017,9 @@
                     resume_location: { ...currentLocation }
                 };
                 
-                const updated = await updateVisitInFirebase(visitSession.firebaseKey, resumeUpdateData);
+                const updated = await withFirebaseTimeout(
+                    updateVisitInFirebase(visitSession.firebaseKey, resumeUpdateData)
+                ).catch(err => { console.warn('⏳ Firebase resume timeout:', err.message); return false; });
                 if (updated) {
                     console.log('🔥 Visit status updated to RESUMED in Firebase');
                 } else {
@@ -5341,9 +5426,54 @@
             }
         }
 
+        // ── Durasi minimum kunjungan ────────────────────────────────────────────
+        // Kunjungan di bawah batas ini akan meminta konfirmasi tambahan sebelum
+        // diakhiri, sebagai pencegahan salesman yang tidak benar-benar mengunjungi toko.
+        const MIN_VISIT_SECONDS = 120; // 2 menit
+
         function cancelVisitEnd() {
             document.getElementById('visitEndModal').classList.remove('show');
             console.log('❌ Visit end cancelled, continuing visit');
+        }
+
+        // Dipanggil saat durasi < MIN_VISIT_SECONDS — simpan data order sementara
+        // lalu tunjukkan modal peringatan.
+        let _pendingOrderStatus = null;
+        let _pendingSoAmount    = null;
+
+        function showShortDurationWarning(orderStatus, soAmount, totalDuration) {
+            _pendingOrderStatus = orderStatus;
+            _pendingSoAmount    = soAmount;
+
+            const menit  = Math.floor(totalDuration / 60);
+            const detik  = totalDuration % 60;
+            const label  = menit > 0
+                ? `${menit} mnt ${detik} dtk`
+                : `${detik} detik`;
+
+            document.getElementById('shortDurationOutletName').textContent = visitSession.outletName || '';
+            document.getElementById('shortDurationText').textContent =
+                `Durasi kunjungan: ${label} (minimum ${MIN_VISIT_SECONDS / 60} menit)`;
+
+            document.getElementById('visitEndModal').classList.remove('show');
+            document.getElementById('shortDurationModal').classList.add('show');
+
+            console.warn(`⚠️ Kunjungan singkat: ${totalDuration}s < ${MIN_VISIT_SECONDS}s — menunggu konfirmasi`);
+        }
+
+        function cancelShortDuration() {
+            document.getElementById('shortDurationModal').classList.remove('show');
+            _pendingOrderStatus = null;
+            _pendingSoAmount    = null;
+            console.log('↩ Salesman kembali melanjutkan kunjungan');
+        }
+
+        function confirmShortDuration() {
+            document.getElementById('shortDurationModal').classList.remove('show');
+            console.warn(`⚠️ Konfirmasi paksa: kunjungan singkat diakhiri oleh salesman`);
+            endVisitSession(_pendingOrderStatus, _pendingSoAmount);
+            _pendingOrderStatus = null;
+            _pendingSoAmount    = null;
         }
 
         function confirmVisitEnd() {
@@ -5372,7 +5502,18 @@
                     saveInactiveCustomer(outletId, outletName, reasonText);
                 }
             }
-            
+
+            // ── Cek durasi minimum ───────────────────────────────────────────────
+            const currentSessionDuration = Math.floor((Date.now() - visitSession.startTime) / 1000);
+            const totalDuration = visitSession.accumulatedDuration + currentSessionDuration;
+
+            if (totalDuration < MIN_VISIT_SECONDS) {
+                // Durasi terlalu singkat — tampilkan modal konfirmasi tambahan
+                showShortDurationWarning(orderStatus, soAmount, totalDuration);
+                return; // jangan lanjut dulu, tunggu pilihan salesman
+            }
+            // ────────────────────────────────────────────────────────────────────
+
             document.getElementById('visitEndModal').classList.remove('show');
             endVisitSession();
         }
@@ -5444,7 +5585,9 @@
             saveVisitSessionToLocal('session_start', visitDataForFirebase);
             
             // ✅ SAVE TO FIREBASE IMMEDIATELY (status: started)
-            const firebaseKey = await syncVisitToFirebase(visitDataForFirebase);
+            const firebaseKey = await withFirebaseTimeout(
+                syncVisitToFirebase(visitDataForFirebase)
+            ).catch(err => { console.warn('⏳ Firebase start timeout:', err.message); return null; });
             
             if (firebaseKey) {
                 visitSession.firebaseKey = firebaseKey; // Store key for future updates
@@ -5455,7 +5598,21 @@
             }
         }
 
-        async function endVisitSession() {
+        // ─── Firebase timeout wrapper ────────────────────────────────────────────
+        // Mencegah endVisitSession() hang selamanya saat jaringan terputus.
+        // Firebase SDK kadang tidak me-resolve maupun me-reject promise jika
+        // koneksi hilang di tengah operasi — Promise.race() memaksa timeout.
+        function withFirebaseTimeout(promise, ms = 10000) {
+            return Promise.race([
+                promise,
+                new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('Firebase timeout after ' + ms + 'ms')), ms)
+                )
+            ]);
+        }
+        // ────────────────────────────────────────────────────────────────────────
+
+        async function endVisitSession(overrideOrderStatus = null, overrideSoAmount = null) {
             if (!visitSession.isActive) {
                 console.warn('🚫 Cannot end session - not active');
                 return;
@@ -5468,10 +5625,16 @@
                 timestamp: new Date().toISOString()
             };
             
+            // Gunakan nilai override jika kunjungan dikonfirmasi dari shortDurationModal
+            if (overrideOrderStatus !== null) {
+                visitSession.orderStatus = overrideOrderStatus;
+                visitSession.soAmount = overrideOrderStatus === 'ada_so' ? parseFloat(overrideSoAmount || 0) : 0;
+            }
+
             const endTime = Date.now();
             const currentSessionDuration = Math.floor((endTime - visitSession.startTime) / 1000);
             const totalDuration = visitSession.accumulatedDuration + currentSessionDuration;
-            
+
             visitSession.endTime = endTime;
             visitSession.duration = totalDuration;
             visitSession.endLocation = endLocation;
@@ -5504,7 +5667,8 @@
                 start_time: new Date(visitSession.startTime - visitSession.accumulatedDuration * 1000).toISOString(),
                 end_time: new Date(endTime).toISOString(),
                 total_duration_seconds: totalDuration,
-                active_duration_seconds: totalDuration, // Time actually spent in store
+                active_duration_seconds: totalDuration,
+                short_visit_confirmed: totalDuration < MIN_VISIT_SECONDS, // flag untuk audit supervisor
                 pause_count: pauseCount,
                 total_pause_duration: totalPauseDuration,
                 pause_history: visitSession.pauseHistory,
@@ -5526,26 +5690,40 @@
             saveVisitSessionToLocal('session_end', visitDataForFirebase);
             
             // ✅ UPDATE OR CREATE IN FIREBASE
+            // withFirebaseTimeout() mencegah hang jika jaringan putus — timeout 10 detik,
+            // lalu data masuk pending queue dan session tetap bisa di-reset.
             let firebaseSuccess = false;
             if (visitSession.firebaseKey) {
-                // Update existing visit
                 console.log(`🔥 Updating existing visit in Firebase: ${visitSession.firebaseKey}`);
-                firebaseSuccess = await updateVisitInFirebase(visitSession.firebaseKey, visitDataForFirebase);
+                firebaseSuccess = await withFirebaseTimeout(
+                    updateVisitInFirebase(visitSession.firebaseKey, visitDataForFirebase)
+                ).catch(err => {
+                    console.warn('⏳ Firebase update timeout/error:', err.message);
+                    return false;
+                });
             } else {
-                // Create new visit (fallback for visits without initial sync)
                 console.log('🔥 Creating new visit in Firebase (no initial key)');
-                const firebaseKey = await syncVisitToFirebase(visitDataForFirebase);
+                const firebaseKey = await withFirebaseTimeout(
+                    syncVisitToFirebase(visitDataForFirebase)
+                ).catch(err => {
+                    console.warn('⏳ Firebase sync timeout/error:', err.message);
+                    return null;
+                });
                 firebaseSuccess = !!firebaseKey;
             }
-            
+
             if (!firebaseSuccess) {
                 console.log('⏳ Adding visit to pending Firebase sync queue...');
                 saveToPendingFirebaseQueue(visitDataForFirebase);
             }
-            
-            // Also update daily summary
+
+            // Also update daily summary (skip jika Firebase gagal/timeout)
             if (firebaseSuccess) {
-                await syncDailySummaryToFirebase(visitDataForFirebase);
+                await withFirebaseTimeout(
+                    syncDailySummaryToFirebase(visitDataForFirebase)
+                ).catch(err => {
+                    console.warn('⏳ Daily summary sync timeout/error:', err.message);
+                });
             }
             
             // Reset session
@@ -7384,7 +7562,6 @@
             
             data.forEach((item, index) => {
                 const no = index + 1;
-                const promo = item.Promo || "Others";
                 const sku = item.SKU || "N/A";
                 const threeLM = Number(item.Unit3LM) || 0;
                 const lm = Number(item.UnitLM) || 0;
@@ -7398,7 +7575,22 @@
                 
                 const gapClass = gap > 0 ? 'positive' : gap < 0 ? 'negative' : 'neutral';
                 const gapBadgeClass = gap > 0 ? 'gap-positive' : gap < 0 ? 'gap-negative' : 'gap-neutral';
-                const promoClass = `promo-${promo.toLowerCase().replace(/\s+/g, '')}`;
+
+                // Normalisasi nilai Promo → CSS class
+                const rawPromo = item.Promo;
+                const promo = (rawPromo !== null && rawPromo !== undefined && String(rawPromo).trim() !== '')
+                    ? String(rawPromo).trim()
+                    : 'Others';
+                const normalizedPromo = promo.toLowerCase()
+                    .replace(/\s+/g, '')           // hapus semua spasi
+                    .replace(/[^a-z0-9]/g, '');    // hapus karakter non-alphanumeric
+                const promoClass = `promo-${normalizedPromo}`;
+
+                // Debug: uncomment jika ada badge yang masih tidak berwarna
+                // const knownPromos = ['gbs','solmed','pre','pr','itg','sf','gen','go','others','bev','snack','snackfood','biscuit','bisc','rans','gbev','mbr','apd'];
+                // if (!knownPromos.includes(normalizedPromo)) {
+                //     console.warn(`[Promo] Tidak dikenal: raw="${rawPromo}" → normalized="${normalizedPromo}"`);
+                // }
                 
                 // Check MSS status for SKU coloring
                 let skuClass = 'sku-code';

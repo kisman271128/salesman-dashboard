@@ -859,84 +859,64 @@
     </div>
 
     <script>
-        // Global variables
-        let validUsers = {};
-        let isLoading = false;
-        let usersLoaded = false;
-        let detectedDeviceType = 'unknown';
+        // ─── Cloudflare Worker Config ─────────────────────────────────────────
+        const WORKER_URL = 'https://depo-tanjung-api.kisman-pidu.workers.dev';
 
-        // DOM Elements
-        const loginForm = document.getElementById('loginForm');
-        const nikInput = document.getElementById('nikInput');
-        const passwordInput = document.getElementById('password');
-        const rememberMe = document.getElementById('rememberMe');
-        const loginButton = document.getElementById('loginButton');
+        // ─── Global State ─────────────────────────────────────────────────────
+        let isLoading    = false;
+        let usersLoaded  = false;
+        let detectedDeviceType = 'unknown';
+        let cfToken = null;   // JWT dari Cloudflare Worker
+        let cfUser  = null;   // { username, name, role, depo }
+
+        // ─── DOM Elements ─────────────────────────────────────────────────────
+        const loginForm          = document.getElementById('loginForm');
+        const nikInput           = document.getElementById('nikInput');
+        const passwordInput      = document.getElementById('password');
+        const rememberMe         = document.getElementById('rememberMe');
+        const loginButton        = document.getElementById('loginButton');
         const dashboardSelection = document.getElementById('dashboardSelection');
-        const transitionOverlay = document.getElementById('transitionOverlay');
-        const buttonText = document.getElementById('buttonText');
-        const loading = document.getElementById('loading');
+        const transitionOverlay  = document.getElementById('transitionOverlay');
+        const buttonText         = document.getElementById('buttonText');
+        const loading            = document.getElementById('loading');
 
         // Notification frame elements
-        const notificationFrame = document.getElementById('notificationFrame');
+        const notificationFrame   = document.getElementById('notificationFrame');
         const notificationSpinner = document.getElementById('notificationSpinner');
-        const notificationIcon = document.getElementById('notificationIcon');
-        const notificationTitle = document.getElementById('notificationTitle');
+        const notificationIcon    = document.getElementById('notificationIcon');
+        const notificationTitle   = document.getElementById('notificationTitle');
         const notificationMessage = document.getElementById('notificationMessage');
-        const notificationInfo = document.getElementById('notificationInfo');
+        const notificationInfo    = document.getElementById('notificationInfo');
 
-        // ✅ DEVICE DETECTION FUNCTION
+        // ─── DEVICE DETECTION ─────────────────────────────────────────────────
         function detectDevice() {
-            const userAgent = navigator.userAgent.toLowerCase();
-            const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
-            const isTablet = /ipad|android(?!.*mobile)/i.test(userAgent);
+            const userAgent  = navigator.userAgent.toLowerCase();
+            const isMobile   = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
+            const isTablet   = /ipad|android(?!.*mobile)/i.test(userAgent);
             const screenWidth = window.innerWidth;
-            const screenHeight = window.innerHeight;
-            
-            console.log('🔍 Device Detection:', {
-                userAgent: userAgent.substring(0, 50) + '...',
-                isMobile,
-                isTablet,
-                screenWidth,
-                screenHeight
-            });
-            
-            // Determine device type based on multiple factors
+
             if (isMobile && !isTablet && screenWidth < 768) {
                 detectedDeviceType = 'mobile';
-                return {
-                    type: 'mobile',
-                    description: 'Smartphone detected - Mobile version recommended'
-                };
+                return { type: 'mobile', description: 'Smartphone detected - Mobile version recommended' };
             } else if (isTablet || (screenWidth >= 768 && screenWidth < 1024)) {
                 detectedDeviceType = 'tablet';
-                return {
-                    type: 'tablet',
-                    description: 'Tablet detected - Both versions available'
-                };
+                return { type: 'tablet', description: 'Tablet detected - Both versions available' };
             } else if (screenWidth >= 1024) {
                 detectedDeviceType = 'desktop';
-                return {
-                    type: 'desktop',
-                    description: 'Desktop/Laptop detected - Desktop version recommended'
-                };
+                return { type: 'desktop', description: 'Desktop/Laptop detected - Desktop version recommended' };
             } else {
                 detectedDeviceType = 'unknown';
-                return {
-                    type: 'unknown',
-                    description: 'Device type unclear - Please choose manually'
-                };
+                return { type: 'unknown', description: 'Device type unclear - Please choose manually' };
             }
         }
 
-        // ✅ NOTIFICATION FRAME FUNCTIONS
+        // ─── NOTIFICATION HELPERS ─────────────────────────────────────────────
         function showNotification(type, icon, title, message, showInfo = true) {
             notificationFrame.className = `notification-frame ${type}`;
             notificationIcon.textContent = icon;
             notificationTitle.textContent = title;
             notificationMessage.textContent = message;
             notificationInfo.style.display = showInfo ? 'block' : 'none';
-            
-            // Show spinner for loading type
             if (type === 'loading') {
                 notificationSpinner.style.display = 'block';
                 notificationIcon.style.display = 'none';
@@ -945,509 +925,238 @@
                 notificationIcon.style.display = 'block';
             }
         }
+        function hideNotification()          { notificationFrame.className = 'notification-frame hidden'; }
+        function showLoadingNotification()   { showNotification('loading', '', 'Memverifikasi Login', 'Sedang memproses data login Anda...', false); }
+        function showSuccessNotification(n)  { showNotification('success', '✅', 'Login Berhasil!', `Selamat datang, ${n}! Memilih dashboard terbaik untuk Anda...`, false); }
+        function showErrorNotification(msg)  { showNotification('error', '❌', 'Login Gagal', msg, false); }
+        function showDefaultNotification()   { showNotification('', '📋', 'Sistem Login', 'Masukkan username (NIK) dan password untuk mengakses dashboard', true); }
 
-        function hideNotification() {
-            notificationFrame.className = 'notification-frame hidden';
-        }
-
-        function showLoadingNotification() {
-            showNotification('loading', '', 'Memverifikasi Login', 'Sedang memproses data login Anda...', false);
-        }
-
-        function showSuccessNotification(userName) {
-            showNotification('success', '✅', 'Login Berhasil!', `Selamat datang, ${userName}! Memilih dashboard terbaik untuk Anda...`, false);
-        }
-
-        function showErrorNotification(message) {
-            showNotification('error', '❌', 'Login Gagal', message, false);
-        }
-
-        function showDefaultNotification() {
-            showNotification('', '📋', 'Sistem Login', 'Masukkan username (admin/NIK) dan password untuk mengakses dashboard', true);
-        }
-
-        // ✅ SHOW DASHBOARD SELECTION
+        // ─── DASHBOARD SELECTION ──────────────────────────────────────────────
         function showDashboardSelection(userName) {
             const device = detectDevice();
-            
             document.getElementById('detectedDevice').textContent = device.description;
             dashboardSelection.style.display = 'flex';
-            
-            console.log('📱 Showing dashboard selection for:', userName);
-            console.log('🔍 Detected device:', device);
         }
+        function hideDashboardSelection() { dashboardSelection.style.display = 'none'; }
 
-        // ✅ HIDE DASHBOARD SELECTION
-        function hideDashboardSelection() {
-            dashboardSelection.style.display = 'none';
-        }
-
-        // ✅ SELECT DASHBOARD MANUALLY
         function selectDashboard(type) {
-            console.log(`📱 Manual dashboard selection: ${type}`);
-            
-            const dashboardUrl = type === 'desktop' ? 'dashboard-desktop.html' : 'dashboard.html';
-            const dashboardName = type === 'desktop' ? 'Desktop Dashboard' : 'Mobile Dashboard';
-            
-            // Store user preference
             localStorage.setItem('preferredDashboard', type);
-            
-            redirectToDashboard(dashboardUrl, dashboardName);
+            const url  = type === 'desktop' ? 'dashboard-desktop.html' : 'dashboard.html';
+            const name = type === 'desktop' ? 'Desktop Dashboard' : 'Mobile Dashboard';
+            redirectToDashboard(url, name);
         }
 
-        // ✅ AUTO SELECT DASHBOARD BASED ON DETECTION
         function autoSelectDashboard() {
-            console.log('🤖 Auto selecting dashboard based on detection');
-            
-            let selectedType = 'mobile'; // default fallback
-            
+            let selected = 'mobile';
             switch (detectedDeviceType) {
-                case 'mobile':
-                    selectedType = 'mobile';
-                    break;
-                case 'tablet':
-                    // For tablets, check user preference or default to mobile
-                    selectedType = localStorage.getItem('preferredDashboard') || 'mobile';
-                    break;
-                case 'desktop':
-                    selectedType = 'desktop';
-                    break;
-                default:
-                    // Unknown device, check screen size
-                    selectedType = window.innerWidth >= 1024 ? 'desktop' : 'mobile';
+                case 'desktop': selected = 'desktop'; break;
+                case 'tablet':  selected = localStorage.getItem('preferredDashboard') || 'mobile'; break;
+                default:        selected = window.innerWidth >= 1024 ? 'desktop' : 'mobile';
             }
-            
-            selectDashboard(selectedType);
+            selectDashboard(selected);
         }
 
-        // ✅ REDIRECT TO DASHBOARD WITH TRANSITION
         function redirectToDashboard(url, name) {
             hideDashboardSelection();
-            
-            // Show transition overlay
             document.getElementById('transitionText').textContent = `Loading ${name}...`;
             document.getElementById('transitionSubtext').textContent = 'Preparing your workspace...';
             transitionOverlay.style.display = 'flex';
-            
-            // Add some delay for better UX
-            setTimeout(() => {
-                console.log(`🚀 Redirecting to: ${url}`);
-                window.location.href = url;
-            }, 2000);
+            setTimeout(() => { window.location.href = url; }, 2000);
         }
 
-        // Baca d.soharian.json langsung — lebih akurat karena selalu sync dengan Excel export
+        // ─── LAST UPDATE INFO ─────────────────────────────────────────────────
         async function loadLastUpdateInfo() {
             try {
                 document.getElementById('lastUpdateTime').textContent = 'Loading...';
+                const resp = await fetch(`${WORKER_URL}/data/d.soharian`, {
+                    headers: cfToken ? { 'Authorization': `Bearer ${cfToken}` } : {}
+                });
 
-                const response = await fetch('data/d.soharian.json');
-                if (!response.ok) throw new Error('d.soharian.json not found');
+                // Fallback ke file lokal jika Worker belum tersedia (sebelum login)
+                let rows = [];
+                if (resp.ok) {
+                    const json = await resp.json();
+                    rows = (json.data || []).filter(r => r && r.Tgl && r.Tgl !== 0 && r.DO > 0);
+                } else {
+                    // Coba baca dari file lokal (GitHub Pages fallback)
+                    const localResp = await fetch('data/d.soharian.json');
+                    if (localResp.ok) {
+                        const text = await localResp.text();
+                        rows = text.trim().split('\n')
+                            .map(l => { try { return JSON.parse(l); } catch { return null; } })
+                            .filter(r => r && r.Tgl && r.Tgl !== 0 && r.DO > 0);
+                    }
+                }
 
-                const text = await response.text();
-                const rows = text.trim().split('\n')
-                    .map(l => { try { return JSON.parse(l); } catch { return null; } })
-                    .filter(r => r && r.Tgl && r.Tgl !== 0 && r.DO > 0);
-
-                if (rows.length === 0) {
+                if (!rows.length) {
                     document.getElementById('lastUpdateTime').textContent = 'Data tidak tersedia';
                     return;
                 }
 
-                // Ambil baris terakhir dengan DO > 0
                 const lastRow = rows[rows.length - 1];
-                const tgl = new Date(lastRow.Tgl);
-
-                const bulan = ['Januari','Februari','Maret','April','Mei','Juni',
-                               'Juli','Agustus','September','Oktober','November','Desember'];
-                const day   = String(tgl.getDate()).padStart(2, '0');
-                const label = `${day} ${bulan[tgl.getMonth()]} ${tgl.getFullYear()}`;
-
+                const tgl     = new Date(lastRow.Tgl);
+                const bulan   = ['Januari','Februari','Maret','April','Mei','Juni',
+                                  'Juli','Agustus','September','Oktober','November','Desember'];
+                const label   = `${String(tgl.getDate()).padStart(2,'0')} ${bulan[tgl.getMonth()]} ${tgl.getFullYear()}`;
                 document.getElementById('lastUpdateTime').textContent = label;
-                console.log('✅ Last update from d.soharian.json:', label);
 
-            } catch (error) {
-                console.error('❌ loadLastUpdateInfo error:', error);
+            } catch (e) {
                 document.getElementById('lastUpdateTime').textContent = 'Data tidak tersedia';
             }
         }
 
-        // ✅ UPDATED: Load valid users with new password "tanjung2025"
+        // ─── LOAD USERS (hanya untuk highlight NIK di input field) ───────────
+        // Tidak lagi menyimpan password di client — auth sepenuhnya di Worker
         async function loadValidUsers() {
             try {
-                console.log('🔄 Loading valid users from Firebase...');
-                
-                // Try to load from Firebase "users" collection first
-                let usersFromFirebase = null;
-                
-                if (window.firebaseDB && window.firebaseRef && window.firebaseGet) {
-                    try {
-                        const usersRef = window.firebaseRef(window.firebaseDB, 'users');
-                        const snapshot = await window.firebaseGet(usersRef);
-                        
-                        if (snapshot.exists()) {
-                            usersFromFirebase = snapshot.val();
-                            console.log('✅ Users loaded from Firebase:', Object.keys(usersFromFirebase));
-                            
-                            // Convert Firebase data to validUsers format
-                            validUsers = {};
-                            for (const [userId, userData] of Object.entries(usersFromFirebase)) {
-                                validUsers[userId] = {
-                                    password: userData.password || 'tanjung2025',
-                                    name: userData.name || userData.nama || userId,
-                                    role: userData.role || 'salesman'
-                                };
-                            }
-                            
-                            console.log('✅ Users processed from Firebase:', Object.keys(validUsers).length, 'users');
-                        } else {
-                            console.warn('⚠️ Firebase "users" collection is empty, using fallback');
-                        }
-                    } catch (firebaseError) {
-                        console.warn('⚠️ Firebase fetch error, using fallback:', firebaseError.message);
+                // Ambil daftar NIK untuk highlight input field (opsional)
+                const resp = await fetch(`${WORKER_URL}/data/d.salesman`);
+                if (resp.ok) {
+                    const json = await resp.json();
+                    const niks = (json.data || []).map(s => String(s.szEmployeeId || ''));
+                    window._validNiks = new Set(niks);
+                }
+            } catch (e) {
+                window._validNiks = new Set();
+            }
+            usersLoaded = true;
+            loginButton.disabled = false;
+        }
+
+        // ─── LOGIN via Cloudflare Worker ──────────────────────────────────────
+        async function validateLogin(nik, password) {
+            try {
+                const resp = await fetch(`${WORKER_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: nik, password })
+                });
+
+                const data = await resp.json();
+
+                if (resp.ok && data.token) {
+                    // ✅ Login berhasil
+                    cfToken = data.token;
+                    cfUser  = data.user;
+
+                    // Simpan session
+                    sessionStorage.setItem('isLoggedIn',  'true');
+                    sessionStorage.setItem('cfToken',     cfToken);
+                    sessionStorage.setItem('currentUser', data.user.username);
+                    sessionStorage.setItem('userName',    data.user.name);
+                    sessionStorage.setItem('userRole',    data.user.role);
+                    sessionStorage.setItem('userDepo',    data.user.depo || '0172');
+
+                    if (rememberMe.checked) {
+                        localStorage.setItem('rememberedUser', nik);
+                    } else {
+                        localStorage.removeItem('rememberedUser');
                     }
+
+                    showSuccessNotification(data.user.name);
+                    setTimeout(() => {
+                        showDashboardSelection(data.user.name);
+                        setLoading(false);
+                    }, 2000);
+
                 } else {
-                    console.warn('⚠️ Firebase not initialized yet, using fallback');
-                }
-                
-                // If Firebase failed or empty, use fallback hardcoded users
-                if (!usersFromFirebase || Object.keys(validUsers).length === 0) {
-                    console.log('📋 Using fallback hardcoded users...');
-                    
-                    // Set default users first (fallback)
-                    validUsers = {
-                        'admin': { password: 'rastamania271128', name: 'Administrator', role: 'admin' }
-                    };
-
-                    try {
-                        // Try to load salesman data from JSON
-                        const response = await fetch('data/salesman_list.json');
-                        if (response.ok) {
-                            const salesmanList = await response.json();
-                            
-                            // Add all salesman from JSON
-                            salesmanList.forEach(salesman => {
-                                validUsers[salesman.id] = {
-                                    password: 'tanjung2025',
-                                    name: salesman.name,
-                                    role: 'salesman'
-                                };
-                            });
-                            console.log('✅ Salesman data loaded from JSON');
-                        } else {
-                            console.warn('⚠️ Could not load salesman_list.json, using minimal fallback');
-                            // Add minimal fallback salesman users
-                            const fallbackSalesman = {
-                                '17210032876': { password: 'tanjung2025', name: 'Asman', role: 'salesman' },
-                                '17210036369': { password: 'tanjung2025', name: 'Muhammad Tamrin', role: 'salesman' },
-                                '17210037632': { password: 'tanjung2025', name: 'Robianor', role: 'salesman' },
-                                '17210037897': { password: 'tanjung2025', name: 'Hindra', role: 'salesman' },
-                                '17210041467': { password: 'tanjung2025', name: 'Doli Purnama Sari', role: 'salesman' },
-                                '17210042412': { password: 'tanjung2025', name: 'Muhammad Rizky Algifari', role: 'salesman' },
-								'17210042423': { password: 'tanjung2025', name: 'Siti Fatimah Hadijah', role: 'salesman' },
-                                '17210036576': { password: 'tanjung2025', name: 'Muhammad Yasir', role: 'admin' }
-                            };
-                            Object.assign(validUsers, fallbackSalesman);
-                        }
-                    } catch (fetchError) {
-                        console.warn('⚠️ Fetch error, using minimal fallback:', fetchError);
-                        // Add minimal fallback salesman users
-                        const fallbackSalesman = {
-                            '17210032876': { password: 'tanjung2025', name: 'Asman', role: 'salesman' },
-                            '17210036369': { password: 'tanjung2025', name: 'Muhammad Tamrin', role: 'salesman' },
-                            '17210037632': { password: 'tanjung2025', name: 'Robianor', role: 'salesman' },
-                            '17210041467': { password: 'tanjung2025', name: 'Doli Purnama Sari', role: 'salesman' },
-                            '17210037897': { password: 'tanjung2025', name: 'Hindra', role: 'salesman' },
-                            '17210042412': { password: 'tanjung2025', name: 'Muhammad Rizky Algifari', role: 'salesman' },
-							'17210042423': { password: 'tanjung2025', name: 'Siti Fatimah Hadijah', role: 'salesman' },
-                            '17210036576': { password: 'tanjung2025', name: 'Muhammad Yasir', role: 'admin' }
-                        };
-                        Object.assign(validUsers, fallbackSalesman);
-                    }
+                    // ❌ Login gagal
+                    showErrorNotification(data.error || 'Username atau password salah.');
+                    setLoading(false);
                 }
 
-                // Load saved passwords from localStorage (if any custom passwords were set)
-                const storedPasswords = JSON.parse(localStorage.getItem('userPasswords')) || {};
-                for (const nik in storedPasswords) {
-                    if (validUsers[nik]) {
-                        validUsers[nik].password = storedPasswords[nik];
-                    }
-                }
-                
-                usersLoaded = true;
-                loginButton.disabled = false;
-                
-                console.log('✅ Valid users loaded:', Object.keys(validUsers).length, 'total users');
-                console.log('📋 User IDs:', Object.keys(validUsers).slice(0, 10).join(', '), '...');
-                
-            } catch (error) {
-                console.error('❌ Error loading valid users:', error);
-                usersLoaded = true; // Still enable login with fallback users
-                loginButton.disabled = false;
+            } catch (e) {
+                console.error('Login error:', e);
+                showErrorNotification('Gagal terhubung ke server. Periksa koneksi internet Anda.');
+                setLoading(false);
             }
         }
 
-        // ✅ Initialize on page load
+        // ─── INIT ─────────────────────────────────────────────────────────────
         window.addEventListener('load', async function() {
-            console.log('🚀 Initializing Sales Dashboard login system...');
-            
-            // Disable login button until users are loaded
             loginButton.disabled = true;
             buttonText.textContent = 'Loading...';
-            
-            // Show default notification
             showDefaultNotification();
-            
-            // Load users and last update info in parallel
+
             await Promise.all([
                 loadValidUsers(),
                 loadLastUpdateInfo()
             ]);
-            
-            // Reset button text
+
             buttonText.textContent = 'Sign In';
-            
-            // Check for remembered user
+
             const rememberedUser = localStorage.getItem('rememberedUser');
             if (rememberedUser) {
-                nikInput.value = rememberedUser;
+                nikInput.value    = rememberedUser;
                 rememberMe.checked = true;
             }
-            
-            console.log('✅ Sales Dashboard login system ready with new password');
         });
 
-        // ✅ Enhanced Login Form Handler
+        // ─── FORM SUBMIT ──────────────────────────────────────────────────────
         loginForm.addEventListener('submit', async function(e) {
             e.preventDefault();
-            
-            if (isLoading || !usersLoaded) {
-                console.log('⏳ Still loading or already processing...');
-                return;
-            }
-            
-            const nik = nikInput.value.trim();
+            if (isLoading || !usersLoaded) return;
+
+            const nik      = nikInput.value.trim();
             const password = passwordInput.value.trim();
-            
-            // Validation
+
             if (!nik || !password) {
                 showErrorNotification('Username dan password harus diisi!');
                 return;
             }
-            
-            console.log(`🔍 Attempting login for: ${nik}`);
-            
-            // Show loading notification
+
             showLoadingNotification();
-            
-            // Show loading on button
             setLoading(true);
-            
-            // Add delay for better UX
-            setTimeout(() => {
-                validateLogin(nik, password);
-            }, 800);
+            setTimeout(() => validateLogin(nik, password), 800);
         });
 
-        // ✅ Validate login with device authentication
-        async function validateLogin(nik, password) {
-            console.log(`🔍 Validating login for: ${nik}`);
-            console.log(`📋 Available users:`, Object.keys(validUsers));
-            
-            const user = validUsers[nik];
-            
-            if (user && user.password === password) {
-                console.log(`✅ Password correct for: ${user.name} (${user.role})`);
-                
-                // ===== ADMIN BYPASS =====
-                // Admin role → skip device validation entirely (same as 'admin' user)
-                if (nik === 'admin' || user.role === 'admin') {
-                    console.log(`👑 Admin user — device validation bypassed`);
-                    proceedWithLogin(nik, user);
-                    return;
-                }
-                
-                // ===== DEVICE VALIDATION =====
-                // Check if DeviceAuth is available
-                if (typeof DeviceAuth === 'undefined') {
-                    console.warn('⚠️ DeviceAuth not loaded, skipping device validation');
-                    console.log('🔓 Proceeding with login without device check (fallback mode)');
-                    proceedWithLogin(nik, user);
-                    return;
-                }
-                
-                try {
-                    // Validate device (admin bypass enabled)
-                    console.log('🔐 Checking device authentication...');
-                    const deviceCheck = await DeviceAuth.validateDevice(nik, user.role);
-                    
-                    if (deviceCheck && deviceCheck.success === true) {
-                        if (deviceCheck.isBypass) {
-                            console.log(`👑 Device authentication bypassed: ${deviceCheck.bypassReason}`);
-                        } else if (deviceCheck.isNewRegistration) {
-                            console.log(`🆕 New device registered (${deviceCheck.deviceNumber}/${deviceCheck.totalDevices})`);
-                            // Show brief notification for new device
-                            const deviceInfo = deviceCheck.currentDevice?.info ? 
-                                `${deviceCheck.currentDevice.info.device} - ${deviceCheck.currentDevice.info.browser}` : 
-                                'Device baru';
-                            console.log(`✅ ${deviceInfo} berhasil didaftarkan sebagai device #${deviceCheck.deviceNumber}`);
-                        } else {
-                            console.log('✅ Device validated successfully');
-                        }
-                        proceedWithLogin(nik, user);
-                    } else {
-                        console.warn('❌ Device validation failed:', deviceCheck?.message || 'Unknown error');
-                        
-                        // Show device error with details
-                        const currentDeviceInfo = deviceCheck?.currentDevice?.info ? 
-                            `${deviceCheck.currentDevice.info.device} - ${deviceCheck.currentDevice.info.browser} (${deviceCheck.currentDevice.info.os})` : 
-                            'Unknown';
-                        
-                        let errorMessage = `🚫 Batas Device Tercapai\n\n`;
-                        errorMessage += `Device Anda saat ini:\n${currentDeviceInfo}\n\n`;
-                        
-                        if (deviceCheck?.maxDevices) {
-                            errorMessage += `Akun Anda sudah terdaftar di ${deviceCheck.maxDevices} device:\n\n`;
-                            
-                            if (deviceCheck.registeredDevices && deviceCheck.registeredDevices.length > 0) {
-                                deviceCheck.registeredDevices.forEach((dev, idx) => {
-                                    const devInfo = `${dev.info.device} - ${dev.info.browser} (${dev.info.os})`;
-                                    const regDate = new Date(dev.registeredAt).toLocaleDateString('id-ID', {
-                                        day: '2-digit',
-                                        month: 'short',
-                                        year: 'numeric'
-                                    });
-                                    errorMessage += `${idx + 1}. ${devInfo}\n   Terdaftar: ${regDate}\n\n`;
-                                });
-                            }
-                            
-                            errorMessage += `Silakan hubungi administrator untuk:\n`;
-                            errorMessage += `• Menghapus salah satu device yang terdaftar, atau\n`;
-                            errorMessage += `• Mendaftarkan device baru ini`;
-                        } else {
-                            errorMessage += `Akun Anda sudah terdaftar di device lain.\n`;
-                            errorMessage += `Silakan hubungi administrator untuk mendaftarkan device baru ini.`;
-                        }
-                        
-                        showErrorNotification(errorMessage);
-                        setLoading(false);
-                    }
-                } catch (error) {
-                    console.error('❌ Device validation error:', error);
-                    console.log('🔓 Proceeding with login despite error (fail-open)');
-                    proceedWithLogin(nik, user);
-                }
-                
-            } else {
-                console.log(`❌ Login failed for: ${nik}`);
-                console.log(`❌ User exists: ${!!user}, Password match: ${user ? user.password === password : false}`);
-                
-                showErrorNotification('Username atau password salah. Periksa kembali data login Anda.');
-                setLoading(false);
-            }
-        }
-        
-        // Proceed with successful login
-        function proceedWithLogin(nik, user) {
-            // Remember user if checkbox is checked
-            if (rememberMe.checked) {
-                localStorage.setItem('rememberedUser', nik);
-            } else {
-                localStorage.removeItem('rememberedUser');
-            }
-            
-            // Store login session
-            sessionStorage.setItem('isLoggedIn', 'true');
-            sessionStorage.setItem('currentUser', nik);
-            sessionStorage.setItem('userName', user.name);
-            sessionStorage.setItem('userRole', user.role);
-            
-            // Show success notification
-            showSuccessNotification(user.name);
-            
-            // Show dashboard selection after delay
-            setTimeout(() => {
-                showDashboardSelection(user.name);
-                setLoading(false);
-            }, 2000);
-        }
-
-        // ✅ UI Functions
+        // ─── UI HELPERS ───────────────────────────────────────────────────────
         let loadingTimeout;
-        function setLoading(loading) {
-            isLoading = loading;
-            loginButton.disabled = loading;
-            buttonText.style.display = loading ? 'none' : 'block';
-            document.getElementById('loading').style.display = loading ? 'block' : 'none';
-            
-            // Clear any existing timeout
-            if (loadingTimeout) {
-                clearTimeout(loadingTimeout);
-                loadingTimeout = null;
-            }
-            
-            // Set timeout to detect stuck loading (10 seconds)
-            if (loading) {
+        function setLoading(state) {
+            isLoading = state;
+            loginButton.disabled = state;
+            buttonText.style.display = state ? 'none' : 'block';
+            document.getElementById('loading').style.display = state ? 'block' : 'none';
+            if (loadingTimeout) { clearTimeout(loadingTimeout); loadingTimeout = null; }
+            if (state) {
                 loadingTimeout = setTimeout(() => {
-                    console.error('⏱️ Loading timeout - stuck for 10 seconds!');
-                    console.log('🔧 Forcing reset...');
-                    
-                    // Force reset loading state
                     isLoading = false;
                     loginButton.disabled = false;
                     buttonText.style.display = 'block';
                     document.getElementById('loading').style.display = 'none';
-                    
-                    // Show error notification
-                    showErrorNotification(
-                        '⚠️ Login Timeout\n\n' +
-                        'Proses login terlalu lama. Kemungkinan ada masalah dengan koneksi atau sistem.\n\n' +
-                        'Silakan coba lagi atau hubungi administrator jika masalah berlanjut.'
-                    );
-                }, 10000); // 10 seconds timeout
+                    showErrorNotification('⚠️ Login Timeout\n\nProses terlalu lama. Silakan coba lagi.');
+                }, 10000);
             }
         }
 
-        // ✅ Input field enhancements
-        nikInput.addEventListener('input', function(e) {
-            // Highlight if user exists
-            if (validUsers[this.value]) {
+        // Highlight NIK jika dikenali
+        nikInput.addEventListener('input', function() {
+            if (window._validNiks && window._validNiks.has(this.value)) {
                 this.style.borderColor = 'rgba(46, 213, 115, 0.6)';
-                this.style.boxShadow = '0 0 10px rgba(46, 213, 115, 0.3)';
+                this.style.boxShadow   = '0 0 10px rgba(46, 213, 115, 0.3)';
             } else {
                 this.style.borderColor = 'rgba(255, 255, 255, 0.25)';
-                this.style.boxShadow = 'none';
+                this.style.boxShadow   = 'none';
             }
         });
 
-        // Input animations
-        const inputFields = document.querySelectorAll('.input-field');
-        inputFields.forEach(field => {
-            field.addEventListener('focus', function() {
-                this.parentElement.style.transform = 'translateY(-2px)';
-            });
-            
-            field.addEventListener('blur', function() {
-                this.parentElement.style.transform = 'translateY(0)';
-            });
+        // Input focus animations
+        document.querySelectorAll('.input-field').forEach(field => {
+            field.addEventListener('focus', function() { this.parentElement.style.transform = 'translateY(-2px)'; });
+            field.addEventListener('blur',  function() { this.parentElement.style.transform = 'translateY(0)'; });
         });
 
-        // ✅ KEYBOARD NAVIGATION FOR DASHBOARD SELECTION
+        // Keyboard navigation untuk dashboard selection
         document.addEventListener('keydown', function(e) {
             if (dashboardSelection.style.display === 'flex') {
-                if (e.key === 'Escape') {
-                    hideDashboardSelection();
-                } else if (e.key === '1') {
-                    selectDashboard('mobile');
-                } else if (e.key === '2') {
-                    selectDashboard('desktop');
-                } else if (e.key === 'Enter') {
-                    autoSelectDashboard();
-                }
+                if (e.key === 'Escape') hideDashboardSelection();
+                else if (e.key === '1') selectDashboard('mobile');
+                else if (e.key === '2') selectDashboard('desktop');
+                else if (e.key === 'Enter') autoSelectDashboard();
             }
         });
 
-        console.log('🔧 Sales Dashboard login script loaded with notification frame and new password "tanjung2025"');
+        console.log('🚀 Sales Dashboard — Cloudflare Worker Auth loaded');
     </script>
     
     <!-- Device Authentication System -->
@@ -1517,54 +1226,6 @@
         }
     </script>
     
-    <!-- Firebase SDK for User Authentication -->
-    
-    <!-- Firebase v8 (for DeviceAuth compatibility) -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-    
-    <!-- Firebase v9 (modular) -->
-    <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
-        import { getDatabase, ref, get } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js';
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyBLGwid71jAnsh4DrivbBYSTsuDAP0Zjuw",
-            authDomain: "salesman-route-tracker-default-rtdb.asia-southeast1.firebasedatabase.app",
-            databaseURL: "https://salesman-route-tracker-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "salesman-route-tracker",
-            storageBucket: "salesman-route-tracker.appspot.com",
-            messagingSenderId: "288785787565",
-            appId: "1:288785787565:web:9e4f8e1e1e1e1e1e1e1e1e"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const database = getDatabase(app);
-
-        // Make functions globally available for loadValidUsers
-        window.firebaseDB = database;
-        window.firebaseRef = ref;
-        window.firebaseGet = get;
-        
-        console.log('🔥 Firebase initialized for user authentication');
-        
-        // Initialize DeviceAuth with Firebase v8
-        if (typeof firebase !== 'undefined' && typeof DeviceAuth !== 'undefined') {
-            try {
-                // Initialize Firebase v8 app if not already initialized
-                if (!firebase.apps.length) {
-                    firebase.initializeApp(firebaseConfig);
-                }
-                
-                // Initialize DeviceAuth with Firebase v8 database
-                DeviceAuth.init(firebase.database());
-                console.log('✅ DeviceAuth initialized with Firebase');
-            } catch (error) {
-                console.warn('⚠️ DeviceAuth initialization error:', error);
-            }
-        } else {
-            console.warn('⚠️ DeviceAuth not loaded or Firebase v8 not available');
-        }
-    </script>
+    <!-- Firebase SDK dihapus — auth menggunakan Cloudflare Worker -->
 </body>
 </html>

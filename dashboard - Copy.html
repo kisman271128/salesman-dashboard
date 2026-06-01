@@ -1943,43 +1943,6 @@
             }
         }
 
-        // ─── Cloudflare Worker Config ─────────────────────────────────────
-        const WORKER_URL = 'https://depo-tanjung-api.kisman-pidu.workers.dev';
-
-        // Helper: fetch dari Worker dengan JWT token
-        async function cfFetch(namespace) {
-            const token = sessionStorage.getItem('cfToken');
-            const resp  = await fetch(`${WORKER_URL}/data/${namespace}`, {
-                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-            });
-            if (!resp.ok) throw new Error(`cfFetch ${namespace} → ${resp.status}`);
-            const json = await resp.json();
-            // Data dari Worker ada di json.data
-            // Jika gzip+base64 (file besar via direct KV) → decode dulu
-            if (json.data !== undefined) return json.data;
-            return json;
-        }
-
-        // Helper: decode gzip+base64 (untuk file besar seperti d.details, d.skupelanggan)
-        async function cfFetchLarge(namespace) {
-            const token   = sessionStorage.getItem('cfToken');
-            const cfAcct  = null; // tidak perlu di frontend
-            // Coba lewat Worker dulu (mungkin sudah tersimpan plain)
-            try {
-                return await cfFetch(namespace);
-            } catch(e) {
-                console.warn(`cfFetchLarge fallback for ${namespace}:`, e.message);
-                return [];
-            }
-        }
-
-        // Helper: parse JSONL string → array (fallback lokal)
-        function parseJSONLString(text) {
-            return text.trim().split('\n')
-                .map(l => { try { return JSON.parse(l); } catch { return null; } })
-                .filter(Boolean);
-        }
-
         // Check user role and setup activity access
         function checkUserRoleAndSetupActivity() {
             const currentUser = sessionStorage.getItem('currentUser');
@@ -2033,24 +1996,33 @@
             return data;
         }
 
-        // Load dashboard data dari Cloudflare KV
+        // Load dashboard data from JSON
         async function loadDashboardData() {
             try {
                 showLoading(true);
                 showError(false);
-
-                // Fetch 3 namespace secara paralel dari Cloudflare Worker
-                const [dashboardArr, perfList, chartRaw] = await Promise.all([
-                    cfFetch('d.dashboard'),
-                    cfFetch('d.performance'),
-                    cfFetch('chart_data')
+                
+                const [dashboardRes, performanceRes, chartRes] = await Promise.all([
+                    fetch('data/d.dashboard.json'),
+                    fetch('data/d.performance.json'),
+                    fetch('data/chart_data.json')
                 ]);
 
-                // chart_data tersimpan sebagai object, bukan array
-                chartData = Array.isArray(chartRaw) ? chartRaw[0] : chartRaw;
+                if (!dashboardRes.ok || !performanceRes.ok || !chartRes.ok) {
+                    throw new Error('Failed to load data');
+                }
 
-                const processed = processDashboardJSONL(dashboardArr);
+                const [dashboardText, perfText] = await Promise.all([
+                    dashboardRes.text(),
+                    performanceRes.text()
+                ]);
+                chartData = await chartRes.json();
 
+                const dashboardJSONL = parseJSONL(dashboardText);
+                const perfList = parseJSONL(perfText);
+                
+                const processed = processDashboardJSONL(dashboardJSONL);
+                
                 updateHeader(processed);
                 updateLOBCards(processed.lob_cards, processed.total_data);
                 updateSalesmanList(perfList);
@@ -2060,30 +2032,8 @@
                 showMainContent(true);
             } catch (err) {
                 console.error('Dashboard load failed:', err);
-                // Fallback ke file lokal (GitHub Pages)
-                try {
-                    console.warn('⚠️ Cloudflare fetch failed, trying local files...');
-                    const [dashboardRes, performanceRes, chartRes] = await Promise.all([
-                        fetch('data/d.dashboard.json'),
-                        fetch('data/d.performance.json'),
-                        fetch('data/chart_data.json')
-                    ]);
-                    const [dashboardText, perfText] = await Promise.all([
-                        dashboardRes.text(), performanceRes.text()
-                    ]);
-                    chartData = await chartRes.json();
-                    const processed = processDashboardJSONL(parseJSONL(dashboardText));
-                    updateHeader(processed);
-                    updateLOBCards(processed.lob_cards, processed.total_data);
-                    updateSalesmanList(parseJSONL(perfText));
-                    updateModernChart(chartData);
-                    showLoading(false);
-                    showMainContent(true);
-                } catch (fallbackErr) {
-                    console.error('Fallback also failed:', fallbackErr);
-                    showLoading(false);
-                    showError(true);
-                }
+                showLoading(false);
+                showError(true);
             }
         }
 
@@ -2327,28 +2277,32 @@
 
         async function loadChannelData() {
             try {
-                // Fetch dari Cloudflare Worker
-                const channelData = await cfFetch('d.channel');
-                if (!channelData || channelData.length === 0) throw new Error('No channel data');
+                const response = await fetch('data/d.channel.json');
+                if (!response.ok) throw new Error('Failed to load channel data');
+                
+                const text = await response.text();
+                // Parse JSONL format
+                const channelData = text.trim().split('\n')
+                    .map(line => {
+                        try {
+                            return JSON.parse(line);
+                        } catch (e) {
+                            console.warn('Invalid JSON line:', line);
+                            return null;
+                        }
+                    })
+                    .filter(item => item !== null);
+
+                if (channelData.length === 0) throw new Error('No valid channel data found');
+                
                 const processedData = processChannelData(channelData);
                 renderRadialChart(processedData);
             } catch (err) {
-                console.warn('Cloudflare channel fetch failed, trying local:', err.message);
-                // Fallback ke file lokal
-                try {
-                    const response = await fetch('data/d.channel.json');
-                    if (!response.ok) throw new Error('Local file also failed');
-                    const text = await response.text();
-                    const channelData = parseJSONLString(text);
-                    if (channelData.length === 0) throw new Error('No valid channel data found');
-                    const processedData = processChannelData(channelData);
-                    renderRadialChart(processedData);
-                } catch (fallbackErr) {
-                    console.error('Channel data load failed:', fallbackErr);
-                    const container = document.getElementById('channelRadialChart');
-                    if (container) {
-                        container.innerHTML = `<div class="error-message">Failed to load channel data</div>`;
-                    }
+                console.error('Channel data load failed:', err);
+                // Add visual feedback
+                const container = document.getElementById('channelRadialChart');
+                if (container) {
+                    container.innerHTML = `<div class="error-message">Failed to load channel data: ${err.message}</div>`;
                 }
             }
         }
@@ -2923,14 +2877,14 @@
         }
         
         function confirmLogout() {
-            // Bersihkan semua session termasuk JWT token
+            // User confirmed logout
             sessionStorage.removeItem('isLoggedIn');
             sessionStorage.removeItem('currentUser');
-            sessionStorage.removeItem('cfToken');
-            sessionStorage.removeItem('userName');
-            sessionStorage.removeItem('userRole');
-            sessionStorage.removeItem('userDepo');
-            setTimeout(() => { window.location.href = 'index.html'; }, 200);
+            
+            // Add small delay for better UX
+            setTimeout(() => {
+                window.location.href = 'index.html';
+            }, 200);
         }
         
         // Close modal with ESC key

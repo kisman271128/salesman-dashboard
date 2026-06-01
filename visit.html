@@ -4173,6 +4173,19 @@
     </script>
 
     <script>
+        // ===== CLOUDFLARE WORKER CONFIG =====
+        const WORKER_URL = 'https://depo-tanjung-api.kisman-pidu.workers.dev';
+
+        async function cfFetch(namespace) {
+            const token = sessionStorage.getItem('cfToken');
+            const resp = await fetch(`${WORKER_URL}/data/${namespace}`, {
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+            });
+            if (!resp.ok) throw new Error(`cfFetch ${namespace} → ${resp.status}`);
+            const json = await resp.json();
+            return json.data;
+        }
+
         // ===== GLOBAL VARIABLES =====
         let currentSalesman = '';
         let currentSalesmanId = null;
@@ -5958,16 +5971,10 @@
         // ===== DATA LOADING FUNCTIONS =====
         async function loadSalesmanData() {
             try {
-                console.log('👤 Loading salesman data...');
-                const response = await fetch('data/d.salesman.json');
-                if (!response.ok) throw new Error('Failed to load salesman data');
-                
-                const content = await response.text();
-                salesmanData = parseJSONL(content);
-                window.salesmanData = salesmanData; // Expose to window for Hasil Visit
-                
+                console.log('👤 Loading salesman data from CF KV...');
+                salesmanData = await cfFetch('d.salesman');
+                window.salesmanData = salesmanData;
                 updateSalesmanNameFromData();
-                
             } catch (error) {
                 console.error('Error loading salesman data:', error);
             }
@@ -5975,14 +5982,15 @@
 
         async function loadPelangganData() {
             try {
-                console.log('🏪 Loading pelanggan data...');
-                const response = await fetch('data/d.skupelanggan.json');
-                if (!response.ok) throw new Error('Failed to load pelanggan data');
-                
-                const content = await response.text();
-                pelangganData = parseJSONL(content);
-                window.pelangganData = pelangganData; // Expose to window for Hasil Visit
-                
+                const szEmployeeId = currentSalesmanId || sessionStorage.getItem('currentUser');
+                if (!szEmployeeId) {
+                    console.warn('⚠️ No salesman ID for loadPelangganData');
+                    return;
+                }
+                console.log(`🏪 Loading pelanggan data from CF KV: d.skupelanggan.${szEmployeeId}`);
+                pelangganData = await cfFetch(`d.skupelanggan.${szEmployeeId}`);
+                window.pelangganData = pelangganData;
+                console.log(`✅ Pelanggan data loaded: ${pelangganData.length} records`);
             } catch (error) {
                 console.error('Error loading pelanggan data:', error);
             }
@@ -5990,14 +5998,9 @@
 
         async function loadDetailsData() {
             try {
-                console.log('📊 Loading details data...');
-                const response = await fetch('data/d.details.json');
-                if (!response.ok) throw new Error('Failed to load details data');
-                
-                const content = await response.text();
-                detailsData = parseJSONL(content);
-                window.detailsData = detailsData; // Expose to window for Hasil Visit
-                
+                console.log('📊 Loading details data from CF KV...');
+                detailsData = await cfFetch('d.details');
+                window.detailsData = detailsData;
             } catch (error) {
                 console.error('Error loading details data:', error);
             }
@@ -6005,16 +6008,10 @@
         
         async function loadTPOMData() {
             try {
-                console.log('🎯 Loading TPOM data...');
-                const response = await fetch('data/d.tpom.json');
-                if (!response.ok) throw new Error('Failed to load TPOM data');
-                
-                const content = await response.text();
-                tpomData = parseJSONL(content);
-                window.tpomData = tpomData; // Expose to window for Hasil Visit
-                
+                console.log('🎯 Loading TPOM data from CF KV...');
+                tpomData = await cfFetch('d.tpom');
+                window.tpomData = tpomData;
                 console.log(`✅ TPOM data loaded: ${tpomData.length} records`);
-                
             } catch (error) {
                 console.error('Error loading TPOM data:', error);
             }
@@ -6022,15 +6019,9 @@
 
         async function loadSKUData() {
             try {
-                console.log('📦 Loading SKU master data...');
-                const response = await fetch('data/d.sku.json');
-                if (!response.ok) throw new Error('Failed to load SKU data');
-                
-                const content = await response.text();
-                skuData = parseJSONL(content);
-                
+                console.log('📦 Loading SKU master data from CF KV...');
+                skuData = await cfFetch('d.sku');
                 console.log(`✅ SKU master data loaded: ${skuData.length} records`);
-                
             } catch (error) {
                 console.error('Error loading SKU data:', error);
             }
@@ -6038,25 +6029,9 @@
 
         async function loadProjectData() {
             try {
-                console.log('🎯 Loading project data...');
-                const response = await fetch('data/d.project.json');
-                if (!response.ok) throw new Error('Failed to load project data');
-                
-                const content = await response.text();
-                projectData = parseJSONL(content);
-                
+                console.log('🎯 Loading project data from CF KV...');
+                projectData = await cfFetch('d.project');
                 console.log(`✅ Project data loaded: ${projectData.length} records`);
-                
-                // Debug: Show sample data
-                if (projectData.length > 0) {
-                    console.log('   Sample record:', {
-                        'CUST NAME': projectData[0]['CUST NAME'],
-                        'ITG': projectData[0]['ITG'],
-                        'T.MTD': projectData[0]['T.MTD'],
-                        'A.MTD': projectData[0]['A.MTD']
-                    });
-                }
-                
             } catch (error) {
                 console.error('Error loading project data:', error);
             }
@@ -6268,9 +6243,9 @@
 
 
         function initializeSalesmanFromUrl() {
-            currentSalesmanId = getUrlParameter('id') || getUrlParameter('user');
-            window.currentSalesmanId = currentSalesmanId; // Expose to window for Hasil Visit
-            
+            currentSalesmanId = getUrlParameter('id') || getUrlParameter('user') || sessionStorage.getItem('currentUser');
+            window.currentSalesmanId = currentSalesmanId;
+
             if (currentSalesmanId) {
                 console.log('🆔 Current Salesman ID: ' + currentSalesmanId);
             }
@@ -7705,15 +7680,10 @@
                 
                 console.log('✅ All data loaded successfully. Processing hari data...');
                 
-                if (pelangganData.length > 0 && currentSalesmanId) {
-                    console.log('🔍 Filtering hari data for salesman...');
-                    
-                    const filteredData = pelangganData.filter(item => {
-                        const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
-                        return itemSalesmanId === currentSalesmanId;
-                    });
-                    
-                    const uniqueHari = [...new Set(filteredData
+                if (pelangganData.length > 0) {
+                    console.log('🔍 Extracting hari data from pelanggan...');
+
+                    const uniqueHari = [...new Set(pelangganData
                         .map(item => normalizeHariFormat(item.Hari_Kunjungan))
                         .filter(hari => hari && hari.trim() !== '')
                     )];
