@@ -604,52 +604,49 @@
 		}
 
         /* ===== PROMO TAG STYLING ===== */
-        /* Base .promo-tag sekaligus jadi fallback abu-abu untuk tipe yang tidak dikenal.
-           Rule spesifik per-tipe di bawah akan menimpa (override) background-nya.
-           CATATAN: selector :not([class*="promo-"]) TIDAK PERNAH aktif karena setiap
-           elemen pasti sudah punya class "promo-tag" yang mengandung "promo-", 
-           sehingga pendekatan lama itu tidak berfungsi. */
         .promo-tag {
             font-weight: 600;
             font-size: 10px;
-            padding: 2px 6px;
+            padding: 2px 4px;
             border-radius: 4px;
             color: white;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
             display: inline-block;
             min-width: 45px;
             text-align: center;
-            /* Fallback default abu-abu untuk semua tipe tidak dikenal */
-            background: linear-gradient(135deg, #546E7A, #475569);
         }
 
-        /* ── Tipe-tipe yang dikenal ── */
-        .promo-gbs {
-            background: linear-gradient(135deg, #7c2d12, #ea580c); /* coklat-oranye */
+        .promo-biscuit, .promo-bisc { 
+            background: linear-gradient(135deg, #E74C3C, #E74C3C);
         }
-        .promo-solmed {
-            background: linear-gradient(135deg, #E67E22, #F39C12); /* oranye */
+        .promo-snack, .promo-snackfood { 
+            background: linear-gradient(135deg, #7c3aed, #8b5cf6);
         }
-        .promo-pre, .promo-pr, .promo-itg {
-            background: linear-gradient(135deg, #546E7A, #78909C); /* abu-abu biru */
+        .promo-bev { 
+            background: linear-gradient(135deg, #27AE60, #2ECC71);
         }
-        .promo-sf, .promo-gen, .promo-go, .promo-others {
-            background: linear-gradient(135deg, #0369a1, #1BC8DC); /* biru-cyan */
+        .promo-others, .promo-sf, .promo-gen, .promo-go { 
+            background: linear-gradient(135deg, #0369a1, #1BC8DC);
         }
-        .promo-bev {
-            background: linear-gradient(135deg, #1B8A3E, #27AE60); /* hijau */
+        .promo-gbs { 
+            background: linear-gradient(135deg, #7c2d12, #ea580c);
         }
-        .promo-snack, .promo-snackfood {
-            background: linear-gradient(135deg, #7c3aed, #8b5cf6); /* ungu */
+        .promo-solmed { 
+            background: linear-gradient(135deg, #E67E22, #F39C12);
         }
-        .promo-biscuit, .promo-bisc {
-            background: linear-gradient(135deg, #C0392B, #E74C3C); /* merah */
+        .promo-rans, .promo-gbev, .promo-mbr { 
+            background: linear-gradient(135deg, #23A0AD, #CBE030);
         }
-        .promo-rans, .promo-gbev, .promo-mbr {
-            background: linear-gradient(135deg, #23A0AD, #17B5C8); /* cyan */
+        .promo-apd { 
+            background: linear-gradient(135deg, #be123c, #E74C3C);
         }
-        .promo-apd {
-            background: linear-gradient(135deg, #be123c, #E74C3C); /* merah-pink */
+		.promo-pre {
+			background: linear-gradient(135deg, #546E7A, #78909C); 
+		}
+        
+        /* Default fallback for unmatched promo types */
+        .promo-tag:not([class*="promo-"]) {
+            background: linear-gradient(135deg, #546E7A, #475569);
         }
 
         /* ===== SKU CODE STYLING ===== */
@@ -2438,6 +2435,7 @@
                 
                 // Map the actual field names from d.skupelanggan.json
                 const skuName = item['SKU'] || 'N/A';
+                const promo = item['Promo'] || 'Others';
                 const plan = Number(item['Plan']) || 0;
                 const unitMTD = Number(item['UnitMTD']) || 0;
                 const gap = Number(item['Gap']) || 0;
@@ -2448,22 +2446,9 @@
                 totalUnitMTD += unitMTD;
                 totalGap += gap;
 
-                // Normalisasi nilai Promo → CSS class
-                // Contoh: "GBS" → "promo-gbs", "Snack Food" → "promo-snackfood"
-                const rawPromo = item['Promo'];
-                const promo = (rawPromo !== null && rawPromo !== undefined && String(rawPromo).trim() !== '')
-                    ? String(rawPromo).trim()
-                    : 'Others';
-                const normalizedPromo = promo.toLowerCase()
-                    .replace(/\s+/g, '')          // hapus semua spasi
-                    .replace(/[^a-z0-9]/g, '');   // hapus karakter non-alphanumeric
+                // Get promo class for styling - normalize to lowercase and remove spaces
+                const normalizedPromo = promo.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
                 const promoClass = `promo-${normalizedPromo}`;
-
-                // Debug: log tipe promo yang tidak dikenal (uncomment jika perlu debug)
-                // const knownPromos = ['gbs','solmed','pre','pr','itg','sf','gen','go','others','bev','snack','snackfood','biscuit','bisc','rans','gbev','mbr','apd'];
-                // if (!knownPromos.includes(normalizedPromo)) {
-                //     console.warn(`[Promo] Tidak dikenal: raw="${rawPromo}" → normalized="${normalizedPromo}" → class="${promoClass}"`);
-                // }
 
                 html += `
                     <tr>
