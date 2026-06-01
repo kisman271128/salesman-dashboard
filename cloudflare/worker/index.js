@@ -239,13 +239,18 @@ async function handleGetData(namespace, request, env) {
     return jsonResponse({ error: `Data '${namespace}' tidak ditemukan` }, 404);
   }
 
-  // Decrypt data
+  // Decode data: coba AES-GCM dulu (file kecil via Worker),
+  // fallback ke plain JSON (file besar via direct KV API)
   let jsonData;
   try {
     const decrypted = await decryptData(encryptedData, env.ENCRYPT_KEY);
     jsonData = JSON.parse(decrypted);
   } catch {
-    return jsonResponse({ error: 'Gagal mendekripsi data' }, 500);
+    try {
+      jsonData = JSON.parse(encryptedData);
+    } catch {
+      return jsonResponse({ error: 'Gagal mendekripsi data' }, 500);
+    }
   }
 
   // Filter per region jika bukan admin
