@@ -188,14 +188,13 @@ async function handleLogin(request, env) {
 
   // Generate JWT (expire 12 jam)
   const payload = {
-	  sub: username,
-	  name: user.name,
-	  role: user.role,
-	  depo: user.depo,
-	  region: user.region,
-	  iat: Math.floor(Date.now() / 1000),
-	  exp: Math.floor(Date.now() / 1000) + (12 * 60 * 60),
-	};
+    sub: username.toLowerCase(),
+    name: user.name,
+    role: user.role,         // 'salesman' | 'admin'
+    region: user.region,     // filter data per region
+    iat: Math.floor(Date.now() / 1000),
+    exp: Math.floor(Date.now() / 1000) + (12 * 60 * 60),
+  };
 
   const token = await signJWT(payload, env.JWT_SECRET);
 
@@ -249,14 +248,14 @@ async function handleGetData(namespace, request, env) {
     return jsonResponse({ error: 'Gagal mendekripsi data' }, 500);
   }
 
-  // Filter per depo jika bukan admin
-	if (payload.role !== 'admin' && payload.depo) {
-	  if (Array.isArray(jsonData)) {
-		jsonData = jsonData.filter(item =>
-		  !item.depo || item.depo === payload.depo
-		);
-	  }
-	}
+  // Filter per region jika bukan admin
+  if (payload.role !== 'admin' && payload.region) {
+    if (Array.isArray(jsonData)) {
+      jsonData = jsonData.filter(item =>
+        !item.region || item.region === payload.region
+      );
+    }
+  }
 
   return jsonResponse({
     namespace,
@@ -269,7 +268,7 @@ async function handleGetData(namespace, request, env) {
 /**
  * PUT /data/:namespace
  * Header: Authorization: Bearer <admin-token>
- * Body: JSON array/object (data mentah, akan dienkripsi)
+ * Body: JSON array/object — support plain JSON atau gzip (Content-Encoding: gzip)
  */
 async function handlePutData(namespace, request, env) {
   // Hanya admin yang bisa upload data
@@ -286,7 +285,29 @@ async function handlePutData(namespace, request, env) {
 
   let body;
   try {
-    body = await request.json();
+    const encoding = (request.headers.get('Content-Encoding') || '').toLowerCase();
+    if (encoding === 'gzip') {
+      // Decompress gzip payload
+      const compressed = await request.arrayBuffer();
+      const ds = new DecompressionStream('gzip');
+      const writer = ds.writable.getWriter();
+      const reader = ds.readable.getReader();
+      writer.write(new Uint8Array(compressed));
+      writer.close();
+      const chunks = [];
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+      }
+      const total = chunks.reduce((acc, c) => acc + c.length, 0);
+      const merged = new Uint8Array(total);
+      let offset = 0;
+      for (const c of chunks) { merged.set(c, offset); offset += c.length; }
+      body = JSON.parse(new TextDecoder().decode(merged));
+    } else {
+      body = await request.json();
+    }
   } catch {
     return jsonResponse({ error: 'Invalid JSON body' }, 400);
   }
@@ -341,7 +362,7 @@ export default {
     }
 
     // Data routes
-    const dataMatch = path.match(/^\/data\/([a-zA-Z0-9._-]+)$/);
+    const dataMatch = path.match(/^\/data\/([a-z0-9_-]+)$/);
     if (dataMatch) {
       const namespace = dataMatch[1];
       if (method === 'GET') return handleGetData(namespace, request, env);
