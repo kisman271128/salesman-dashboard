@@ -362,7 +362,7 @@ export default {
     }
 
     // Data routes
-    const dataMatch = path.match(/^\/data\/([a-z0-9_-]+)$/);
+    const dataMatch = path.match(/^\/data\/([a-zA-Z0-9._-]+)$/);
     if (dataMatch) {
       const namespace = dataMatch[1];
       if (method === 'GET') return handleGetData(namespace, request, env);
