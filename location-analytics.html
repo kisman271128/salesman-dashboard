@@ -412,7 +412,7 @@
         /* Debug Output */
         .debug-output {
             background: #E0F7FA;
-            color: #FFFFFF;
+            color: #1A1A1A;
             padding: 16px;
             border-radius: 8px;
             margin: 16px;
@@ -1632,59 +1632,92 @@
             }
         }
 
+        // Dedup per (salesmanId + tanggal + outlet_name) — ambil record terbaru.
+        // Root cause: orphaned records (paused/started) dari app restart tidak dihapus
+        // di Firebase, sehingga satu kunjungan bisa punya 2-3 records.
+        function deduplicateFirebaseVisits(rawEntries) {
+            // rawEntries: array of { visitId, visitData, salesmanId }
+            const dedupMap = {};
+            rawEntries.forEach(({ visitId, visitData, salesmanId }) => {
+                const outlet = (visitData.outlet_name || '').trim();
+                const date   = (visitData.start_time || visitData.created_at || '').split('T')[0];
+                if (!outlet || !date) return;
+
+                const key = `${salesmanId}__${date}__${outlet.toLowerCase()}`;
+                const existing = dedupMap[key];
+                if (!existing) {
+                    dedupMap[key] = { visitId, visitData, salesmanId };
+                    return;
+                }
+                const newIsCompleted  = visitData.visit_status === 'completed';
+                const prevIsCompleted = existing.visitData.visit_status === 'completed';
+                const newTime  = visitData.end_time || visitData.start_time || '';
+                const prevTime = existing.visitData.end_time || existing.visitData.start_time || '';
+                if (newIsCompleted && !prevIsCompleted) {
+                    dedupMap[key] = { visitId, visitData, salesmanId };
+                } else if (!newIsCompleted && prevIsCompleted) {
+                    // pertahankan yang completed
+                } else if (newTime > prevTime) {
+                    dedupMap[key] = { visitId, visitData, salesmanId };
+                }
+            });
+            return Object.values(dedupMap);
+        }
+
         async function loadFromFirebase(dateFrom, dateTo, salesmanFilter) {
             let firebaseCount = 0;
-            
+
             try {
                 addDebugMessage('Memuat dari Firebase...');
                 const { ref, get } = window.firebaseModules;
-                
+
+                // Kumpulkan semua raw entries dulu, baru dedup
+                const rawEntries = [];
+
                 if (salesmanFilter) {
-                    // Load specific salesman
                     addDebugMessage(`Memuat data Firebase untuk salesman: ${salesmanFilter}`);
                     const salesmanRef = ref(firebaseDatabase, `visits/${salesmanFilter}`);
                     const salesmanSnapshot = await get(salesmanRef);
-                    
                     if (salesmanSnapshot.exists()) {
-                        const salesmanData = salesmanSnapshot.val();
-                        Object.entries(salesmanData).forEach(([visitId, visitData]) => {
+                        Object.entries(salesmanSnapshot.val()).forEach(([visitId, visitData]) => {
                             if (isVisitInDateRange(visitData, dateFrom, dateTo)) {
-                                const processedVisit = processFirebaseVisit(visitId, visitData, salesmanFilter);
-                                if (processedVisit) {
-                                    allVisitData.push(processedVisit);
-                                    firebaseCount++;
-                                }
+                                rawEntries.push({ visitId, visitData, salesmanId: salesmanFilter });
                             }
                         });
                     }
                 } else {
-                    // Load all salesman
                     addDebugMessage('Memuat data Firebase untuk semua salesman...');
                     const visitsRef = ref(firebaseDatabase, 'visits');
                     const visitsSnapshot = await get(visitsRef);
-                    
                     if (visitsSnapshot.exists()) {
-                        const allVisitsData = visitsSnapshot.val();
-                        Object.entries(allVisitsData).forEach(([salesmanId, salesmanData]) => {
+                        Object.entries(visitsSnapshot.val()).forEach(([salesmanId, salesmanData]) => {
                             Object.entries(salesmanData).forEach(([visitId, visitData]) => {
                                 if (isVisitInDateRange(visitData, dateFrom, dateTo)) {
-                                    const processedVisit = processFirebaseVisit(visitId, visitData, salesmanId);
-                                    if (processedVisit) {
-                                        allVisitData.push(processedVisit);
-                                        firebaseCount++;
-                                    }
+                                    rawEntries.push({ visitId, visitData, salesmanId });
                                 }
                             });
                         });
                     }
                 }
-                
+
+                addDebugMessage(`Raw records: ${rawEntries.length} — melakukan deduplikasi per outlet per hari...`);
+                const dedupedEntries = deduplicateFirebaseVisits(rawEntries);
+                addDebugMessage(`Setelah dedup: ${dedupedEntries.length} kunjungan unik`);
+
+                dedupedEntries.forEach(({ visitId, visitData, salesmanId }) => {
+                    const processedVisit = processFirebaseVisit(visitId, visitData, salesmanId);
+                    if (processedVisit) {
+                        allVisitData.push(processedVisit);
+                        firebaseCount++;
+                    }
+                });
+
                 addDebugMessage(`✓ Pemuatan Firebase selesai: ${firebaseCount} kunjungan`);
-                
+
             } catch (error) {
                 addDebugMessage(`✗ Error pemuatan Firebase: ${error.message}`);
             }
-            
+
             return firebaseCount;
         }
 
