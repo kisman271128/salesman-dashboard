@@ -1580,6 +1580,7 @@
         // ===== FIREBASE INITIALIZATION =====
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, onValue, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAoRV3qVAXQ14AEVA8Mo49HXfAyhMMm8Bs",
@@ -1594,12 +1595,17 @@
 
         const app = initializeApp(firebaseConfig);
         const database = getDatabase(app);
+        const auth = getAuth(app);
 
         // Make Firebase available globally
         window.firebaseDB = database;
         window.firebaseRef = ref;
         window.firebaseOnValue = onValue;
         window.firebaseGet = get;
+
+        signInAnonymously(auth)
+            .then(() => console.log('🔐 Firebase: Anonymous auth berhasil'))
+            .catch(err => console.warn('⚠️ Firebase: Anonymous auth gagal:', err.message));
 
         console.log('🔥 Firebase initialized successfully');
         
@@ -1665,151 +1671,43 @@
         // ===== LOAD SALESMAN LIST =====
         async function loadSalesmanList() {
             try {
-                console.log('👥 Loading salesman list from Firebase...');
-                console.log('🔥 Firebase DB:', window.firebaseDB);
-                
-                let dataLoaded = false;
-                
-                // Load salesman master data from CF KV
-                console.log('📋 Loading salesman master data from CF KV...');
-                let salesmanMasterData = {};
+                console.log('👥 Loading salesman list from CF KV...');
+
+                // ── Sumber utama: CF KV (d.salesman) ─────────────────────────
+                const rows = await cfFetch('d.salesman');
+                salesmanData = rows.map(item => ({
+                    id: item.szEmployeeId.toString(),
+                    name: item.szname || 'Unknown',
+                    team: item['Tipe Salesman'] || 'Unknown',
+                    lastUpdate: null
+                }));
+                console.log(`✅ Loaded ${salesmanData.length} salesman from CF KV`);
+
+                // ── Enrich dengan lastUpdate dari Firebase current_positions ──
                 try {
-                    const rows = await cfFetch('d.salesman');
-                    rows.forEach(obj => {
-                        salesmanMasterData[obj.szEmployeeId.toString()] = obj;
-                    });
-                    console.log(`✅ Loaded ${Object.keys(salesmanMasterData).length} salesman from CF KV`);
-                } catch (jsonError) {
-                    console.warn('⚠️ Could not load d.salesman:', jsonError.message);
-                }
-                
-                // Try loading from current_positions (your actual database structure)
-                try {
-                    console.log('🔍 Reading from /current_positions');
                     const positionsRef = window.firebaseRef(window.firebaseDB, 'current_positions');
-                    const positionsSnapshot = await window.firebaseGet(positionsRef);
-                    
-                    if (positionsSnapshot.exists()) {
-                        const positionsData = positionsSnapshot.val();
-                        console.log('✅ Found current_positions data:', Object.keys(positionsData));
-                        
-                        // Get salesman IDs from current_positions
-                        const salesmanIds = Object.keys(positionsData);
-                        
-                        // Try to get names from visits data
-                        console.log('🔍 Reading from /visits for salesman names');
-                        const visitsRef = window.firebaseRef(window.firebaseDB, 'visits');
-                        const visitsSnapshot = await window.firebaseGet(visitsRef);
-                        const visitsData = visitsSnapshot.exists() ? visitsSnapshot.val() : {};
-                        
-                        // Build salesman data
-                        salesmanData = salesmanIds.map(id => {
-                            const positionData = positionsData[id];
-                            
-                            // Get data from JSON master
-                            const masterData = salesmanMasterData[id] || {};
-                            
-                            // Get name from visits data or JSON
-                            let salesmanName = `Salesman ${id}`;
-                            if (visitsData[id]) {
-                                const visits = Object.values(visitsData[id]);
-                                if (visits.length > 0 && visits[0].salesman_name) {
-                                    salesmanName = visits[0].salesman_name;
-                                }
+                    const posSnap = await window.firebaseGet(positionsRef);
+                    if (posSnap.exists()) {
+                        const posData = posSnap.val();
+                        salesmanData.forEach(sm => {
+                            if (posData[sm.id]) {
+                                sm.lastUpdate = posData[sm.id].timestamp || null;
                             }
-                            if (!salesmanName.startsWith('Salesman') && masterData.szname) {
-                                salesmanName = masterData.szname;
-                            }
-                            
-                            // Get team from JSON master data
-                            let teamName = 'Unknown Team';
-                            if (masterData['Tipe Salesman']) {
-                                teamName = masterData['Tipe Salesman'];
-                            } else if (masterData.Dept) {
-                                teamName = masterData.Dept;
-                            }
-                            
-                            return {
-                                id: id,
-                                name: positionData.name || salesmanName,
-                                team: positionData.team || teamName,
-                                lastUpdate: positionData.timestamp || null
-                            };
                         });
-                        
-                        console.log(`✅ Loaded ${salesmanData.length} salesman from Firebase`);
-                        console.log('📋 Salesman list:', salesmanData);
-                        showToast(`Loaded ${salesmanData.length} salesman`, 'success');
-                        dataLoaded = true;
-                    } else {
-                        console.log('⚠️ No data at /current_positions');
+                        console.log('📍 current_positions enriched');
                     }
-                } catch (posError) {
-                    console.error('❌ Error reading current_positions:', posError);
+                } catch (posErr) {
+                    console.warn('⚠️ current_positions tidak tersedia:', posErr.message);
                 }
-                
-                // If current_positions didn't work, try other paths
-                if (!dataLoaded) {
-                    console.log('🔍 Trying alternative paths...');
-                    const possiblePaths = ['salesmen', 'salesman', 'salespeople', 'users'];
-                    
-                    for (const path of possiblePaths) {
-                        try {
-                            console.log(`🔍 Trying path: /${path}`);
-                            const salesmanRef = window.firebaseRef(window.firebaseDB, path);
-                            const snapshot = await window.firebaseGet(salesmanRef);
-                            
-                            if (snapshot.exists()) {
-                                const data = snapshot.val();
-                                console.log(`✅ Data found at /${path}:`, data);
-                                
-                                // Handle both object and array structures
-                                if (Array.isArray(data)) {
-                                    salesmanData = data.map((info, index) => ({
-                                        id: info.id || info.szEmployeeId || index,
-                                        name: info.name || info.szname || 'Unknown',
-                                        team: info.team || info['Tipe Salesman'] || 'Unknown'
-                                    }));
-                                } else {
-                                    salesmanData = Object.entries(data).map(([id, info]) => ({
-                                        id: id,
-                                        name: info.name || info.szname || 'Unknown',
-                                        team: info.team || info['Tipe Salesman'] || 'Unknown'
-                                    }));
-                                }
-                                
-                                console.log(`✅ Loaded ${salesmanData.length} salesman from Firebase (path: /${path})`);
-                                dataLoaded = true;
-                                showToast(`Loaded ${salesmanData.length} salesman from Firebase`, 'success');
-                                break;
-                            } else {
-                                console.log(`⚠️ No data at /${path}`);
-                            }
-                        } catch (pathError) {
-                            console.error(`❌ Error reading /${path}:`, pathError);
-                        }
-                    }
-                }
-                
-                if (!dataLoaded) {
-                    console.log('⚠️ No salesman data found in Firebase');
-                    console.log('💡 Available paths: /current_positions, /daily_summary');
-                    console.log('💡 Make sure Firebase rules allow read access');
-                    showToast('No salesman data found. Check console.', 'warning');
-                    
-                    // Try JSON fallback
-                    await loadSalesmanFromJSON();
-                }
-                
+
+                showToast(`Loaded ${salesmanData.length} salesman`, 'success');
                 populateSalesmanDropdown();
-                
+
             } catch (error) {
                 console.error('❌ Error loading salesman list:', error);
-                console.error('Stack trace:', error.stack);
                 showToast('Error loading data. Check console.', 'error');
-                
-                // Fallback to JSON
                 await loadSalesmanFromJSON();
+                populateSalesmanDropdown();
             }
         }
 
@@ -2097,6 +1995,36 @@
             }
         }
 
+        // ── Deduplikasi visits per outlet_name — ambil record terbaru ────────────
+        // Root cause: orphaned records terbentuk saat app restart / firebaseKey hilang.
+        // endVisitSession() membuat record BARU sementara record lama (paused/started)
+        // tetap ada → satu outlet muncul berulang.
+        // Solusi: group per outlet_name, pilih record paling akhir.
+        function deduplicateVisitsByOutlet(rawVisits) {
+            const outletLatest = {};
+            rawVisits.forEach(v => {
+                const name = v.outlet_name;
+                if (!name) return;
+                const existing = outletLatest[name];
+                if (!existing) {
+                    outletLatest[name] = v;
+                    return;
+                }
+                const newIsCompleted  = v.visit_status === 'completed';
+                const prevIsCompleted = existing.visit_status === 'completed';
+                const newTime  = v.end_time || v.start_time || '';
+                const prevTime = existing.end_time || existing.start_time || '';
+                if (newIsCompleted && !prevIsCompleted) {
+                    outletLatest[name] = v;          // completed selalu menang
+                } else if (!newIsCompleted && prevIsCompleted) {
+                    // pertahankan yang completed
+                } else if (newTime > prevTime) {
+                    outletLatest[name] = v;          // ambil yang lebih baru
+                }
+            });
+            return Object.values(outletLatest);
+        }
+
         // ===== LOAD TODAY'S VISITS =====
         async function loadTodayVisits() {
             if (!currentSalesmanId) return;
@@ -2116,28 +2044,26 @@
                     // Filter visits for today based on created_at
                     Object.entries(allVisits).forEach(([visitId, visit]) => {
                         if (visit.created_at) {
-                            const visitDate = visit.created_at.split('T')[0]; // Extract YYYY-MM-DD
+                            const visitDate = visit.created_at.split('T')[0];
                             if (visitDate === today) {
-                                visits.push({
-                                    id: visitId,
-                                    ...visit
-                                });
+                                visits.push({ id: visitId, ...visit });
                             }
                         }
                     });
-                    
-                    console.log(`📋 Found ${visits.length} visits for today (${today})`);
-                    
-                    if (visits.length > 0) {
-                        // Sort by start_time
-                        visits.sort((a, b) => {
+
+                    // Deduplikasi — 1 record per outlet_name (ambil terbaru)
+                    const dedupedVisits = deduplicateVisitsByOutlet(visits);
+                    console.log(`📋 Found ${visits.length} raw → ${dedupedVisits.length} unique visits for today (${today})`);
+
+                    if (dedupedVisits.length > 0) {
+                        dedupedVisits.sort((a, b) => {
                             const timeA = new Date(a.start_time || a.created_at);
                             const timeB = new Date(b.start_time || b.created_at);
                             return timeA - timeB;
                         });
-                        
-                        updateVisitStats(visits);
-                        displayRecentVisits(visits);
+
+                        updateVisitStats(dedupedVisits);
+                        displayRecentVisits(dedupedVisits);
                     } else {
                         console.log('📋 No visits today - showing most recent visits');
                         // Show most recent visits instead
@@ -2281,29 +2207,27 @@
                     // Filter visits for selected date based on created_at
                     Object.entries(allVisits).forEach(([visitId, visitData]) => {
                         if (visitData.created_at) {
-                            const visitDate = visitData.created_at.split('T')[0]; // Extract YYYY-MM-DD
+                            const visitDate = visitData.created_at.split('T')[0];
                             if (visitDate === selectedDate) {
-                                visits.push({
-                                    id: visitId,
-                                    ...visitData
-                                });
+                                visits.push({ id: visitId, ...visitData });
                             }
                         }
                     });
-                    
-                    console.log(`✅ Found ${visits.length} visits for ${selectedDate}`);
-                    
-                    if (visits.length > 0) {
-                        // Sort by start_time or created_at
-                        visits.sort((a, b) => {
+
+                    // Deduplikasi — 1 record per outlet_name (ambil terbaru)
+                    const dedupedVisits = deduplicateVisitsByOutlet(visits);
+                    console.log(`✅ Found ${visits.length} raw → ${dedupedVisits.length} unique visits for ${selectedDate}`);
+
+                    if (dedupedVisits.length > 0) {
+                        dedupedVisits.sort((a, b) => {
                             const timeA = new Date(a.start_time || a.created_at);
                             const timeB = new Date(b.start_time || b.created_at);
                             return timeA - timeB;
                         });
-                        
-                        displayJourneyMap(visits);
-                        displayJourneyStats(visits);
-                        displayJourneyTimeline(visits);
+
+                        displayJourneyMap(dedupedVisits);
+                        displayJourneyStats(dedupedVisits);
+                        displayJourneyTimeline(dedupedVisits);
                     } else {
                         console.log(`📋 No visits for ${selectedDate}`);
                         displayNoJourneyData();

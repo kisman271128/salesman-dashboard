@@ -4145,6 +4145,7 @@
         // Firebase configuration and initialization
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, push, set, get, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
 
         const firebaseConfig = {
@@ -4161,6 +4162,7 @@
         const app = initializeApp(firebaseConfig);
         const database = getDatabase(app);
         const analytics = getAnalytics(app);
+        const auth = getAuth(app);
 
         window.firebaseDB = database;
         window.firebaseRef = ref;
@@ -4168,6 +4170,11 @@
         window.firebaseSet = set;
         window.firebaseGet = get;
         window.firebaseServerTimestamp = serverTimestamp;
+
+        // Anonymous auth — wajib agar Firebase Security Rules (auth != null) terpenuhi
+        signInAnonymously(auth)
+            .then(() => console.log('🔐 Firebase: Anonymous auth berhasil'))
+            .catch(err => console.warn('⚠️ Firebase: Anonymous auth gagal:', err.message));
 
         console.log('🔥 Firebase initialized successfully');
     </script>
@@ -5346,6 +5353,23 @@
             }
         }
 
+        // Ambil order_status dari localStorage untuk outlet yang sudah dikunjungi
+        function getVisitOrderStatus(outletName) {
+            try {
+                const today = new Date().toISOString().split('T')[0];
+                const visitKey = `visited_${currentSalesmanId}_${today}`;
+                const visits = JSON.parse(localStorage.getItem(visitKey) || '[]');
+                const record = visits.find(v =>
+                    v && v.outlet_name &&
+                    v.outlet_name.toLowerCase() === outletName.toLowerCase() &&
+                    v.visit_completed === true
+                );
+                return record ? (record.order_status || null) : null;
+            } catch {
+                return null;
+            }
+        }
+
         function isCustomerAlreadyVisited(customerName) {
             // Check if customer has a completed visit today
             const hasCompletedVisit = todayVisitedCustomers.has(customerName.toLowerCase());
@@ -5400,11 +5424,30 @@
                     const isPaused = isPausedVisit(outletName);
                     
                     if (isCompleted) {
-                        // Completed visit - block access
-                        option.textContent = `${outletName} ✅ (Sudah dikunjungi)`;
+                        const orderStatus = getVisitOrderStatus(outletName);
                         option.disabled = true;
-                        option.style.color = '#2ECC71';
-                        option.style.backgroundColor = '#F1FFF5';
+
+                        if (orderStatus === 'ada_so') {
+                            // Dikunjungi + ada SO → hijau
+                            option.textContent = `${outletName} ✅ (SO)`;
+                            option.style.color = '#1A7A3C';
+                            option.style.backgroundColor = '#E8F5E9';
+                        } else if (orderStatus === 'toko_tutup') {
+                            // Dikunjungi + toko tutup → merah
+                            option.textContent = `${outletName} 🔴 (Tutup)`;
+                            option.style.color = '#C0392B';
+                            option.style.backgroundColor = '#FDECEA';
+                        } else if (orderStatus === 'toko_tidak_order') {
+                            // Dikunjungi + tidak order → merah
+                            option.textContent = `${outletName} 🔴 (Tidak Order)`;
+                            option.style.color = '#C0392B';
+                            option.style.backgroundColor = '#FDECEA';
+                        } else {
+                            // Fallback jika order_status tidak diketahui
+                            option.textContent = `${outletName} ✅ (Sudah dikunjungi)`;
+                            option.style.color = '#2ECC71';
+                            option.style.backgroundColor = '#F1FFF5';
+                        }
                     } else if (isPaused) {
                         // Paused visit - allow access with indicator
                         option.textContent = `${outletName} ⏸️ (Kunjungan tertunda)`;

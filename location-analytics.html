@@ -12,7 +12,8 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getDatabase, ref, get, child, onValue, off } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
-        
+        import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
         // Make Firebase modules available globally
         window.firebaseModules = {
             initializeApp,
@@ -21,9 +22,11 @@
             get,
             child,
             onValue,
-            off
+            off,
+            getAuth,
+            signInAnonymously
         };
-        
+
         // Initialize when modules are loaded
         window.initializeFirebaseApp();
     </script>
@@ -1331,12 +1334,21 @@
 
                 const { initializeApp, getDatabase, ref, get } = window.firebaseModules;
 
-                // Initialize Firebase App (same as visit.html - no auth)
+                const { getAuth, signInAnonymously } = window.firebaseModules;
+
                 firebaseApp = initializeApp(firebaseConfig);
                 addDebugMessage('✓ Aplikasi Firebase berhasil diinisialisasi');
 
-                // Initialize Database directly - no auth needed
                 firebaseDatabase = getDatabase(firebaseApp);
+
+                // Anonymous auth — wajib untuk Firebase Security Rules (auth != null)
+                try {
+                    const auth = getAuth(firebaseApp);
+                    await signInAnonymously(auth);
+                    addDebugMessage('🔐 Anonymous auth berhasil');
+                } catch(authErr) {
+                    addDebugMessage(`⚠️ Anonymous auth gagal: ${authErr.message}`);
+                }
                 addDebugMessage('✓ Firebase Database berhasil diinisialisasi');
 
                 // Test database access
