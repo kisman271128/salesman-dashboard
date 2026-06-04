@@ -2370,10 +2370,23 @@
                 }
                 const salesmanList = Array.from(salesmanMap.values());
 
-                // PC (Plan Call) dihitung dari d.skupelanggan — tidak diload di sini
-                // (data ada di Buku Saku untuk 30 Pareto)
+                // ── PC: load d.skupelanggan per-salesman dari CF KV ──────────────
                 const pelangganByNormName = {};
                 const pelangganByEmpId    = {};
+
+                await Promise.allSettled(
+                    salesmanList.map(async sm => {
+                        try {
+                            const rows = await cfFetch(`d.skupelanggan.${sm.id}`);
+                            const normName = sm.name.toLowerCase();
+                            pelangganByNormName[normName] = rows;
+                            pelangganByEmpId[sm.id]       = rows;
+                        } catch(e) {
+                            console.warn(`⚠️ skupelanggan.${sm.id} tidak tersedia:`, e.message);
+                        }
+                    })
+                );
+                console.log(`✅ Skupelanggan loaded untuk ${Object.keys(pelangganByNormName).length} salesman`);
 
                 // ═══════════════════════════════════════════════════════════
                 // 🔑 DISCOVER REAL FIREBASE IDs from visits node
