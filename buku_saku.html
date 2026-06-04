@@ -432,8 +432,8 @@ async function initApp() {
     filteredOutlets = [...allOutlets];
     buildOutletList();
 
-    // ── Load d.skupelanggan.json secara terpisah (opsional) ──
-    loadSkupelanggan();
+    // ── Load d.skupelanggan per-salesman lalu gabungkan (opsional, async) ──
+    loadSkupelanggan(details);
 
     console.log('✅ BukuSaku ready — top30:', allOutlets.length, 'outlets');
     document.getElementById('loadingState').style.display = 'none';
@@ -902,10 +902,59 @@ const PROMO_COLORS = {
   GO:'#9a3412',   PRE:'#0c4a6e', SF:'#065f46', Solmed:'#7c2d12'
 };
 
-async function loadSkupelanggan() {
-  // d.skupelanggan di CF KV hanya tersedia per-salesman (d.skupelanggan.{szEmployeeId}).
-  // buku_saku membutuhkan data gabungan semua salesman — belum tersedia, fitur SKU dinonaktifkan.
-  console.warn('⚠️ d.skupelanggan tidak tersedia untuk tampilan supervisor');
+async function loadSkupelanggan(details) {
+  try {
+    // Ekstrak unique szEmployeeId dari details yang sudah di-load
+    const employeeIds = [...new Set(
+      (details || [])
+        .map(d => d['szEmployeeId'])
+        .filter(id => id && String(id).trim() !== '')
+        .map(id => String(id).trim())
+    )];
+
+    if (employeeIds.length === 0) {
+      console.warn('⚠️ Tidak ada szEmployeeId di details — skip skupelanggan');
+      return;
+    }
+
+    console.log(`📦 Loading skupelanggan untuk ${employeeIds.length} salesman...`);
+
+    // Fetch semua per-salesman secara paralel
+    const results = await Promise.allSettled(
+      employeeIds.map(id => cfFetch(`d.skupelanggan.${id}`))
+    );
+
+    // Gabungkan semua baris ke skupelMap keyed by Nama_Pelanggan
+    let totalRows = 0;
+    skupelMap = {};
+
+    results.forEach((result, i) => {
+      if (result.status !== 'fulfilled') {
+        console.warn(`⚠️ Gagal load skupelanggan.${employeeIds[i]}:`, result.reason?.message);
+        return;
+      }
+      result.value.forEach(r => {
+        const nama = (r['Nama_Pelanggan'] || '').trim();
+        const sku  = r['SKU'] || r['Cek'] || '';
+        if (!nama || !sku) return;
+        if (!skupelMap[nama]) skupelMap[nama] = {};
+        if (!skupelMap[nama][sku]) {
+          skupelMap[nama][sku] = { sku, promo: r['Promo'] || 'Other', plan: 0, mtd: 0 };
+        }
+        skupelMap[nama][sku].plan += parseFloat(r['Plan']  || 0);
+        skupelMap[nama][sku].mtd  += parseFloat(r['UnitMTD'] || 0);
+        totalRows++;
+      });
+    });
+
+    console.log(`✅ Skupelanggan loaded: ${totalRows} rows → ${Object.keys(skupelMap).length} outlets`);
+
+    // Refresh SKU badge outlet yang sedang aktif
+    if (filteredOutlets[currentIdx]) renderPlanSKU(filteredOutlets[currentIdx]);
+
+  } catch(e) {
+    console.warn('⚠️ loadSkupelanggan error:', e.message);
+  }
 }
 
 function renderPlanSKU(o) {

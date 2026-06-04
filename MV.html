@@ -2360,40 +2360,36 @@
 
             console.log(`Loading SKU history for customer: ${currentCustomerName}`);
 
-            // First, find the customer details record to get the customer ID
-            const customerDetailsRecord = detailsData.find(item => {
-                return item.szEmployeeId && item.szEmployeeId.toString() === currentSalesmanId.toString() &&
-                       item['Nama Pelanggan'] === currentCustomerName;
-            });
+            // Filter langsung by Nama_Pelanggan (field tersedia di d.skupelanggan)
+            const rawSKUData = skuPelangganData.filter(item =>
+                (item['Nama_Pelanggan'] || '').trim() === currentCustomerName.trim()
+            );
 
-            if (!customerDetailsRecord) {
-                console.warn(`No customer details found for: ${currentCustomerName}`);
-                showEmptySKUState(`Tidak ada detail pelanggan untuk ${currentCustomerName}`);
+            console.log(`Found ${rawSKUData.length} raw SKU records for: ${currentCustomerName}`);
+
+            if (rawSKUData.length === 0) {
+                showEmptySKUState(`Tidak ada history SKU untuk ${currentCustomerName}`);
                 return;
             }
 
-            const customerId = customerDetailsRecord['Id Pelanggan'];
-            console.log(`Customer ID found: ${customerId} for ${currentCustomerName}`);
-
-            // Find SKU data using customer ID
-            const customerSKUData = skuPelangganData.filter(item => {
-                // Match by Kode_Pelanggan from skupelanggan with Id Pelanggan from details
-                return item['Kode_Pelanggan'] === customerId;
+            // Aggregate by SKU — 1 baris per SKU per Hari_Kunjungan,
+            // sum nilai numerik agar tampil 1 baris per SKU
+            const skuMap = {};
+            const NUM_FIELDS = ['Plan', 'UnitMTD', 'Gap', 'Unit3LM', 'UnitLM'];
+            rawSKUData.forEach(item => {
+                const key = (item['SKU'] || 'N/A').toString();
+                if (!skuMap[key]) {
+                    skuMap[key] = { ...item };
+                    NUM_FIELDS.forEach(f => { skuMap[key][f] = Number(item[f]) || 0; });
+                } else {
+                    NUM_FIELDS.forEach(f => { skuMap[key][f] += Number(item[f]) || 0; });
+                }
             });
 
-            console.log(`Found ${customerSKUData.length} SKU records for customer ID: ${customerId}`);
+            const customerSKUData = Object.values(skuMap)
+                .sort((a, b) => (a.SKU || '').localeCompare(b.SKU || ''));
 
-            if (customerSKUData.length === 0) {
-                showEmptySKUState(`Tidak ada history SKU untuk ${currentCustomerName} (ID: ${customerId})`);
-                return;
-            }
-
-            // Sort by a logical order (by SKU name since there might not be dates in this data)
-            customerSKUData.sort((a, b) => {
-                const skuA = (a.SKU || '').toString();
-                const skuB = (b.SKU || '').toString();
-                return skuA.localeCompare(skuB);
-            });
+            console.log(`Aggregated to ${customerSKUData.length} unique SKUs`);
 
             renderSKUTable(customerSKUData);
         }
