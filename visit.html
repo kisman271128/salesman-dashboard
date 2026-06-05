@@ -4196,12 +4196,13 @@
             }
         }
 
-        function cfCacheLoad(namespace) {
+        function cfCacheLoad(namespace, allowExpired = false) {
             try {
                 const raw = localStorage.getItem(CF_CACHE_PREFIX + namespace);
                 if (!raw) return null;
                 const { ts, data } = JSON.parse(raw);
-                if (Date.now() - ts > CF_CACHE_TTL_MS) return null; // expired
+                const expired = Date.now() - ts > CF_CACHE_TTL_MS;
+                if (expired && !allowExpired) return null;
                 return data;
             } catch {
                 return null;
@@ -4229,10 +4230,10 @@
                 cfCacheSave(namespace, json.data); // simpan ke cache
                 return json.data;
             } catch (err) {
-                // Jaringan gagal — coba cache meski mungkin expired
-                const cached = cfCacheLoad(namespace);
+                // Jaringan gagal — pakai cache, termasuk yang sudah expired
+                const cached = cfCacheLoad(namespace, true);
                 if (cached) {
-                    console.warn(`⚠️ cfFetch ${namespace} gagal (${err.message}), pakai cache`);
+                    console.warn(`⚠️ cfFetch ${namespace} gagal (${err.message}), pakai cache (mungkin expired)`);
                     return cached;
                 }
                 throw err;

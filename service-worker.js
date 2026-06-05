@@ -1,10 +1,16 @@
 // Service Worker untuk Sales Performance Dashboard
-const CACHE_NAME = 'sales-dashboard-v2'; // Updated version
+const CACHE_NAME = 'sales-dashboard-v3';
 const urlsToCache = [
   './',
   './index.html',
   './dashboard.html',
+  './visit.html',
+  './performance.html',
   './performance_all.html',
+  './profile.html',
+  './DAP.html',
+  './MV.html',
+  './buku_saku.html',
   './device-auth.js',
   './manifest.json',
   './icon-192.png',

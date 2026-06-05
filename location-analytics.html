@@ -1284,7 +1284,9 @@
         let isFirebaseConnected = false;
         let debugMessages = [];
         let allVisitData = [];
-        let detailsData = []; // Data dari d.details.json untuk kalkulasi PC yang akurat
+        let detailsData = [];
+        let salesmanMasterMap = {}; // { szEmployeeId → szname } dari d.salesman
+        let routePolyline = null;   // garis rute antar toko
 
         // ===== FIREBASE CONFIGURATION =====
         const firebaseConfig = {
@@ -1435,7 +1437,19 @@
 
         async function loadAvailableSalesman() {
             const salesmanSet = new Set();
-            
+
+            // Load master nama salesman dari CF KV
+            try {
+                const rows = await cfFetch('d.salesman');
+                rows.forEach(r => {
+                    const id = String(r.szEmployeeId || '').trim();
+                    if (id) salesmanMasterMap[id] = r.szname || id;
+                });
+                addDebugMessage(`✓ Master salesman dimuat: ${Object.keys(salesmanMasterMap).length} records`);
+            } catch (e) {
+                addDebugMessage(`⚠ Gagal load d.salesman: ${e.message}`);
+            }
+
             // Try Firebase first if connected
             if (isFirebaseConnected && firebaseDatabase) {
                 try {
@@ -1479,17 +1493,25 @@
         function updateSalesmanDropdown(salesmanSet) {
             const salesmanSelect = document.getElementById('mapSalesmanFilter');
             const currentValue = salesmanSelect.value;
-            
+
             salesmanSelect.innerHTML = '<option value="">Semua Salesman</option>';
-            
-            const sortedSalesman = Array.from(salesmanSet).sort();
+
+            // Urutkan berdasarkan nama salesman
+            const sortedSalesman = Array.from(salesmanSet).sort((a, b) => {
+                const nameA = salesmanMasterMap[a] || a;
+                const nameB = salesmanMasterMap[b] || b;
+                return nameA.localeCompare(nameB);
+            });
+
             sortedSalesman.forEach(salesmanId => {
                 const option = document.createElement('option');
                 option.value = salesmanId;
-                option.textContent = `Salesman ${salesmanId}`;
+                // Tampilkan nama jika tersedia, fallback ke ID
+                const name = salesmanMasterMap[salesmanId];
+                option.textContent = name ? name : salesmanId;
                 salesmanSelect.appendChild(option);
             });
-            
+
             if (currentValue && sortedSalesman.includes(currentValue)) {
                 salesmanSelect.value = currentValue;
             }
@@ -1881,11 +1903,14 @@
 
         function renderMap() {
             clearMapMarkers();
-            
+
             if (allVisitData.length === 0) {
                 addDebugMessage('Tidak ada data kunjungan untuk ditampilkan di peta');
                 return;
             }
+
+            // Cek apakah filter per-salesman aktif
+            const salesmanFilter = document.getElementById('mapSalesmanFilter').value;
             
             // Color coding by order status
             function getMarkerColor(orderStatus) {
@@ -1918,19 +1943,54 @@
                 }
             }
             
-            allVisitData.forEach((visit, index) => {
+            // Urutkan berdasarkan waktu kunjungan untuk penomoran yang benar
+            const sortedVisits = [...allVisitData].sort((a, b) =>
+                new Date(a.timestamp || 0) - new Date(b.timestamp || 0)
+            );
+
+            // Hitung nomor urut hanya untuk kunjungan yang punya lokasi (bukan belum_visit)
+            let visitSequence = 0;
+
+            sortedVisits.forEach((visit, index) => {
                 if (visit.location && visit.location.latitude && visit.location.longitude) {
                     const markerColor = getMarkerColor(visit.order_status);
                     const statusText = getStatusText(visit.order_status);
-                    
-                    const marker = L.circleMarker([visit.location.latitude, visit.location.longitude], {
-                        radius: 8,
-                        fillColor: markerColor,
-                        color: 'white',
-                        weight: 2,
-                        opacity: 1,
-                        fillOpacity: 0.8
-                    });
+                    const isRealVisit = visit.order_status !== 'belum_visit';
+
+                    if (isRealVisit) visitSequence++;
+                    const seqNum = isRealVisit ? visitSequence : null;
+
+                    // Gunakan divIcon dengan nomor urut untuk kunjungan nyata
+                    let marker;
+                    if (salesmanFilter && seqNum !== null) {
+                        const isFirst = seqNum === 1;
+                        marker = L.marker([visit.location.latitude, visit.location.longitude], {
+                            icon: L.divIcon({
+                                className: '',
+                                html: `<div style="
+                                    background:${markerColor};
+                                    color:white;
+                                    width:28px;height:28px;
+                                    border-radius:50%;
+                                    border:${isFirst ? '3px solid #FFD700' : '2px solid white'};
+                                    display:flex;align-items:center;justify-content:center;
+                                    font-size:11px;font-weight:700;
+                                    box-shadow:0 2px 6px rgba(0,0,0,0.4);
+                                ">${seqNum}</div>`,
+                                iconSize: [28, 28],
+                                iconAnchor: [14, 14]
+                            })
+                        });
+                    } else {
+                        marker = L.circleMarker([visit.location.latitude, visit.location.longitude], {
+                            radius: 8,
+                            fillColor: markerColor,
+                            color: 'white',
+                            weight: 2,
+                            opacity: 1,
+                            fillOpacity: 0.8
+                        });
+                    }
                     
                     // FIXED: Duration display in popup
                     const durationMinutes = Math.floor((visit.duration_seconds || 0) / 60);
@@ -1940,7 +2000,7 @@
                     // Build popup content based on visit type
                     let popupContent = `
                         <div style="font-family: 'Segoe UI', sans-serif; min-width: 200px;">
-                            <h4 style="margin: 0 0 8px 0; color: #E0F7FA;">${visit.outlet_name}</h4>
+                            <h4 style="margin: 0 0 8px 0; color: #002060;">${visit.outlet_name}</h4>
                             <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Salesman:</strong> ${visit.salesman_name}</p>`;
                     
                     if (visit.order_status === 'belum_visit') {
@@ -1981,6 +2041,27 @@
                 }
             });
             
+            // Gambar garis rute jika filter per-salesman aktif
+            if (salesmanFilter) {
+                const routePoints = sortedVisits
+                    .filter(v => v.order_status !== 'belum_visit' &&
+                                 v.location && v.location.latitude && v.location.longitude)
+                    .map(v => [v.location.latitude, v.location.longitude]);
+
+                if (routePoints.length >= 2) {
+                    routePolyline = L.polyline(routePoints, {
+                        color: '#1BC8DC',
+                        weight: 3,
+                        opacity: 0.8,
+                        dashArray: '8, 6',
+                        lineCap: 'round',
+                        lineJoin: 'round'
+                    }).addTo(visitMap);
+
+                    addDebugMessage(`✓ Garis rute ditampilkan: ${routePoints.length} titik`);
+                }
+            }
+
             // Fit map to markers
             if (mapMarkers.length > 0) {
                 const group = new L.featureGroup(mapMarkers);
@@ -1991,11 +2072,13 @@
 
         function clearMapMarkers() {
             mapMarkers.forEach(marker => {
-                if (visitMap.hasLayer(marker)) {
-                    visitMap.removeLayer(marker);
-                }
+                if (visitMap && visitMap.hasLayer(marker)) visitMap.removeLayer(marker);
             });
             mapMarkers = [];
+            if (routePolyline && visitMap) {
+                visitMap.removeLayer(routePolyline);
+                routePolyline = null;
+            }
         }
 
         function updateStatistics(firebaseCount, localCount, detailsCount = 0) {
