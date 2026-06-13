@@ -787,7 +787,15 @@
         }
         .vr-col-kunjungan { background: #FFFFFF!important; color: #17B5C8 !important; }
         .vr-col-penjualan { background: #F1FFF5 !important; color: #065f46 !important; }
+        .vr-col-dap-h1    { background: #f5f3ff !important; color: #5B21B6 !important; }
         .vr-col-reason    { background: #E0F7FA !important; color: #9a3412 !important; }
+        .dap-h1-input {
+            width: 54px; border: 1px solid #c4b5fd; border-radius: 5px;
+            padding: 3px 5px; font-size: 11px; text-align: center;
+            background: #ede9fe; color: #5B21B6; font-weight: 700; outline: none;
+        }
+        .dap-h1-input:focus { border-color: #7C3AED; background: #ddd6fe; }
+        .dap-h1-input::placeholder { color: #a78bfa; font-weight: 400; }
         .vr-col-reason    { padding: 6px 4px !important; font-size: 9px !important; }
         .vr-table td.vr-col-reason-cell { padding: 6px 4px !important; font-size: 10px !important; min-width: 0 !important; }
         .vr-col-sku       { background: #E0F7FA !important; color: #6b21a8 !important; }
@@ -2664,24 +2672,32 @@
             const now  = new Date();
             const tsStr = now.toLocaleTimeString('id-ID', {hour:'2-digit',minute:'2-digit'});
 
-            // Ach MTD Total Depo — dari d.performance.json record szname === "Total Depo"
-            const totalDepoPerf = performanceData.find(p => (p.szname || '').trim() === 'Total Depo');
-            const totalAchMTD   = totalDepoPerf ? Math.round(parseFloat(totalDepoPerf['Ach'] || 0) * 100) : null;
+            // Ach MTD & Gap Total — dari d.performance.json Tipe Salesman "Sales Area Coordinator Yudistira"
+            const sacPerf = performanceData.find(p => (p['Tipe Salesman'] || '').trim() === 'Sales Area Coordinator Yudistira');
+            const totalAchMTD   = sacPerf ? Math.round(parseFloat(sacPerf['Ach'] || 0) * 100) : null;
+            const totalGapMTD   = sacPerf ? parseFloat(sacPerf['Gap'] || 0) : null;
             const totalAchMTDCell = totalAchMTD !== null
                 ? `<span class="${getAchBadgeClass(totalAchMTD)}">${totalAchMTD}%</span>`
+                : '-';
+            const totalGapMTDCell = totalGapMTD !== null
+                ? `<span style="color:${totalGapMTD >= 0 ? '#27AE60' : '#E74C3C'}">${totalGapMTD >= 0 ? '+' : '-'}${fmtRp(totalGapMTD)}</span>`
                 : '-';
 
             // ── Main table rows (NO SKU POM column) ──
             let tableRows = '';
-            rows.forEach(r => {
+            rows.forEach((r, rowIdx) => {
                 const ttCount  = r.tokoTutupList.length;
                 const ttoCount = r.tokoTidakOrderList.length;
                 const ttsCount = r.tokoTidakSelesaiList.length;
-                // Ambil Ach MTD dari d.performance.json berdasarkan nama salesman
+                // Ambil Ach MTD & Gap dari d.performance.json berdasarkan nama salesman
                 const perfRec  = performanceData.find(p => (p.szname || '').trim() === r.sm.name.trim());
                 const achMTD   = perfRec ? Math.round((parseFloat(perfRec['Ach'] || 0)) * 100) : null;
                 const achMTDCell = achMTD !== null
                     ? `<span class="${getAchBadgeClass(achMTD)}">${achMTD}%</span>`
+                    : `<span style="color:#78909C">-</span>`;
+                const gapMTD = perfRec ? parseFloat(perfRec['Gap'] || 0) : null;
+                const gapMTDCell = gapMTD !== null
+                    ? `<span style="color:${gapMTD >= 0 ? '#27AE60' : '#E74C3C'}">${gapMTD >= 0 ? '+' : '-'}${fmtRp(gapMTD)}</span>`
                     : `<span style="color:#78909C">-</span>`;
                 tableRows += `
                 <tr>
@@ -2694,9 +2710,15 @@
                     <td><strong style="color:#17B5C8">${r.ec}</strong></td>
                     <td><span class="${getECBadgeClass(r.ecPct)}">${r.ecPct}%</span></td>
                     <td style="border-left:2px solid #bbf7d0;">${achMTDCell}</td>
+                    <td>${gapMTDCell}</td>
                     <td><span class="vr-currency dap">${r.planDAP > 0 ? fmtRp(r.planDAP) : '<span style="color:#78909C">-</span>'}</span></td>
                     <td><span class="vr-currency actual">${r.actualSO > 0 ? fmtRp(r.actualSO) : '<span style="color:#78909C">-</span>'}</span></td>
                     <td><span class="${getAchBadgeClass(r.achPct)}">${r.achPct}%</span></td>
+                    <td style="border-left:2px solid #c4b5fd;padding:6px 4px;">
+                        <input type="text" inputmode="decimal" class="dap-h1-input"
+                               id="dapH1_${rowIdx}" data-row="${rowIdx}" data-name="${r.sm.name}"
+                               placeholder="0" oninput="updateDapH1Total()">
+                    </td>
                     <td class="${ttCount>0?'vr-count-tutup':'vr-count-none'}" style="padding:6px 4px;">${ttCount > 0 ? ttCount : '—'}</td>
                     <td class="${ttoCount>0?'vr-count-tutup':'vr-count-none'}" style="padding:6px 4px;">${ttoCount > 0 ? ttoCount : '—'}</td>
                     <td class="${ttsCount>0?'vr-count-tutup':'vr-count-none'}" style="padding:6px 4px;">${ttsCount > 0 ? `<span style="color:#E67E22">${ttsCount}</span>` : '—'}</td>
@@ -2704,7 +2726,7 @@
             });
 
             if (rows.length === 0) {
-                tableRows = `<tr><td colspan="12" style="padding:30px;color:#78909C;text-align:center;">
+                tableRows = `<tr><td colspan="14" style="padding:30px;color:#78909C;text-align:center;">
                     Tidak ada data kunjungan untuk tanggal ini</td></tr>`;
             }
 
@@ -2838,7 +2860,8 @@
                         <tr class="vr-col-group-header">
                             <th class="left" rowspan="2" style="min-width:130px;max-width:160px;">Salesman</th>
                             <th colspan="4" class="vr-col-kunjungan" style="border-left:2px solid #bfdbfe;">📍 Data Kunjungan</th>
-                            <th colspan="4" class="vr-col-penjualan" style="border-left:2px solid #bbf7d0;">💰 Performa Penjualan</th>
+                            <th colspan="5" class="vr-col-penjualan" style="border-left:2px solid #bbf7d0;">💰 Performa Penjualan</th>
+                            <th colspan="1" class="vr-col-dap-h1" style="border-left:2px solid #c4b5fd;">📝 Plan Besok</th>
                             <th colspan="3" class="vr-col-reason" style="border-left:2px solid #fed7aa;">⚠️ Alasan Tidak EC</th>
                         </tr>
                         <tr>
@@ -2847,9 +2870,11 @@
                             <th class="vr-col-kunjungan">EC</th>
                             <th class="vr-col-kunjungan">EC%</th>
                             <th class="vr-col-penjualan" style="border-left:2px solid #bbf7d0;">Ach MTD</th>
+                            <th class="vr-col-penjualan">Gap MTD</th>
                             <th class="vr-col-penjualan">Plan DAP</th>
                             <th class="vr-col-penjualan">Actual SO</th>
                             <th class="vr-col-penjualan">Ach%</th>
+                            <th class="vr-col-dap-h1" style="border-left:2px solid #c4b5fd;">DAP H+1<br><span style="font-weight:400;font-size:9px;color:#7C3AED;">(jt)</span></th>
                             <th class="vr-col-reason" style="border-left:2px solid #fed7aa;padding:6px 4px;">Tutup</th>
                             <th class="vr-col-reason" style="padding:6px 4px;">Stok</th>
                             <th class="vr-col-reason" style="padding:6px 4px;">Visit Tunda</th>
@@ -2864,9 +2889,11 @@
                             <td>${totals.ec}</td>
                             <td>${totalECPct}%</td>
                             <td style="border-left:2px solid #bbf7d0;">${totalAchMTDCell}</td>
+                            <td>${totalGapMTDCell}</td>
                             <td>${totals.planDAP > 0 ? fmtRp(totals.planDAP) : '-'}</td>
                             <td>${fmtRp(totals.actualSO)}</td>
                             <td><span class="${getAchBadgeClass(totalAchPct)}">${totalAchPct > 0 ? totalAchPct+'%' : '-'}</span></td>
+                            <td style="border-left:2px solid #c4b5fd;padding:6px 4px;color:#5B21B6;font-weight:700;" id="dapH1TotalCell">-</td>
                             <td style="padding:6px 4px;">${totals.tutup}</td>
                             <td style="padding:6px 4px;">${totals.tidakOrder}</td>
                             <td style="padding:6px 4px;">${totals.tidakSelesai}</td>
@@ -2900,6 +2927,18 @@
             document.getElementById('btnShareWA').disabled = false;
         }
 
+        function updateDapH1Total() {
+            const inputs = document.querySelectorAll('.dap-h1-input');
+            let total = 0, hasValue = false;
+            inputs.forEach(inp => {
+                const v = parseFloat(inp.value) || 0;
+                if (v > 0) hasValue = true;
+                total += v;
+            });
+            const cell = document.getElementById('dapH1TotalCell');
+            if (cell) cell.textContent = hasValue ? (Number.isInteger(total) ? total : total.toFixed(1)) + 'jt' : '-';
+        }
+
         async function shareVisitReportAsImage() {
             const card = document.getElementById('visitReportCard');
             if (!card || card.style.display === 'none') return;
@@ -2909,6 +2948,20 @@
             btn.innerHTML = '⏳';
 
             try {
+                // Ganti input DAP H+1 dengan span sebelum di-capture agar tampil rapi di gambar
+                const dapInputs = document.querySelectorAll('.dap-h1-input');
+                const dapData = [];
+                dapInputs.forEach(inp => {
+                    const val = parseFloat(inp.value) || 0;
+                    dapData.push({ el: inp, name: inp.dataset.name || '', val });
+                    const span = document.createElement('span');
+                    span.className = 'dap-h1-replaced';
+                    span.style.cssText = 'font-size:11px;font-weight:700;color:#5B21B6;';
+                    span.textContent = val > 0 ? (Number.isInteger(val) ? val : val.toFixed(1)) + 'jt' : '-';
+                    inp.parentNode.insertBefore(span, inp);
+                    inp.style.display = 'none';
+                });
+
                 // Temporarily expand card to full width for capture
                 const origStyle = card.style.cssText;
                 card.style.width = card.scrollWidth + 'px';
@@ -2924,6 +2977,13 @@
                 });
 
                 card.style.cssText = origStyle;
+
+                // Restore input DAP H+1
+                dapInputs.forEach(inp => {
+                    inp.style.display = '';
+                    const span = inp.parentNode.querySelector('.dap-h1-replaced');
+                    if (span) span.remove();
+                });
 
                 canvas.toBlob(async (blob) => {
                     const dateStr = document.getElementById('visitReportDate').value;
@@ -2954,7 +3014,24 @@
 
                     setTimeout(() => {
                         const dateStr = document.getElementById('visitReportDate').value;
-                        const msg = encodeURIComponent(`📋 *SUMMARY VISIT REPORT HARIAN*\n🗓️ ${fmtIDDate(dateStr)}\n\n_(Silahkan lihat gambar yang baru diunduh)_`);
+                        let dapLines = '';
+                        let dapTotal = 0;
+                        dapData.forEach(d => {
+                            if (d.val > 0) {
+                                const fmt = Number.isInteger(d.val) ? d.val : d.val.toFixed(1);
+                                dapLines += `  • ${d.name}: *${fmt}jt*\n`;
+                                dapTotal += d.val;
+                            }
+                        });
+                        const dapTotalFmt = dapTotal > 0
+                            ? (Number.isInteger(dapTotal) ? dapTotal : dapTotal.toFixed(1)) + 'jt'
+                            : '-';
+                        const dapSection = dapLines
+                            ? `\n📝 *Plan SO Besok (DAP H+1):*\n${dapLines}  Total: *${dapTotalFmt}*\n`
+                            : '';
+                        const msg = encodeURIComponent(
+                            `📋 *SUMMARY VISIT REPORT HARIAN*\n🗓️ ${fmtIDDate(dateStr)}${dapSection}\n_(Silahkan lihat gambar yang baru diunduh)_`
+                        );
                         window.open(`https://wa.me/?text=${msg}`, '_blank');
                     }, 800);
 
