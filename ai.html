@@ -465,6 +465,7 @@
         .provider-btn.active.groq       { color: #EA580C; }
         .provider-btn.active.gemini     { color: #17B5C8; }
         .provider-btn.active.openrouter { color: #7C3AED; }
+        .provider-btn.active.ollama     { color: #22C55E; }
         .provider-status {
             margin-left: auto;
             font-size: 11px;
@@ -844,6 +845,9 @@
             <button class="provider-btn openrouter" id="btnOpenrouter" onclick="switchProvider('openrouter')">
                 🔀 OpenRouter
             </button>
+            <button class="provider-btn ollama" id="btnOllama" onclick="switchProvider('ollama')">
+                🦙 Ollama
+            </button>
         </div>
         <span class="provider-status ok" id="providerStatus">● Siap</span>
     </div>
@@ -926,6 +930,23 @@
                         <button class="eye-btn" onclick="toggleKeyVisibility('inputOpenrouterKey', this)">👁</button>
                     </div>
                 </div>
+                <div class="settings-field" id="ollamaField">
+                    <label>🦙 Ollama — Local AI</label>
+                    <small>Pastikan Ollama sudah berjalan (ikon di system tray)</small>
+                    <input type="text" id="inputOllamaUrl" placeholder="http://localhost:11434" autocomplete="off"
+                           style="padding:8px 10px;border:1.5px solid #B2EBF2;border-radius:10px;font-size:12px;background:#F0FAFB;color:#1A1A2E;outline:none;width:100%;box-sizing:border-box;margin-top:4px;"/>
+                    <div style="display:flex;gap:6px;align-items:center;margin-top:8px;">
+                        <select id="selectOllamaModel" style="flex:1;padding:8px 10px;border:1.5px solid #B2EBF2;border-radius:10px;font-size:12px;background:#F0FAFB;color:#1A1A2E;outline:none;">
+                            <option value="">— klik Deteksi untuk muat model —</option>
+                        </select>
+                        <button onclick="fetchOllamaModels()" id="btnDetectOllama"
+                                style="padding:8px 12px;background:#22C55E;color:#fff;border:none;border-radius:10px;font-size:12px;cursor:pointer;white-space:nowrap;font-weight:600;">
+                            🔍 Deteksi
+                        </button>
+                    </div>
+                    <small id="ollamaModelStatus" style="color:#90A4AE;">Klik Deteksi untuk melihat model yang sudah di-install</small>
+                    <small style="color:#22C55E;margin-top:4px;display:block;">✅ Tidak perlu API key — berjalan 100% offline</small>
+                </div>
                 <div class="settings-field" id="orModelField">
                     <label style="font-size:12px;color:#546E7A;">🤖 Model OpenRouter (pilih yang aktif)</label>
                     <select id="selectOrModel" style="padding:8px 10px;border:1.5px solid #B2EBF2;border-radius:10px;font-size:12px;background:#F0FAFB;color:#1A1A2E;outline:none;width:100%;">
@@ -981,6 +1002,12 @@ const PROVIDERS = {
         get apiKey()  { return localStorage.getItem('ai_key_openrouter') || ''; },
         get model()   { return localStorage.getItem('ai_model_openrouter') || 'openrouter/free'; },
         name:  'OpenRouter',
+    },
+    ollama: {
+        get url()   { return (localStorage.getItem('ai_ollama_url') || 'http://localhost:11434') + '/api/chat'; },
+        apiKey:     'ollama',
+        get model() { return localStorage.getItem('ai_ollama_model') || 'llama3.2'; },
+        name:       'Ollama (Local)',
     }
 };
 
@@ -1356,7 +1383,8 @@ function addChatMsg(role, text) {
     const tagColors = {
         groq:       { bg: '#fed7aa', fg: '#c2410c' },
         gemini:     { bg: '#bfdbfe', fg: '#17B5C8' },
-        openrouter: { bg: '#ede9fe', fg: '#7C3AED' }
+        openrouter: { bg: '#ede9fe', fg: '#7C3AED' },
+        ollama:     { bg: '#dcfce7', fg: '#16a34a' }
     };
     const tc = tagColors[currentProvider] || { bg: '#e2e8f0', fg: '#475569' };
     const providerTag = role === 'ai'
@@ -1383,11 +1411,12 @@ function showTyping() {
 }
 
 // ═══════════════════════════════════════════════
-//  API CALLS — GROQ & GEMINI
+//  API CALLS — GROQ, GEMINI, OPENROUTER, OLLAMA
 // ═══════════════════════════════════════════════
 async function callAI(messages, maxTokens = 800) {
     if (currentProvider === 'gemini')     return await callGemini(messages, maxTokens);
     if (currentProvider === 'openrouter') return await callOpenRouter(messages, maxTokens);
+    if (currentProvider === 'ollama')     return await callOllama(messages, maxTokens);
     return await callGroq(messages, maxTokens);
 }
 
@@ -1476,6 +1505,77 @@ async function callOpenRouter(messages, maxTokens) {
     return data.choices?.[0]?.message?.content || '(tidak ada respons)';
 }
 
+async function fetchOllamaModels() {
+    const btn    = document.getElementById('btnDetectOllama');
+    const sel    = document.getElementById('selectOllamaModel');
+    const status = document.getElementById('ollamaModelStatus');
+    const baseUrl = (document.getElementById('inputOllamaUrl').value.trim() || 'http://localhost:11434');
+
+    btn.textContent = '⏳';
+    btn.disabled    = true;
+    status.style.color = '#90A4AE';
+    status.textContent = 'Menghubungi Ollama...';
+
+    try {
+        const res = await fetch(baseUrl + '/api/tags');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        const models = data.models || [];
+
+        sel.innerHTML = '';
+        if (models.length === 0) {
+            sel.innerHTML = '<option value="">Tidak ada model — jalankan: ollama pull llama3.2</option>';
+            status.style.color = '#E74C3C';
+            status.textContent = '❌ Belum ada model. Buka terminal, jalankan: ollama pull llama3.2';
+        } else {
+            const saved = localStorage.getItem('ai_ollama_model') || '';
+            models.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m.name;
+                const sizeGB = m.size ? (m.size / 1e9).toFixed(1) + ' GB' : '';
+                opt.textContent = `${m.name}${sizeGB ? ' — ' + sizeGB : ''}`;
+                if (m.name === saved) opt.selected = true;
+                sel.appendChild(opt);
+            });
+            status.style.color = '#22C55E';
+            status.textContent = `✅ ${models.length} model ditemukan — pilih yang ingin digunakan`;
+        }
+    } catch (e) {
+        sel.innerHTML = '<option value="">Ollama tidak terdeteksi</option>';
+        status.style.color = '#E74C3C';
+        status.textContent = '❌ Gagal terhubung ke Ollama. Pastikan sudah berjalan di system tray.';
+    }
+    btn.textContent = '🔍 Deteksi';
+    btn.disabled    = false;
+}
+
+async function callOllama(messages, maxTokens) {
+    const model = PROVIDERS.ollama.model;
+    if (!model) throw new Error('Model Ollama belum dipilih. Klik ⚙️ → Deteksi → pilih model.');
+    let res;
+    try {
+        res = await fetch(PROVIDERS.ollama.url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                model,
+                messages: [{ role: 'system', content: buildSystemPrompt() }, ...messages],
+                stream:   false,
+                options:  { temperature: 0.3, num_predict: maxTokens }
+            })
+        });
+    } catch (e) {
+        throw new Error('Ollama tidak dapat dijangkau. Pastikan ikon Ollama aktif di system tray.');
+    }
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        if (res.status === 404) throw new Error(`Model "${model}" belum di-pull. Buka terminal: ollama pull ${model.split(':')[0]}`);
+        throw new Error(err.error || `Ollama HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    return data.message?.content || '(tidak ada respons)';
+}
+
 function buildSystemPrompt() {
     const perf = allData.performance || [];
     const depoName = perf[0]?.['Nama Depo'] || 'Depo';
@@ -1540,6 +1640,9 @@ function openSettings() {
     document.getElementById('inputGroqKey').value       = localStorage.getItem('ai_key_groq')       || '';
     document.getElementById('inputGeminiKey').value     = localStorage.getItem('ai_key_gemini')     || '';
     document.getElementById('inputOpenrouterKey').value = localStorage.getItem('ai_key_openrouter') || '';
+    document.getElementById('inputOllamaUrl').value = localStorage.getItem('ai_ollama_url') || 'http://localhost:11434';
+    // Auto-detect model saat settings dibuka
+    fetchOllamaModels();
     const savedModel = localStorage.getItem('ai_model_openrouter') || 'openrouter/free';
     const sel = document.getElementById('selectOrModel');
     if (sel) sel.value = savedModel;
@@ -1569,6 +1672,7 @@ function saveSettings() {
     const groqKey       = document.getElementById('inputGroqKey').value.trim();
     const geminiKey     = document.getElementById('inputGeminiKey').value.trim();
     const openrouterKey = document.getElementById('inputOpenrouterKey').value.trim();
+    const ollamaUrl     = document.getElementById('inputOllamaUrl').value.trim();
 
     if (groqKey)       localStorage.setItem('ai_key_groq',       groqKey);
     else               localStorage.removeItem('ai_key_groq');
@@ -1578,6 +1682,10 @@ function saveSettings() {
 
     if (openrouterKey) localStorage.setItem('ai_key_openrouter', openrouterKey);
     else               localStorage.removeItem('ai_key_openrouter');
+
+    const ollamaModelSel = document.getElementById('selectOllamaModel').value;
+    localStorage.setItem('ai_ollama_url',   ollamaUrl      || 'http://localhost:11434');
+    if (ollamaModelSel) localStorage.setItem('ai_ollama_model', ollamaModelSel);
 
     const selModel = document.getElementById('selectOrModel');
     if (selModel && selModel.value) localStorage.setItem('ai_model_openrouter', selModel.value);
