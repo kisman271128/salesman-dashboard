@@ -91,9 +91,9 @@ const USERS = [
     active: true
   },
   {
-    username: '017212345678',
+    username: '017210043127',
     password: 'sarabakawa2026',
-    name: 'Muhammad Syech',
+    name: 'Mahrita',
     role: 'salesman',
     depo: '0172',
     region: 'KALIMANTAN',
