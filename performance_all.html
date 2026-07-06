@@ -814,6 +814,10 @@
             font-size: 9px;
             color: #546E7A;
             margin-top: 1px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 155px;
         }
 
         /* Value badges */
@@ -2381,19 +2385,22 @@
                         }
                     });
                 }
-                // Tambahkan salesman dari performanceData yang belum ada di map
-                // (misal salesman baru seperti Mahrita yang belum ada di channelProjData)
+                // Tambahkan salesman dari performanceData yang belum ada di map,
+                // dan update type untuk yang sudah ada tapi type masih '-'
                 if (performanceData && performanceData.length > 0) {
                     performanceData.forEach(item => {
                         const rawId = (item.szEmployeeId || '').toString().trim();
                         const name  = (item.szname || '').trim();
-                        if (rawId && name && name !== 'Total Depo' && !salesmanMap.has(rawId)) {
+                        if (!rawId || !name || name === 'Total Depo') return;
+                        const tipe  = (item['Tipe Salesman'] || '').trim();
+                        if (!salesmanMap.has(rawId)) {
                             salesmanMap.set(rawId, {
-                                id: rawId,
-                                name,
-                                type: (item['Tipe Salesman'] || '').trim() || '-',
+                                id: rawId, name,
+                                type: tipe || '-',
                                 firebaseId: null
                             });
+                        } else if (tipe) {
+                            salesmanMap.get(rawId).type = tipe;
                         }
                     });
                 }
@@ -2656,8 +2663,14 @@
                     }
                 }
 
-                // Sort by ec descending
-                reportRows.sort((a,b) => b.ec - a.ec || b.actualSO - a.actualSO);
+                // Sort by tipe salesman (alphabetical), then by ec descending within same type
+                reportRows.sort((a, b) => {
+                    const ta = a.sm.type || '';
+                    const tb = b.sm.type || '';
+                    if (ta < tb) return -1;
+                    if (ta > tb) return 1;
+                    return b.ec - a.ec || b.actualSO - a.actualSO;
+                });
 
                 // Totals
                 const totals = reportRows.reduce((t, r) => ({
