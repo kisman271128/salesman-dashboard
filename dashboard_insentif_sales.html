@@ -16,7 +16,8 @@
     <!-- Error State -->
     <div class="error-message" id="errorMessage" style="display: none; background: rgba(231, 76, 60, 0.1); border: 1px solid rgba(231, 76, 60, 0.3); color: #E74C3C; padding: 16px; border-radius: 12px; margin: 20px 0; text-align: center;">
       <h3>📡 Error Loading Data</h3>
-      <p>Tidak dapat memuat data insentif. Silakan coba lagi.</p>
+      <p id="errorMsgText">Tidak dapat memuat data insentif. Silakan coba lagi.</p>
+      <p id="errorMsgHint" style="font-size:12px;color:#78909C;margin-top:6px;"></p>
       <button onclick="loadIncentiveData()" style="margin-top: 10px; padding: 8px 16px; background: #0891b2; color: white; border: none; border-radius: 8px; cursor: pointer;">Retry</button>
     </div>
 
@@ -1194,7 +1195,15 @@
               console.error(`❌ No data found for employee ID: ${currentSalesmanId}`);
               console.log('Available grouped data keys:', Object.keys(salesmanDataByPeriod));
               console.log('Sample raw data:', insentifData.slice(0, 3));
-              throw new Error(`No incentive data found for salesman: ${currentSalesmanId}`);
+              const availableNames = Object.values(salesmanDataByPeriod)
+                .map(periods => Object.values(periods)[0]?.szname)
+                .filter(Boolean).join(', ');
+              const hint = insentifData.length === 0
+                ? 'Data insentif di server kosong. Jalankan morning_update.py untuk sinkronisasi ulang ke Cloudflare KV.'
+                : `Data insentif tersedia untuk: ${availableNames || '-'}. Salesman ini belum ada dalam data — sync ulang KV dengan morning_update.py.`;
+              // store hint for showError
+              window._insentifHint = hint;
+              throw new Error(`Data insentif belum tersedia untuk salesman ID ${currentSalesmanId}`);
             }
           }
 
@@ -1210,7 +1219,9 @@
         } catch (error) {
           console.error('❌ Error loading incentive data:', error);
           showLoading(false);
-          showError(true, error.message);
+          const hint = window._insentifHint || '';
+          window._insentifHint = null;
+          showError(true, error.message, hint);
         }
       }
 
@@ -1219,13 +1230,15 @@
         document.getElementById('loadingSpinner').style.display = show ? 'flex' : 'none';
       }
 
-      function showError(show, message = '') {
+      function showError(show, message = '', hint = '') {
         const errorElement = document.getElementById('errorMessage');
         if (show) {
           errorElement.style.display = 'block';
           if (message) {
-            errorElement.querySelector('p').textContent = message;
+            document.getElementById('errorMsgText').textContent = message;
           }
+          const hintEl = document.getElementById('errorMsgHint');
+          if (hintEl) hintEl.textContent = hint || '';
         } else {
           errorElement.style.display = 'none';
         }
