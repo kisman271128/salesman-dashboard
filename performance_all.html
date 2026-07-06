@@ -2368,7 +2368,7 @@
                                 id: rawId,
                                 name: (item.szname || '').trim(),
                                 type: (item['Tipe Salesman'] || item.tipe || '').trim() || '-',
-                                firebaseId: null  // will be resolved below
+                                firebaseId: null
                             });
                         }
                     }
@@ -2378,6 +2378,22 @@
                         const id = (item.szEmployeeId || '').toString().trim();
                         if (salesmanMap.has(id) && item['Tipe Salesman']) {
                             salesmanMap.get(id).type = item['Tipe Salesman'];
+                        }
+                    });
+                }
+                // Tambahkan salesman dari performanceData yang belum ada di map
+                // (misal salesman baru seperti Mahrita yang belum ada di channelProjData)
+                if (performanceData && performanceData.length > 0) {
+                    performanceData.forEach(item => {
+                        const rawId = (item.szEmployeeId || '').toString().trim();
+                        const name  = (item.szname || '').trim();
+                        if (rawId && name && name !== 'Total Depo' && !salesmanMap.has(rawId)) {
+                            salesmanMap.set(rawId, {
+                                id: rawId,
+                                name,
+                                type: (item['Tipe Salesman'] || '').trim() || '-',
+                                firebaseId: null
+                            });
                         }
                     });
                 }
