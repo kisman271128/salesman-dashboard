@@ -972,6 +972,7 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
         import { getDatabase, ref, query, orderByChild, startAt, endAt, get, remove } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js';
+        import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyBLGwid71jAnsh4DrivbBYSTsuDAP0Zjuw",
@@ -985,6 +986,7 @@
 
         const app = initializeApp(firebaseConfig);
         const database = getDatabase(app);
+        const auth = getAuth(app);
 
         // Make functions globally available
         window.database = database;
@@ -995,6 +997,11 @@
         window.endAt = endAt;
         window.get = get;
         window.remove = remove;
+
+        // Anonymous auth — wajib agar Firebase Security Rules (auth != null) terpenuhi
+        window.firebaseAuthReady = signInAnonymously(auth)
+            .then(() => console.log('🔐 Firebase: Anonymous auth berhasil'))
+            .catch(err => console.warn('⚠️ Firebase: Anonymous auth gagal:', err.message));
     </script>
 
     <script>
@@ -1087,6 +1094,8 @@
             showLoading(true, 'Mengambil data...', 'Memuat preview data yang akan dihapus');
 
             try {
+                await window.firebaseAuthReady;
+
                 const dbRef = window.ref(window.database, selectedCollection);
                 
                 console.log('🔍 Preview Delete Parameters:');
@@ -1286,6 +1295,8 @@
             showLoading(true, 'Menghapus data...', `Menghapus ${previewData.length} records`);
 
             try {
+                await window.firebaseAuthReady;
+
                 let deletedCount = 0;
                 const batchSize = 20; // Delete in batches
 
