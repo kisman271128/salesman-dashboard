@@ -978,12 +978,53 @@
             z-index: 999;
             display: none;
             flex-direction: column;
+            align-items: flex-end;
             gap: 10px;
         }
 
         .floating-actions.show {
             display: flex;
             animation: fadeInUp 0.3s ease;
+        }
+
+        .floating-menu {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 10px;
+            max-height: 0;
+            opacity: 0;
+            pointer-events: none;
+            overflow: hidden;
+            transition: max-height 0.25s ease, opacity 0.2s ease;
+        }
+
+        .floating-menu.open {
+            max-height: 220px;
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .floating-toggle-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: none;
+            background: linear-gradient(135deg, #1A1A2E, #3A3A5E);
+            color: white;
+            font-size: 20px;
+            line-height: 1;
+            cursor: pointer;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.25s ease, background 0.25s ease;
+        }
+
+        .floating-toggle-btn.open {
+            transform: rotate(135deg);
+            background: linear-gradient(135deg, #E74C3C, #C0392B);
         }
 
         @keyframes fadeInUp {
@@ -3069,11 +3110,16 @@
 
         <!-- Floating Action Buttons -->
         <div class="floating-actions" id="floatingActions">
-            <button class="floating-btn btn-pause-visit" onclick="showPauseVisitModal()">
-                ⏸️ Tunda Kunjungan
-            </button>
-            <button class="floating-btn btn-end-visit" onclick="showVisitEndModal()">
-                🏁 Akhiri Kunjungan
+            <div class="floating-menu" id="floatingMenu">
+                <button class="floating-btn btn-pause-visit" onclick="showPauseVisitModal()">
+                    ⏸️ Tunda Kunjungan
+                </button>
+                <button class="floating-btn btn-end-visit" onclick="showVisitEndModal()">
+                    🏁 Akhiri Kunjungan
+                </button>
+            </div>
+            <button class="floating-toggle-btn" id="floatingToggleBtn" onclick="toggleFloatingMenu()" title="Menu Kunjungan">
+                ⚙️
             </button>
         </div>
 
@@ -4640,6 +4686,7 @@
         // Manual location sync function (for testing)
         function forceSyncLocation() {
             console.log('📍 Manual location sync triggered');
+            closeFloatingMenu();
             getCurrentLocationEnhanced().then(() => {
                 syncCurrentLocationToFirebase();
             }).catch(error => {
@@ -4893,7 +4940,8 @@
                 console.warn('🚫 Cannot pause - no active session or already paused');
                 return;
             }
-            
+            closeFloatingMenu();
+
             const duration = Math.floor(visitSession.accumulatedDuration + (Date.now() - visitSession.startTime) / 1000);
             const durationText = formatDuration(duration);
             
@@ -5522,7 +5570,8 @@
                 console.warn('🚫 End modal blocked - no active session or paused');
                 return;
             }
-            
+            closeFloatingMenu();
+
             const currentSessionDuration = Math.floor((Date.now() - visitSession.startTime) / 1000);
             const totalDuration = visitSession.accumulatedDuration + currentSessionDuration;
             const durationText = formatDuration(totalDuration);
@@ -5996,12 +6045,29 @@
 
         function updateFloatingButtons() {
             const floatingActions = document.getElementById('floatingActions');
-            
+
             if (visitSession.isActive && !visitSession.isPaused) {
                 floatingActions.classList.add('show');
             } else {
                 floatingActions.classList.remove('show');
+                closeFloatingMenu();
             }
+        }
+
+        function toggleFloatingMenu() {
+            const menu = document.getElementById('floatingMenu');
+            const toggleBtn = document.getElementById('floatingToggleBtn');
+            if (!menu || !toggleBtn) return;
+            menu.classList.toggle('open');
+            toggleBtn.classList.toggle('open');
+        }
+
+        function closeFloatingMenu() {
+            const menu = document.getElementById('floatingMenu');
+            const toggleBtn = document.getElementById('floatingToggleBtn');
+            if (!menu || !toggleBtn) return;
+            menu.classList.remove('open');
+            toggleBtn.classList.remove('open');
         }
 
         function formatDuration(seconds) {
@@ -7944,15 +8010,15 @@
 
         // Add manual sync button for testing
         function addManualSyncButton() {
-            const floatingActions = document.getElementById('floatingActions');
-            
-            if (floatingActions && currentSalesmanId) {
+            const floatingMenu = document.getElementById('floatingMenu');
+
+            if (floatingMenu && currentSalesmanId) {
                 const manualSyncBtn = document.createElement('button');
                 manualSyncBtn.className = 'floating-btn btn-manual-sync';
                 manualSyncBtn.innerHTML = '📍 Sync Location';
                 manualSyncBtn.onclick = forceSyncLocation;
-                
-                floatingActions.appendChild(manualSyncBtn);
+
+                floatingMenu.appendChild(manualSyncBtn);
             }
         }
 
