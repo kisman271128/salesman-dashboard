@@ -167,6 +167,62 @@
             color: #546E7A;
         }
 
+        /* ===== SKU RESUME & GAP TARGET GUIDE (beside location icon in header) ===== */
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .sku-gap-guide-dropdown {
+            display: none;
+            background: #FFFFFF;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            padding: 14px 16px;
+            margin: -8px 16px 16px 16px;
+            text-align: left;
+            max-height: 260px;
+            overflow-y: auto;
+        }
+
+        .sku-gap-guide-dropdown.open {
+            display: block;
+            animation: fadeInDown 0.25s ease;
+        }
+
+        .sku-gap-summary-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: #1A1A2E;
+            margin-bottom: 6px;
+        }
+
+        .sku-gap-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(178, 235, 242, 0.6);
+            font-size: 12px;
+        }
+
+        .sku-gap-item:last-child {
+            border-bottom: none;
+        }
+
+        .sku-gap-item-sku {
+            color: #1A1A2E;
+            font-weight: 600;
+        }
+
+        .sku-gap-empty {
+            font-size: 12px;
+            color: #27AE60;
+            font-weight: 600;
+            padding: 6px 0;
+        }
+
         /* ===== PAUSE/RESUME SPECIFIC STYLES ===== */
         .visit-modal-pause {
             background: linear-gradient(135deg, #FFFDE7, #F39C12);
@@ -2770,8 +2826,16 @@
                 <div class="detail-title">Visit Outlet</div>
                 <div class="salesman-name" id="salesmanName">Loading...</div>
             </div>
-            <button class="user-btn" onclick="forceSyncLocation()">📍</button>
+            <div class="header-actions">
+                <button class="user-btn" id="skuGapGuideBtn" onclick="toggleSkuGapPanel('skuGapGuidePanel','skuGapGuideIcon')" title="Panduan SKU & Gap Target">
+                    📋<span id="skuGapGuideIcon" style="font-size: 9px; margin-left: 2px;">▼</span>
+                </button>
+                <button class="user-btn" onclick="forceSyncLocation()">📍</button>
+            </div>
         </div>
+
+        <!-- SKU Resume & Gap Target Guide dropdown -->
+        <div class="sku-gap-guide-dropdown" id="skuGapGuidePanel"></div>
 
         <!-- Loading State -->
         <div class="loading-spinner" id="loadingSpinner">
@@ -2841,7 +2905,7 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                     </div>
                 </div>
 
@@ -5074,7 +5138,7 @@
             document.getElementById('resumeStartTime').textContent = startTime.toLocaleTimeString('id-ID');
             document.getElementById('resumePauseTime').textContent = pauseTime.toLocaleTimeString('id-ID');
             document.getElementById('resumePrevDuration').textContent = formatDuration(accumulatedDuration);
-            
+
             document.getElementById('visitResumeModal').classList.add('show');
             
             console.log(`🔄 Showing resume modal for: ${outletName}`);
@@ -5511,6 +5575,82 @@
             });
         }
 
+        // ===== SKU RESUME & GAP TARGET GUIDE =====
+        function getSkuGapGuide(outletName, hariJKS) {
+            if (!outletName || !hariJKS || !pelangganData || !pelangganData.length) return [];
+
+            const hariUpper = hariJKS.toString().trim().toUpperCase();
+
+            const visitData = pelangganData.filter(item => {
+                const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
+                const itemHari = normalizeHariFormat(item.Hari_Kunjungan);
+                const itemPelanggan = (item.Nama_Pelanggan || '').toString().trim();
+                const team = (item.Team || '').toString().trim();
+
+                const basicMatch = itemSalesmanId === currentSalesmanId &&
+                                itemHari === hariUpper &&
+                                itemPelanggan.toLowerCase() === outletName.toLowerCase();
+
+                if (!basicMatch) return false;
+
+                const teamUpper = team.toUpperCase();
+                const salesmanTeamUpper = (salesmanTeam || '').toUpperCase();
+
+                if (salesmanTeamUpper === 'ARJUNA') return teamUpper === 'ARJUNA';
+                if (salesmanTeamUpper === 'BIMA') return teamUpper === 'BIMA';
+                return true;
+            });
+
+            return visitData
+                .map(item => {
+                    const sku = item.SKU || 'N/A';
+                    const plan = Number(item.Plan) || 0;
+                    const mtd = Number(item.UnitMTD) || 0;
+                    const gap = Number(item.Gap) || (mtd - plan);
+                    return { sku, plan, mtd, gap };
+                })
+                .filter(row => row.gap < 0)
+                .sort((a, b) => a.gap - b.gap);
+        }
+
+        function renderSkuGapGuide(panelId, outletName, hariJKS) {
+            const panel = document.getElementById(panelId);
+            if (!panel) return;
+
+            if (!outletName || !hariJKS) {
+                panel.innerHTML = `<div class="sku-gap-empty" style="color: #78909C;">🏪 Pilih outlet terlebih dahulu</div>`;
+                return;
+            }
+
+            const rows = getSkuGapGuide(outletName, hariJKS);
+
+            if (rows.length === 0) {
+                panel.innerHTML = `<div class="sku-gap-empty">✅ Semua SKU sudah mencapai target</div>`;
+                return;
+            }
+
+            const items = rows.map(row => `
+                <div class="sku-gap-item">
+                    <span class="sku-gap-item-sku">${row.sku}</span>
+                    <span class="gap-badge gap-negative">${formatNumber(row.gap)}</span>
+                </div>
+            `).join('');
+
+            panel.innerHTML = `
+                <div class="sku-gap-summary-title">🎯 Tawarkan ${rows.length} SKU berikut untuk kejar target:</div>
+                ${items}
+            `;
+        }
+
+        function toggleSkuGapPanel(panelId, iconId) {
+            const panel = document.getElementById(panelId);
+            const icon = document.getElementById(iconId);
+            if (!panel) return;
+
+            const isOpen = panel.classList.toggle('open');
+            if (icon) icon.textContent = isOpen ? '▲' : '▼';
+        }
+
         // ===== VISIT MODAL FUNCTIONS =====
         function showVisitStartModal(outletName, hariJKS) {
             // Check if this outlet has a paused visit
@@ -5520,14 +5660,14 @@
                 showResumeVisitModal(outletName);
                 return;
             }
-            
+
             visitSession.pendingOutlet = outletName;
             visitSession.pendingHari = hariJKS;
-            
+
             document.getElementById('startModalCustomerName').textContent = outletName;
             document.getElementById('startModalCustomerDetails').textContent = `Hari JKS: ${hariJKS}`;
             document.getElementById('visitStartModal').classList.add('show');
-            
+
             console.log(`🏪 Showing start modal for: ${outletName}`);
         }
 
@@ -7089,6 +7229,7 @@
                 document.getElementById('skuZeroList').textContent = skuZeroText;
                 
                 updateSummaryFromCustomer(selectedPelanggan);
+                renderSkuGapGuide('skuGapGuidePanel', selectedPelanggan, selectedHari);
                 showVisitData(selectedPelanggan, selectedHari);
                 showMSSBelumAktif(selectedPelanggan);
                 displayProjectInfo(selectedPelanggan);
@@ -7144,7 +7285,9 @@
             document.getElementById('summaryActual').textContent = '-';
             document.getElementById('summaryGap').textContent = '-';
             document.getElementById('summaryGap').className = 'summary-value';
-            
+
+            renderSkuGapGuide('skuGapGuidePanel', null, null);
+
             const customerInfo = document.getElementById('customerInfo');
             if (customerInfo) {
                 customerInfo.style.display = 'none';
