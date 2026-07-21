@@ -896,6 +896,12 @@
         .value-positive { color: #27AE60 !important; font-weight: 700 !important; }
         .value-negative { color: #E74C3C !important; font-weight: 700 !important; }
         .value-percentage { font-weight: 700 !important; text-align: center; }
+
+        /* Plan DAP Ach%/Gap colors (harus override .data-table td color !important) */
+        .dap-table td.dap-ach-good { color: #2ECC71 !important; }
+        .dap-table td.dap-ach-warn { color: #F39C12 !important; }
+        .dap-table td.dap-ach-bad { color: #E74C3C !important; }
+        .dap-table td.dap-ach-none { color: #78909C !important; }
         /* ach colors defined below */
 
         /* ══ TABS / FILTER ══ */
@@ -1379,7 +1385,7 @@
                                     <th style="min-width: 70px;">Plan DAP</th>
                                     <th style="min-width: 70px;">Actual SO</th>
                                     <th style="min-width: 50px;">Ach%</th>
-                                    <th style="min-width: 60px;">Status</th>
+                                    <th style="min-width: 70px;">Gap</th>
                                 </tr>
                             </thead>
                             <tbody id="dapTableBody">
@@ -1394,23 +1400,23 @@
                     </div>
                     
                     <div id="dapSummary" style="padding: 12px; background: #FFFFFF; margin-top: 12px; border-radius: 8px; display: none;">
-                        <div style="font-weight: 600; margin-bottom: 8px; color: #E0F7FA;">📈 Summary</div>
+                        <div style="font-weight: 600; margin-bottom: 8px; color: #17B5C8;">📈 Summary</div>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;">
                             <div>
                                 <div style="color: #546E7A;">Total Plan DAP:</div>
-                                <div style="font-weight: 600; color: #E0F7FA;" id="dapSummaryPlan">Rp 0</div>
+                                <div style="font-weight: 600; color: #1A1A2E;" id="dapSummaryPlan">Rp 0</div>
                             </div>
                             <div>
                                 <div style="color: #546E7A;">Total Actual SO:</div>
-                                <div style="font-weight: 600; color: #E0F7FA;" id="dapSummaryActual">Rp 0</div>
+                                <div style="font-weight: 600; color: #1A1A2E;" id="dapSummaryActual">Rp 0</div>
                             </div>
                             <div>
                                 <div style="color: #546E7A;">Avg Achievement:</div>
-                                <div style="font-weight: 600; color: #E0F7FA;" id="dapSummaryAch">0%</div>
+                                <div style="font-weight: 600; color: #1A1A2E;" id="dapSummaryAch">0%</div>
                             </div>
                             <div>
                                 <div style="color: #546E7A;">Days with Plan:</div>
-                                <div style="font-weight: 600; color: #E0F7FA;" id="dapSummaryDays">0 hari</div>
+                                <div style="font-weight: 600; color: #1A1A2E;" id="dapSummaryDays">0 hari</div>
                             </div>
                         </div>
                     </div>
@@ -2226,12 +2232,6 @@
             return true;
         }
 
-        // ===== INISIALISASI =====
-        document.addEventListener('DOMContentLoaded', function() {
-            if (checkLoginStatus()) {
-                loadPerformanceData();
-            }
-
         // ===== DAP MONITORING FUNCTIONS =====
         async function loadDAPData() {
             const monthValue = document.getElementById('dapMonthSelect').value;
@@ -2255,7 +2255,7 @@
             const startDate = toYMD(monthStart);
             const endDate = toYMD(rangeEnd);
 
-            const salesmanId = localStorage.getItem('selected_salesman_id');
+            const salesmanId = currentSalesmanId || getUrlParameter('id');
             if (!salesmanId) {
                 alert('⚠️ Salesman ID tidak ditemukan!');
                 return;
@@ -2298,50 +2298,57 @@
                 let totalActual = 0;
                 let daysWithPlan = 0;
                 let totalAchievement = 0;
-                
+                let weekNum = 1;
+
                 datesInRange.forEach(date => {
                     const plan = planData[date];
                     const summary = summaryData[date];
-                    
+
                     const planAmount = plan ? (plan.amount || 0) : 0;
                     const actualAmount = summary ? (summary.total_so_amount || 0) : 0;
-                    
+
                     if (planAmount > 0) {
                         daysWithPlan++;
                         totalPlan += planAmount;
                     }
                     totalActual += actualAmount;
-                    
+
                     const achievement = planAmount > 0 ? Math.round((actualAmount / planAmount) * 100) : (actualAmount > 0 ? 100 : 0);
-                    
+
                     if (planAmount > 0) {
                         totalAchievement += achievement;
                     }
-                    
-                    let statusBadge = '';
-                    let rowClass = '';
-                    
-                    if (planAmount === 0) {
-                        statusBadge = '<span style="background: #78909C; color: white; padding: 3px 8px; border-radius: 4px; font-size: 10px;">No Plan</span>';
-                        rowClass = 'style="opacity: 0.6;"';
-                    } else if (achievement >= 100) {
-                        statusBadge = '<span style="background: #2ECC71; color: white; padding: 3px 8px; border-radius: 4px; font-size: 10px;">✅ Tercapai</span>';
-                        rowClass = 'style="background: #F1FFF5;"';
-                    } else if (achievement >= 80) {
-                        statusBadge = '<span style="background: #F39C12; color: white; padding: 3px 8px; border-radius: 4px; font-size: 10px;">⚠️ Hampir</span>';
-                        rowClass = 'style="background: #FFFDE7;"';
-                    } else {
-                        statusBadge = '<span style="background: #E74C3C; color: white; padding: 3px 8px; border-radius: 4px; font-size: 10px;">❌ Belum</span>';
-                        rowClass = 'style="background: #FFF5F5;"';
+
+                    // Hari Minggu tidak ada kunjungan — tampilkan sebagai pemisah "Week N"
+                    if (new Date(date).getUTCDay() === 0) {
+                        html += `
+                            <tr>
+                                <td colspan="5" style="text-align: center; font-weight: 700; font-size: 11px; padding: 6px; color: #17B5C8; background: #E0F7FA;">📅 Week ${weekNum}</td>
+                            </tr>
+                        `;
+                        weekNum++;
+                        return;
                     }
-                    
+
+                    const gapAmount = actualAmount - planAmount;
+
+                    let achClass = 'dap-ach-none';
+                    if (planAmount > 0) {
+                        if (achievement >= 100) achClass = 'dap-ach-good';
+                        else if (achievement >= 90) achClass = 'dap-ach-warn';
+                        else achClass = 'dap-ach-bad';
+                    }
+
+                    const achDisplay = planAmount > 0 ? `${achievement}%` : '-';
+                    const gapDisplay = planAmount > 0 ? formatCurrency(gapAmount) : '-';
+
                     html += `
-                        <tr ${rowClass}>
+                        <tr>
                             <td style="font-size: 11px;">${formatDateIndo(date)}</td>
                             <td style="text-align: right; font-size: 11px;">${formatCurrency(planAmount)}</td>
                             <td style="text-align: right; font-size: 11px;">${formatCurrency(actualAmount)}</td>
-                            <td style="text-align: center; font-weight: 600; font-size: 11px;">${achievement}%</td>
-                            <td style="text-align: center;">${statusBadge}</td>
+                            <td class="${achClass}" style="text-align: center; font-weight: 700; font-size: 11px;">${achDisplay}</td>
+                            <td class="${achClass}" style="text-align: right; font-weight: 600; font-size: 11px;">${gapDisplay}</td>
                         </tr>
                     `;
                 });
@@ -2390,18 +2397,25 @@
         
         function formatCurrency(value) {
             if (value === 0) return '-';
-            if (value >= 1000000000) {
-                return 'Rp ' + (value / 1000000000).toFixed(1) + 'B';
-            } else if (value >= 1000000) {
-                return 'Rp ' + (value / 1000000).toFixed(1) + 'M';
-            } else if (value >= 1000) {
-                return 'Rp ' + (value / 1000).toFixed(0) + 'K';
+            const sign = value < 0 ? '-' : '';
+            const abs = Math.abs(value);
+            if (abs >= 1000000000) {
+                return sign + 'Rp ' + (abs / 1000000000).toFixed(1) + 'B';
+            } else if (abs >= 1000000) {
+                return sign + 'Rp ' + (abs / 1000000).toFixed(1) + 'M';
+            } else if (abs >= 1000) {
+                return sign + 'Rp ' + (abs / 1000).toFixed(0) + 'K';
             }
-            return 'Rp ' + value.toLocaleString('id-ID');
+            return sign + 'Rp ' + abs.toLocaleString('id-ID');
         }
         
-        // Initialize month dropdown (12 bulan terakhir, default bulan berjalan)
+        // ===== INISIALISASI =====
         document.addEventListener('DOMContentLoaded', function() {
+            if (checkLoginStatus()) {
+                loadPerformanceData();
+            }
+
+            // Initialize month dropdown (12 bulan terakhir, default bulan berjalan)
             const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
             const select = document.getElementById('dapMonthSelect');
             const today = new Date();
@@ -2415,10 +2429,36 @@
             }
             select.innerHTML = options;
         });
-        });
-    
-        
-    
         </script>
+
+    <!-- Firebase (dipakai untuk baca data Plan DAP & daily summary) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAoRV3qVAXQ14AEVA8Mo49HXfAyhMMm8Bs",
+            authDomain: "salesman-route-tracker.firebaseapp.com",
+            databaseURL: "https://salesman-route-tracker-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "salesman-route-tracker",
+            storageBucket: "salesman-route-tracker.firebasestorage.app",
+            messagingSenderId: "590789273516",
+            appId: "1:590789273516:web:79abe0c7e4cbccfa44fc09",
+            measurementId: "G-5RYSWKQ063"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+        const auth = getAuth(app);
+
+        window.firebaseDB = database;
+        window.firebaseRef = ref;
+        window.firebaseGet = get;
+
+        signInAnonymously(auth)
+            .then(() => console.log('🔐 Firebase: Anonymous auth berhasil'))
+            .catch(err => console.warn('⚠️ Firebase: Anonymous auth gagal:', err.message));
+    </script>
 </body>
 </html>
