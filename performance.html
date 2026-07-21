@@ -1362,9 +1362,8 @@
             <div class="tab-content" id="dapContent">
                 <div class="table-container">
                     <div class="dap-filter-section" style="padding: 12px; background: #FFFFFF; margin-bottom: 12px; border-radius: 8px;">
-                        <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-                            <input type="date" id="dapStartDate" class="dap-date-input" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 12px;">
-                            <input type="date" id="dapEndDate" class="dap-date-input" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 12px;">
+                        <div style="margin-bottom: 8px;">
+                            <select id="dapMonthSelect" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 12px;"></select>
                         </div>
                         <button onclick="loadDAPData()" style="width: 100%; padding: 10px; background: linear-gradient(135deg, #17B5C8, #1BC8DC, #17B5C8); color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;">
                             🔍 Filter Data DAP
@@ -1387,7 +1386,7 @@
                                 <tr>
                                     <td colspan="5" class="empty-state">
                                         <div class="icon">📊</div>
-                                        <div>Pilih rentang tanggal dan klik Filter</div>
+                                        <div>Pilih bulan dan klik Filter</div>
                                     </td>
                                 </tr>
                             </tbody>
@@ -2235,19 +2234,27 @@
 
         // ===== DAP MONITORING FUNCTIONS =====
         async function loadDAPData() {
-            const startDate = document.getElementById('dapStartDate').value;
-            const endDate = document.getElementById('dapEndDate').value;
-            
-            if (!startDate || !endDate) {
-                alert('⚠️ Pilih rentang tanggal terlebih dahulu!');
+            const monthValue = document.getElementById('dapMonthSelect').value;
+
+            if (!monthValue) {
+                alert('⚠️ Pilih bulan terlebih dahulu!');
                 return;
             }
-            
-            if (new Date(startDate) > new Date(endDate)) {
-                alert('⚠️ Tanggal mulai harus lebih kecil dari tanggal akhir!');
-                return;
-            }
-            
+
+            const toYMD = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+            const [selYear, selMonth] = monthValue.split('-').map(Number);
+            const monthStart = new Date(selYear, selMonth - 1, 1);
+            const monthEnd = new Date(selYear, selMonth, 0);
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const isCurrentMonth = selYear === today.getFullYear() && (selMonth - 1) === today.getMonth();
+            const rangeEnd = isCurrentMonth && monthEnd > today ? today : monthEnd;
+
+            const startDate = toYMD(monthStart);
+            const endDate = toYMD(rangeEnd);
+
             const salesmanId = localStorage.getItem('selected_salesman_id');
             if (!salesmanId) {
                 alert('⚠️ Salesman ID tidak ditemukan!');
@@ -2344,7 +2351,7 @@
                         <tr>
                             <td colspan="5" class="empty-state">
                                 <div class="icon">📭</div>
-                                <div>Tidak ada data untuk rentang tanggal ini</div>
+                                <div>Tidak ada data untuk bulan ini</div>
                             </td>
                         </tr>
                     `;
@@ -2393,14 +2400,20 @@
             return 'Rp ' + value.toLocaleString('id-ID');
         }
         
-        // Initialize default dates (last 7 days)
+        // Initialize month dropdown (12 bulan terakhir, default bulan berjalan)
         document.addEventListener('DOMContentLoaded', function() {
+            const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+            const select = document.getElementById('dapMonthSelect');
             const today = new Date();
-            const sevenDaysAgo = new Date(today);
-            sevenDaysAgo.setDate(today.getDate() - 7);
-            
-            document.getElementById('dapEndDate').valueAsDate = today;
-            document.getElementById('dapStartDate').valueAsDate = sevenDaysAgo;
+
+            let options = '';
+            for (let i = 0; i < 12; i++) {
+                const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+                const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                const label = `${monthNames[d.getMonth()]} ${d.getFullYear()}`;
+                options += `<option value="${value}"${i === 0 ? ' selected' : ''}>${label}</option>`;
+            }
+            select.innerHTML = options;
         });
         });
     

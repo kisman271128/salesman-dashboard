@@ -167,28 +167,18 @@
             color: #546E7A;
         }
 
-        /* ===== SKU RESUME & GAP TARGET GUIDE (beside location icon in header) ===== */
+        /* ===== SKU RESUME & GAP TARGET GUIDE (modal mengambang, seperti Green Store) ===== */
         .header-actions {
             display: flex;
             align-items: center;
             gap: 8px;
         }
 
-        .sku-gap-guide-dropdown {
-            display: none;
-            background: #FFFFFF;
-            border-radius: 16px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            padding: 14px 16px;
-            margin: -8px 16px 16px 16px;
+        .sku-gap-guide-body {
+            margin-top: 16px;
             text-align: left;
-            max-height: 260px;
+            max-height: 320px;
             overflow-y: auto;
-        }
-
-        .sku-gap-guide-dropdown.open {
-            display: block;
-            animation: fadeInDown 0.25s ease;
         }
 
         .sku-gap-summary-title {
@@ -2827,15 +2817,30 @@
                 <div class="salesman-name" id="salesmanName">Loading...</div>
             </div>
             <div class="header-actions">
-                <button class="user-btn" id="skuGapGuideBtn" onclick="toggleSkuGapPanel('skuGapGuidePanel','skuGapGuideIcon')" title="Panduan SKU & Gap Target">
-                    📋<span id="skuGapGuideIcon" style="font-size: 9px; margin-left: 2px;">▼</span>
+                <button class="user-btn" id="skuGapGuideBtn" onclick="openSkuGapGuide()" title="Panduan SKU & Gap Target">
+                    📋
                 </button>
                 <button class="user-btn" onclick="forceSyncLocation()">📍</button>
             </div>
         </div>
 
-        <!-- SKU Resume & Gap Target Guide dropdown -->
-        <div class="sku-gap-guide-dropdown" id="skuGapGuidePanel"></div>
+        <!-- SKU Resume & Gap Target Guide Modal (mengambang seperti Green Store) -->
+        <div class="visit-modal" id="skuGapGuideModal">
+            <div class="visit-modal-content" style="max-width: 420px;">
+                <div class="visit-modal-title" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>📋 Panduan SKU & Gap Target</span>
+                    <button onclick="closeSkuGapGuide()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #546E7A; padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 8px; transition: all 0.2s;">
+                        ×
+                    </button>
+                </div>
+                <div class="sku-gap-guide-body" id="skuGapGuidePanel"></div>
+                <div class="visit-modal-buttons" style="margin-top: 20px;">
+                    <button class="visit-modal-btn visit-modal-btn-secondary" onclick="closeSkuGapGuide()" style="width: 100%;">
+                        ✓ OK
+                    </button>
+                </div>
+            </div>
+        </div>
 
         <!-- Loading State -->
         <div class="loading-spinner" id="loadingSpinner">
@@ -4158,6 +4163,40 @@
                 return getPlanDAP() > 0;
             }
 
+            // Cek Plan DAP hari ini: pakai cache lokal dulu, kalau belum ada
+            // (mis. login dari device baru) tarik dari Firebase supaya tidak
+            // diminta isi ulang kalau salesman sudah mengisi dari device lain.
+            async function ensurePlanDAPLoaded() {
+                if (getPlanDAP() > 0) return true;
+
+                if (!window.currentSalesmanId || !window.firebaseDB) return false;
+
+                try {
+                    var todayYMD = new Date().toISOString().split('T')[0];
+                    var planRef = window.firebaseRef(window.firebaseDB, 'plan_dap/' + window.currentSalesmanId + '/' + todayYMD);
+                    var snap = await window.firebaseGet(planRef);
+
+                    if (snap.exists()) {
+                        var remote = snap.val();
+                        if (remote && Number(remote.amount) > 0) {
+                            var planKey = 'plan_dap_' + window.currentSalesmanId + '_' + todayYMD;
+                            localStorage.setItem(planKey, JSON.stringify({
+                                amount: Number(remote.amount),
+                                timestamp: remote.timestamp || new Date().toISOString(),
+                                salesman_id: window.currentSalesmanId,
+                                salesman_name: remote.salesman_name || window.currentSalesman
+                            }));
+                            console.log('✅ Plan DAP hari ini ditemukan di Firebase (device lain) — dipakai:', remote.amount);
+                            return true;
+                        }
+                    }
+                } catch (e) {
+                    console.warn('ensurePlanDAPLoaded error:', e.message);
+                }
+
+                return false;
+            }
+
             function showPlanDAPPopup() {
                 document.getElementById('planDapOverlay').classList.add('show');
                 document.getElementById('planDapInput').focus();
@@ -4207,6 +4246,7 @@
             window.formatRupiah = formatRupiah;
             window.getPlanDAP = getPlanDAP;
             window.checkPlanDAP = checkPlanDAP;
+            window.ensurePlanDAPLoaded = ensurePlanDAPLoaded;
             window.showPlanDAPPopup = showPlanDAPPopup;
             window.submitPlanDAP = submitPlanDAP;
 
@@ -5642,13 +5682,14 @@
             `;
         }
 
-        function toggleSkuGapPanel(panelId, iconId) {
-            const panel = document.getElementById(panelId);
-            const icon = document.getElementById(iconId);
-            if (!panel) return;
+        function openSkuGapGuide() {
+            const modal = document.getElementById('skuGapGuideModal');
+            if (modal) modal.classList.add('show');
+        }
 
-            const isOpen = panel.classList.toggle('open');
-            if (icon) icon.textContent = isOpen ? '▲' : '▼';
+        function closeSkuGapGuide() {
+            const modal = document.getElementById('skuGapGuideModal');
+            if (modal) modal.classList.remove('show');
         }
 
         // ===== VISIT MODAL FUNCTIONS =====
@@ -7064,32 +7105,34 @@
         }
 
         // ===== FILTER AND DATA DISPLAY FUNCTIONS =====
-        function updatePelangganOptions() {
+        async function updatePelangganOptions() {
             if (visitSession.isActive && !visitSession.isPaused) {
                 checkActiveSessionBeforeAction('change_hari');
                 const hariSelect = document.getElementById('hari');
                 hariSelect.value = '';
                 return;
             }
-            
+
             const hariSelect = document.getElementById('hari');
             const pelangganSelect = document.getElementById('pelanggan');
-            
+
             pelangganSelect.innerHTML = '<option value="">🏪 Pilih Outlet</option>';
             clearDataDisplay();
-            
+
             if (pelangganData.length > 0 && currentSalesmanId && hariSelect.value) {
                 const selectedHari = hariSelect.value.trim().toUpperCase();
-                
+
                 // ===== CHECK PLAN DAP WHEN SELECTING JKS DAY =====
-                if (!checkPlanDAP()) {
+                // (cek cache lokal dulu, lalu Firebase — supaya kalau sudah diisi
+                // hari ini dari device lain, tidak diminta isi ulang)
+                if (!(await ensurePlanDAPLoaded())) {
                     console.log('⚠️ Plan DAP not entered yet - showing popup');
                     showPlanDAPPopup();
                     // Reset hari selection
                     hariSelect.value = '';
                     return;
                 }
-                
+
                 console.log(`🔍 Filtering outlets for Salesman: ${currentSalesmanId}, Hari: ${selectedHari}`);
                 
                 const filteredPelanggan = [...new Set(pelangganData
