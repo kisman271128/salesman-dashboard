@@ -188,22 +188,50 @@
             margin-bottom: 6px;
         }
 
-        .sku-gap-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 5px 0;
-            border-bottom: 1px solid rgba(178, 235, 242, 0.6);
-            font-size: 12px;
+        .sku-gap-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+            border-top: 1px solid #B2EBF2;
+            border-left: 1px solid #B2EBF2;
         }
 
-        .sku-gap-item:last-child {
-            border-bottom: none;
+        .sku-gap-item {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            padding: 4px 5px;
+            border-right: 1px solid #B2EBF2;
+            border-bottom: 1px solid #B2EBF2;
+            font-size: 11px;
         }
 
         .sku-gap-item-sku {
             color: #1A1A2E;
-            font-weight: 600;
+            font-weight: 700;
+            font-size: 10px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .sku-gap-item-values {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .sku-gap-item-value {
+            font-size: 10px;
+            font-weight: 700;
+            color: #E74C3C;
+            white-space: nowrap;
+        }
+
+        .sku-gap-total-header {
+            font-size: 12px;
+            font-weight: 700;
+            color: #E74C3C;
+            white-space: nowrap;
         }
 
         .sku-gap-empty {
@@ -2826,12 +2854,15 @@
 
         <!-- SKU Resume & Gap Target Guide Modal (mengambang seperti Green Store) -->
         <div class="visit-modal" id="skuGapGuideModal">
-            <div class="visit-modal-content" style="max-width: 420px;">
+            <div class="visit-modal-content" style="max-width: 560px;">
                 <div class="visit-modal-title" style="display: flex; justify-content: space-between; align-items: center;">
                     <span>📋 Panduan SKU & Gap Target</span>
-                    <button onclick="closeSkuGapGuide()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #546E7A; padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 8px; transition: all 0.2s;">
-                        ×
-                    </button>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span id="skuGapGuideTotalHeader" class="sku-gap-total-header"></span>
+                        <button onclick="closeSkuGapGuide()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #546E7A; padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 8px; transition: all 0.2s;">
+                            ×
+                        </button>
+                    </div>
                 </div>
                 <div class="sku-gap-guide-body" id="skuGapGuidePanel"></div>
                 <div class="visit-modal-buttons" style="margin-top: 20px;">
@@ -5647,18 +5678,35 @@
                     const plan = Number(item.Plan) || 0;
                     const mtd = Number(item.UnitMTD) || 0;
                     const gap = Number(item.Gap) || (mtd - plan);
-                    return { sku, plan, mtd, gap };
+                    const gapValue = Number(item.GapValue) || 0;
+                    return { sku, plan, mtd, gap, gapValue };
                 })
                 .filter(row => row.gap < 0)
                 .sort((a, b) => a.gap - b.gap);
+        }
+
+        // Format nilai Rupiah singkat pakai "jt"/"rb" (bukan "M"/"K")
+        function formatRupiahShort(value) {
+            const number = Number(value) || 0;
+            const abs = Math.abs(number);
+
+            if (abs >= 1000000) {
+                return (abs / 1000000).toFixed(1) + ' jt';
+            } else if (abs >= 1000) {
+                return (abs / 1000).toFixed(0) + ' rb';
+            }
+            return abs.toFixed(0);
         }
 
         function renderSkuGapGuide(panelId, outletName, hariJKS) {
             const panel = document.getElementById(panelId);
             if (!panel) return;
 
+            const totalHeader = document.getElementById('skuGapGuideTotalHeader');
+
             if (!outletName || !hariJKS) {
                 panel.innerHTML = `<div class="sku-gap-empty" style="color: #78909C;">🏪 Pilih outlet terlebih dahulu</div>`;
+                if (totalHeader) totalHeader.textContent = '';
                 return;
             }
 
@@ -5666,20 +5714,28 @@
 
             if (rows.length === 0) {
                 panel.innerHTML = `<div class="sku-gap-empty">✅ Semua SKU sudah mencapai target</div>`;
+                if (totalHeader) totalHeader.textContent = '';
                 return;
             }
 
             const items = rows.map(row => `
                 <div class="sku-gap-item">
                     <span class="sku-gap-item-sku">${row.sku}</span>
-                    <span class="gap-badge gap-negative">${formatNumber(row.gap)}</span>
+                    <span class="sku-gap-item-values">
+                        <span class="gap-badge gap-negative">${formatNumber(row.gap)}</span>
+                        <span class="sku-gap-item-value">${formatRupiahShort(row.gapValue)}</span>
+                    </span>
                 </div>
             `).join('');
 
+            const totalGapValue = rows.reduce((sum, row) => sum + row.gapValue, 0);
+
             panel.innerHTML = `
                 <div class="sku-gap-summary-title">🎯 Tawarkan ${rows.length} SKU berikut untuk kejar target:</div>
-                ${items}
+                <div class="sku-gap-grid">${items}</div>
             `;
+
+            if (totalHeader) totalHeader.textContent = `💰 ${formatRupiahShort(totalGapValue)}`;
         }
 
         function openSkuGapGuide() {
