@@ -509,6 +509,72 @@
             50% { opacity: 1; }
         }
 
+        /* ===== STATUS EDGE TABS (hide/show badge status kunjungan & lokasi) =====
+           Default: badge status disembunyikan (supaya tidak menutupi tombol header).
+           Tap tab di tepi layar untuk menampilkan/menyembunyikan. */
+        body:not(.show-session-status) .visit-session-status {
+            display: none !important;
+        }
+
+        body:not(.show-location-status) .location-status-enhanced,
+        body:not(.show-location-status) .day-indicator,
+        body:not(.show-location-status) .location-tracking-status,
+        body:not(.show-location-status) .firebase-status {
+            display: none !important;
+        }
+
+        .status-edge-tab {
+            position: fixed;
+            top: 100px;
+            width: 30px;
+            height: 40px;
+            background: rgba(23, 181, 200, 0.92);
+            color: white;
+            border: none;
+            font-size: 15px;
+            cursor: pointer;
+            z-index: 1002;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .status-edge-tab-left {
+            left: 0;
+            border-radius: 0 10px 10px 0;
+        }
+
+        .status-edge-tab-right {
+            right: 0;
+            border-radius: 10px 0 0 10px;
+        }
+
+        body.show-session-status .status-edge-tab-left,
+        body.show-location-status .status-edge-tab-right {
+            background: rgba(23, 181, 200, 1);
+        }
+
+        .status-edge-tab-dot {
+            position: absolute;
+            top: 3px;
+            right: 4px;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #2ECC71;
+            display: none;
+        }
+
+        body:has(#visitSessionStatus.active) .status-edge-tab-left .status-edge-tab-dot,
+        body:has(#visitSessionStatus.paused) .status-edge-tab-left .status-edge-tab-dot {
+            display: block;
+        }
+
+        body:has(#visitSessionStatus.paused) .status-edge-tab-left .status-edge-tab-dot {
+            background: #F39C12;
+        }
+
         /* ===== ENHANCED LOCATION STATUS ===== */
         .location-status-enhanced {
             position: fixed;
@@ -2838,6 +2904,15 @@
             👥 View All Positions
         </button>
 
+        <!-- Edge Tabs: hide/show status kunjungan (kiri) & status lokasi (kanan) -->
+        <button class="status-edge-tab status-edge-tab-left" onclick="toggleSessionStatusPanel()" title="Status Kunjungan">
+            🏪
+            <span class="status-edge-tab-dot"></span>
+        </button>
+        <button class="status-edge-tab status-edge-tab-right" onclick="toggleLocationStatusPanel()" title="Status Lokasi">
+            📍
+        </button>
+
         <div class="detail-header">
             <a href="dashboard.html" class="back-btn">←</a>
             <div class="detail-title-container">
@@ -4827,6 +4902,15 @@
             }).catch(error => {
                 console.error('📍 Manual sync failed:', error);
             });
+        }
+
+        // ===== STATUS EDGE TAB TOGGLES =====
+        function toggleSessionStatusPanel() {
+            document.body.classList.toggle('show-session-status');
+        }
+
+        function toggleLocationStatusPanel() {
+            document.body.classList.toggle('show-location-status');
         }
 
         // ===== FIREBASE FUNCTIONS =====
