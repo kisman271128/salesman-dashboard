@@ -1637,7 +1637,7 @@
                 const customerRecord = detailsData.find(item => {
                     return item.szEmployeeId && item.szEmployeeId.toString() === currentSalesmanId.toString() &&
                            item['Nama Pelanggan'] === customerName &&
-                           item['Id Pelanggan'] === customerId;
+                           item['id_pelanggan'] === customerId;
                 });
 
                 if (customerRecord) {
@@ -1664,28 +1664,12 @@
                     console.warn(`Customer record not found for ${customerName} (ID: ${customerId})`);
                 }
 
-                // Fallback: generate coordinates around Jakarta if no valid data found
-                const jakartaCenter = { lat: -6.2088, lng: 106.8456 };
-                const randomLat = jakartaCenter.lat + (Math.random() - 0.5) * 0.1;
-                const randomLng = jakartaCenter.lng + (Math.random() - 0.5) * 0.1;
+                // No valid coordinates found — do not fabricate a location
+                return null;
 
-                console.log(`Using fallback coordinates for ${customerName}: ${randomLat}, ${randomLng}`);
-                
-                return {
-                    lat: randomLat,
-                    lng: randomLng,
-                    address: 'Jakarta Area (Estimated)'
-                };
-                
             } catch (error) {
                 console.error('Error getting customer coordinates:', error);
-                
-                // Return Jakarta center as ultimate fallback
-                return {
-                    lat: -6.2088,
-                    lng: 106.8456,
-                    address: 'Jakarta (Default)'
-                };
+                return null;
             }
         }
 
@@ -1742,7 +1726,12 @@
 
             // Get customer coordinates from actual data
             currentCustomerCoordinates = await getCustomerCoordinates(currentCustomerId, currentCustomerName);
-            
+
+            if (!currentCustomerCoordinates) {
+                alert('❌ Koordinat lokasi tidak tersedia untuk outlet ini');
+                return;
+            }
+
             // Update popup content
             document.getElementById('popupCustomerName').textContent = currentCustomerName;
             document.getElementById('popupCustomerAddress').textContent = currentCustomerCoordinates.address;
@@ -1826,7 +1815,7 @@
             const customerRecord = detailsData.find(item => {
                 return item.szEmployeeId && item.szEmployeeId.toString() === currentSalesmanId.toString() &&
                        item['Nama Pelanggan'] === currentCustomerName &&
-                       item['Id Pelanggan'] === currentCustomerId;
+                       item['id_pelanggan'] === currentCustomerId;
             });
 
             if (customerRecord) {
@@ -2052,7 +2041,7 @@
             });
 
             if (customerDetailsRecord) {
-                currentCustomerId = customerDetailsRecord['Id Pelanggan'];
+                currentCustomerId = customerDetailsRecord['id_pelanggan'];
                 console.log(`Selected customer: ${customerName} (ID: ${currentCustomerId})`);
                 
                 // Check if coordinate data is available
