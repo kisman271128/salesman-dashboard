@@ -410,6 +410,10 @@
         .channel-group-col { left: 0; min-width: 80px; }
         .rank-col { left: 0; min-width: 40px; width: 50px; }
 
+        /* EC table: freeze Salesman + Tipe together */
+        .ec-name-col { left: 0; width: 140px; min-width: 140px; max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+        .ec-tipe-col { left: 140px; width: 60px; min-width: 60px; max-width: 60px; }
+
         /* Value formatting */
         .value-positive { color: #27AE60; font-weight: 600; }
         .value-negative { color: #E74C3C; font-weight: 600; }
@@ -1301,13 +1305,23 @@
         /* Table headers */
         .data-table th { background: #E0F7FA !important; color: #006064 !important; font-weight: 700 !important; border-bottom: 2px solid #B2EBF2 !important; }
         .data-table td { color: #1A1A2E !important; }
+        /* Kolom achievement/% harus tetap hijau/oranye/merah, jangan ketimpa fix di atas */
+        .data-table td.ach-high   { color: #1B8A3E !important; }
+        .data-table td.ach-medium { color: #9A6200 !important; }
+        .data-table td.ach-low    { color: #C0392B !important; }
         .total-row td  { background: #E0F7FA !important; color: #006064 !important; font-weight: 700 !important; }
         .project-sub-row td { background: #F0FAFB !important; color: #1A1A2E !important; }
+        .project-sub-row td.ach-high   { color: #1B8A3E !important; }
+        .project-sub-row td.ach-medium { color: #9A6200 !important; }
+        .project-sub-row td.ach-low    { color: #C0392B !important; }
 
         /* POM table */
         .pom-sku-col { color: #006064 !important; font-weight: 700 !important; }
         .pom-table th { background: #E0F7FA !important; color: #006064 !important; }
         .pom-table td { color: #1A1A2E !important; }
+        .pom-table td.ach-high   { color: #1B8A3E !important; }
+        .pom-table td.ach-medium { color: #9A6200 !important; }
+        .pom-table td.ach-low    { color: #C0392B !important; }
 
         /* Visit Report section */
         .vr-table th { color: #006064 !important; background: #E0F7FA !important; border-bottom: 2px solid #B2EBF2 !important; }
@@ -1425,6 +1439,7 @@
                     <button class="tab-btn" onclick="switchTab('ranking')">By Salesman</button>
                     <button class="tab-btn" onclick="switchTab('project')">Projects</button>
                     <button class="tab-btn" onclick="switchTab('pom')">CA POM</button>
+                    <button class="tab-btn" onclick="switchTab('ec')">EC</button>
                     <button class="tab-btn" id="tabBtnVisitReport" onclick="switchTab('visitReport')">📋 Visit</button>
                 </div>
             </div>
@@ -1547,6 +1562,37 @@
                 </div>
             </div>
 
+            <div class="tab-content" id="ecContent">
+                <div class="table-container">
+                    <div class="table-header">📞 EC Performance - By Salesman</div>
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th class="sticky-col salesman-name-col ec-name-col">Salesman</th>
+                                    <th class="sticky-col ec-tipe-col">Tipe</th>
+                                    <th class="col-wide">CR</th>
+                                    <th class="col-wide value-percentage">%CA</th>
+                                    <th class="col-wide value-percentage">%CAProd</th>
+                                    <th class="col-wide">PC</th>
+                                    <th class="col-wide value-percentage">%AC</th>
+                                    <th class="col-wide">EC</th>
+                                    <th class="col-wide value-percentage">%EC</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ecTableBody">
+                                <tr>
+                                    <td colspan="9" class="empty-state">
+                                        <div class="icon">⏳</div>
+                                        <div>Memuat data EC...</div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
             <!-- ===== VISIT REPORT TAB ===== -->
             <div class="tab-content" id="visitReportContent">
                 <!-- Toolbar: Date picker + buttons -->
@@ -1638,6 +1684,7 @@
         let paretoData = [];
         let pomData = [];
         let performanceData = [];
+        let salesmanProsesData = [];
 
         // ===== UTILITY FUNCTIONS =====
         function formatCurrencyIndonesia(value) {
@@ -1692,6 +1739,11 @@
             return 'ach-low';
         }
 
+        // Kolom % pada tabel: hijau jika >= threshold, merah jika < threshold (default 100)
+        function getPctClass(percentage, threshold = 100) {
+            return (parseFloat(percentage) || 0) >= threshold ? 'ach-high' : 'ach-low';
+        }
+
         function getGapClass(gap) {
             const v = parseFloat(String(gap).replace(/[^0-9.\-]/g, ''));
             return v < 0 ? 'gap-negative' : (v > 0 ? 'gap-positive' : '');
@@ -1707,9 +1759,10 @@
                 cfFetch('d.30pareto'),
                 cfFetch('d.tpom'),
                 cfFetch('d.performance'),
+                cfFetch('d.salesmanproses'),
             ]);
 
-            const [jks, channel, channelProj, project, pareto, pom, perf] = results;
+            const [jks, channel, channelProj, project, pareto, pom, perf, salesmanProses] = results;
 
             if (jks.status === 'fulfilled')         { jksData = jks.value; }
             else console.error('JKS data loading failed:', jks.reason.message);
@@ -1732,6 +1785,9 @@
 
             if (perf.status === 'fulfilled')        { performanceData = perf.value; console.log('Performance data loaded:', performanceData.length, 'records'); }
             else console.error('Performance data loading failed:', perf.reason.message);
+
+            if (salesmanProses.status === 'fulfilled') { salesmanProsesData = salesmanProses.value; console.log('SalesmanProses data loaded:', salesmanProsesData.length, 'records'); }
+            else console.error('SalesmanProses data loading failed:', salesmanProses.reason.message);
         }
 
         // ===== SUMMARY CALCULATIONS =====
@@ -1869,7 +1925,7 @@
                     <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(totalTarget)}</strong></td>
                     <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(totalActual)}</strong></td>
                     <td class="value-currency col-wide ${getGapClass(totalGap)}"><strong>${formatGap(totalGap)}</strong></td>
-                    <td class="value-percentage col-wide ${getAchievementClass(totalAchPercentage)}"><strong>${totalAchPercentage}%</strong></td>
+                    <td class="value-percentage col-wide ${getPctClass(totalAchPercentage)}"><strong>${totalAchPercentage}%</strong></td>
                     <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(totalLM)}</strong></td>
                     <td class="col-narrow">-</td>
                 </tr>
@@ -1891,7 +1947,7 @@
                         <td class="value-currency col-wide">${formatCurrencyIndonesia(target)}</td>
                         <td class="value-currency col-wide">${formatCurrencyIndonesia(actual)}</td>
                         <td class="value-currency col-wide ${getGapClass(gap)}">${formatGap(gap)}</td>
-                        <td class="value-percentage col-wide ${getAchievementClass(achPercentage)}">${achPercentage}%</td>
+                        <td class="value-percentage col-wide ${getPctClass(achPercentage)}">${achPercentage}%</td>
                         <td class="value-currency col-wide">${formatCurrencyIndonesia(lm)}</td>
                         <td class="col-narrow"><span class="rank-badge">#${index + 1}</span></td>
                     </tr>
@@ -1925,7 +1981,7 @@
                     <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(totalTarget)}</strong></td>
                     <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(totalActual)}</strong></td>
                     <td class="value-currency col-wide ${getGapClass(totalGap)}"><strong>${formatGap(totalGap)}</strong></td>
-                    <td class="value-percentage col-wide ${getAchievementClass(totalAch)}"><strong>${totalAch}%</strong></td>
+                    <td class="value-percentage col-wide ${getPctClass(totalAch)}"><strong>${totalAch}%</strong></td>
                     <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(totalLY)}</strong></td>
                     <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(totalLM)}</strong></td>
                 </tr>`;
@@ -1938,7 +1994,7 @@
                     <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(g.target)}</strong></td>
                     <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(g.actual)}</strong></td>
                     <td class="value-currency col-wide ${getGapClass(g.gap)}"><strong>${formatGap(g.gap)}</strong></td>
-                    <td class="value-percentage col-wide ${getAchievementClass(chAch)}"><strong>${chAch}%</strong></td>
+                    <td class="value-percentage col-wide ${getPctClass(chAch)}"><strong>${chAch}%</strong></td>
                     <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(g.ly)}</strong></td>
                     <td class="value-currency col-wide"><strong>${formatCurrencyIndonesia(g.lm)}</strong></td>
                 </tr>`;
@@ -1954,7 +2010,7 @@
                     <td class="value-currency col-wide">${formatCurrencyIndonesia(p.target)}</td>
                     <td class="value-currency col-wide">${formatCurrencyIndonesia(p.actual)}</td>
                     <td class="value-currency col-wide ${getGapClass(p.gap)}">${formatGap(p.gap)}</td>
-                    <td class="value-percentage col-wide ${getAchievementClass(projAch)}">${projAch}%</td>
+                    <td class="value-percentage col-wide ${getPctClass(projAch)}">${projAch}%</td>
                     <td class="value-currency col-wide">${formatCurrencyIndonesia(p.ly)}</td>
                     <td class="value-currency col-wide">${formatCurrencyIndonesia(p.lm)}</td>
                 </tr>`;
@@ -1991,7 +2047,7 @@
                         <td class="sticky-col salesman-name-col">
                             <strong style="font-size: 11px;">${salesman.name}</strong>
                         </td>
-                        <td class="value-percentage col-wide ${getAchievementClass(salesman.ach)}">${salesman.ach}%</td>
+                        <td class="value-percentage col-wide ${getPctClass(salesman.ach)}">${salesman.ach}%</td>
                         <td class="value-currency col-wide">${formatCurrencyIndonesia(salesman.actual)}</td>
                         <td class="value-currency col-wide ${getGapClass(salesman.gap)}">${formatGap(salesman.gap)}</td>
                         <td class="value-currency col-wide ${getGapClass(vsLM)}">${vsLMPercentage > 0 ? '+' : ''}${vsLMPercentage}%</td>
@@ -2102,7 +2158,7 @@
                         <td class="value-currency col-wide">${fmt(target)}</td>
                         <td class="value-currency col-wide">${fmt(actual)}</td>
                         <td class="value-currency col-wide ${getGapClass(gap)}">${fmtGap(gap)}</td>
-                        <td class="value-percentage col-wide ${getAchievementClass(achPercentage)}">${achPercentage}%</td>
+                        <td class="value-percentage col-wide ${getPctClass(achPercentage)}">${achPercentage}%</td>
                         <td class="col-medium">
                             <small style="font-size: 9px;">${(project.szname || '').substring(0, 10)}</small>
                         </td>
@@ -2181,7 +2237,7 @@
                     <td class="sticky-col pom-sku-col"><strong>TOTAL</strong></td>
                     <td><strong>${fmtPOM(totalTarget)}</strong></td>
                     <td><strong>${fmtPOM(totalActual)}</strong></td>
-                    <td class="${getAchievementClass(avgAchPercentage)}"><strong>${avgAchPercentage}%</strong></td>
+                    <td class="${getPctClass(avgAchPercentage)}"><strong>${avgAchPercentage}%</strong></td>
                     <td class="${getGapClass(totalGap)}"><strong>${fmtGapPOM(totalGap)}</strong></td>
                 </tr>
             `;
@@ -2197,8 +2253,59 @@
                         </td>
                         <td>${fmtPOM(skuData.target)}</td>
                         <td>${fmtPOM(skuData.actual)}</td>
-                        <td class="${getAchievementClass(achPercentage)}">${achPercentage}%</td>
+                        <td class="${getPctClass(achPercentage)}">${achPercentage}%</td>
                         <td class="${getGapClass(skuData.gap)}">${fmtGapPOM(skuData.gap)}</td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+        }
+
+        // Ambil inisial dari Tipe Salesman, misal "Sales Representative Wholesaler Arjuna" -> "SRWA"
+        function getTipeSalesmanInisial(tipe) {
+            if (!tipe) return '-';
+            if (/\bSAC\b/i.test(tipe)) return 'SAC';
+            return tipe.trim().split(/\s+/).map(w => w[0].toUpperCase()).join('');
+        }
+
+        function updateECTable() {
+            const tbody = document.getElementById('ecTableBody');
+            if (!tbody) return;
+
+            if (!salesmanProsesData || salesmanProsesData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" class="empty-state"><div class="icon">📞</div><div>Data EC tidak tersedia</div></td></tr>';
+                return;
+            }
+
+            const fmtNum = (val) => {
+                const n = parseFloat(val) || 0;
+                return n.toLocaleString('id-ID', { maximumFractionDigits: 1 });
+            };
+            const fmtPct = (val) => Math.round((parseFloat(val) || 0) * 100) + '%';
+
+            const rows = [...salesmanProsesData].sort((a, b) => (a.szname || '').localeCompare(b.szname || ''));
+
+            let html = '';
+            rows.forEach(item => {
+                const achCA = parseFloat(item.Ach_CA) * 100 || 0;
+                const achCAProd = parseFloat(item.Ach_CAProdAll) * 100 || 0;
+                const achPC = parseFloat(item.Ach_PC) * 100 || 0;
+                const ecIns = parseFloat(item.EC_Ins) * 100 || 0;
+                const isSAC = /\bSAC\b/i.test(item['Tipe Salesman'] || '');
+                const sacBg = isSAC ? ' style="background:#F2F2F2 !important;"' : '';
+
+                html += `
+                    <tr${isSAC ? ' style="background:#F2F2F2;"' : ''}>
+                        <td class="sticky-col salesman-name-col ec-name-col" title="${item.szname || ''}"${sacBg}><strong style="font-size: 11px;">${item.szname || '-'}</strong></td>
+                        <td class="sticky-col ec-tipe-col"${sacBg}>${getTipeSalesmanInisial(item['Tipe Salesman'])}</td>
+                        <td class="col-wide"${sacBg}>${fmtNum(item['A.CR'])}</td>
+                        <td class="col-wide value-percentage ${getPctClass(achCA)}"${sacBg}>${fmtPct(item.Ach_CA)}</td>
+                        <td class="col-wide value-percentage ${getPctClass(achCAProd)}"${sacBg}>${fmtPct(item.Ach_CAProdAll)}</td>
+                        <td class="col-wide"${sacBg}>${fmtNum(item['T.PC'])}</td>
+                        <td class="col-wide value-percentage ${getPctClass(achPC)}"${sacBg}>${fmtPct(item.Ach_PC)}</td>
+                        <td class="col-wide"${sacBg}>${fmtNum(item['A.EC'])}</td>
+                        <td class="col-wide value-percentage ${getPctClass(ecIns, 75)}"${sacBg}>${fmtPct(item.EC_Ins)}</td>
                     </tr>
                 `;
             });
@@ -2246,7 +2353,8 @@
                 buildITGSubTabs();                   // bangun sub-tab otomatis dari data
                 switchProjectITG(currentProjectITG); // init program pertama
                 updatePOMTable();
-                
+                updateECTable();
+
                 showLoading(false);
                 showMainContent(true);
 
