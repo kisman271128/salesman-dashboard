@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Buku Saku ITG</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 <style>
   :root {
     --navy:   #0f2057;
@@ -20,13 +21,19 @@
     --border: #e2e8f0;
   }
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family:'Segoe UI',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+  html, body { height:100%; }
+  body { font-family:'Segoe UI',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; display:flex; flex-direction:column; }
+
+  /* ── LAYOUT: content-row holds sidebar (search+outlet list) + main-content (detail) ── */
+  .content-row { display:flex; flex-direction:column; flex:1; min-height:0; }
+  .sidebar { display:flex; flex-direction:column; min-height:0; }
+  .main-content { display:flex; flex-direction:column; min-height:0; }
 
   /* ── TOP BAR ── */
   .top-bar {
     background:var(--navy); padding:13px 16px;
     display:flex; align-items:center; justify-content:space-between;
-    position:sticky; top:0; z-index:100;
+    position:sticky; top:0; z-index:100; flex-shrink:0;
   }
   .top-bar-left { display:flex; align-items:center; gap:10px; }
   .top-bar-icon { width:32px; height:32px; background:var(--accent); border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:15px; }
@@ -225,6 +232,62 @@
   .sku-ok   { color:#166534; font-weight:700; }
   .sku-warn { color:#dc2626; font-weight:700; }
   .sku-zero { color:#94a3b8; }
+
+  /* ── VISIT NOTE / DIGITAL SIGNATURE ── */
+  .visit-note-card { background:white; border:1.5px solid var(--border); border-radius:12px; padding:14px; }
+  .vn-label { display:block; font-size:9.5px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; margin:10px 0 5px; }
+  .vn-label:first-child { margin-top:0; }
+  .vn-textarea {
+    width:100%; border:1.5px solid var(--border); border-radius:8px; padding:9px 10px;
+    font-family:inherit; font-size:12px; color:var(--text); resize:vertical; min-height:80px;
+  }
+  .vn-textarea:focus, .vn-input:focus { outline:none; border-color:var(--teal); }
+  .vn-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .vn-input {
+    width:100%; border:1.5px solid var(--border); border-radius:8px; padding:8px 10px;
+    font-family:inherit; font-size:12px; color:var(--text);
+  }
+  .sig-wrap {
+    position:relative; border:1.5px dashed #cbd5e1; border-radius:8px;
+    background:#f8fafc; touch-action:none; overflow:hidden;
+  }
+  .sig-canvas { display:block; width:100%; height:160px; touch-action:none; cursor:crosshair; }
+  .sig-placeholder {
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    color:#94a3b8; font-size:11px; font-weight:600; pointer-events:none; text-align:center; width:100%;
+  }
+  .vn-actions { display:flex; gap:8px; margin-top:12px; }
+  .vn-btn {
+    flex:1; padding:10px; border-radius:8px; border:none; font-size:11px; font-weight:700;
+    cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; transition:filter .15s;
+  }
+  .vn-btn:hover { filter:brightness(0.95); }
+  .vn-btn-ghost   { background:var(--bg); color:var(--muted); border:1.5px solid var(--border); }
+  .vn-btn-primary { background:var(--navy); color:white; }
+  .vn-saved-hint { font-size:9.5px; color:#166534; margin-top:8px; text-align:center; display:none; }
+
+  /* ── WIDE VIEWPORT: tablet landscape / laptop → sidebar + main split-pane ── */
+  @media (min-width:860px) {
+    .content-row { flex-direction:row; overflow:hidden; }
+    .sidebar {
+      width:340px; flex-shrink:0; border-right:2px solid var(--border);
+      overflow:hidden;
+    }
+    .search-bar { flex-shrink:0; }
+    .outlet-list { flex:1; max-height:none; min-height:0; overflow-y:auto; }
+    .main-content { flex:1; min-height:0; overflow-y:auto; }
+    .loading-state { flex:1; }
+    .detail-area { overflow-y:visible; }
+    .detail-inner { max-width:900px; margin:0 auto; }
+
+    /* give the wide detail column a bit more breathing room in a few grids */
+    .metric-row { grid-template-columns:repeat(3,1fr); }
+  }
+
+  @media (min-width:1200px) {
+    .sidebar { width:380px; }
+    .detail-inner { max-width:1040px; }
+  }
 </style>
 </head>
 <body>
@@ -241,24 +304,26 @@
   <div class="top-bar-badge" id="rankBadge">#1 dari 30</div>
 </div>
 
-<!-- SEARCH + NAV -->
-<div class="search-bar">
-  <input class="search-input" id="searchInput" type="text" placeholder="🔍  Cari nama outlet..." oninput="filterOutlets()">
-  <button class="nav-btn" id="prevBtn" onclick="navigateOutlet(-1)">‹</button>
-  <button class="nav-btn" id="nextBtn" onclick="navigateOutlet(1)">›</button>
+<div class="content-row">
+  <!-- SIDEBAR: SEARCH + OUTLET LIST -->
+  <aside class="sidebar">
+    <div class="search-bar">
+      <input class="search-input" id="searchInput" type="text" placeholder="🔍  Cari nama outlet..." oninput="filterOutlets()">
+      <button class="nav-btn" id="prevBtn" onclick="navigateOutlet(-1)">‹</button>
+      <button class="nav-btn" id="nextBtn" onclick="navigateOutlet(1)">›</button>
+    </div>
+    <div class="outlet-list" id="outletList"></div>
+  </aside>
+
+  <!-- MAIN: LOADING / DETAIL -->
+  <main class="main-content">
+    <div class="loading-state" id="loadingState" style="display:flex;">
+      <div class="spinner"></div>
+      <div class="loading-text">Memuat data pareto...</div>
+    </div>
+    <div class="detail-area" id="detailArea" style="display:none;"></div>
+  </main>
 </div>
-
-<!-- OUTLET LIST -->
-<div class="outlet-list" id="outletList"></div>
-
-<!-- LOADING -->
-<div class="loading-state" id="loadingState" style="display:flex;">
-  <div class="spinner"></div>
-  <div class="loading-text">Memuat data pareto...</div>
-</div>
-
-<!-- DETAIL AREA -->
-<div class="detail-area" id="detailArea" style="display:none;"></div>
 
 <script>
 // ── Error validator: tampil di layar & relay ke parent console ──
@@ -526,6 +591,7 @@ function selectOutlet(idx) {
   const opsSection = buildOpsSection(o);
 
   document.getElementById('detailArea').innerHTML = `
+  <div class="detail-inner">
     <!-- OUTLET HEADER -->
     <div class="outlet-header">
       <div class="oh-rank-badge">🏆 Rank #${o.rank} · Top 30 Pareto</div>
@@ -604,6 +670,41 @@ function selectOutlet(idx) {
     <!-- AKTIVITAS -->
     ${opsSection}
 
+    <!-- CATATAN KUNJUNGAN + TANDA TANGAN DIGITAL -->
+    <div class="section">
+      <div class="section-title">
+        <h3>📝 Catatan Kunjungan</h3>
+        <span class="section-badge">Visit Report</span>
+      </div>
+      <div class="visit-note-card">
+        <label class="vn-label">Catatan / Temuan Kunjungan</label>
+        <textarea id="visitNotes" class="vn-textarea" rows="4" placeholder="Tulis catatan hasil kunjungan, kendala, komitmen outlet, dll..."></textarea>
+
+        <div class="vn-row">
+          <div>
+            <label class="vn-label">Nama Petugas</label>
+            <input type="text" id="visitPetugas" class="vn-input" placeholder="Nama petugas/salesman">
+          </div>
+          <div>
+            <label class="vn-label">Tanggal Kunjungan</label>
+            <input type="date" id="visitDate" class="vn-input">
+          </div>
+        </div>
+
+        <label class="vn-label">Tanda Tangan Digital</label>
+        <div class="sig-wrap">
+          <canvas id="sigCanvas" class="sig-canvas"></canvas>
+          <div class="sig-placeholder" id="sigPlaceholder">✍️ Tanda tangan di sini (jari / stylus)</div>
+        </div>
+
+        <div class="vn-actions">
+          <button type="button" class="vn-btn vn-btn-ghost" onclick="clearSignature()">🗑️ Hapus TTD</button>
+          <button type="button" class="vn-btn vn-btn-primary" onclick="saveVisitPDF()">📄 Simpan PDF</button>
+        </div>
+        <div class="vn-saved-hint" id="vnSavedHint">✅ PDF berhasil disimpan</div>
+      </div>
+    </div>
+
     <div style="height:8px;"></div>
 
     <!-- PLAN BY SKU -->
@@ -623,6 +724,7 @@ function selectOutlet(idx) {
     </div>
 
     <div style="height:16px;"></div>
+  </div>
   `;
 
   // Destroy old chart
@@ -633,6 +735,13 @@ function selectOutlet(idx) {
 
   // ── Render Plan SKU ──
   renderPlanSKU(o);
+
+  // ── Init Catatan Kunjungan / Signature Pad ──
+  const visitDateEl = document.getElementById('visitDate');
+  if (visitDateEl) visitDateEl.value = TODAY.toISOString().slice(0,10);
+  const visitPetugasEl = document.getElementById('visitPetugas');
+  if (visitPetugasEl && o.salesman) visitPetugasEl.value = o.salesman.split(' / ')[0];
+  initSignaturePad();
 
 
   // ── Metrics Bar Chart (horizontal) ──
@@ -1019,6 +1128,175 @@ function renderPlanSKU(o) {
   }).join('');
 
   body.innerHTML = `<div class="sku-container">${groups}</div>`;
+}
+
+// ── Catatan Kunjungan: Digital Signature Pad ──
+let sigCtx = null, sigDrawing = false, sigHasContent = false, sigLastPt = null;
+
+function initSignaturePad() {
+  const canvas = document.getElementById('sigCanvas');
+  if (!canvas) return;
+  const dpr  = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width  = Math.max(1, Math.round(rect.width  * dpr));
+  canvas.height = Math.max(1, Math.round(rect.height * dpr));
+
+  sigCtx = canvas.getContext('2d');
+  sigCtx.scale(dpr, dpr);
+  sigCtx.lineWidth   = 2.2;
+  sigCtx.lineCap     = 'round';
+  sigCtx.lineJoin    = 'round';
+  sigCtx.strokeStyle = '#0f2057';
+  sigHasContent = false;
+
+  canvas.onpointerdown   = sigStart;
+  canvas.onpointermove   = sigMove;
+  canvas.onpointerup     = sigEnd;
+  canvas.onpointerleave  = sigEnd;
+  canvas.onpointercancel = sigEnd;
+
+  const hint = document.getElementById('vnSavedHint');
+  if (hint) hint.style.display = 'none';
+}
+
+function sigPos(e) {
+  const rect = e.target.getBoundingClientRect();
+  return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+}
+function sigStart(e) {
+  e.preventDefault();
+  try { e.target.setPointerCapture(e.pointerId); } catch(err) {}
+  sigDrawing = true;
+  sigLastPt = sigPos(e);
+  const ph = document.getElementById('sigPlaceholder');
+  if (ph) ph.style.display = 'none';
+}
+function sigMove(e) {
+  if (!sigDrawing || !sigCtx) return;
+  e.preventDefault();
+  const p = sigPos(e);
+  sigCtx.beginPath();
+  sigCtx.moveTo(sigLastPt.x, sigLastPt.y);
+  sigCtx.lineTo(p.x, p.y);
+  sigCtx.stroke();
+  sigLastPt = p;
+  sigHasContent = true;
+}
+function sigEnd(e) {
+  sigDrawing = false;
+}
+function clearSignature() {
+  const canvas = document.getElementById('sigCanvas');
+  if (!canvas || !sigCtx) return;
+  const dpr = window.devicePixelRatio || 1;
+  sigCtx.clearRect(0, 0, canvas.width/dpr, canvas.height/dpr);
+  sigHasContent = false;
+  const ph = document.getElementById('sigPlaceholder');
+  if (ph) ph.style.display = 'block';
+  const hint = document.getElementById('vnSavedHint');
+  if (hint) hint.style.display = 'none';
+}
+
+// Reinit canvas sizing on rotate/resize so it stays crisp on tablets.
+// Only reinit while the pad is still empty — avoids wiping a signature already drawn.
+let sigResizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(sigResizeTimer);
+  sigResizeTimer = setTimeout(() => {
+    if (document.getElementById('sigCanvas') && !sigHasContent && !sigDrawing) initSignaturePad();
+  }, 250);
+});
+
+// ── Catatan Kunjungan: Save as PDF (notes + signature) ──
+async function saveVisitPDF() {
+  const o = filteredOutlets[currentIdx];
+  if (!o) return;
+  if (typeof window.jspdf === 'undefined') {
+    alert('Library PDF belum siap dimuat, coba lagi sebentar.');
+    return;
+  }
+
+  const notes   = (document.getElementById('visitNotes')  || {}).value || '';
+  const petugas = (document.getElementById('visitPetugas')|| {}).value || '-';
+  const tgl     = (document.getElementById('visitDate')   || {}).value || '';
+  const canvas  = document.getElementById('sigCanvas');
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'mm', format:'a5' });
+  const pw  = doc.internal.pageSize.getWidth();
+  let y = 15;
+
+  doc.setFontSize(14); doc.setFont(undefined,'bold');
+  doc.text('Catatan Kunjungan Outlet', pw/2, y, { align:'center' });
+  y += 4;
+  doc.setFontSize(8.5); doc.setFont(undefined,'normal'); doc.setTextColor(120);
+  doc.text('Buku Saku ITG', pw/2, y, { align:'center' });
+  doc.setTextColor(0);
+  y += 5;
+  doc.setDrawColor(200); doc.line(10, y, pw-10, y);
+  y += 8;
+
+  const field = (label, value) => {
+    doc.setFontSize(10);
+    doc.setFont(undefined,'bold');   doc.text(label, 12, y);
+    doc.setFont(undefined,'normal'); doc.text(String(value||'-'), 40, y);
+  };
+
+  field('Outlet:', o.nama);      y += 6;
+  field('Rank:', `#${o.rank} dari 30`); y += 6;
+  field('Salesman:', o.salesman); y += 6;
+
+  doc.setFontSize(10); doc.setFont(undefined,'bold'); doc.text('Alamat:', 12, y);
+  doc.setFont(undefined,'normal');
+  const alamatLines = doc.splitTextToSize(o.alamat || '-', pw - 52);
+  doc.text(alamatLines, 40, y);
+  y += 6 * Math.max(alamatLines.length, 1);
+
+  field('Tgl Kunjungan:', tgl); y += 6;
+  field('Petugas:', petugas);   y += 10;
+
+  doc.setFontSize(10); doc.setFont(undefined,'bold');
+  doc.text('Catatan Kunjungan:', 12, y);
+  y += 6;
+  doc.setFont(undefined,'normal');
+  const noteLines = doc.splitTextToSize(notes.trim() || '(tidak ada catatan)', pw - 24);
+  doc.text(noteLines, 12, y);
+  y += 5 * noteLines.length + 8;
+
+  doc.setFont(undefined,'bold');
+  doc.text('Tanda Tangan:', 12, y);
+  y += 3;
+  if (canvas && sigHasContent) {
+    try {
+      const imgData = canvas.toDataURL('image/png');
+      doc.addImage(imgData, 'PNG', 12, y, 60, 30);
+      y += 32;
+    } catch(err) {
+      doc.setFont(undefined,'normal'); doc.setFontSize(9);
+      doc.text('(gagal memuat tanda tangan)', 12, y + 8);
+      y += 14;
+    }
+  } else {
+    doc.setFont(undefined,'normal'); doc.setFontSize(9); doc.setTextColor(150);
+    doc.text('(belum ditandatangani)', 12, y + 8);
+    doc.setTextColor(0);
+    y += 14;
+  }
+  doc.setDrawColor(180);
+  doc.line(12, y, 72, y);
+  doc.setFontSize(8); doc.setTextColor(120);
+  doc.text('Tanda tangan petugas / outlet', 12, y + 4);
+  doc.setTextColor(0);
+
+  const safeName = o.nama.replace(/[^a-z0-9]+/gi, '_').slice(0, 40);
+  doc.save(`Kunjungan_${safeName}_${tgl || 'draft'}.pdf`);
+
+  const hint = document.getElementById('vnSavedHint');
+  if (hint) {
+    hint.style.display = 'block';
+    clearTimeout(saveVisitPDF._t);
+    saveVisitPDF._t = setTimeout(() => { hint.style.display = 'none'; }, 3000);
+  }
 }
 
 function togglePlanSKU() {
