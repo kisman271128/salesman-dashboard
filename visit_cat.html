@@ -7959,10 +7959,24 @@
             }
 
             const catData = catPelangganData.filter(item => {
-                return (item.id_pelanggan || '').toString().trim() === idPelanggan.toString().trim();
+                const idMatch = (item.id_pelanggan || '').toString().trim() === idPelanggan.toString().trim();
+                if (!idMatch) return false;
+
+                // ===== TEAM-BASED FILTER (Tim = tim Category Produk, bukan tim outlet) =====
+                const tim = (item.Tim || '').toString().trim().toUpperCase();
+                const salesmanTeamUpper = salesmanTeam.toUpperCase();
+
+                if (salesmanTeamUpper === 'ARJUNA') {
+                    return tim === 'ARJUNA';
+                } else if (salesmanTeamUpper === 'BIMA') {
+                    return tim === 'BIMA';
+                } else if (salesmanTeamUpper === 'YUDISTIRA') {
+                    return true; // Yudistira: tampilkan semua tim category
+                }
+                return true; // Team tidak terdeteksi, tampilkan semua
             });
 
-            console.log(`   ✅ Filtered ${catData.length} category records`);
+            console.log(`   ✅ Filtered ${catData.length} category records (Team: ${salesmanTeam})`);
 
             if (catData.length === 0) {
                 tableBody.innerHTML = `
