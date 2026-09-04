@@ -7351,12 +7351,28 @@
                     const channelGroup = detailRecord['Channel Group'] || 'Unknown';
                     const project = detailRecord.Project || 'Unknown';
                     customerTypeText = `${channelGroup} - ${project}`;
-                    
+
+                    // ===== FILTER SKU POM BERDASARKAN OUTLET TYPE (Channel Group) =====
+                    // MTI          → hanya SKU dengan Sts_POM = "POM MT"
+                    // Wholesaler/Retail → hanya SKU dengan Sts_POM = "POM"
+                    // FS           → tidak menampilkan SKU POM sama sekali
+                    const channelGroupUpper = channelGroup.toUpperCase();
+                    let allowedStsPom = null; // null = tidak difilter (tampilkan semua)
+                    if (channelGroupUpper.includes('MTI')) {
+                        allowedStsPom = 'POM MT';
+                    } else if (channelGroupUpper.includes('WHOLESALER') || channelGroupUpper.includes('RETAIL')) {
+                        allowedStsPom = 'POM';
+                    } else if (channelGroupUpper.includes('FS')) {
+                        allowedStsPom = 'NONE'; // sentinel: jangan tampilkan apapun
+                    }
+
                     // Get target SKU POM for this salesman from d.tpom.json
-                    const targetSkuPom = tpomData
+                    const targetSkuPom = allowedStsPom === 'NONE' ? [] : tpomData
                         .filter(item => {
                             const itemSalesmanId = (item.szEmployeeId || '').toString().trim();
-                            return itemSalesmanId === currentSalesmanId;
+                            if (itemSalesmanId !== currentSalesmanId) return false;
+                            if (allowedStsPom && (item.Sts_POM || '').toString().trim() !== allowedStsPom) return false;
+                            return true;
                         })
                         .map(item => (item.NickName || item.SKU_POM || '').toString().trim())
                         .filter(sku => sku !== '');
