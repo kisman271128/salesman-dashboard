@@ -18,7 +18,7 @@ const USERS = [
   // ── ADMIN PUSAT ──────────────────────────────────────
   {
     username: 'admin',
-    password: 'rastamania271128',
+    password: 'r45t4m4n14',
     name: 'Administrator Pusat',
     role: 'admin',
     depo: null,
@@ -29,7 +29,7 @@ const USERS = [
   // ── DEPO TANJUNG (kode: 0172) ────────────────────────
   {
     username: '017210032876',  // ganti NIK
-    password: 'sarabakawa2026',    // bisa seragam atau beda tiap salesman
+    password: 'sarabakawatanjung',    // bisa seragam atau beda tiap salesman
     name: 'Asman',
     role: 'salesman',
     depo: '0172',
@@ -38,7 +38,7 @@ const USERS = [
   },
   {
     username: '017210036369',
-    password: 'sarabakawa2026',
+    password: 'sarabakawatanjung',
     name: 'Muhammad Tamrin',
     role: 'salesman',
     depo: '0172',
@@ -47,7 +47,7 @@ const USERS = [
   },
   {
     username: '017210037632',
-    password: 'sarabakawa2026',
+    password: 'sarabakawatanjung',
     name: 'Robianor',
     role: 'salesman',
     depo: '0172',
@@ -56,7 +56,7 @@ const USERS = [
   },
   {
     username: '017210037897',
-    password: 'sarabakawa2026',
+    password: 'sarabakawatanjung',
     name: 'Hindra',
     role: 'salesman',
     depo: '0172',
@@ -64,26 +64,17 @@ const USERS = [
     active: true
   },
   {
-    username: '017210041467',
-    password: 'sarabakawa2026',
-    name: 'Doli Purnama Sari',
-    role: 'salesman',
-    depo: '0172',
-    region: 'KALIMANTAN',
-    active: true
-  },
-  {
-    username: '017210042412',
-    password: 'sarabakawa2026',
-    name: 'Muhammad Rizky Algifari',
-    role: 'salesman',
+    username: '017210036576',
+    password: 'sarabakawatanjung',
+    name: 'Muhammad Yasir',
+    role: 'admin',
     depo: '0172',
     region: 'KALIMANTAN',
     active: true
   },
   {
     username: '017210042423',
-    password: 'sarabakawa2026',
+    password: 'sarabakawatanjung',
     name: 'Siti Fatimah Hadijah',
     role: 'salesman',
     depo: '0172',
@@ -92,7 +83,7 @@ const USERS = [
   },
   {
     username: '017210043127',
-    password: 'sarabakawa2026',
+    password: 'sarabakawatanjung',
     name: 'Mahrita',
     role: 'salesman',
     depo: '0172',
