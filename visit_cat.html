@@ -189,20 +189,29 @@
         }
 
         .sku-gap-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
-            border-top: 1px solid #B2EBF2;
-            border-left: 1px solid #B2EBF2;
+            column-width: 100px;
+            column-count: 3;
+            column-gap: 18px;
+        }
+
+        .sku-gap-category-block {
+            break-inside: avoid-column;
+            -webkit-column-break-inside: avoid;
+            page-break-inside: avoid;
+            margin-bottom: 14px;
         }
 
         .sku-gap-item {
             display: flex;
             flex-direction: column;
             gap: 2px;
-            padding: 4px 5px;
-            border-right: 1px solid #B2EBF2;
-            border-bottom: 1px solid #B2EBF2;
+            padding: 4px 0 6px;
+            border-bottom: 1px solid rgba(84, 110, 122, 0.12);
             font-size: 11px;
+        }
+
+        .sku-gap-item:last-child {
+            border-bottom: none;
         }
 
         .sku-gap-item-sku {
@@ -223,7 +232,7 @@
         .sku-gap-item-value {
             font-size: 10px;
             font-weight: 700;
-            color: #E74C3C;
+            color: #546E7A;
             white-space: nowrap;
         }
 
@@ -242,25 +251,13 @@
         }
 
         .sku-gap-group-title {
-            grid-column: 1 / -1;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            font-size: 11px;
-            font-weight: 700;
-            color: #17B5C8;
-            padding: 6px 8px 4px;
-            background: #F5FDFE;
-            border-bottom: 1px solid #B2EBF2;
-        }
-
-        .sku-gap-group-count {
+            display: inline-block;
             font-size: 10px;
             font-weight: 700;
-            color: #78909C;
-            background: #ECEFF1;
+            padding: 2px 9px;
             border-radius: 8px;
-            padding: 1px 6px;
+            margin-bottom: 6px;
+            white-space: nowrap;
         }
 
         /* ===== PAUSE/RESUME SPECIFIC STYLES ===== */
@@ -5839,6 +5836,30 @@
             return abs.toFixed(0);
         }
 
+        // Palet pastel (background + teks kontras) untuk badge nama kategori,
+        // dipilih deterministik per nama kategori (hash) supaya warnanya konsisten.
+        const SKU_GAP_CATEGORY_PALETTE = [
+            { bg: '#E3F2FD', text: '#0D47A1' }, // biru
+            { bg: '#FCE4EC', text: '#AD1457' }, // pink
+            { bg: '#E8F5E9', text: '#1B5E20' }, // hijau
+            { bg: '#FFF3E0', text: '#E65100' }, // oranye
+            { bg: '#F3E5F5', text: '#6A1B9A' }, // ungu
+            { bg: '#FFFDE7', text: '#F57F17' }, // kuning
+            { bg: '#E0F7FA', text: '#00838F' }, // cyan
+            { bg: '#FBE9E7', text: '#BF360C' }, // deep orange
+            { bg: '#EDE7F6', text: '#4527A0' }, // indigo
+            { bg: '#F1F8E9', text: '#33691E' }  // light green
+        ];
+
+        function getCategoryBadgeColor(categoryName) {
+            const str = (categoryName || '').toString();
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
+            }
+            return SKU_GAP_CATEGORY_PALETTE[hash % SKU_GAP_CATEGORY_PALETTE.length];
+        }
+
         function renderSkuGapGuide(panelId, outletName, hariJKS) {
             const panel = document.getElementById(panelId);
             if (!panel) return;
@@ -5861,8 +5882,9 @@
 
             // Kelompokkan per Cat1, urutan grup mengikuti kemunculan pertama
             // (rows sudah terurut gap terburuk dulu, jadi grup dgn gap terburuk juga tampil dulu).
-            // Tetap satu grid menyatu (seperti tampilan awal), label kategori disisipkan
-            // sebagai baris penuh di dalam grid yang sama — bukan kotak terpisah per kategori.
+            // Layout multi-kolom (seperti masonry): tiap kategori jadi satu blok
+            // (break-inside: avoid-column) supaya tidak terpotong di tengah kolom,
+            // dengan badge nama kategori berwarna beda-beda (color-coded).
             const groups = new Map();
             rows.forEach(row => {
                 if (!groups.has(row.cat1)) groups.set(row.cat1, []);
@@ -5870,11 +5892,9 @@
             });
 
             const itemsHtml = [...groups.entries()].map(([cat1, groupRows]) => {
+                const palette = getCategoryBadgeColor(cat1);
                 const header = `
-                    <div class="sku-gap-group-title">
-                        <span>${cat1}</span>
-                        <span class="sku-gap-group-count">${groupRows.length}</span>
-                    </div>
+                    <div class="sku-gap-group-title" style="background:${palette.bg}; color:${palette.text};">${cat1}</div>
                 `;
                 const items = groupRows.map(row => `
                     <div class="sku-gap-item">
@@ -5885,7 +5905,7 @@
                         </span>
                     </div>
                 `).join('');
-                return header + items;
+                return `<div class="sku-gap-category-block">${header}${items}</div>`;
             }).join('');
 
             const totalGapValue = rows.reduce((sum, row) => sum + row.gapValue, 0);
