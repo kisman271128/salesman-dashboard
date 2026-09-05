@@ -8013,21 +8013,14 @@
                 const idMatch = (item.id_pelanggan || '').toString().trim() === idPelanggan.toString().trim();
                 if (!idMatch) return false;
 
-                // ===== TEAM-BASED FILTER (Tim = tim Category Produk, bukan tim outlet) =====
-                const tim = (item.Tim || '').toString().trim().toUpperCase();
-                const salesmanTeamUpper = salesmanTeam.toUpperCase();
-
-                if (salesmanTeamUpper === 'ARJUNA') {
-                    return tim === 'ARJUNA';
-                } else if (salesmanTeamUpper === 'BIMA') {
-                    return tim === 'BIMA';
-                } else if (salesmanTeamUpper === 'YUDISTIRA') {
-                    return true; // Yudistira: tampilkan semua tim category
-                }
-                return true; // Team tidak terdeteksi, tampilkan semua
+                // ===== FILTER LANGSUNG BERDASARKAN szEmployeeId =====
+                // Setiap baris category sekarang sudah ditandai szEmployeeId pemiliknya
+                // (untuk outlet "Mix" yang dilayani 2 sales, tiap baris hanya dimiliki 1 sales),
+                // jadi tidak perlu lagi menebak tim dari field Tim/Tipe Salesman.
+                return String(item.szEmployeeId) === currentSalesmanId;
             });
 
-            console.log(`   ✅ Filtered ${catData.length} category records (Team: ${salesmanTeam})`);
+            console.log(`   ✅ Filtered ${catData.length} category records (Salesman ID: ${currentSalesmanId})`);
 
             // ===== KATEGORI BELUM AKTIF (tidak ada baris sama sekali di outlet ini) =====
             const existingKeys = new Set(catData.map(item => `${item.LOB || ''}|${item.Category || ''}`));
