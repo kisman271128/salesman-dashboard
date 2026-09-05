@@ -241,6 +241,31 @@
             padding: 6px 0;
         }
 
+        .sku-gap-group-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 11px;
+            font-weight: 700;
+            color: #17B5C8;
+            margin: 10px 0 4px;
+            padding-bottom: 2px;
+            border-bottom: 1px solid #B2EBF2;
+        }
+
+        .sku-gap-group-title:first-of-type {
+            margin-top: 2px;
+        }
+
+        .sku-gap-group-count {
+            font-size: 10px;
+            font-weight: 700;
+            color: #78909C;
+            background: #ECEFF1;
+            border-radius: 8px;
+            padding: 1px 6px;
+        }
+
         /* ===== PAUSE/RESUME SPECIFIC STYLES ===== */
         .visit-modal-pause {
             background: linear-gradient(135deg, #FFFDE7, #F39C12);
@@ -5793,11 +5818,12 @@
             return visitData
                 .map(item => {
                     const sku = item.SKU || 'N/A';
+                    const cat1 = (item.Cat1 || '').toString().trim() || 'Lainnya';
                     const plan = Number(item.Plan) || 0;
                     const mtd = Number(item.UnitMTD) || 0;
                     const gap = Number(item.Gap) || (mtd - plan);
                     const gapValue = Number(item.GapValue) || 0;
-                    return { sku, plan, mtd, gap, gapValue };
+                    return { sku, cat1, plan, mtd, gap, gapValue };
                 })
                 .filter(row => row.gap < 0)
                 .sort((a, b) => a.gap - b.gap);
@@ -5836,21 +5862,38 @@
                 return;
             }
 
-            const items = rows.map(row => `
-                <div class="sku-gap-item">
-                    <span class="sku-gap-item-sku">${row.sku}</span>
-                    <span class="sku-gap-item-values">
-                        <span class="gap-badge gap-negative">${formatNumber(row.gap)}</span>
-                        <span class="sku-gap-item-value">${formatRupiahShort(row.gapValue)}</span>
-                    </span>
-                </div>
-            `).join('');
+            // Kelompokkan per Cat1, urutan grup mengikuti kemunculan pertama
+            // (rows sudah terurut gap terburuk dulu, jadi grup dgn gap terburuk juga tampil dulu)
+            const groups = new Map();
+            rows.forEach(row => {
+                if (!groups.has(row.cat1)) groups.set(row.cat1, []);
+                groups.get(row.cat1).push(row);
+            });
+
+            const groupsHtml = [...groups.entries()].map(([cat1, groupRows]) => {
+                const items = groupRows.map(row => `
+                    <div class="sku-gap-item">
+                        <span class="sku-gap-item-sku">${row.sku}</span>
+                        <span class="sku-gap-item-values">
+                            <span class="gap-badge gap-negative">${formatNumber(row.gap)}</span>
+                            <span class="sku-gap-item-value">${formatRupiahShort(row.gapValue)}</span>
+                        </span>
+                    </div>
+                `).join('');
+                return `
+                    <div class="sku-gap-group-title">
+                        <span>${cat1}</span>
+                        <span class="sku-gap-group-count">${groupRows.length}</span>
+                    </div>
+                    <div class="sku-gap-grid">${items}</div>
+                `;
+            }).join('');
 
             const totalGapValue = rows.reduce((sum, row) => sum + row.gapValue, 0);
 
             panel.innerHTML = `
                 <div class="sku-gap-summary-title">🎯 Tawarkan ${rows.length} SKU berikut untuk kejar target:</div>
-                <div class="sku-gap-grid">${items}</div>
+                ${groupsHtml}
             `;
 
             if (totalHeader) totalHeader.textContent = `💰 ${formatRupiahShort(totalGapValue)}`;
