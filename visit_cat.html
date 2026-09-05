@@ -177,7 +177,7 @@
         .sku-gap-guide-body {
             margin-top: 16px;
             text-align: left;
-            max-height: 320px;
+            max-height: 60vh;
             overflow-y: auto;
         }
 
@@ -242,19 +242,16 @@
         }
 
         .sku-gap-group-title {
+            grid-column: 1 / -1;
             display: flex;
             align-items: center;
             justify-content: space-between;
             font-size: 11px;
             font-weight: 700;
             color: #17B5C8;
-            margin: 10px 0 4px;
-            padding-bottom: 2px;
+            padding: 6px 8px 4px;
+            background: #F5FDFE;
             border-bottom: 1px solid #B2EBF2;
-        }
-
-        .sku-gap-group-title:first-of-type {
-            margin-top: 2px;
         }
 
         .sku-gap-group-count {
@@ -2989,7 +2986,7 @@
 
         <!-- SKU Resume & Gap Target Guide Modal (mengambang seperti Green Store) -->
         <div class="visit-modal" id="skuGapGuideModal">
-            <div class="visit-modal-content" style="max-width: 560px;">
+            <div class="visit-modal-content" style="max-width: 720px;">
                 <div class="visit-modal-title" style="display: flex; justify-content: space-between; align-items: center;">
                     <span>📋 Panduan SKU & Gap Target</span>
                     <div style="display: flex; align-items: center; gap: 10px;">
@@ -5863,14 +5860,22 @@
             }
 
             // Kelompokkan per Cat1, urutan grup mengikuti kemunculan pertama
-            // (rows sudah terurut gap terburuk dulu, jadi grup dgn gap terburuk juga tampil dulu)
+            // (rows sudah terurut gap terburuk dulu, jadi grup dgn gap terburuk juga tampil dulu).
+            // Tetap satu grid menyatu (seperti tampilan awal), label kategori disisipkan
+            // sebagai baris penuh di dalam grid yang sama — bukan kotak terpisah per kategori.
             const groups = new Map();
             rows.forEach(row => {
                 if (!groups.has(row.cat1)) groups.set(row.cat1, []);
                 groups.get(row.cat1).push(row);
             });
 
-            const groupsHtml = [...groups.entries()].map(([cat1, groupRows]) => {
+            const itemsHtml = [...groups.entries()].map(([cat1, groupRows]) => {
+                const header = `
+                    <div class="sku-gap-group-title">
+                        <span>${cat1}</span>
+                        <span class="sku-gap-group-count">${groupRows.length}</span>
+                    </div>
+                `;
                 const items = groupRows.map(row => `
                     <div class="sku-gap-item">
                         <span class="sku-gap-item-sku">${row.sku}</span>
@@ -5880,20 +5885,14 @@
                         </span>
                     </div>
                 `).join('');
-                return `
-                    <div class="sku-gap-group-title">
-                        <span>${cat1}</span>
-                        <span class="sku-gap-group-count">${groupRows.length}</span>
-                    </div>
-                    <div class="sku-gap-grid">${items}</div>
-                `;
+                return header + items;
             }).join('');
 
             const totalGapValue = rows.reduce((sum, row) => sum + row.gapValue, 0);
 
             panel.innerHTML = `
                 <div class="sku-gap-summary-title">🎯 Tawarkan ${rows.length} SKU berikut untuk kejar target:</div>
-                ${groupsHtml}
+                <div class="sku-gap-grid">${itemsHtml}</div>
             `;
 
             if (totalHeader) totalHeader.textContent = `💰 ${formatRupiahShort(totalGapValue)}`;
