@@ -1546,6 +1546,41 @@
             background: linear-gradient(135deg, #546E7A, #475569);
         }
 
+        /* ===== CATEGORY STATUS BADGE (visit_cat.html) ===== */
+        .category-badge {
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 10px;
+            font-weight: 700;
+            display: inline-block;
+        }
+
+        /* Kategori 3LM ada tapi MTD belum ada (mulai tidak aktif) */
+        .category-badge-underactive {
+            background: #FFC107;
+            color: #3E2723;
+        }
+
+        /* Kategori belum pernah ada transaksi di outlet ini sama sekali */
+        .category-badge-missing {
+            background: #CFD8DC;
+            color: #37474F;
+        }
+
+        .category-section-divider td {
+            background: #ECEFF1 !important;
+            color: #607D8B;
+            font-weight: 700;
+            font-size: 11px;
+            text-align: center;
+            padding: 8px 4px;
+            letter-spacing: 0.3px;
+        }
+
+        .category-row-missing td {
+            color: #90A4AE;
+        }
+
         /* ===== TABLE ROW STYLING ===== */
         .summary-row {
             background: linear-gradient(135deg, #E0F7FA, #FFFFFF);
@@ -7994,7 +8029,29 @@
 
             console.log(`   ✅ Filtered ${catData.length} category records (Team: ${salesmanTeam})`);
 
-            if (catData.length === 0) {
+            // ===== KATEGORI BELUM AKTIF (tidak ada baris sama sekali di outlet ini) =====
+            const existingKeys = new Set(catData.map(item => `${item.LOB || ''}|${item.Category || ''}`));
+            const master = getCategoryMasterByTeam();
+            const salesmanTeamUpper2 = salesmanTeam.toUpperCase();
+            let masterKeys;
+            if (salesmanTeamUpper2 === 'ARJUNA') {
+                masterKeys = master.ARJUNA;
+            } else if (salesmanTeamUpper2 === 'BIMA') {
+                masterKeys = master.BIMA;
+            } else {
+                masterKeys = new Set([...master.ARJUNA, ...master.BIMA]);
+            }
+
+            const missingCategories = [...masterKeys]
+                .filter(key => !existingKeys.has(key))
+                .map(key => {
+                    const [lob, category] = key.split('|');
+                    return { LOB: lob, Category: category };
+                });
+
+            console.log(`   ℹ️ Kategori belum aktif di outlet ini: ${missingCategories.length}`);
+
+            if (catData.length === 0 && missingCategories.length === 0) {
                 tableBody.innerHTML = `
                     <tr>
                         <td colspan="7">
@@ -8009,7 +8066,21 @@
             }
 
             window.currentFilteredData = [...catData];
-            renderTableData(catData);
+            renderTableData(catData, missingCategories);
+        }
+
+        // ===== MASTER LIST KATEGORI PER TIM (dihitung sekali dari catPelangganData) =====
+        let categoryMasterByTeamCache = null;
+        function getCategoryMasterByTeam() {
+            if (categoryMasterByTeamCache) return categoryMasterByTeamCache;
+            categoryMasterByTeamCache = { ARJUNA: new Set(), BIMA: new Set() };
+            catPelangganData.forEach(item => {
+                const tim = (item.Tim || '').toString().trim().toUpperCase();
+                const key = `${item.LOB || ''}|${item.Category || ''}`;
+                if (tim === 'ARJUNA') categoryMasterByTeamCache.ARJUNA.add(key);
+                else if (tim === 'BIMA') categoryMasterByTeamCache.BIMA.add(key);
+            });
+            return categoryMasterByTeamCache;
         }
 
         // ===== TABLE RENDERING FUNCTIONS =====
@@ -8058,10 +8129,10 @@
             }
         }
 
-        function renderTableData(data) {
+        function renderTableData(data, missingCategories = []) {
             const tableBody = document.getElementById('tableBody');
-            
-            if (data.length === 0) {
+
+            if (data.length === 0 && missingCategories.length === 0) {
                 tableBody.innerHTML = `
                     <tr>
                         <td colspan="7">
@@ -8077,9 +8148,10 @@
 
             let html = '';
             let totalPlan = 0, totalMTD = 0;
+            let no = 0;
 
-            data.forEach((item, index) => {
-                const no = index + 1;
+            data.forEach((item) => {
+                no++;
                 const lob = item.LOB || 'N/A';
                 const category = item.Category || 'N/A';
                 const threeLM = Number(item['3LM']) || 0;
@@ -8092,11 +8164,17 @@
 
                 const gapBadgeClass = gap > 0 ? 'gap-positive' : gap < 0 ? 'gap-negative' : 'gap-neutral';
 
+                // 3LM ada tapi MTD belum ada → kategori mulai tidak aktif
+                const isUnderactive = threeLM > 0 && mtd === 0;
+                const categoryHtml = isUnderactive
+                    ? `<span class="category-badge category-badge-underactive">${category}</span>`
+                    : category;
+
                 html += `
                     <tr>
                         <td>${no}</td>
                         <td>${lob}</td>
-                        <td>${category}</td>
+                        <td>${categoryHtml}</td>
                         <td><span class="gap-badge ${gapBadgeClass}">${gap > 0 ? '+' : ''}${formatNumber(gap)}</span></td>
                         <td class="metric-value">${formatNumber(plan)}</td>
                         <td class="metric-value">${formatNumber(mtd)}</td>
@@ -8104,6 +8182,28 @@
                     </tr>
                 `;
             });
+
+            if (missingCategories.length > 0) {
+                html += `
+                    <tr class="category-section-divider">
+                        <td colspan="7">Kategori Belum Aktif</td>
+                    </tr>
+                `;
+                missingCategories.forEach((item) => {
+                    no++;
+                    html += `
+                        <tr class="category-row-missing">
+                            <td>${no}</td>
+                            <td>${item.LOB}</td>
+                            <td><span class="category-badge category-badge-missing">${item.Category}</span></td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                        </tr>
+                    `;
+                });
+            }
 
             const totalGap = totalMTD - totalPlan;
             const totalGapBadgeClass = totalGap > 0 ? 'gap-positive' : totalGap < 0 ? 'gap-negative' : 'gap-neutral';
@@ -8122,7 +8222,7 @@
 
             tableBody.innerHTML = html;
 
-            console.log(`📊 Table rendered: ${data.length} kategori items with summary row`);
+            console.log(`📊 Table rendered: ${data.length} kategori aktif + ${missingCategories.length} belum aktif`);
         }
 
         function generateRecommendation(gap, plan, mtd) {
