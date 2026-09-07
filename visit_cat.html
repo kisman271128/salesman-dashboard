@@ -1580,6 +1580,12 @@
             color: #006064;
         }
 
+        /* Kategori sudah transaksi (MTD > 0) */
+        .category-badge-transacted {
+            background: #25A75C;
+            color: #FFFFFF;
+        }
+
         /* Kategori 3LM ada tapi MTD belum ada (mulai tidak aktif) */
         .category-badge-underactive {
             background: #FFFF00;
@@ -2986,6 +2992,10 @@
         .category-badge-active {
             background: #D4ED5C !important;
             color: #14210D !important;
+        }
+        .category-badge-transacted {
+            background: #25A75C !important;
+            color: #FFFFFF !important;
         }
         .category-badge-underactive {
             background: #FFFF00 !important;
@@ -8284,17 +8294,34 @@
                 return;
             }
 
+            // ===== GABUNGKAN KATEGORI YANG BERULANG (group by LOB + Category) =====
+            // Angka Plan / MTD / 3LM dijumlahkan menjadi satu baris summary per kategori.
+            const groupedMap = new Map();
+            data.forEach((item) => {
+                const lob = item.LOB || 'N/A';
+                const category = item.Category || 'N/A';
+                const key = `${lob}|${category}`;
+                if (!groupedMap.has(key)) {
+                    groupedMap.set(key, { LOB: lob, Category: category, plan: 0, mtd: 0, threeLM: 0 });
+                }
+                const g = groupedMap.get(key);
+                g.plan += Number(item.Plan) || 0;
+                g.mtd += Number(item.MTD) || 0;
+                g.threeLM += Number(item['3LM']) || 0;
+            });
+            const groupedData = Array.from(groupedMap.values());
+
             let html = '';
             let totalPlan = 0, totalMTD = 0;
             let no = 0;
 
-            data.forEach((item) => {
+            groupedData.forEach((item) => {
                 no++;
-                const lob = item.LOB || 'N/A';
-                const category = item.Category || 'N/A';
-                const threeLM = Number(item['3LM']) || 0;
-                const plan = Number(item.Plan) || 0;
-                const mtd = Number(item.MTD) || 0;
+                const lob = item.LOB;
+                const category = item.Category;
+                const threeLM = item.threeLM;
+                const plan = item.plan;
+                const mtd = item.mtd;
                 const gap = mtd - plan;
 
                 totalPlan += plan;
@@ -8302,9 +8329,12 @@
 
                 const gapBadgeClass = gap > 0 ? 'gap-positive' : gap < 0 ? 'gap-negative' : 'gap-neutral';
 
+                // sudah transaksi (MTD > 0) → badge hijau
                 // 3LM ada tapi MTD belum ada → kategori mulai tidak aktif
                 const isUnderactive = threeLM > 0 && mtd === 0;
-                const categoryBadgeClass = isUnderactive ? 'category-badge-underactive' : 'category-badge-active';
+                const categoryBadgeClass = mtd > 0
+                    ? 'category-badge-transacted'
+                    : (isUnderactive ? 'category-badge-underactive' : 'category-badge-active');
                 const categoryHtml = `<span class="category-badge ${categoryBadgeClass}">${category}</span>`;
 
                 html += `
