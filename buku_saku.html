@@ -215,8 +215,7 @@
   .sku-container {
     column-count: 3;
     column-gap: 5px;
-    column-fill: auto; /* 'balance' can invent an extra overflow column when one
-                           break-inside:avoid group is much taller than the rest */
+    column-fill: balance;
   }
   .sku-group {
     break-inside: avoid;
@@ -275,7 +274,8 @@
 
   /* ── PRINT REPORT (dirender off-screen, dipotret html2canvas → jsPDF saat "Simpan PDF") ──
        Satu halaman ringkas gaya majalah: semua program & section tampil sekaligus,
-       disusun mengalir dalam kolom (CSS multi-column) supaya muat dalam 1 halaman lebar. ── */
+       disusun dalam 3 kolom berlebar tetap (float, lihat .pr-columns) supaya muat
+       dalam 1 halaman lebar tanpa ada yang terpotong saat dipotret html2canvas. ── */
   #printReportRoot { position:fixed; left:-99999px; top:0; z-index:-1; width:1300px; background:#fff; }
   .pr-page { padding:22px; background:#fff; }
   .pr-titlebar { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; }
@@ -285,15 +285,27 @@
   }
   .pr-meta { font-size:10.5px; color:var(--muted); text-align:right; line-height:1.6; }
   .pr-meta b { color:var(--text); }
-  /* Kolom eksplisit (grid), bukan CSS column-count — column-count dengan tinggi auto bisa
-     "menemukan" kolom ke-4 di luar lebar halaman saat kontennya berat sebelah, dan itu
-     yang bikin sisi kanan laporan pernah terpotong. Pembagian per kolom dilakukan di JS. */
-  .pr-columns { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; align-items:start; }
-  .pr-col { display:flex; flex-direction:column; min-width:0; }
+  /* Kolom eksplisit dengan float + lebar px pasti — BUKAN CSS column-count (bisa
+     "menemukan" kolom ke-4 di luar halaman saat konten berat sebelah) dan BUKAN
+     grid/flex (html2canvas kadang salah menghitung lebar track grid/flex di
+     kontainer terluar, sehingga kolom kanan ikut mengecil/terpotong saat dipotret).
+     Float + lebar tetap adalah yang paling konsisten dipotret html2canvas.
+     Lebar dihitung dari #printReportRoot = 1300px, padding .pr-page 22px×2:
+     (1300-44-2*16)/3 = 408px per kolom laporan; sub-kolom SKU: (408-2*6)/3 = 132px. */
+  .pr-columns { overflow:hidden; }
+  .pr-col { float:left; width:408px; margin-right:16px; }
+  .pr-col:last-child { margin-right:0; }
   .pr-block { margin-bottom:14px; border-radius:12px; overflow:hidden; box-shadow:0 2px 6px rgba(15,23,42,.08); }
   .pr-block.plain { box-shadow:none; }
-  .pr-sku-cols { display:flex; gap:6px; align-items:flex-start; }
-  .pr-sku-col { flex:1; min-width:0; display:flex; flex-direction:column; gap:5px; }
+  .pr-sku-cols { overflow:hidden; }
+  .pr-sku-col { float:left; width:132px; margin-right:6px; }
+  .pr-sku-col:last-child { margin-right:0; }
+  /* Lebar kolom tabel SKU dipatok (bukan auto) supaya tidak pernah lebih lebar dari
+     132px sub-kolomnya — cuma berlaku di laporan cetak, panel "Plan by SKU" langsung
+     di aplikasi tetap pakai .sku-container aslinya (table-layout:auto). */
+  .pr-sku-col .sku-tbl { table-layout:fixed; }
+  .pr-sku-col .sku-tbl th:first-child, .pr-sku-col .sku-tbl td:first-child { width:46%; }
+  .pr-sku-col .sku-tbl th:not(:first-child), .pr-sku-col .sku-tbl td:not(:first-child) { width:27%; }
   .pr-section-label {
     font-size:11px; font-weight:800; color:var(--navy); display:flex; align-items:center; gap:6px;
     margin-bottom:8px;
@@ -433,6 +445,21 @@ function fmtPct(a,t) { if (!t||t===0) return a>0?'100%':'0%'; return Math.round(
 function pctNum(a,t) { if (!t||t===0) return a>0?100:0; return Math.round((a/t)*100); }
 function escapeHtml(s) {
   return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// "Petugas" pada Catatan Kunjungan/TTD = orang yang login ke aplikasi (bukan salesman
+// outlet-nya) — admin ditampilkan sebagai "Branch Head", selain itu pakai nama loginnya.
+function getPetugasName() {
+  try {
+    const currentUser = (sessionStorage.getItem('currentUser') || '').trim();
+    const storedRole  = (sessionStorage.getItem('userRole')    || '').trim().toLowerCase();
+    const userName    = (sessionStorage.getItem('userName')    || '').trim();
+    const isAdmin = storedRole === 'admin' || currentUser.toLowerCase() === 'admin';
+    if (isAdmin) return 'Branch Head';
+    return userName || currentUser || '';
+  } catch(e) {
+    return '';
+  }
 }
 
 // ── Cloudflare Worker Config ──
@@ -674,7 +701,7 @@ function buildMetricsChartConfig(o, opts={}) {
           const label = fmtRp(val);
           ctx.save();
           ctx.font = 'bold 9px Segoe UI, sans-serif';
-          ctx.fillStyle = val < 0 ? '#e8392a' : '#1e293b';
+          ctx.fillStyle = val < 0 ? '#ffffff' : '#1e293b'; // label Gap negatif jatuh di atas bar merah → putih
           ctx.textAlign = 'left';
           ctx.textBaseline = 'middle';
           ctx.fillText(label, xPos + 5, yPos);
@@ -864,7 +891,7 @@ function selectOutlet(idx) {
   const visitDateEl = document.getElementById('visitDate');
   if (visitDateEl) visitDateEl.value = TODAY.toISOString().slice(0,10);
   const visitPetugasEl = document.getElementById('visitPetugas');
-  if (visitPetugasEl && o.salesman) visitPetugasEl.value = o.salesman.split(' / ')[0];
+  if (visitPetugasEl) visitPetugasEl.value = getPetugasName();
   initSignaturePad();
 
 
