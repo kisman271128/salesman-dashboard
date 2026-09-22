@@ -48,8 +48,6 @@
   .top-bar-right { display:flex; align-items:center; gap:8px; }
   .reward-btn { background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.25); color:white; font-size:10px; font-weight:700; padding:4px 10px; border-radius:20px; cursor:pointer; display:flex; align-items:center; gap:4px; white-space:nowrap; }
   .reward-btn:hover { background:rgba(255,255,255,.22); }
-  .tablet-toggle { display:flex; align-items:center; gap:4px; color:white; font-size:10px; font-weight:700; cursor:pointer; white-space:nowrap; }
-  .tablet-toggle input { accent-color:var(--gold); cursor:pointer; width:14px; height:14px; margin:0; }
 
   /* ── SEARCH BAR ── */
   .search-bar { background:var(--blue); padding:9px 12px; display:flex; gap:7px; align-items:center; }
@@ -297,9 +295,6 @@
      di HTML (lihat <div id="printReportRoot">), bukan offset posisi elemen ini sendiri. */
   #printReportRoot { position:absolute; left:0; top:0; width:1450px; background:#fff; }
   .pr-page { padding:22px; background:#fff; }
-  /* Tampilan Tablet/Laptop: majalah lebar di-scroll horizontal */
-  .tablet-scroll { overflow-x:auto; background:#fff; }
-  .tablet-page { width:1450px; }
   .pr-titlebar { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; }
   .pr-title {
     display:inline-block; background:#dbeafe; border:2px solid var(--blue); color:var(--navy);
@@ -412,9 +407,6 @@
       </div>
     </div>
     <div class="top-bar-right">
-      <label class="tablet-toggle" title="Tampilan Tablet/Laptop">
-        <input type="checkbox" id="tabletModeCheck" onchange="toggleTabletMode(this.checked)"> Tablet/Laptop
-      </label>
       <div class="top-bar-badge" id="rankBadge">#1 dari 30</div>
       <button class="reward-btn" id="rewardBtn" onclick="openRewardModal()" title="Atur Reward">🎁 Reward</button>
     </div>
@@ -513,27 +505,6 @@ function loadRewardMap() {
 function saveRewardMap() {
   try { localStorage.setItem(REWARD_STORAGE_KEY, JSON.stringify(rewardMap)); }
   catch(e) {}
-}
-
-// ── Mode Tampilan (Mobile vs Tablet/Laptop) + penyimpanan tanda tangan ──
-let tabletMode = false;
-const TABLET_MODE_KEY = 'bukuSaku_tabletMode';
-let sigOwnerData = null;   // dataURL TTD Owner Toko agar tidak hilang saat ganti mode/outlet
-let sigPetugasData = null; // dataURL TTD Petugas/Branch Head
-
-function loadTabletMode() {
-  try { tabletMode = localStorage.getItem(TABLET_MODE_KEY) === '1'; }
-  catch(e) { tabletMode = false; }
-  const cb = document.getElementById('tabletModeCheck');
-  if (cb) cb.checked = tabletMode;
-}
-function saveTabletMode() {
-  try { localStorage.setItem(TABLET_MODE_KEY, tabletMode ? '1' : '0'); } catch(e) {}
-}
-function toggleTabletMode(checked) {
-  tabletMode = !!checked;
-  saveTabletMode();
-  if (filteredOutlets[currentIdx]) selectOutlet(currentIdx);
 }
 
 const MONTHS = ['','Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
@@ -692,7 +663,6 @@ async function initApp() {
     buildOutletList();
     populateOutletSelect();
     loadRewardMap();
-    loadTabletMode();
 
     // ── Load d.skupelanggan per-salesman lalu gabungkan (opsional, async) ──
     loadSkupelanggan(details);
@@ -972,15 +942,6 @@ function selectOutlet(idx) {
   document.getElementById('prevBtn').disabled = (idx <= 0);
   document.getElementById('nextBtn').disabled = (idx >= filteredOutlets.length - 1);
 
-  // Simpan TTD yang sedang digambar agar tidak hilang saat re-render (ganti mode/outlet).
-  captureCurrentSignatures();
-
-  if (tabletMode) {
-    renderTabletView(o);
-    document.getElementById('detailArea').scrollTop = 0;
-    return;
-  }
-
   const achPct   = pctNum(o.aMTD, o.tMTD);
   const achColor = achPct >= 100 ? '#86efac' : achPct >= 80 ? '#fcd34d' : '#fca5a5';
   const achClass = achPct >= 100 ? 'up' : 'dn';
@@ -1173,7 +1134,6 @@ function selectOutlet(idx) {
   const sigRightNameEl = document.getElementById('sigRightName');
   if (sigRightNameEl) sigRightNameEl.textContent = getPetugasName() || 'Petugas';
   initSignaturePads();
-  restoreSavedSignatures();
 
 
   // ── Metrics Bar Chart (horizontal) ──
@@ -1184,83 +1144,6 @@ function selectOutlet(idx) {
 
   // Scroll top
   document.getElementById('detailArea').scrollTop = 0;
-}
-
-// ── Tablet/Laptop view: layout majalah (spt PDF) + panel input catatan & TTD ──
-function renderTabletView(o) {
-  const notes   = (document.getElementById('visitNotes')   || {}).value || '';
-  const petugas = (document.getElementById('visitPetugas') || {}).value || getPetugasName() || '-';
-  const tgl     = (document.getElementById('visitDate')    || {}).value || TODAY.toISOString().slice(0, 10);
-  const sigOwner   = sigOwnerData   || getSigDataURL('sigCanvasOwner');
-  const sigPetugas = sigPetugasData || getSigDataURL('sigCanvasPetugas');
-
-  if (trendChart) { trendChart.destroy(); trendChart = null; }
-
-  const magazineHTML = buildPrintReportHTML(o, { notes, petugas, tgl, sigOwner, sigPetugas });
-
-  document.getElementById('detailArea').innerHTML = `
-    <div class="tablet-view">
-      <div class="tablet-scroll">
-        <div class="tablet-page"><div class="pr-page">${magazineHTML}</div></div>
-      </div>
-
-      <div class="section">
-        <div class="section-title">
-          <h3>📝 Catatan Kunjungan</h3>
-          <span class="section-badge">Visit Report</span>
-        </div>
-        <div class="visit-note-card">
-          <label class="vn-label">Catatan / Temuan Kunjungan</label>
-          <textarea id="visitNotes" class="vn-textarea" rows="8" placeholder="Tulis catatan hasil kunjungan, kendala, komitmen outlet, dll...">${escapeHtml(notes)}</textarea>
-
-          <div class="vn-row">
-            <div>
-              <label class="vn-label">Nama Petugas</label>
-              <input type="text" id="visitPetugas" class="vn-input" placeholder="Nama petugas/salesman" value="${escapeHtml(petugas)}">
-            </div>
-            <div>
-              <label class="vn-label">Tanggal Kunjungan</label>
-              <input type="date" id="visitDate" class="vn-input" value="${tgl}">
-            </div>
-          </div>
-
-          <label class="vn-label">Tanda Tangan Digital</label>
-          <div class="vn-sig-row">
-            <div class="vn-sig-col">
-              <div class="sig-wrap">
-                <canvas id="sigCanvasOwner" class="sig-canvas"></canvas>
-                <div class="sig-placeholder" id="sigPlaceholderOwner">✍️ Tanda tangan Owner</div>
-              </div>
-              <div class="vn-sig-name">Owner Toko</div>
-            </div>
-            <div class="vn-sig-col">
-              <div class="sig-wrap">
-                <canvas id="sigCanvasPetugas" class="sig-canvas"></canvas>
-                <div class="sig-placeholder" id="sigPlaceholderPetugas">✍️ Tanda tangan di sini</div>
-              </div>
-              <div class="vn-sig-name" id="sigRightName">Petugas</div>
-            </div>
-          </div>
-
-          <div class="vn-actions">
-            <button type="button" class="vn-btn vn-btn-ghost" onclick="clearSignature()">🗑️ Hapus TTD</button>
-            <button type="button" class="vn-btn vn-btn-primary" onclick="generateFullReportPDF()">📄 Simpan PDF</button>
-          </div>
-          <div class="vn-saved-hint" id="vnSavedHint">✅ PDF berhasil disimpan</div>
-        </div>
-      </div>
-    </div>
-  `;
-
-  initSignaturePads();
-  restoreSavedSignatures();
-  const sigRightNameEl = document.getElementById('sigRightName');
-  if (sigRightNameEl) sigRightNameEl.textContent = getPetugasName() || 'Petugas';
-
-  const pCtx = document.querySelector('#detailArea #metricsChartPrint');
-  if (pCtx && typeof Chart !== 'undefined') {
-    trendChart = new Chart(pCtx, buildMetricsChartConfig(o, { animation: false }));
-  }
 }
 
 // ── Render Programs from d.project.json — each record = 1 selectable tab ──
@@ -1645,36 +1528,6 @@ function getSigDataURL(canvasId) {
   return null;
 }
 
-// Simpan TTD saat ini ke variabel global (agar tidak hilang saat re-render).
-function captureCurrentSignatures() {
-  const o = getSigDataURL('sigCanvasOwner');
-  const p = getSigDataURL('sigCanvasPetugas');
-  if (o) sigOwnerData = o;
-  if (p) sigPetugasData = p;
-}
-
-// Gambar ulang TTD tersimpan ke canvas yang baru dibuat.
-function restoreSignature(canvasId, dataUrl) {
-  if (!dataUrl) return;
-  const canvas = document.getElementById(canvasId);
-  if (!canvas) return;
-  const img = new Image();
-  img.onload = () => {
-    const dpr = window.devicePixelRatio || 1;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(img, 0, 0, canvas.width / dpr, canvas.height / dpr);
-    if (canvas._sig) canvas._sig.hasContent = true;
-    const ph = canvas.parentElement.querySelector('.sig-placeholder');
-    if (ph) ph.style.display = 'none';
-  };
-  img.src = dataUrl;
-}
-
-function restoreSavedSignatures() {
-  restoreSignature('sigCanvasOwner', sigOwnerData);
-  restoreSignature('sigCanvasPetugas', sigPetugasData);
-}
-
 function sigPos(e) {
   const rect = e.target.getBoundingClientRect();
   return { x: e.clientX - rect.left, y: e.clientY - rect.top };
@@ -1706,8 +1559,6 @@ function sigEnd(e) {
   if (st) st.drawing = false;
 }
 function clearSignature() {
-  sigOwnerData = null;
-  sigPetugasData = null;
   ['sigCanvasOwner', 'sigCanvasPetugas'].forEach(id => {
     const canvas = document.getElementById(id);
     if (!canvas || !canvas._sig) return;
@@ -1928,7 +1779,7 @@ async function generateFullReportPDF() {
 
     // Render chart Performa Metrik ke canvas offscreen (animation:false → tergambar langsung)
     if (printChart) { printChart.destroy(); printChart = null; }
-    const pCtx = page.querySelector('#metricsChartPrint');
+    const pCtx = document.getElementById('metricsChartPrint');
     if (pCtx && typeof Chart !== 'undefined') {
       printChart = new Chart(pCtx, buildMetricsChartConfig(o, { animation:false }));
     }
