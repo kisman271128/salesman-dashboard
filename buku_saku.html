@@ -24,6 +24,10 @@
   html, body { height:100%; }
   body { font-family:'Segoe UI',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; display:flex; flex-direction:column; }
 
+  /* ── APP SHELL: wraps top-bar + content-row so wide screens can frame it as a
+       centered "pocket book" card while keeping the same vertical flow as mobile ── */
+  .app-shell { display:flex; flex-direction:column; flex:1; min-height:0; width:100%; }
+
   /* ── LAYOUT: content-row holds sidebar (search+outlet list) + main-content (detail) ── */
   .content-row { display:flex; flex-direction:column; flex:1; min-height:0; }
   .sidebar { display:flex; flex-direction:column; min-height:0; }
@@ -266,63 +270,62 @@
   .vn-btn-primary { background:var(--navy); color:white; }
   .vn-saved-hint { font-size:9.5px; color:#166534; margin-top:8px; text-align:center; display:none; }
 
-  /* ── WIDE VIEWPORT: tablet landscape / laptop → sidebar + main split-pane ── */
-  @media (min-width:860px) {
-    .content-row { flex-direction:row; overflow:hidden; }
-    .sidebar {
-      width:340px; flex-shrink:0; border-right:2px solid var(--border);
-      overflow:hidden;
+  /* ── WIDE VIEWPORT: tablet / laptop → tetap layout vertikal (spt HP), hanya
+       dibingkai jadi kartu "buku saku" yang center di layar, bukan split-pane. ── */
+  @media (min-width:640px) {
+    body {
+      background:linear-gradient(180deg,#cbd5e1 0%,#94a3b8 100%);
+      align-items:center; padding:28px 16px;
     }
-    .search-bar { flex-shrink:0; }
-    .outlet-list { flex:1; max-height:none; min-height:0; overflow-y:auto; }
-    .main-content { flex:1; min-height:0; overflow-y:auto; }
-    .loading-state { flex:1; }
-    .detail-area { overflow-y:visible; }
-    .detail-inner { max-width:900px; margin:0 auto; }
-
-    /* give the wide detail column a bit more breathing room in a few grids */
-    .metric-row { grid-template-columns:repeat(3,1fr); }
+    .app-shell {
+      width:100%; max-width:480px; max-height:calc(100vh - 56px);
+      background:var(--bg); border-radius:20px; overflow:hidden;
+      box-shadow:0 24px 60px -12px rgba(15,23,42,.35), 0 0 0 1px rgba(15,23,42,.04);
+    }
+    .top-bar { border-radius:20px 20px 0 0; }
+    .content-row { overflow-y:auto; }
   }
 
-  @media (min-width:1200px) {
-    .sidebar { width:380px; }
-    .detail-inner { max-width:1040px; }
+  @media (min-width:900px) {
+    .app-shell { max-width:560px; }
   }
 </style>
 </head>
 <body>
 
-<!-- TOP BAR -->
-<div class="top-bar">
-  <div class="top-bar-left">
-    <div class="top-bar-icon">📖</div>
-    <div>
-      <div class="top-bar-title">Buku Saku ITG</div>
-      <div class="top-bar-sub" id="topBarSub">Top 30 Pareto · Depo Tanjung</div>
+<div class="app-shell">
+  <!-- TOP BAR -->
+  <div class="top-bar">
+    <div class="top-bar-left">
+      <div class="top-bar-icon">📖</div>
+      <div>
+        <div class="top-bar-title">Buku Saku ITG</div>
+        <div class="top-bar-sub" id="topBarSub">Top 30 Pareto · Depo Tanjung</div>
+      </div>
     </div>
+    <div class="top-bar-badge" id="rankBadge">#1 dari 30</div>
   </div>
-  <div class="top-bar-badge" id="rankBadge">#1 dari 30</div>
-</div>
 
-<div class="content-row">
-  <!-- SIDEBAR: SEARCH + OUTLET LIST -->
-  <aside class="sidebar">
-    <div class="search-bar">
-      <input class="search-input" id="searchInput" type="text" placeholder="🔍  Cari nama outlet..." oninput="filterOutlets()">
-      <button class="nav-btn" id="prevBtn" onclick="navigateOutlet(-1)">‹</button>
-      <button class="nav-btn" id="nextBtn" onclick="navigateOutlet(1)">›</button>
-    </div>
-    <div class="outlet-list" id="outletList"></div>
-  </aside>
+  <div class="content-row">
+    <!-- SIDEBAR: SEARCH + OUTLET LIST -->
+    <aside class="sidebar">
+      <div class="search-bar">
+        <input class="search-input" id="searchInput" type="text" placeholder="🔍  Cari nama outlet..." oninput="filterOutlets()">
+        <button class="nav-btn" id="prevBtn" onclick="navigateOutlet(-1)">‹</button>
+        <button class="nav-btn" id="nextBtn" onclick="navigateOutlet(1)">›</button>
+      </div>
+      <div class="outlet-list" id="outletList"></div>
+    </aside>
 
-  <!-- MAIN: LOADING / DETAIL -->
-  <main class="main-content">
-    <div class="loading-state" id="loadingState" style="display:flex;">
-      <div class="spinner"></div>
-      <div class="loading-text">Memuat data pareto...</div>
-    </div>
-    <div class="detail-area" id="detailArea" style="display:none;"></div>
-  </main>
+    <!-- MAIN: LOADING / DETAIL -->
+    <main class="main-content">
+      <div class="loading-state" id="loadingState" style="display:flex;">
+        <div class="spinner"></div>
+        <div class="loading-text">Memuat data pareto...</div>
+      </div>
+      <div class="detail-area" id="detailArea" style="display:none;"></div>
+    </main>
+  </div>
 </div>
 
 <script>
