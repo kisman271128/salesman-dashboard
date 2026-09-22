@@ -290,19 +290,19 @@
   }
   .pr-meta { font-size:10.5px; color:var(--muted); text-align:right; line-height:1.6; }
   .pr-meta b { color:var(--text); }
-  /* Kolom eksplisit dengan float + lebar px pasti — BUKAN CSS column-count (bisa
-     "menemukan" kolom ke-4 di luar halaman saat konten berat sebelah) dan BUKAN
-     grid/flex (html2canvas kadang salah menghitung lebar track grid/flex di
-     kontainer terluar, sehingga kolom kanan ikut mengecil/terpotong saat dipotret).
-     Float + lebar tetap adalah yang paling konsisten dipotret html2canvas.
-     Lebar dihitung dari #printReportRoot = 1450px, padding .pr-page 22px×2:
-     (1450-44-2*16)/3 = 458px per kolom laporan; sub-kolom SKU: (458-2*6)/3 ≈ 148px. */
+  /* Kolom eksplisit dengan float + lebar px pasti, dan — penting — SEMUA rata (flat),
+     TIDAK bersarang (float di dalam float). Kolom 1 & 2 (profil/program, chart dst)
+     terbukti cetak sempurna; yang selalu bermasalah cuma sub-kolom Plan by SKU karena
+     sebelumnya sub-kolom itu di-float DI DALAM float kolom-3 — float bersarang seperti
+     itu yang bikin html2canvas salah hitung sehingga sub-kolom ke-2/3 kepotong. Sekarang
+     ke-5 kolom (2 kolom lebar + 3 sub-kolom SKU) jadi saudara sejajar langsung di bawah
+     .pr-columns, tidak ada lagi float bersarang.
+     Lebar dihitung dari #printReportRoot = 1450px, padding .pr-page 22px×2 → 1406px isi:
+     kolom lebar = 458px (×2 + gap 16px), sub-kolom SKU = 148px (×3 + gap 6px). */
   .pr-columns { overflow:hidden; }
   .pr-col { float:left; width:458px; margin-right:16px; }
-  .pr-col:last-child { margin-right:0; }
   .pr-block { margin-bottom:14px; border-radius:12px; overflow:hidden; box-shadow:0 2px 6px rgba(15,23,42,.08); }
   .pr-block.plain { box-shadow:none; }
-  .pr-sku-cols { overflow:hidden; }
   .pr-sku-col { float:left; width:148px; margin-right:6px; }
   .pr-sku-col:last-child { margin-right:0; }
   /* Lebar kolom tabel SKU dipatok (bukan auto) supaya tidak pernah lebih lebar dari
@@ -1437,19 +1437,19 @@ function buildPrintReportHTML(o, ctx) {
 
   // Plan by SKU dibagi ke 3 sub-kolom secara manual (bin-packing), bukan lewat CSS
   // column-count, supaya lebarnya pasti muat di kolom laporan (lihat distributeIntoColumns).
+  // Sub-kolomnya sengaja dijadikan saudara SEJAJAR dgn kol.1/kol.2 (bukan disarangkan di
+  // dalam satu kol.3) — lihat catatan "float bersarang" pada .pr-columns di CSS.
   const { badgeText, groups: skuGroups, empty: skuEmpty } = buildSkuGroupsHTML(o);
-  const skuCols = skuEmpty ? [] : distributeIntoColumns(skuGroups, 3);
-  const skuBlock = `
-    <div class="pr-block plain">
-      <div class="pr-section-label">📋 Plan by SKU <span style="font-weight:600;color:var(--muted);font-size:9.5px;">(${badgeText})</span></div>
-      ${skuEmpty ? '<div class="pr-note-box empty">Data SKU belum tersedia</div>' : `
-      <div class="pr-sku-cols">
-        ${skuCols.map(colHtml => `<div class="pr-sku-col">${colHtml}</div>`).join('')}
-      </div>`}
-    </div>`;
+  const skuLabelHtml = `<div class="pr-section-label">📋 Plan by SKU <span style="font-weight:600;color:var(--muted);font-size:9.5px;">(${badgeText})</span></div>`;
+  const skuColsHtml = skuEmpty
+    ? `<div class="pr-col" style="margin-right:0;">${skuLabelHtml}<div class="pr-note-box empty">Data SKU belum tersedia</div></div>`
+    : distributeIntoColumns(skuGroups, 3)
+        .map((colHtml, i) => `<div class="pr-sku-col">${i === 0 ? skuLabelHtml : ''}${colHtml}</div>`)
+        .join('');
 
   // Kolom laporan dibagi eksplisit (bukan CSS column-count — lihat catatan pada .pr-columns):
-  // kol.1 = profil + semua program, kol.2 = chart + aktivitas + catatan + ttd, kol.3 = Plan by SKU.
+  // kol.1 = profil + semua program, kol.2 = chart + aktivitas + catatan + ttd,
+  // 3 sub-kolom terakhir = Plan by SKU.
   return `
     <div class="pr-titlebar">
       <div class="pr-title">📖 Buku Saku ITG</div>
@@ -1461,7 +1461,7 @@ function buildPrintReportHTML(o, ctx) {
     <div class="pr-columns">
       <div class="pr-col">${headerBlock}${programBlocks}</div>
       <div class="pr-col">${chartBlock}${opsBlock}${notesBlock}${sigBlock}</div>
-      <div class="pr-col">${skuBlock}</div>
+      ${skuColsHtml}
     </div>
   `;
 }
