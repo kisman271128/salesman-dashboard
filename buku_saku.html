@@ -215,7 +215,8 @@
   .sku-container {
     column-count: 3;
     column-gap: 5px;
-    column-fill: balance;
+    column-fill: auto; /* 'balance' can invent an extra overflow column when one
+                           break-inside:avoid group is much taller than the rest */
   }
   .sku-group {
     break-inside: avoid;
@@ -284,9 +285,15 @@
   }
   .pr-meta { font-size:10.5px; color:var(--muted); text-align:right; line-height:1.6; }
   .pr-meta b { color:var(--text); }
-  .pr-columns { column-count:3; column-gap:16px; }
-  .pr-block { break-inside:avoid; margin-bottom:14px; border-radius:12px; overflow:hidden; box-shadow:0 2px 6px rgba(15,23,42,.08); }
+  /* Kolom eksplisit (grid), bukan CSS column-count — column-count dengan tinggi auto bisa
+     "menemukan" kolom ke-4 di luar lebar halaman saat kontennya berat sebelah, dan itu
+     yang bikin sisi kanan laporan pernah terpotong. Pembagian per kolom dilakukan di JS. */
+  .pr-columns { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; align-items:start; }
+  .pr-col { display:flex; flex-direction:column; min-width:0; }
+  .pr-block { margin-bottom:14px; border-radius:12px; overflow:hidden; box-shadow:0 2px 6px rgba(15,23,42,.08); }
   .pr-block.plain { box-shadow:none; }
+  .pr-sku-cols { display:flex; gap:6px; align-items:flex-start; }
+  .pr-sku-col { flex:1; min-width:0; display:flex; flex-direction:column; gap:5px; }
   .pr-section-label {
     font-size:11px; font-weight:800; color:var(--navy); display:flex; align-items:center; gap:6px;
     margin-bottom:8px;
@@ -1126,13 +1133,14 @@ async function loadSkupelanggan(details) {
   }
 }
 
-// Groups this outlet's SKU rows by Promo and returns the badge text + the
-// rendered `.sku-group` cards HTML. Shared by the live "Plan by SKU" panel
-// and the print report (both just wrap this in a `.sku-container`).
+// Groups this outlet's SKU rows by Promo and returns the badge text + each promo
+// group's rendered `.sku-group` card (both as a joined `html` string for the live
+// "Plan by SKU" panel, which uses CSS multi-column, and as a `groups` array so the
+// print report can bin-pack them into fixed columns — see distributeIntoColumns()).
 function buildSkuGroupsHTML(o) {
   const skuData = skupelMap[o.nama];
   if (!skuData) {
-    return { badgeText: 'tidak ada data', html: '', empty: true };
+    return { badgeText: 'tidak ada data', html: '', groups: [], empty: true };
   }
 
   // Group by Promo
@@ -1158,7 +1166,7 @@ function buildSkuGroupsHTML(o) {
     return Number.isInteger(n) ? n.toLocaleString('id-ID') : n.toFixed(1);
   };
 
-  const html = keys.map(promo => {
+  const groups = keys.map(promo => {
     const color = PROMO_COLORS[promo] || '#374151';
     const items = byPromo[promo];
     const rows  = items.map(r => {
@@ -1171,7 +1179,7 @@ function buildSkuGroupsHTML(o) {
         <td class="${mtdCls}">${mtdFmt}</td>
       </tr>`;
     }).join('');
-    return `<div class="sku-group">
+    const html = `<div class="sku-group">
       <div class="sku-group-header" style="background:${color};">
         <span>${promo}</span>
         <span style="opacity:.6;font-size:8px;">${items.length} SKU</span>
@@ -1181,9 +1189,24 @@ function buildSkuGroupsHTML(o) {
         <tbody>${rows}</tbody>
       </table>
     </div>`;
-  }).join('');
+    return { promo, itemCount: items.length, html };
+  });
 
-  return { badgeText, html, empty: false };
+  return { badgeText, html: groups.map(g => g.html).join(''), groups, empty: false };
+}
+
+// Bin-packs promo groups into `numCols` columns, biggest-first onto the least-full
+// column each time (greedy load balancing) — a deterministic alternative to CSS
+// column-count, which can silently overflow a 4th column when groups are uneven
+// (see the "Plan by SKU" fix note on .pr-columns above).
+function distributeIntoColumns(groups, numCols) {
+  const cols = Array.from({ length: numCols }, () => ({ weight: 0, html: '' }));
+  [...groups].sort((a, b) => b.itemCount - a.itemCount).forEach(g => {
+    const target = cols.reduce((minIdx, c, i) => c.weight < cols[minIdx].weight ? i : minIdx, 0);
+    cols[target].html += g.html;
+    cols[target].weight += g.itemCount + 1; // +1 = overhead kira-kira utk header grup
+  });
+  return cols.map(c => c.html);
 }
 
 function renderPlanSKU(o) {
@@ -1378,13 +1401,21 @@ function buildPrintReportHTML(o, ctx) {
       <div class="pr-sig-meta">Petugas: <b>${escapeHtml(petugas||'-')}</b> · Tanggal: <b>${tgl||'-'}</b></div>
     </div>`;
 
-  const { badgeText, html: skuHtml, empty: skuEmpty } = buildSkuGroupsHTML(o);
+  // Plan by SKU dibagi ke 3 sub-kolom secara manual (bin-packing), bukan lewat CSS
+  // column-count, supaya lebarnya pasti muat di kolom laporan (lihat distributeIntoColumns).
+  const { badgeText, groups: skuGroups, empty: skuEmpty } = buildSkuGroupsHTML(o);
+  const skuCols = skuEmpty ? [] : distributeIntoColumns(skuGroups, 3);
   const skuBlock = `
     <div class="pr-block plain">
       <div class="pr-section-label">📋 Plan by SKU <span style="font-weight:600;color:var(--muted);font-size:9.5px;">(${badgeText})</span></div>
-      ${skuEmpty ? '<div class="pr-note-box empty">Data SKU belum tersedia</div>' : `<div class="sku-container">${skuHtml}</div>`}
+      ${skuEmpty ? '<div class="pr-note-box empty">Data SKU belum tersedia</div>' : `
+      <div class="pr-sku-cols">
+        ${skuCols.map(colHtml => `<div class="pr-sku-col">${colHtml}</div>`).join('')}
+      </div>`}
     </div>`;
 
+  // Kolom laporan dibagi eksplisit (bukan CSS column-count — lihat catatan pada .pr-columns):
+  // kol.1 = profil + semua program, kol.2 = chart + aktivitas + catatan + ttd, kol.3 = Plan by SKU.
   return `
     <div class="pr-titlebar">
       <div class="pr-title">📖 Buku Saku ITG</div>
@@ -1394,13 +1425,9 @@ function buildPrintReportHTML(o, ctx) {
       </div>
     </div>
     <div class="pr-columns">
-      ${headerBlock}
-      ${programBlocks}
-      ${chartBlock}
-      ${opsBlock}
-      ${notesBlock}
-      ${sigBlock}
-      ${skuBlock}
+      <div class="pr-col">${headerBlock}${programBlocks}</div>
+      <div class="pr-col">${chartBlock}${opsBlock}${notesBlock}${sigBlock}</div>
+      <div class="pr-col">${skuBlock}</div>
     </div>
   `;
 }
