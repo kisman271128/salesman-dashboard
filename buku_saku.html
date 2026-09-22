@@ -276,7 +276,12 @@
        Satu halaman ringkas gaya majalah: semua program & section tampil sekaligus,
        disusun dalam 3 kolom berlebar tetap (float, lihat .pr-columns) supaya muat
        dalam 1 halaman lebar tanpa ada yang terpotong saat dipotret html2canvas. ── */
-  #printReportRoot { position:fixed; left:-99999px; top:0; z-index:-1; width:1450px; background:#fff; }
+  /* Ditaruh pada koordinat normal (0,0) lewat position:absolute, BUKAN di posisi
+     ekstrem (left:-99999px) — offset sejauh itu pernah bikin html2canvas salah
+     hitung area yang ditangkap (elemen/kolom di sisi kanan hilang/terpotong).
+     Yang menyembunyikannya dari layar adalah wrapper pembungkus height:0;overflow:hidden
+     di HTML (lihat <div id="printReportRoot">), bukan offset posisi elemen ini sendiri. */
+  #printReportRoot { position:absolute; left:0; top:0; width:1450px; background:#fff; }
   .pr-page { padding:22px; background:#fff; }
   .pr-titlebar { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; }
   .pr-title {
@@ -383,7 +388,9 @@
 </div>
 
 <!-- LAPORAN CETAK (offscreen) — dipotret html2canvas lalu dijadikan PDF saat "Simpan PDF" -->
-<div id="printReportRoot"><div class="pr-page" id="printReportPage"></div></div>
+<div style="height:0;overflow:hidden;">
+  <div id="printReportRoot"><div class="pr-page" id="printReportPage"></div></div>
+</div>
 
 <script>
 // ── Error validator: tampil di layar & relay ke parent console ──
@@ -1499,7 +1506,18 @@ async function generateFullReportPDF() {
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
     const rect   = page.getBoundingClientRect();
-    const canvas = await html2canvas(page, { scale:2, useCORS:true, backgroundColor:'#ffffff' });
+    // width/height/windowWidth/windowHeight dipatok eksplisit supaya html2canvas tidak
+    // menebak sendiri area yang ditangkap — sebelumnya (tanpa ini) sisi kanan kadang
+    // hilang dari hasil potret walau lebar CSS-nya sendiri sudah benar.
+    const canvas = await html2canvas(page, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      width: Math.ceil(rect.width),
+      height: Math.ceil(rect.height),
+      windowWidth: Math.ceil(rect.width),
+      windowHeight: Math.ceil(rect.height),
+    });
     const imgData = canvas.toDataURL('image/png');
 
     const MM_PER_PX = 25.4 / 96;
