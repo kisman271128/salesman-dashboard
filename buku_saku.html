@@ -6,6 +6,7 @@
 <title>Buku Saku ITG</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
 <style>
   :root {
     --navy:   #0f2057;
@@ -266,9 +267,43 @@
     cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; transition:filter .15s;
   }
   .vn-btn:hover { filter:brightness(0.95); }
+  .vn-btn:disabled { opacity:.6; cursor:default; filter:none; }
   .vn-btn-ghost   { background:var(--bg); color:var(--muted); border:1.5px solid var(--border); }
   .vn-btn-primary { background:var(--navy); color:white; }
   .vn-saved-hint { font-size:9.5px; color:#166534; margin-top:8px; text-align:center; display:none; }
+
+  /* ── PRINT REPORT (dirender off-screen, dipotret html2canvas → jsPDF saat "Simpan PDF") ──
+       Satu halaman ringkas gaya majalah: semua program & section tampil sekaligus,
+       disusun mengalir dalam kolom (CSS multi-column) supaya muat dalam 1 halaman lebar. ── */
+  #printReportRoot { position:fixed; left:-99999px; top:0; z-index:-1; width:1300px; background:#fff; }
+  .pr-page { padding:22px; background:#fff; }
+  .pr-titlebar { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; }
+  .pr-title {
+    display:inline-block; background:#dbeafe; border:2px solid var(--blue); color:var(--navy);
+    font-size:17px; font-weight:800; padding:7px 18px; border-radius:8px;
+  }
+  .pr-meta { font-size:10.5px; color:var(--muted); text-align:right; line-height:1.6; }
+  .pr-meta b { color:var(--text); }
+  .pr-columns { column-count:3; column-gap:16px; }
+  .pr-block { break-inside:avoid; margin-bottom:14px; border-radius:12px; overflow:hidden; box-shadow:0 2px 6px rgba(15,23,42,.08); }
+  .pr-block.plain { box-shadow:none; }
+  .pr-section-label {
+    font-size:11px; font-weight:800; color:var(--navy); display:flex; align-items:center; gap:6px;
+    margin-bottom:8px;
+  }
+  .pr-section-label::before { content:''; width:3px; height:13px; background:var(--accent); border-radius:2px; display:inline-block; }
+  .pr-note-box {
+    border:1.5px solid var(--border); border-radius:10px; padding:10px 12px; background:#fff;
+    font-size:11px; min-height:56px; white-space:pre-wrap; color:var(--text);
+  }
+  .pr-note-box.empty { color:#94a3b8; font-style:italic; }
+  .pr-sig-box {
+    border:1.5px solid var(--border); border-radius:10px; padding:10px 12px; background:#fff;
+    min-height:70px; display:flex; align-items:center; justify-content:center;
+  }
+  .pr-sig-img { max-width:100%; max-height:68px; }
+  .pr-sig-empty { color:#94a3b8; font-size:11px; font-style:italic; }
+  .pr-sig-meta { font-size:9.5px; color:var(--muted); margin-top:6px; }
 
   /* ── WIDE VIEWPORT: tablet / laptop → tetap layout vertikal (spt HP), hanya
        dibingkai jadi kartu "buku saku" yang center di layar, bukan split-pane. ── */
@@ -328,6 +363,9 @@
   </div>
 </div>
 
+<!-- LAPORAN CETAK (offscreen) — dipotret html2canvas lalu dijadikan PDF saat "Simpan PDF" -->
+<div id="printReportRoot"><div class="pr-page" id="printReportPage"></div></div>
+
 <script>
 // ── Error validator: tampil di layar & relay ke parent console ──
 window.onerror = function(msg, src, line, col, err) {
@@ -386,6 +424,9 @@ function fmtUnit(v) {
 }
 function fmtPct(a,t) { if (!t||t===0) return a>0?'100%':'0%'; return Math.round((a/t)*100)+'%'; }
 function pctNum(a,t) { if (!t||t===0) return a>0?100:0; return Math.round((a/t)*100); }
+function escapeHtml(s) {
+  return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
 
 // ── Cloudflare Worker Config ──
 const WORKER_URL = 'https://depo-tanjung-api.kisman-pidu.workers.dev';
@@ -564,6 +605,79 @@ function navigateOutlet(dir) {
 }
 
 // ── Render Detail ──
+// ── Shared Chart.js config for the "Performa Metrik" horizontal bar chart ──
+// Reused by the live detail view and by the offscreen print report (opts.animation lets
+// the print copy render synchronously so html2canvas captures it fully painted).
+function buildMetricsChartConfig(o, opts={}) {
+  const gapPos = o.dGapMTD >= 0;
+  const labels  = ['Max', '3LM', 'LY', 'LM', 'T.MTD', 'BE MTD', 'A.MTD', 'Gap MTD'];
+  const values  = [o.dMax, o.d3LM, o.dLY, o.dLM, o.dTMTD, o.dBEMTD, o.dAMTD, o.dGapMTD];
+  const colors  = [
+    '#94a3b8', // Max  - gray
+    '#7dd3fc', // 3LM  - light blue
+    '#a78bfa', // LY   - purple
+    '#5eead4', // LM   - teal
+    '#fdba74', // T.MTD- orange (target)
+    '#fcd34d', // BE MTD - yellow
+    '#1d3a8a', // A.MTD- navy (actual, highlighted)
+    gapPos ? '#22c55e' : '#e8392a', // Gap - green/red
+  ];
+
+  return {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: colors,
+        borderRadius: 4,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: opts.animation !== undefined ? opts.animation : true,
+      layout: { padding: { right: 55 } },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => (ctx.raw < 0 ? '-' : '') + fmtRp(ctx.raw)
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { font:{ size:8 }, callback: v => fmtRp(v) },
+          grid: { color:'#f1f5f9' }
+        },
+        y: { ticks: { font:{ size:10 }, color:'#1e293b' }, grid: { display:false } }
+      }
+    },
+    plugins: [{
+      id: 'valueLabels',
+      afterDatasetsDraw(chart) {
+        const { ctx, scales: { x, y } } = chart;
+        chart.data.datasets[0].data.forEach((val, i) => {
+          if (val === 0 || val === null) return;
+          const yPos = y.getPixelForValue(i);
+          const xPos = x.getPixelForValue(val);
+          const label = fmtRp(val);
+          ctx.save();
+          ctx.font = 'bold 9px Segoe UI, sans-serif';
+          ctx.fillStyle = val < 0 ? '#e8392a' : '#1e293b';
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(label, xPos + 5, yPos);
+          ctx.restore();
+        });
+      }
+    }]
+  };
+}
+
 function selectOutlet(idx) {
   const o = filteredOutlets[idx];
   if (!o) return;
@@ -702,7 +816,7 @@ function selectOutlet(idx) {
 
         <div class="vn-actions">
           <button type="button" class="vn-btn vn-btn-ghost" onclick="clearSignature()">🗑️ Hapus TTD</button>
-          <button type="button" class="vn-btn vn-btn-primary" onclick="saveVisitPDF()">📄 Simpan PDF</button>
+          <button type="button" class="vn-btn vn-btn-primary" onclick="generateFullReportPDF()">📄 Simpan PDF</button>
         </div>
         <div class="vn-saved-hint" id="vnSavedHint">✅ PDF berhasil disimpan</div>
       </div>
@@ -750,72 +864,7 @@ function selectOutlet(idx) {
   // ── Metrics Bar Chart (horizontal) ──
   const mCtx = document.getElementById('metricsChart');
   if (mCtx && typeof Chart !== 'undefined') {
-    const gapPos = o.dGapMTD >= 0;
-    const labels  = ['Max', '3LM', 'LY', 'LM', 'T.MTD', 'BE MTD', 'A.MTD', 'Gap MTD'];
-    const values  = [o.dMax, o.d3LM, o.dLY, o.dLM, o.dTMTD, o.dBEMTD, o.dAMTD, o.dGapMTD];
-    const colors  = [
-      '#94a3b8', // Max  - gray
-      '#7dd3fc', // 3LM  - light blue
-      '#a78bfa', // LY   - purple
-      '#5eead4', // LM   - teal
-      '#fdba74', // T.MTD- orange (target)
-      '#fcd34d', // BE MTD - yellow
-      '#1d3a8a', // A.MTD- navy (actual, highlighted)
-      gapPos ? '#22c55e' : '#e8392a', // Gap - green/red
-    ];
-
-    trendChart = new Chart(mCtx, {
-      type: 'bar',
-      data: {
-        labels,
-        datasets: [{
-          data: values,
-          backgroundColor: colors,
-          borderRadius: 4,
-          borderSkipped: false,
-        }]
-      },
-      options: {
-        indexAxis: 'y',
-        responsive: true,
-        maintainAspectRatio: false,
-        layout: { padding: { right: 55 } },
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: ctx => (ctx.raw < 0 ? '-' : '') + fmtRp(ctx.raw)
-            }
-          }
-        },
-        scales: {
-          x: {
-            ticks: { font:{ size:8 }, callback: v => fmtRp(v) },
-            grid: { color:'#f1f5f9' }
-          },
-          y: { ticks: { font:{ size:10 }, color:'#1e293b' }, grid: { display:false } }
-        }
-      },
-      plugins: [{
-        id: 'valueLabels',
-        afterDatasetsDraw(chart) {
-          const { ctx, scales: { x, y } } = chart;
-          chart.data.datasets[0].data.forEach((val, i) => {
-            if (val === 0 || val === null) return;
-            const yPos = y.getPixelForValue(i);
-            const xPos = x.getPixelForValue(val);
-            const label = fmtRp(val);
-            ctx.save();
-            ctx.font = 'bold 9px Segoe UI, sans-serif';
-            ctx.fillStyle = val < 0 ? '#e8392a' : '#1e293b';
-            ctx.textAlign = 'left';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(label, xPos + 5, yPos);
-            ctx.restore();
-          });
-        }
-      }]
-    });
+    trendChart = new Chart(mCtx, buildMetricsChartConfig(o));
   }
 
   // Scroll top
@@ -864,6 +913,13 @@ function tabClass(itgName) {
 function renderProgContent(o, selectedIdx) {
   const content = document.getElementById('progContent');
   if (!content) return;
+  content.innerHTML = programSectionHTML(o, selectedIdx);
+}
+
+// Builds the tab-bar + detail-card HTML for one selected program. Reused by the live
+// tabbed view (one card at a time) and by the print report (called once per program,
+// each with its own index selected, so every program renders as its own full card).
+function programSectionHTML(o, selectedIdx) {
   const progs = o.projectArr;
 
   // Build tabs row
@@ -915,7 +971,7 @@ function renderProgContent(o, selectedIdx) {
     </tr>`;
   }).join('');
 
-  content.innerHTML = `
+  return `
     <div class="prog-tab-bar">${tabs}</div>
     <div class="prog-detail-card">
       <div class="pdc-header">
@@ -1070,16 +1126,13 @@ async function loadSkupelanggan(details) {
   }
 }
 
-function renderPlanSKU(o) {
-  const badge = document.getElementById('skuBadge');
-  const body  = document.getElementById('skuBody');
-  if (!badge||!body) return;
-
+// Groups this outlet's SKU rows by Promo and returns the badge text + the
+// rendered `.sku-group` cards HTML. Shared by the live "Plan by SKU" panel
+// and the print report (both just wrap this in a `.sku-container`).
+function buildSkuGroupsHTML(o) {
   const skuData = skupelMap[o.nama];
   if (!skuData) {
-    badge.textContent = 'tidak ada data';
-    body.innerHTML = '<p style="font-size:11px;color:var(--muted);padding:10px 0;text-align:center;">Data SKU belum tersedia</p>';
-    return;
+    return { badgeText: 'tidak ada data', html: '', empty: true };
   }
 
   // Group by Promo
@@ -1096,7 +1149,7 @@ function renderPlanSKU(o) {
   ].filter(p => !EXCLUDED_PROMO.includes(p));
 
   const totalSKU = Object.keys(skuData).length;
-  badge.textContent = `${totalSKU} SKU · ${keys.length} grup`;
+  const badgeText = `${totalSKU} SKU · ${keys.length} grup`;
 
   // Format unit (integer with thousand separator)
   const fmt = v => {
@@ -1105,7 +1158,7 @@ function renderPlanSKU(o) {
     return Number.isInteger(n) ? n.toLocaleString('id-ID') : n.toFixed(1);
   };
 
-  const groups = keys.map(promo => {
+  const html = keys.map(promo => {
     const color = PROMO_COLORS[promo] || '#374151';
     const items = byPromo[promo];
     const rows  = items.map(r => {
@@ -1130,7 +1183,19 @@ function renderPlanSKU(o) {
     </div>`;
   }).join('');
 
-  body.innerHTML = `<div class="sku-container">${groups}</div>`;
+  return { badgeText, html, empty: false };
+}
+
+function renderPlanSKU(o) {
+  const badge = document.getElementById('skuBadge');
+  const body  = document.getElementById('skuBody');
+  if (!badge||!body) return;
+
+  const { badgeText, html, empty } = buildSkuGroupsHTML(o);
+  badge.textContent = badgeText;
+  body.innerHTML = empty
+    ? '<p style="font-size:11px;color:var(--muted);padding:10px 0;text-align:center;">Data SKU belum tersedia</p>'
+    : `<div class="sku-container">${html}</div>`;
 }
 
 // ── Catatan Kunjungan: Digital Signature Pad ──
@@ -1211,94 +1276,202 @@ window.addEventListener('resize', () => {
 });
 
 // ── Catatan Kunjungan: Save as PDF (notes + signature) ──
-async function saveVisitPDF() {
+// ── Laporan Cetak (PDF 1-halaman, gaya majalah) ──
+// Menyusun SEMUA section outlet (header, KPI, achievement, tiap program ITG sebagai
+// kartu sendiri, chart, aktivitas, catatan+ttd, plan by SKU) mengalir dalam kolom CSS
+// (lihat .pr-columns), lalu dipotret dengan html2canvas dan dimasukkan ke satu halaman
+// jsPDF yang ukurannya disesuaikan dengan hasil potretnya.
+function buildPrintReportHTML(o, ctx) {
+  const { notes, petugas, tgl, sigImgSrc } = ctx;
+
+  const achPct   = pctNum(o.aMTD, o.tMTD);
+  const achColor = achPct >= 100 ? '#86efac' : achPct >= 80 ? '#fcd34d' : '#fca5a5';
+  const vsLM     = o.lm > 0 ? Math.round(((o.aMTD - o.lm)/o.lm)*100) : null;
+  const vsLMTxt  = vsLM !== null ? (vsLM>=0?'▲ ':'▼ ')+Math.abs(vsLM)+'% vs LM' : '';
+  const vsLMCls  = vsLM !== null ? (vsLM>=0?'up':'dn') : '';
+  const vsLY     = o.ly > 0 ? Math.round(((o.aMTD - o.ly)/o.ly)*100) : null;
+  const vsLYTxt  = vsLY !== null ? (vsLY>=0?'▲ ':'▼ ')+Math.abs(vsLY)+'%' : '-';
+  const vsLYCls  = vsLY !== null ? (vsLY>=0?'up':'dn') : '';
+
+  const headerBlock = `
+    <div class="pr-block">
+      <div class="outlet-header">
+        <div class="oh-rank-badge">🏆 Rank #${o.rank} · Top 30 Pareto</div>
+        <div class="oh-name">${o.nama}</div>
+        <div class="oh-update">Update: ${TODAY.getDate()} ${MONTHS[CUR_MONTH]} ${TODAY.getFullYear()}</div>
+        <div class="oh-meta"><span>📍 ${o.alamat}</span></div>
+        <div class="oh-meta" style="margin-top:3px;">
+          <span>👤 ${o.salesman}</span>
+          <span>📅 ${o.jks}</span>
+          <span>🏦 ${o.depo}</span>
+        </div>
+        ${o.kabupaten ? `<div class="oh-meta" style="margin-top:3px;"><span>🗺️ ${o.kecamatan}, ${o.kabupaten}</span></div>` : ''}
+      </div>
+      <div class="kpi-strip">
+        <div class="kpi-item">
+          <div class="kpi-label">MTD Aktual</div>
+          <div class="kpi-value ${o.aMTD>0?'up':'dn'}">${fmtRp(o.aMTD)}</div>
+          <div class="kpi-pct ${vsLMCls}">${vsLMTxt||'—'}</div>
+        </div>
+        <div class="kpi-item">
+          <div class="kpi-label">Target MTD</div>
+          <div class="kpi-value">${fmtRp(o.tMTD)}</div>
+          <div class="kpi-pct">plan</div>
+        </div>
+        <div class="kpi-item">
+          <div class="kpi-label">3LM Avg</div>
+          <div class="kpi-value">${fmtRp(o.lm3)}</div>
+          <div class="kpi-pct" style="color:rgba(255,255,255,.35);">avg/bln</div>
+        </div>
+        <div class="kpi-item">
+          <div class="kpi-label">LY</div>
+          <div class="kpi-value ${vsLYCls}">${o.ly>0?fmtRp(o.ly):'-'}</div>
+          <div class="kpi-pct ${vsLYCls}">${vsLYTxt}</div>
+        </div>
+      </div>
+      <div class="ach-wrap">
+        <div class="ach-label">
+          <span>Achievement MTD</span>
+          <span style="color:${achColor};font-weight:800;">${achPct}%</span>
+        </div>
+        <div class="ach-bar-bg">
+          <div class="ach-bar-fill" style="width:${Math.min(achPct,100)}%;background:${achColor};"></div>
+        </div>
+      </div>
+    </div>`;
+
+  // Program ITG — tiap program jadi kartu sendiri, semua tampil sekaligus (tanpa tab)
+  const programBlocks = !o.hasProject
+    ? `<div class="pr-block plain">
+        <div class="pr-section-label">🎯 Program ITG</div>
+        <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:10px;padding:12px;text-align:center;">
+          <div style="font-size:11px;font-weight:700;color:#991b1b;">Outlet ini tidak terdaftar dalam program ITG</div>
+        </div>
+      </div>`
+    : o.projectArr.map((_, i) => `
+      <div class="pr-block">
+        <div class="pr-section-label">🎯 Program ITG</div>
+        ${programSectionHTML(o, i)}
+      </div>`).join('');
+
+  const chartBlock = `
+    <div class="pr-block plain">
+      <div class="pr-section-label">📊 Performa Metrik</div>
+      <div class="chart-wrap" style="padding:10px 8px;">
+        <canvas id="metricsChartPrint" height="220"></canvas>
+      </div>
+    </div>`;
+
+  const opsBlock = `<div class="pr-block plain">${buildOpsSection(o).replace('<div class="divider"></div>','')}</div>`;
+
+  const notesTrim = notes.trim();
+  const notesBlock = `
+    <div class="pr-block plain">
+      <div class="pr-section-label">📝 Catatan Kunjungan</div>
+      <div class="pr-note-box${notesTrim?'':' empty'}">${notesTrim ? escapeHtml(notesTrim) : '(tidak ada catatan)'}</div>
+    </div>`;
+
+  const sigBlock = `
+    <div class="pr-block plain">
+      <div class="pr-section-label">✍️ Tanda Tangan</div>
+      <div class="pr-sig-box">${sigImgSrc ? `<img class="pr-sig-img" src="${sigImgSrc}">` : '<span class="pr-sig-empty">(belum ditandatangani)</span>'}</div>
+      <div class="pr-sig-meta">Petugas: <b>${escapeHtml(petugas||'-')}</b> · Tanggal: <b>${tgl||'-'}</b></div>
+    </div>`;
+
+  const { badgeText, html: skuHtml, empty: skuEmpty } = buildSkuGroupsHTML(o);
+  const skuBlock = `
+    <div class="pr-block plain">
+      <div class="pr-section-label">📋 Plan by SKU <span style="font-weight:600;color:var(--muted);font-size:9.5px;">(${badgeText})</span></div>
+      ${skuEmpty ? '<div class="pr-note-box empty">Data SKU belum tersedia</div>' : `<div class="sku-container">${skuHtml}</div>`}
+    </div>`;
+
+  return `
+    <div class="pr-titlebar">
+      <div class="pr-title">📖 Buku Saku ITG</div>
+      <div class="pr-meta">
+        Laporan Kunjungan Outlet<br>
+        <b>${TODAY.getDate()} ${MONTHS[CUR_MONTH]} ${TODAY.getFullYear()}</b> · ${o.depo}
+      </div>
+    </div>
+    <div class="pr-columns">
+      ${headerBlock}
+      ${programBlocks}
+      ${chartBlock}
+      ${opsBlock}
+      ${notesBlock}
+      ${sigBlock}
+      ${skuBlock}
+    </div>
+  `;
+}
+
+let printChart = null;
+
+async function generateFullReportPDF() {
   const o = filteredOutlets[currentIdx];
   if (!o) return;
   if (typeof window.jspdf === 'undefined') {
     alert('Library PDF belum siap dimuat, coba lagi sebentar.');
     return;
   }
-
-  const notes   = (document.getElementById('visitNotes')  || {}).value || '';
-  const petugas = (document.getElementById('visitPetugas')|| {}).value || '-';
-  const tgl     = (document.getElementById('visitDate')   || {}).value || '';
-  const canvas  = document.getElementById('sigCanvas');
-
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ unit:'mm', format:'a5' });
-  const pw  = doc.internal.pageSize.getWidth();
-  let y = 15;
-
-  doc.setFontSize(14); doc.setFont(undefined,'bold');
-  doc.text('Catatan Kunjungan Outlet', pw/2, y, { align:'center' });
-  y += 4;
-  doc.setFontSize(8.5); doc.setFont(undefined,'normal'); doc.setTextColor(120);
-  doc.text('Buku Saku ITG', pw/2, y, { align:'center' });
-  doc.setTextColor(0);
-  y += 5;
-  doc.setDrawColor(200); doc.line(10, y, pw-10, y);
-  y += 8;
-
-  const field = (label, value) => {
-    doc.setFontSize(10);
-    doc.setFont(undefined,'bold');   doc.text(label, 12, y);
-    doc.setFont(undefined,'normal'); doc.text(String(value||'-'), 40, y);
-  };
-
-  field('Outlet:', o.nama);      y += 6;
-  field('Rank:', `#${o.rank} dari 30`); y += 6;
-  field('Salesman:', o.salesman); y += 6;
-
-  doc.setFontSize(10); doc.setFont(undefined,'bold'); doc.text('Alamat:', 12, y);
-  doc.setFont(undefined,'normal');
-  const alamatLines = doc.splitTextToSize(o.alamat || '-', pw - 52);
-  doc.text(alamatLines, 40, y);
-  y += 6 * Math.max(alamatLines.length, 1);
-
-  field('Tgl Kunjungan:', tgl); y += 6;
-  field('Petugas:', petugas);   y += 10;
-
-  doc.setFontSize(10); doc.setFont(undefined,'bold');
-  doc.text('Catatan Kunjungan:', 12, y);
-  y += 6;
-  doc.setFont(undefined,'normal');
-  const noteLines = doc.splitTextToSize(notes.trim() || '(tidak ada catatan)', pw - 24);
-  doc.text(noteLines, 12, y);
-  y += 5 * noteLines.length + 8;
-
-  doc.setFont(undefined,'bold');
-  doc.text('Tanda Tangan:', 12, y);
-  y += 3;
-  if (canvas && sigHasContent) {
-    try {
-      const imgData = canvas.toDataURL('image/png');
-      doc.addImage(imgData, 'PNG', 12, y, 60, 30);
-      y += 32;
-    } catch(err) {
-      doc.setFont(undefined,'normal'); doc.setFontSize(9);
-      doc.text('(gagal memuat tanda tangan)', 12, y + 8);
-      y += 14;
-    }
-  } else {
-    doc.setFont(undefined,'normal'); doc.setFontSize(9); doc.setTextColor(150);
-    doc.text('(belum ditandatangani)', 12, y + 8);
-    doc.setTextColor(0);
-    y += 14;
+  if (typeof html2canvas === 'undefined') {
+    alert('Library html2canvas belum siap dimuat, coba lagi sebentar.');
+    return;
   }
-  doc.setDrawColor(180);
-  doc.line(12, y, 72, y);
-  doc.setFontSize(8); doc.setTextColor(120);
-  doc.text('Tanda tangan petugas / outlet', 12, y + 4);
-  doc.setTextColor(0);
 
-  const safeName = o.nama.replace(/[^a-z0-9]+/gi, '_').slice(0, 40);
-  doc.save(`Kunjungan_${safeName}_${tgl || 'draft'}.pdf`);
+  const btn = document.querySelector('.vn-btn-primary');
+  const originalLabel = btn ? btn.innerHTML : '';
+  if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Menyiapkan laporan...'; }
 
-  const hint = document.getElementById('vnSavedHint');
-  if (hint) {
-    hint.style.display = 'block';
-    clearTimeout(saveVisitPDF._t);
-    saveVisitPDF._t = setTimeout(() => { hint.style.display = 'none'; }, 3000);
+  const page = document.getElementById('printReportPage');
+
+  try {
+    const notes   = (document.getElementById('visitNotes')  || {}).value || '';
+    const petugas = (document.getElementById('visitPetugas')|| {}).value || '-';
+    const tgl     = (document.getElementById('visitDate')   || {}).value || '';
+    const sigCanvasEl = document.getElementById('sigCanvas');
+    const sigImgSrc = (sigCanvasEl && sigHasContent) ? sigCanvasEl.toDataURL('image/png') : null;
+
+    page.innerHTML = buildPrintReportHTML(o, { notes, petugas, tgl, sigImgSrc });
+
+    // Render chart Performa Metrik ke canvas offscreen (animation:false → tergambar langsung)
+    if (printChart) { printChart.destroy(); printChart = null; }
+    const pCtx = document.getElementById('metricsChartPrint');
+    if (pCtx && typeof Chart !== 'undefined') {
+      printChart = new Chart(pCtx, buildMetricsChartConfig(o, { animation:false }));
+    }
+
+    // Tunggu 2 frame supaya layout kolom + chart selesai digambar sebelum dipotret
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+    const rect   = page.getBoundingClientRect();
+    const canvas = await html2canvas(page, { scale:2, useCORS:true, backgroundColor:'#ffffff' });
+    const imgData = canvas.toDataURL('image/png');
+
+    const MM_PER_PX = 25.4 / 96;
+    const pageWmm = rect.width  * MM_PER_PX;
+    const pageHmm = rect.height * MM_PER_PX;
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit:'mm', format:[pageWmm, pageHmm] });
+    doc.addImage(imgData, 'PNG', 0, 0, pageWmm, pageHmm);
+
+    const safeName = o.nama.replace(/[^a-z0-9]+/gi, '_').slice(0, 40);
+    doc.save(`BukuSaku_${safeName}_${tgl || 'draft'}.pdf`);
+
+    const hint = document.getElementById('vnSavedHint');
+    if (hint) {
+      hint.style.display = 'block';
+      clearTimeout(generateFullReportPDF._t);
+      generateFullReportPDF._t = setTimeout(() => { hint.style.display = 'none'; }, 3000);
+    }
+  } catch(err) {
+    console.error('generateFullReportPDF error:', err);
+    alert('Gagal membuat laporan PDF: ' + err.message);
+  } finally {
+    if (printChart) { printChart.destroy(); printChart = null; }
+    if (page) page.innerHTML = '';
+    if (btn) { btn.disabled = false; btn.innerHTML = originalLabel; }
   }
 }
 
