@@ -300,6 +300,9 @@
   /* Tampilan Tablet/Laptop: majalah lebar di-scroll horizontal */
   .tablet-scroll { overflow-x:auto; background:#fff; }
   .tablet-page { width:1450px; }
+  .tablet-view { display:flex; flex-direction:column; }
+  .tablet-bar { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 14px; background:white; border-top:1.5px solid var(--border); position:sticky; bottom:0; z-index:5; }
+  .tablet-bar-hint { font-size:10.5px; color:var(--muted); }
   .pr-titlebar { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; }
   .pr-title {
     display:inline-block; background:#dbeafe; border:2px solid var(--blue); color:var(--navy);
@@ -522,8 +525,12 @@ function saveRewardMap() {
 // ── Mode Tampilan (Mobile vs Tablet/Laptop) + penyimpanan tanda tangan ──
 let tabletMode = false;
 const TABLET_MODE_KEY = 'bukuSaku_tabletMode';
-let sigOwnerData = null;   // dataURL TTD Owner Toko agar tidak hilang saat ganti mode/outlet
+let sigOwnerData = null;   // dataURL TTD Owner Toko agar tidak hilang saat ganti mode
 let sigPetugasData = null; // dataURL TTD Petugas/Branch Head
+let draftNotes = '';       // draft catatan (dipertahankan saat ganti mode Mobile <-> Tablet)
+let draftPetugas = '';
+let draftTgl = '';
+let lastOutletName = null; // deteksi ganti outlet (reset draft) vs ganti mode (pertahankan)
 
 function loadTabletMode() {
   try { tabletMode = localStorage.getItem(TABLET_MODE_KEY) === '1'; }
@@ -978,8 +985,10 @@ function selectOutlet(idx) {
   document.getElementById('prevBtn').disabled = (idx <= 0);
   document.getElementById('nextBtn').disabled = (idx >= filteredOutlets.length - 1);
 
-  // Simpan TTD yang sedang digambar agar tidak hilang saat re-render (ganti mode/outlet).
-  captureCurrentSignatures();
+  // Ganti outlet → reset catatan/TTD. Ganti mode (outlet sama) → pertahankan draft.
+  const outletChanged = (o.nama !== lastOutletName);
+  if (outletChanged) resetFormState(); else captureFormState();
+  lastOutletName = o.nama;
 
   if (tabletMode) {
     renderTabletView(o);
@@ -1098,7 +1107,7 @@ function selectOutlet(idx) {
       </div>
       <div class="visit-note-card">
         <label class="vn-label">Catatan / Temuan Kunjungan</label>
-        <textarea id="visitNotes" class="vn-textarea" rows="8" placeholder="Tulis catatan hasil kunjungan, kendala, komitmen outlet, dll..."></textarea>
+        <textarea id="visitNotes" class="vn-textarea" rows="8" placeholder="Tulis catatan hasil kunjungan, kendala, komitmen outlet, dll...">${escapeHtml(draftNotes)}</textarea>
 
         <div class="vn-row">
           <div>
@@ -1173,9 +1182,9 @@ function selectOutlet(idx) {
 
   // ── Init Catatan Kunjungan / Signature Pad ──
   const visitDateEl = document.getElementById('visitDate');
-  if (visitDateEl) visitDateEl.value = TODAY.toISOString().slice(0,10);
+  if (visitDateEl) visitDateEl.value = draftTgl || TODAY.toISOString().slice(0,10);
   const visitPetugasEl = document.getElementById('visitPetugas');
-  if (visitPetugasEl) visitPetugasEl.value = getPetugasName();
+  if (visitPetugasEl) visitPetugasEl.value = draftPetugas || getPetugasName();
   const sigRightNameEl = document.getElementById('sigRightName');
   if (sigRightNameEl) sigRightNameEl.textContent = getPetugasName() || 'Petugas';
   initSignaturePads();
@@ -1192,15 +1201,17 @@ function selectOutlet(idx) {
   document.getElementById('detailArea').scrollTop = 0;
 }
 
-// ── Tablet/Laptop view: layout majalah (spt PDF) + panel input catatan & TTD ──
+// ── Tablet/Laptop view: pratinjau layout majalah (Opsi A) — read-only, tanpa input ──
+// Catatan & tanda tangan hanya tampil sekali (sebagai hasil akhir). Untuk mengubahnya,
+// matikan mode Tablet/Laptop (kembali ke mobile), isi, lalu nyalakan lagi untuk pratinjau.
 function renderTabletView(o) {
-  const notes   = (document.getElementById('visitNotes')   || {}).value || '';
-  const petugas = (document.getElementById('visitPetugas') || {}).value || getPetugasName() || '-';
-  const tgl     = (document.getElementById('visitDate')    || {}).value || TODAY.toISOString().slice(0, 10);
-  const sigOwner   = sigOwnerData   || getSigDataURL('sigCanvasOwner');
-  const sigPetugas = sigPetugasData || getSigDataURL('sigCanvasPetugas');
-
   if (trendChart) { trendChart.destroy(); trendChart = null; }
+
+  const notes      = draftNotes;
+  const petugas    = draftPetugas || getPetugasName() || '-';
+  const tgl        = draftTgl || TODAY.toISOString().slice(0, 10);
+  const sigOwner   = sigOwnerData;
+  const sigPetugas = sigPetugasData;
 
   const magazineHTML = buildPrintReportHTML(o, { notes, petugas, tgl, sigOwner, sigPetugas });
 
@@ -1210,58 +1221,12 @@ function renderTabletView(o) {
         <div class="tablet-page"><div class="pr-page">${magazineHTML}</div></div>
       </div>
 
-      <div class="section">
-        <div class="section-title">
-          <h3>📝 Catatan Kunjungan</h3>
-          <span class="section-badge">Visit Report</span>
-        </div>
-        <div class="visit-note-card">
-          <label class="vn-label">Catatan / Temuan Kunjungan</label>
-          <textarea id="visitNotes" class="vn-textarea" rows="8" placeholder="Tulis catatan hasil kunjungan, kendala, komitmen outlet, dll...">${escapeHtml(notes)}</textarea>
-
-          <div class="vn-row">
-            <div>
-              <label class="vn-label">Nama Petugas</label>
-              <input type="text" id="visitPetugas" class="vn-input" placeholder="Nama petugas/salesman" value="${escapeHtml(petugas)}">
-            </div>
-            <div>
-              <label class="vn-label">Tanggal Kunjungan</label>
-              <input type="date" id="visitDate" class="vn-input" value="${tgl}">
-            </div>
-          </div>
-
-          <label class="vn-label">Tanda Tangan Digital</label>
-          <div class="vn-sig-row">
-            <div class="vn-sig-col">
-              <div class="sig-wrap">
-                <canvas id="sigCanvasOwner" class="sig-canvas"></canvas>
-                <div class="sig-placeholder" id="sigPlaceholderOwner">✍️ Tanda tangan Owner</div>
-              </div>
-              <div class="vn-sig-name">Owner Toko</div>
-            </div>
-            <div class="vn-sig-col">
-              <div class="sig-wrap">
-                <canvas id="sigCanvasPetugas" class="sig-canvas"></canvas>
-                <div class="sig-placeholder" id="sigPlaceholderPetugas">✍️ Tanda tangan di sini</div>
-              </div>
-              <div class="vn-sig-name" id="sigRightName">Petugas</div>
-            </div>
-          </div>
-
-          <div class="vn-actions">
-            <button type="button" class="vn-btn vn-btn-ghost" onclick="clearSignature()">🗑️ Hapus TTD</button>
-            <button type="button" class="vn-btn vn-btn-primary" onclick="generateFullReportPDF()">📄 Simpan PDF</button>
-          </div>
-          <div class="vn-saved-hint" id="vnSavedHint">✅ PDF berhasil disimpan</div>
-        </div>
+      <div class="tablet-bar">
+        <span class="tablet-bar-hint">👁️ Pratinjau laporan. Untuk mengisi catatan &amp; tanda tangan, matikan dulu mode <b>Tablet/Laptop</b>.</span>
+        <button type="button" class="vn-btn vn-btn-primary" style="flex:0 0 auto; padding:8px 16px;" onclick="generateFullReportPDF()">📄 Simpan PDF</button>
       </div>
     </div>
   `;
-
-  initSignaturePads();
-  restoreSavedSignatures();
-  const sigRightNameEl = document.getElementById('sigRightName');
-  if (sigRightNameEl) sigRightNameEl.textContent = getPetugasName() || 'Petugas';
 
   const pCtx = document.querySelector('#detailArea #metricsChartPrint');
   if (pCtx && typeof Chart !== 'undefined') {
@@ -1659,6 +1624,26 @@ function captureCurrentSignatures() {
   if (p) sigPetugasData = p;
 }
 
+// Simpan catatan + petugas + tanggal dari form yang tampil saat ini.
+function captureFormState() {
+  const notesEl   = document.getElementById('visitNotes');
+  const petugasEl = document.getElementById('visitPetugas');
+  const tglEl     = document.getElementById('visitDate');
+  if (notesEl)   draftNotes   = notesEl.value;
+  if (petugasEl) draftPetugas = petugasEl.value;
+  if (tglEl)     draftTgl     = tglEl.value;
+  captureCurrentSignatures();
+}
+
+// Reset draft saat berpindah outlet.
+function resetFormState() {
+  draftNotes = '';
+  draftPetugas = '';
+  draftTgl = '';
+  sigOwnerData = null;
+  sigPetugasData = null;
+}
+
 // Gambar ulang TTD tersimpan ke canvas yang baru dibuat.
 function restoreSignature(canvasId, dataUrl) {
   if (!dataUrl) return;
@@ -1924,11 +1909,14 @@ async function generateFullReportPDF() {
   const page = document.getElementById('printReportPage');
 
   try {
-    const notes   = (document.getElementById('visitNotes')  || {}).value || '';
-    const petugas = (document.getElementById('visitPetugas')|| {}).value || '-';
-    const tgl     = (document.getElementById('visitDate')   || {}).value || '';
-    const sigOwner   = getSigDataURL('sigCanvasOwner');
-    const sigPetugas = getSigDataURL('sigCanvasPetugas');
+    const notesEl   = document.getElementById('visitNotes');
+    const petugasEl = document.getElementById('visitPetugas');
+    const tglEl     = document.getElementById('visitDate');
+    const notes   = notesEl   ? notesEl.value   : (draftNotes || '');
+    const petugas = petugasEl ? petugasEl.value : (draftPetugas || '-');
+    const tgl     = tglEl     ? tglEl.value     : (draftTgl || '');
+    const sigOwner   = getSigDataURL('sigCanvasOwner')   || sigOwnerData;
+    const sigPetugas = getSigDataURL('sigCanvasPetugas') || sigPetugasData;
 
     page.innerHTML = buildPrintReportHTML(o, { notes, petugas, tgl, sigOwner, sigPetugas });
 
