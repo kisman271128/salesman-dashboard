@@ -88,6 +88,13 @@
   .rank-sm { background:var(--bg); color:var(--muted); font-size:9px; font-weight:700; padding:2px 7px; border-radius:10px; }
   .rank-sm.top5 { background:#fef9c3; color:#854d0e; }
   .rank-sm.top10 { background:#f0fdf4; color:#166534; }
+  .rank-sm.project { background:#eff6ff; color:#1d3a8a; }
+  /* Pemisah blok Top 30 vs blok outlet program ITG di dalam daftar outlet */
+  .outlet-group-label {
+    padding:5px 14px; background:#f8fafc; border-bottom:1px solid #f1f5f9;
+    font-size:9px; font-weight:700; color:var(--muted);
+    text-transform:uppercase; letter-spacing:.4px;
+  }
 
   /* ── DETAIL SCROLL ── */
   .detail-area { overflow-y:auto; }
@@ -415,14 +422,14 @@
       <div class="top-bar-icon">📖</div>
       <div>
         <div class="top-bar-title">Buku Saku ITG</div>
-        <div class="top-bar-sub" id="topBarSub">Top 30 Pareto · Depo Tanjung</div>
+        <div class="top-bar-sub" id="topBarSub">Top 30 Pareto + Outlet Program ITG · Depo Tanjung</div>
       </div>
     </div>
     <div class="top-bar-right">
       <label class="tablet-toggle" title="Tampilan Tablet/Laptop">
         <input type="checkbox" id="tabletModeCheck" onchange="toggleTabletMode(this.checked)"> Tablet/Laptop
       </label>
-      <div class="top-bar-badge" id="rankBadge">#1 dari 30</div>
+      <div class="top-bar-badge" id="rankBadge">#1 · Top 30</div>
       <button class="reward-btn" id="rewardBtn" onclick="openRewardModal()" title="Atur Reward">🎁 Reward</button>
     </div>
   </div>
@@ -604,6 +611,109 @@ async function cfFetch(namespace) {
   return json.data;
 }
 
+// ── Outlet tambahan dari d.project.json ───────────────────────────────────────
+// Jumlah outlet peringkat Pareto yang tampil sebagai daftar utama (Top 30)
+const TOP30_LIMIT = 30;
+
+// Nama outlet dinormalisasi (uppercase + spasi dirapikan) agar perbandingan antara
+// outlet Top 30 (d.details) dan outlet program (d.project.json) tidak menghasilkan
+// baris kembar di combolist — mis. "Toko  A" vs "TOKO A" vs "Toko A ".
+function normOutletName(nama) {
+  return (nama || '').toString().trim().replace(/\s+/g, ' ').toUpperCase();
+}
+
+// Badge peringkat di header outlet — beda untuk outlet program di luar Top 30
+function rankBadgeHTML(o) {
+  return o.rank
+    ? `🏆 Rank #${o.rank} · Top ${TOP30_LIMIT} Pareto`
+    : '🎯 Outlet Program ITG';
+}
+
+// Ubah 1 baris agregat d.details (+ daftar program dari d.project.json) jadi objek outlet.
+// rank = nomor peringkat (1..TOP30_LIMIT), atau null untuk outlet program di luar Top 30.
+function mapDetailsOutlet(d, rank, pArr) {
+  const nama = d['Nama Pelanggan'].trim();
+  const salesmen = d._salesmen || [d['szname']||''];
+  return {
+    rank,
+    nama,
+    salesman: salesmen.join(' / '),
+    jks:     d['Hari JKS']||d['JKS']||'-',
+    tMTD:    parseFloat(d['T.MTD']||0),
+    aMTD:    parseFloat(d['A.MTD']||0),
+    lm:      parseFloat(d['LMALL']||d['LM']||0),
+    lm3:     parseFloat(d['3LM']||0),
+    ly:      parseFloat(d['LY']||0),
+    gapMTD:  parseFloat(d['Gap MTD']||0),
+    alamat:       d['Alamat']||'-',
+    depo:         d['Depo']||'DEPO TANJUNG',
+    channel:      d['Channel Group']||d['CC1']||'-',
+    kabupaten:    d['Kabupaten']||'',
+    kecamatan:    d['Kecamatan']||'',
+    project:      d['Project']||'',
+    projectDetail:d['Project Detail']||'',
+    tPOM:  parseInt(d['TPOM']||0),  caPOM: parseInt(d['CAPOM']||0),
+    picos: parseInt(d['PICOS']||0),
+    tmss:  parseInt(d['TMSS']||0),  amss:  parseInt(d['AMSS']||0),
+    // chart bars (summed from d.details.json)
+    dMax:    parseFloat(d['Max']||0),
+    d3LM:    parseFloat(d['3LM']||0),
+    dLY:     parseFloat(d['LY']||0),
+    dLM:     parseFloat(d['LMALL']||d['LM']||0),
+    dTMTD:   parseFloat(d['T.MTD']||0),
+    dBEMTD:  parseFloat(d['BE MTD']||0),
+    dAMTD:   parseFloat(d['A.MTD']||0),
+    dGapMTD: parseFloat(d['Gap MTD']||0),
+    // programs from d.project.json (all programs for this outlet)
+    projectArr: pArr,
+    hasProject: pArr.length > 0,
+    hasDetails: true,
+  };
+}
+
+// Outlet yang HANYA ada di d.project.json (tidak ditemukan di d.details) — angka diambil
+// dari file project (T.MTD/A.MTD/LY/BE/Gap MTD); field yang tidak tersedia dikosongkan.
+function mapProjectOnlyOutlet(nama, pArr) {
+  const sum = f => pArr.reduce((s, p) => s + parseFloat(p[f] || 0), 0);
+  const uniq = f => [...new Set(pArr.map(p => (p[f] || '').toString().trim()).filter(Boolean))].join(' / ');
+  const tMTD = sum('T.MTD');
+  const aMTD = sum('A.MTD');
+  const ly   = sum('LY');
+  const gap  = sum('Gap MTD');
+  return {
+    rank: null,
+    nama,
+    salesman: uniq('szname') || '-',
+    jks:      uniq('JKS') || '-',
+    tMTD,
+    aMTD,
+    lm:  0,
+    lm3: 0,
+    ly,
+    gapMTD: gap,
+    alamat:       '-',
+    depo:         uniq('Depo Induk') || 'DEPO TANJUNG',
+    channel:      '-',
+    kabupaten:    '',
+    kecamatan:    '',
+    project:      uniq('ITG'),
+    projectDetail:'',
+    tPOM: 0, caPOM: 0, picos: 0, tmss: 0, amss: 0,
+    // chart bars — hanya angka yang tersedia di d.project.json
+    dMax:    0,
+    d3LM:    0,
+    dLY:     ly,
+    dLM:     0,
+    dTMTD:   tMTD,
+    dBEMTD:  sum('BE'),
+    dAMTD:   aMTD,
+    dGapMTD: gap,
+    projectArr: pArr,
+    hasProject: true,
+    hasDetails: false,
+  };
+}
+
 async function initApp() {
   console.log('🚀 BukuSaku initApp start');
   document.getElementById('loadingState').style.display = 'flex';
@@ -659,47 +769,38 @@ async function initApp() {
     console.log('🔢 Grouped outlets:', Object.keys(grouped).length);
     const top30 = Object.values(grouped)
       .sort((a,b) => parseFloat(b['T.MTD']||0) - parseFloat(a['T.MTD']||0))
-      .slice(0, 30);
+      .slice(0, TOP30_LIMIT);
 
-    allOutlets = top30.map((d, i) => {
+    const top30Outlets = top30.map((d, i) => {
       const nama = d['Nama Pelanggan'].trim();
-      const pArr = projectMap[nama] || [];
-      const salesmen = d._salesmen || [d['szname']||''];
-      return {
-        rank:    i + 1,
-        nama,
-        salesman: salesmen.join(' / '),
-        jks:     d['Hari JKS']||d['JKS']||'-',
-        tMTD:    parseFloat(d['T.MTD']||0),
-        aMTD:    parseFloat(d['A.MTD']||0),
-        lm:      parseFloat(d['LMALL']||d['LM']||0),
-        lm3:     parseFloat(d['3LM']||0),
-        ly:      parseFloat(d['LY']||0),
-        gapMTD:  parseFloat(d['Gap MTD']||0),
-        alamat:       d['Alamat']||'-',
-        depo:         d['Depo']||'DEPO TANJUNG',
-        channel:      d['Channel Group']||d['CC1']||'-',
-        kabupaten:    d['Kabupaten']||'',
-        kecamatan:    d['Kecamatan']||'',
-        project:      d['Project']||'',
-        projectDetail:d['Project Detail']||'',
-        tPOM:  parseInt(d['TPOM']||0),  caPOM: parseInt(d['CAPOM']||0),
-        picos: parseInt(d['PICOS']||0),
-        tmss:  parseInt(d['TMSS']||0),  amss:  parseInt(d['AMSS']||0),
-        // chart bars (summed from d.details.json)
-        dMax:    parseFloat(d['Max']||0),
-        d3LM:    parseFloat(d['3LM']||0),
-        dLY:     parseFloat(d['LY']||0),
-        dLM:     parseFloat(d['LMALL']||d['LM']||0),
-        dTMTD:   parseFloat(d['T.MTD']||0),
-        dBEMTD:  parseFloat(d['BE MTD']||0),
-        dAMTD:   parseFloat(d['A.MTD']||0),
-        dGapMTD: parseFloat(d['Gap MTD']||0),
-        // programs from d.project.json (all programs for this outlet)
-        projectArr: pArr,
-        hasProject: pArr.length > 0,
-      };
+      return mapDetailsOutlet(d, i + 1, projectMap[nama] || []);
     });
+
+    // ── Tambah outlet d.project.json yang BELUM ada di Top 30 (tanpa duplikat) ──
+    // Outlet program ITG sering tidak masuk Top 30 (target kecil / outlet baru), jadi ikut
+    // dimasukkan ke combolist. Pengecekan duplikat dilakukan pada nama ternormalisasi
+    // (normOutletName) supaya tidak ada baris kembar bila beda spasi/huruf besar-kecil.
+    const groupedByName = {};
+    Object.values(grouped).forEach(d => {
+      groupedByName[normOutletName(d['Nama Pelanggan'])] = d;
+    });
+
+    const seenNames = new Set(top30Outlets.map(o => normOutletName(o.nama)));
+    const projectExtras = [];
+    Object.keys(projectMap).forEach(nama => {
+      const key = normOutletName(nama);
+      if (!nama || !key || seenNames.has(key)) return;  // sudah tampil di Top 30 → skip
+      seenNames.add(key);
+      const pArr = projectMap[nama];
+      const dRow = groupedByName[key];                  // ada di d.details → pakai data lengkap
+      projectExtras.push(dRow
+        ? mapDetailsOutlet(dRow, null, pArr)
+        : mapProjectOnlyOutlet(nama, pArr));
+    });
+    // Urutkan outlet tambahan dari T.MTD terbesar agar outlet penting muncul lebih dulu
+    projectExtras.sort((a, b) => b.tMTD - a.tMTD);
+
+    allOutlets = [...top30Outlets, ...projectExtras];
 
     filteredOutlets = [...allOutlets];
     buildOutletList();
@@ -710,7 +811,7 @@ async function initApp() {
     // ── Load d.skupelanggan per-salesman lalu gabungkan (opsional, async) ──
     loadSkupelanggan(details);
 
-    console.log('✅ BukuSaku ready — top30:', allOutlets.length, 'outlets');
+    console.log(`✅ BukuSaku ready — ${top30Outlets.length} Top ${TOP30_LIMIT} + ${projectExtras.length} outlet program = ${allOutlets.length} outlet`);
     document.getElementById('loadingState').style.display = 'none';
     document.getElementById('detailArea').style.display   = 'block';
     selectOutlet(0);
@@ -736,14 +837,24 @@ function buildOutletList(searchTerm='') {
     ? filteredOutlets.filter(o => o.nama.toLowerCase().includes(term) || o.salesman.toLowerCase().includes(term))
     : filteredOutlets;
 
-  list.innerHTML = items.map((o,i) => `
-    <div class="outlet-item${i===currentIdx&&!term?' active':''}" onclick="onOutletClick(${filteredOutlets.indexOf(o)})">
+  let seenRanked = false;
+  list.innerHTML = items.map((o) => {
+    const idx = filteredOutlets.indexOf(o);
+    const chipCls = !o.rank ? ' project' : o.rank <= 5 ? ' top5' : o.rank <= 10 ? ' top10' : '';
+    const chipTxt = o.rank ? '#' + o.rank : '🎯';
+    // Pemisah blok Top 30 vs blok outlet program ITG (hanya saat tidak sedang mencari)
+    const divider = (!term && !o.rank && seenRanked)
+      ? `<div class="outlet-group-label">🎯 Outlet Program ITG (non Top ${TOP30_LIMIT})</div>` : '';
+    if (o.rank) seenRanked = true;
+    return `${divider}
+    <div class="outlet-item${idx===currentIdx&&!term?' active':''}" onclick="onOutletClick(${idx})">
       <div>
         <div class="outlet-item-name">${o.nama}</div>
         <div class="outlet-item-meta">👤 ${o.salesman} · 📅 ${o.jks} · ${fmtRp(o.tMTD)}</div>
       </div>
-      <span class="rank-sm${o.rank<=5?' top5':o.rank<=10?' top10':''}">#${o.rank}</span>
-    </div>`).join('');
+      <span class="rank-sm${chipCls}">${chipTxt}</span>
+    </div>`;
+  }).join('');
 }
 
 // Combobox daftar toko — menggantikan kolom pencarian teks (yang tumpang-tindih
@@ -980,7 +1091,9 @@ function selectOutlet(idx) {
   const o = filteredOutlets[idx];
   if (!o) return;
 
-  document.getElementById('rankBadge').textContent = `#${o.rank} dari 30`;
+  document.getElementById('rankBadge').textContent = o.rank
+    ? `#${o.rank} dari ${TOP30_LIMIT}`
+    : '🎯 Program ITG';
   document.getElementById('topBarSub').textContent = `${o.depo} · Kalimantan`;
   document.getElementById('prevBtn').disabled = (idx <= 0);
   document.getElementById('nextBtn').disabled = (idx >= filteredOutlets.length - 1);
@@ -1020,7 +1133,7 @@ function selectOutlet(idx) {
   <div class="detail-inner">
     <!-- OUTLET HEADER -->
     <div class="outlet-header">
-      <div class="oh-rank-badge">🏆 Rank #${o.rank} · Top 30 Pareto</div>
+      <div class="oh-rank-badge">${rankBadgeHTML(o)}</div>
       <div class="oh-name">${o.nama}</div>
       <div class="oh-update">Update: ${TODAY.getDate()} ${MONTHS[CUR_MONTH]} ${TODAY.getFullYear()}</div>
       <div class="oh-meta"><span>📍 ${o.alamat}</span></div>
@@ -1046,7 +1159,7 @@ function selectOutlet(idx) {
       </div>
       <div class="kpi-item">
         <div class="kpi-label">3LM Avg</div>
-        <div class="kpi-value">${fmtRp(o.lm3)}</div>
+        <div class="kpi-value">${o.hasDetails ? fmtRp(o.lm3) : '-'}</div>
         <div class="kpi-pct" style="color:rgba(255,255,255,.35);">avg/bln</div>
       </div>
       <div class="kpi-item">
@@ -1084,7 +1197,7 @@ function selectOutlet(idx) {
     <div class="section">
       <div class="section-title">
         <h3>Performa Metrik</h3>
-        <span class="section-badge">Dari d.details</span>
+        <span class="section-badge">${o.hasDetails ? 'Dari d.details' : 'Dari d.project'}</span>
       </div>
       <div class="chart-wrap" style="padding:10px 8px;">
         <canvas id="metricsChart" height="220"></canvas>
@@ -1289,7 +1402,7 @@ function programSectionHTML(o, selectedIdx) {
   const tabs = progs.map((p, i) => {
     const cls = tabClass(p['ITG']||'');
     const sel = i === selectedIdx ? ' selected' : '';
-    return `<div class="prog-tab ${cls}${sel}" onclick="onProgTabClick(${o.rank-1},${i})">
+    return `<div class="prog-tab ${cls}${sel}" onclick="onProgTabClick(${filteredOutlets.indexOf(o)},${i})">
       <span class="prog-dot"></span>${p['ITG']||'Program'}
     </div>`;
   }).join('');
@@ -1387,7 +1500,9 @@ function programSectionHTML(o, selectedIdx) {
 
 // Called when a program tab is clicked
 function onProgTabClick(outletIdx, progIdx) {
-  renderProgContent(filteredOutlets[outletIdx], progIdx);
+  const o = filteredOutlets[outletIdx];
+  if (!o) return;
+  renderProgContent(o, progIdx);
 }
 
 // ── Build Ops Section (TPOM, MSS, PICOS) ──
@@ -1748,7 +1863,7 @@ function buildPrintReportHTML(o, ctx) {
   const headerBlock = `
     <div class="pr-block">
       <div class="outlet-header">
-        <div class="oh-rank-badge">🏆 Rank #${o.rank} · Top 30 Pareto</div>
+        <div class="oh-rank-badge">${rankBadgeHTML(o)}</div>
         <div class="oh-name">${o.nama}</div>
         <div class="oh-update">Update: ${TODAY.getDate()} ${MONTHS[CUR_MONTH]} ${TODAY.getFullYear()}</div>
         <div class="oh-meta"><span>📍 ${o.alamat}</span></div>
@@ -1772,7 +1887,7 @@ function buildPrintReportHTML(o, ctx) {
         </div>
         <div class="kpi-item">
           <div class="kpi-label">3LM Avg</div>
-          <div class="kpi-value">${fmtRp(o.lm3)}</div>
+          <div class="kpi-value">${o.hasDetails ? fmtRp(o.lm3) : '-'}</div>
           <div class="kpi-pct" style="color:rgba(255,255,255,.35);">avg/bln</div>
         </div>
         <div class="kpi-item">
