@@ -1410,6 +1410,67 @@
             }
         }
 
+        // 🆕 NEW: LOB HELPERS
+        // Bar chart dibangun langsung dari field "LOB" pada d.salesmanlob.json.
+        // Baris "TOTAL" dipakai dari d.performance.json, sedangkan baris agregat
+        // ("GPPJ & GEN", "GBS & OTHERS") dipakai untuk summary card - keduanya bukan bar per-LOB.
+        const LOB_AGGREGATE_PATTERN = /\s&\s/;
+        const LOB_TOTAL_KEY = 'TOTAL';
+
+        // Cek apakah 1 record LOB layak ditampilkan sebagai bar / dihitung sebagai LOB detail
+        function isLobDetailRecord(lobValue) {
+            const lob = String(lobValue || '').trim().toUpperCase();
+            if (!lob) return false;
+            if (lob === LOB_TOTAL_KEY) return false;
+            if (LOB_AGGREGATE_PATTERN.test(lob)) return false;
+            return true;
+        }
+
+        // Cocokkan nilai LOB dengan key urutan (mis. "GPPJ-A" & "GPPJ-B" cocok dengan key "GPPJ")
+        function matchesLobKey(lobValue, orderKey) {
+            const lob = String(lobValue || '').trim().toUpperCase();
+            const key = String(orderKey || '').trim().toUpperCase();
+            if (!lob || !key) return false;
+            return lob === key || lob.startsWith(`${key}-`);
+        }
+
+        // 🆕 Urutkan LOB (field "LOB") sesuai urutan tipe salesman; LOB di luar daftar ditaruh paling belakang
+        function sortLobKeysBySalesmanType(lobEntries, salesmanType) {
+            const lobOrder = getLobOrderBySalesmanType(salesmanType);
+            const rankOf = (lob) => {
+                const idx = lobOrder.findIndex(key => matchesLobKey(lob, key));
+                return idx === -1 ? lobOrder.length : idx;
+            };
+
+            return [...lobEntries].sort((a, b) => {
+                const rankDiff = rankOf(a.lob) - rankOf(b.lob);
+                if (rankDiff !== 0) return rankDiff;
+                return a.index - b.index; // urutan tetap mengikuti file JSON
+            });
+        }
+
+        // 🆕 Ambil baris agregat (mis. "GPPJ & GEN") dari data LOB
+        function getAggregateLobRecord(lobData, aggregateName) {
+            const target = String(aggregateName || '').trim().toUpperCase();
+            return lobData.find(item => String(item.LOB || '').trim().toUpperCase() === target) || null;
+        }
+
+        // 🆕 Jumlahkan Target & Actual dari seluruh LOB detail yang cocok dengan key (mis. ['GPPJ', 'GEN'])
+        function sumDetailLob(lobData, keys) {
+            let target = 0;
+            let actual = 0;
+
+            lobData.forEach(item => {
+                if (!isLobDetailRecord(item.LOB)) return;
+                if (keys.some(key => matchesLobKey(item.LOB, key))) {
+                    target += parseFloat(item.Target || 0);
+                    actual += parseFloat(item.Actual || 0);
+                }
+            });
+
+            return { target, actual };
+        }
+
         // ✅ ENHANCED: CREATE PERFORMANCE ITEM HTML WITH TARGET=0 LOGIC
         function createPerformanceItemHTML(lobName, data) {
             const target = parseFloat(data.Target || 0);
@@ -1460,23 +1521,38 @@
             const performanceList = document.getElementById('performanceList');
             let html = '';
             
-            // Group LOB data
+            // 🆕 FIXED: Bar chart dibangun langsung dari field "LOB" pada d.salesmanlob.json.
+            // Sebelumnya memakai daftar key hardcode ['GPPJ','GEN','GBS','MBR','HGJ','RANS','ABBOTT','GSJ']
+            // yang tidak sama dengan isi field LOB (data aktual: GPPJ-A, GPPJ-B, MBR-A, MBR-B, GBS, GEN, HGJ, OTHERS),
+            // sehingga bar GPPJ & MBR tidak pernah tampil.
+            const salesmanType = salesmanInfo['Tipe Salesman'] || '';
             const lobMap = {};
-            lobData.forEach(item => {
-                lobMap[item.LOB] = item;
+            const lobEntries = [];
+
+            lobData.forEach((item, index) => {
+                const lob = String(item.LOB || '').trim();
+
+                if (!isLobDetailRecord(lob)) {
+                    console.log(`⏭️ Skip baris LOB "${lob}" (TOTAL/agregat) - bukan bar per-LOB`);
+                    return;
+                }
+
+                if (lobMap[lob]) {
+                    console.warn(`⚠️ Duplikat LOB "${lob}" untuk ${salesmanInfo.szEmployeeId} - record pertama yang dipakai`);
+                    return;
+                }
+
+                lobMap[lob] = item;
+                lobEntries.push({ lob, index });
             });
 
-            // Get LOB order based on salesman type
-            const salesmanType = salesmanInfo['Tipe Salesman'] || '';
-            const lobOrder = getLobOrderBySalesmanType(salesmanType);
-            
-            console.log(`🎯 Processing LOB for ${getSalesmanTypeCategory(salesmanType)} type: ${lobOrder}`);
+            const orderedLobEntries = sortLobKeysBySalesmanType(lobEntries, salesmanType);
 
-            // Add LOB items based on salesman type
-            lobOrder.forEach(lob => {
-                if (lobMap[lob]) {
-                    html += createPerformanceItemHTML(lob, lobMap[lob]);
-                }
+            console.log(`🎯 Bar chart LOB (field "LOB") untuk ${getSalesmanTypeCategory(salesmanType)}: ${orderedLobEntries.map(entry => entry.lob).join(', ')}`);
+
+            // Add LOB bars straight from the "LOB" field of d.salesmanlob.json
+            orderedLobEntries.forEach(entry => {
+                html += createPerformanceItemHTML(entry.lob, lobMap[entry.lob]);
             });
 
             // 🆕 ENHANCED: Add TOTAL from d.performance.json with target=0 logic
@@ -1530,52 +1606,68 @@
 
         // ✅ ENHANCED: UPDATE SUMMARY CARDS WITH TARGET=0 LOGIC
         function updateSummaryCards(lobData, salesmanInfo) {
-            const lobMap = {};
-            lobData.forEach(item => {
-                lobMap[item.LOB] = item;
-            });
-
             const salesmanType = salesmanInfo['Tipe Salesman'] || '';
             const typeCategory = getSalesmanTypeCategory(salesmanType);
             
             console.log(`🎯 Updating summary cards for ${typeCategory} type`);
 
-            // Calculate GPPJ + GEN (or GPPJ Only for Bima)
-            const gppjData = lobMap.GPPJ || { Actual: 0, Target: 0, Ach: 0 };
-            const genData = lobMap.GEN || { Actual: 0, Target: 0, Ach: 0 };
+            // 🆕 FIXED: pakai baris agregat dari field LOB kalau tersedia ("GPPJ & GEN" / "GBS & OTHERS"),
+            // kalau tidak ada baru jumlahkan LOB detail (prefix GPPJ-*, MBR-*, dst).
+            // Sebelumnya memakai key hardcode lobMap.GPPJ / lobMap.MBR / lobMap.RANS yang tidak ada di data.
+            const gppjGenAggregate = getAggregateLobRecord(lobData, 'GPPJ & GEN');
+            const gbsOthersAggregate = getAggregateLobRecord(lobData, 'GBS & OTHERS');
             
             let gppjGenTotal, gppjGenPercentage, leftCardLabel, leftHasSpecialCase;
             
             if (typeCategory === 'bima') {
                 // Sales Representative Retailer Bima: hanya GPPJ
+                const gppjOnly = sumDetailLob(lobData, ['GPPJ']);
                 gppjGenTotal = {
-                    actual: gppjData.Actual,
-                    target: gppjData.Target
+                    actual: gppjOnly.actual,
+                    target: gppjOnly.target
                 };
                 leftCardLabel = 'GPPJ Only';
-            } else {
-                // Default dan Arjuna: GPPJ + GEN
+                console.log('📊 GPPJ Only dihitung dari LOB detail prefix "GPPJ"');
+            } else if (gppjGenAggregate) {
+                // Default dan Arjuna: GPPJ + GEN (ambil langsung dari baris agregat "GPPJ & GEN")
                 gppjGenTotal = {
-                    actual: gppjData.Actual + genData.Actual,
-                    target: gppjData.Target + genData.Target
+                    actual: parseFloat(gppjGenAggregate.Actual || 0),
+                    target: parseFloat(gppjGenAggregate.Target || 0)
                 };
                 leftCardLabel = 'GPPJ + GEN';
+                console.log('📊 GPPJ+GEN diambil dari baris agregat LOB "GPPJ & GEN"');
+            } else {
+                // Fallback: jumlahkan LOB detail GPPJ-* dan GEN
+                const gppjGenSum = sumDetailLob(lobData, ['GPPJ', 'GEN']);
+                gppjGenTotal = {
+                    actual: gppjGenSum.actual,
+                    target: gppjGenSum.target
+                };
+                leftCardLabel = 'GPPJ + GEN';
+                console.log('📊 GPPJ+GEN dihitung dari LOB detail (GPPJ-*, GEN)');
             }
             
             // 🆕 Use enhanced calculation for left card
             gppjGenPercentage = calculateAchievementPercentage(gppjGenTotal.target, gppjGenTotal.actual);
             leftHasSpecialCase = gppjGenTotal.target === 0 && gppjGenTotal.actual > 0;
 
-            // Calculate GBS + Others
-            const gbsData = lobMap.GBS || { Actual: 0, Target: 0, Ach: 0 };
-            const mbrData = lobMap.MBR || { Actual: 0, Target: 0, Ach: 0 };
-            const hgjData = lobMap.HGJ || { Actual: 0, Target: 0, Ach: 0 };
-            const ransData = lobMap.RANS || { Actual: 0, Target: 0, Ach: 0 };
-            
-            const othersTotal = {
-                actual: gbsData.Actual + mbrData.Actual + hgjData.Actual + ransData.Actual,
-                target: gbsData.Target + mbrData.Target + hgjData.Target + ransData.Target
-            };
+            // 🆕 FIXED: Calculate GBS + Others
+            let othersTotal;
+
+            if (gbsOthersAggregate) {
+                othersTotal = {
+                    actual: parseFloat(gbsOthersAggregate.Actual || 0),
+                    target: parseFloat(gbsOthersAggregate.Target || 0)
+                };
+                console.log('📊 GBS+OTHERS diambil dari baris agregat LOB "GBS & OTHERS"');
+            } else {
+                const othersSum = sumDetailLob(lobData, ['GBS', 'MBR', 'HGJ', 'RANS', 'OTHERS', 'GSJ']);
+                othersTotal = {
+                    actual: othersSum.actual,
+                    target: othersSum.target
+                };
+                console.log('📊 GBS+OTHERS dihitung dari LOB detail (GBS/MBR/HGJ/RANS/OTHERS/GSJ)');
+            }
             
             // 🆕 Use enhanced calculation for right card
             const othersPercentage = calculateAchievementPercentage(othersTotal.target, othersTotal.actual);
