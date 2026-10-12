@@ -1749,6 +1749,53 @@
             return v < 0 ? 'gap-negative' : (v > 0 ? 'gap-positive' : '');
         }
 
+        // ===== DATA NORMALIZATION =====
+        // Worker (/data/:namespace) bisa mengembalikan array, objek tunggal,
+        // atau string JSON/JSONL (mis. saat export DAX kosong). Pastikan selalu array
+        // supaya .forEach/.filter/.length/.find tidak melempar TypeError.
+        function toDataArray(value) {
+            if (Array.isArray(value)) return value;
+            if (value === null || value === undefined) return [];
+
+            if (typeof value === 'string') {
+                const s = value.trim();
+                if (!s) return [];
+                try { return toDataArray(JSON.parse(s)); } catch (_) { /* lanjut */ }
+                try {
+                    const rows = s.split(/\r?\n/)
+                        .map(l => l.trim())
+                        .filter(Boolean)
+                        .map(l => JSON.parse(l));
+                    if (rows.length) return rows;
+                } catch (_) { /* lanjut */ }
+                return [];
+            }
+
+            if (typeof value === 'object') {
+                // Wrapper umum dari API
+                if (Array.isArray(value.data))    return value.data;
+                if (Array.isArray(value.rows))    return value.rows;
+                if (Array.isArray(value.records)) return value.records;
+                if (Array.isArray(value.content)) return value.content;
+                if (typeof value.content === 'string') return toDataArray(value.content);
+                // Objek tunggal → jadikan array satu elemen
+                return [value];
+            }
+            return [];
+        }
+
+        // Buang record placeholder "(blank)" hasil export kosong.
+        function isPlaceholderRecord(rec) {
+            if (!rec || typeof rec !== 'object') return false;
+            return ['szname', 'Channel Group', 'Project']
+                .some(k => String(rec[k]).trim().toLowerCase() === '(blank)');
+        }
+
+        // Normalisasi + bersihkan daftar records dari Worker.
+        function normalizeRecords(value) {
+            return toDataArray(value).filter(r => !isPlaceholderRecord(r));
+        }
+
         // ===== DATA LOADING =====
         async function loadJSONData() {
             const results = await Promise.allSettled([
@@ -1764,29 +1811,29 @@
 
             const [jks, channel, channelProj, project, pareto, pom, perf, salesmanProses] = results;
 
-            if (jks.status === 'fulfilled')         { jksData = jks.value; }
+            if (jks.status === 'fulfilled')         { jksData = normalizeRecords(jks.value); }
             else console.error('JKS data loading failed:', jks.reason.message);
 
-            if (channel.status === 'fulfilled')     { channelData = channel.value; }
+            if (channel.status === 'fulfilled')     { channelData = normalizeRecords(channel.value); }
             else console.error('Channel data loading failed:', channel.reason.message);
 
             // d.channelproj — sumber utama; fallback ke channelData jika gagal
-            if (channelProj.status === 'fulfilled') { channelProjData = channelProj.value; console.log('ChannelProj data loaded:', channelProjData.length, 'records'); }
+            if (channelProj.status === 'fulfilled') { channelProjData = normalizeRecords(channelProj.value); console.log('ChannelProj data loaded:', channelProjData.length, 'records'); }
             else { console.error('ChannelProj data loading failed:', channelProj.reason.message); channelProjData = channelData; }
 
-            if (project.status === 'fulfilled')     { projectData = project.value; }
+            if (project.status === 'fulfilled')     { projectData = normalizeRecords(project.value); }
             else console.error('Project data loading failed:', project.reason.message);
 
-            if (pareto.status === 'fulfilled')      { paretoData = pareto.value; }
+            if (pareto.status === 'fulfilled')      { paretoData = normalizeRecords(pareto.value); }
             else console.error('Pareto data loading failed:', pareto.reason.message);
 
-            if (pom.status === 'fulfilled')         { pomData = pom.value;         console.log('POM data loaded:', pomData.length, 'records'); }
+            if (pom.status === 'fulfilled')         { pomData = normalizeRecords(pom.value);         console.log('POM data loaded:', pomData.length, 'records'); }
             else console.error('POM data loading failed:', pom.reason.message);
 
-            if (perf.status === 'fulfilled')        { performanceData = perf.value; console.log('Performance data loaded:', performanceData.length, 'records'); }
+            if (perf.status === 'fulfilled')        { performanceData = normalizeRecords(perf.value); console.log('Performance data loaded:', performanceData.length, 'records'); }
             else console.error('Performance data loading failed:', perf.reason.message);
 
-            if (salesmanProses.status === 'fulfilled') { salesmanProsesData = salesmanProses.value; console.log('SalesmanProses data loaded:', salesmanProsesData.length, 'records'); }
+            if (salesmanProses.status === 'fulfilled') { salesmanProsesData = normalizeRecords(salesmanProses.value); console.log('SalesmanProses data loaded:', salesmanProsesData.length, 'records'); }
             else console.error('SalesmanProses data loading failed:', salesmanProses.reason.message);
         }
 

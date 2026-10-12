@@ -1541,6 +1541,51 @@
             return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
         }
 
+        // ===== NORMALISASI DATA =====
+        // Worker (/data/:namespace) bisa mengembalikan array, objek tunggal, atau
+        // string JSON/JSONL (mis. saat export DAX kosong). Pastikan selalu array
+        // supaya .forEach/.filter/.length/.find tidak melempar TypeError.
+        function toDataArray(value) {
+            if (Array.isArray(value)) return value;
+            if (value === null || value === undefined) return [];
+
+            if (typeof value === 'string') {
+                const s = value.trim();
+                if (!s) return [];
+                try { return toDataArray(JSON.parse(s)); } catch (_) { /* lanjut */ }
+                try {
+                    const rows = s.split(/\r?\n/)
+                        .map(l => l.trim())
+                        .filter(Boolean)
+                        .map(l => JSON.parse(l));
+                    if (rows.length) return rows;
+                } catch (_) { /* lanjut */ }
+                return [];
+            }
+
+            if (typeof value === 'object') {
+                if (Array.isArray(value.data))    return value.data;
+                if (Array.isArray(value.rows))    return value.rows;
+                if (Array.isArray(value.records)) return value.records;
+                if (Array.isArray(value.content)) return value.content;
+                if (typeof value.content === 'string') return toDataArray(value.content);
+                return [value];
+            }
+            return [];
+        }
+
+        // Buang record placeholder "(blank)" hasil export kosong.
+        function isPlaceholderRecord(rec) {
+            if (!rec || typeof rec !== 'object') return false;
+            return ['szname', 'Channel Group', 'Project']
+                .some(k => String(rec[k]).trim().toLowerCase() === '(blank)');
+        }
+
+        // Normalisasi + bersihkan daftar records dari Worker.
+        function normalizeRecords(value) {
+            return toDataArray(value).filter(r => !isPlaceholderRecord(r));
+        }
+
         // ===== PEMUATAN DATA =====
         async function loadJSONData() {
             const results = await Promise.allSettled([
@@ -1554,22 +1599,22 @@
 
             const [jks, channel, channelProj, project, pareto, pom] = results;
 
-            if (jks.status === 'fulfilled')         { jksData = jks.value;               console.log('Data JKS dimuat:', jksData.length, 'records'); }
+            if (jks.status === 'fulfilled')         { jksData = normalizeRecords(jks.value);               console.log('Data JKS dimuat:', jksData.length, 'records'); }
             else console.error('Gagal memuat data JKS:', jks.reason.message);
 
-            if (channel.status === 'fulfilled')     { channelData = channel.value;        console.log('Data Channel dimuat:', channelData.length, 'records'); }
+            if (channel.status === 'fulfilled')     { channelData = normalizeRecords(channel.value);        console.log('Data Channel dimuat:', channelData.length, 'records'); }
             else console.error('Gagal memuat data Channel:', channel.reason.message);
 
-            if (channelProj.status === 'fulfilled') { channelProjData = channelProj.value; console.log('Data Channel Project dimuat:', channelProjData.length, 'records'); }
+            if (channelProj.status === 'fulfilled') { channelProjData = normalizeRecords(channelProj.value); console.log('Data Channel Project dimuat:', channelProjData.length, 'records'); }
             else { console.error('Gagal memuat data Channel Project:', channelProj.reason.message); channelProjData = channelData; }
 
-            if (project.status === 'fulfilled')     { projectData = project.value;        console.log('Data Project dimuat:', projectData.length, 'records'); }
+            if (project.status === 'fulfilled')     { projectData = normalizeRecords(project.value);        console.log('Data Project dimuat:', projectData.length, 'records'); }
             else console.error('Gagal memuat data Project:', project.reason.message);
 
-            if (pareto.status === 'fulfilled')      { paretoData = pareto.value;          console.log('Data Pareto dimuat:', paretoData.length, 'records'); }
+            if (pareto.status === 'fulfilled')      { paretoData = normalizeRecords(pareto.value);          console.log('Data Pareto dimuat:', paretoData.length, 'records'); }
             else console.error('Gagal memuat data Pareto:', pareto.reason.message);
 
-            if (pom.status === 'fulfilled')         { pomData = pom.value;                console.log('Data POM dimuat:', pomData.length, 'records'); }
+            if (pom.status === 'fulfilled')         { pomData = normalizeRecords(pom.value);                console.log('Data POM dimuat:', pomData.length, 'records'); }
             else console.error('Gagal memuat data POM:', pom.reason.message);
         }
 
