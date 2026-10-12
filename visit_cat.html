@@ -4707,6 +4707,9 @@
         
         // ===== LOCAL STORAGE FOR VISITS =====
         let todayVisitedCustomers = new Set();
+        // Map: outlet_name (lowercase) → { order_status, so_amount, source }
+        // Diisi dari localStorage & Firebase, dipakai untuk badge status kunjungan.
+        let todayVisitMeta = {};
 
         // ===== LOCATION TRACKING VARIABLES =====
         let currentLocation = {
@@ -5729,7 +5732,9 @@
                     option.style.backgroundColor = '#FFF5F5';
                     option.style.fontWeight = '600';
                     if (!option.textContent.includes(' 🔴 [TIDAK AKTIF]')) {
-                        option.textContent = option.value + ' 🔴 [TIDAK AKTIF]';
+                        // ✅ Append — jangan overwrite, agar badge kunjungan (✅/🔴 SO) tidak hilang
+                        // untuk outlet yang sekaligus ditandai tidak aktif.
+                        option.textContent = option.textContent + ' 🔴 [TIDAK AKTIF]';
                     }
                 }
             });
@@ -5746,16 +5751,41 @@
             return inactiveCustomers.find(c => c.name.toLowerCase() === customerName.toLowerCase());
         }
 
+        // ===== DATE & STATUS HELPERS (shared) =====
+        // Tanggal hari ini dalam zona waktu LOKAL (WIB) format YYYY-MM-DD.
+        // Sebelumnya memakai toISOString() (UTC) → kunjungan pagi (00:00-07:00 WIB)
+        // masuk ke tanggal "kemarin" sehingga badge kunjungan tidak muncul.
+        function getLocalYMD(date) {
+            const d = date || new Date();
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        }
+
+        // Key localStorage daftar kunjungan hari ini (pakai tanggal lokal)
+        function getVisitStorageKey(date) {
+            return `visited_${currentSalesmanId}_${getLocalYMD(date)}`;
+        }
+
+        // Terapkan ulang SEMUA indikator dropdown outlet (visited → pause → inactive)
+        // supaya badge kunjungan tidak tertimpa oleh status lain.
+        function refreshCustomerListStatuses() {
+            updateCustomerListVisitStatus();
+            updateCustomerListPauseStatus();
+            updateCustomerListInactiveStatus();
+        }
+
         // ===== VISIT SESSION MANAGEMENT =====
-        function loadTodayVisitedCustomers() {
-            const today = new Date().toISOString().split('T')[0];
-            const visitKey = `visited_${currentSalesmanId}_${today}`;
+        async function loadTodayVisitedCustomers() {
+            const visitKey = getVisitStorageKey();
             const storedVisits = localStorage.getItem(visitKey);
             
             if (storedVisits) {
                 try {
                     const visits = JSON.parse(storedVisits);
                     todayVisitedCustomers = new Set();
+                    todayVisitMeta = {};
                     
                     visits.forEach(visit => {
                         if (typeof visit === 'string') {
@@ -5764,20 +5794,104 @@
                         } else if (visit && visit.outlet_name) {
                             // New format: only add if visit is completed
                             if (visit.visit_completed === true) {
-                                todayVisitedCustomers.add(visit.outlet_name.toLowerCase());
+                                const metaKey = visit.outlet_name.toLowerCase();
+                                todayVisitedCustomers.add(metaKey);
+                                todayVisitMeta[metaKey] = {
+                                    order_status: visit.order_status || null,
+                                    so_amount: Number(visit.so_amount) || 0,
+                                    source: 'localStorage'
+                                };
                             }
                         }
                     });
                     
                     console.log(`📋 Loaded ${todayVisitedCustomers.size} completed visits from local storage`);
-                    updateCustomerListVisitStatus();
                 } catch (error) {
                     console.error('❌ Error parsing localStorage visits:', error);
                     localStorage.removeItem(visitKey);
                     todayVisitedCustomers = new Set();
+                    todayVisitMeta = {};
                 }
             } else {
-                console.log('📋 No completed visits today yet');
+                console.log('📋 No completed visits today yet (local storage)');
+            }
+
+            refreshCustomerListStatuses();
+
+            // Sinkronkan dari Firebase agar indikator konsisten dengan dashboard monitoring
+            await syncTodayVisitsFromFirebase();
+
+            refreshCustomerListStatuses();
+        }
+
+        // Ambil kunjungan hari ini dari Firebase `visits/{salesmanId}` dan gabungkan
+        // ke todayVisitedCustomers + todayVisitMeta. Sumber data ini SAMA dengan
+        // mobile-compliance.html, sehingga badge dropdown konsisten dgn monitoring.
+        async function syncTodayVisitsFromFirebase() {
+            if (!window.firebaseDB || !window.firebaseRef || !window.firebaseGet || !currentSalesmanId) {
+                console.log('⚠️ Firebase tidak tersedia — lewati sinkron status kunjungan');
+                return 0;
+            }
+
+            try {
+                const today = getLocalYMD();
+                const visitsRef = window.firebaseRef(window.firebaseDB, `visits/${currentSalesmanId}`);
+                const snapshot = await withFirebaseTimeout(window.firebaseGet(visitsRef));
+
+                if (!snapshot || !snapshot.exists()) {
+                    console.log('📋 Firebase: belum ada data kunjungan');
+                    return 0;
+                }
+
+                const allVisits = snapshot.val();
+
+                // Deduplikasi per outlet — completed selalu menang, jika sama ambil yang terbaru
+                const outletLatest = {};
+                Object.keys(allVisits).forEach(function(key) {
+                    const visit = allVisits[key];
+                    if (!visit || !visit.outlet_name) return;
+
+                    const rawTime = visit.created_at || visit.start_time;
+                    if (!rawTime) return;
+                    if (getLocalYMD(new Date(rawTime)) !== today) return;
+
+                    const name = visit.outlet_name;
+                    const existing = outletLatest[name];
+                    if (!existing) {
+                        outletLatest[name] = visit;
+                        return;
+                    }
+                    const newDone  = visit.visit_status === 'completed';
+                    const prevDone = existing.visit_status === 'completed';
+                    if (newDone && !prevDone) {
+                        outletLatest[name] = visit;
+                    } else if (!newDone && prevDone) {
+                        // pertahankan yang completed
+                    } else {
+                        const newTime  = visit.end_time || visit.start_time || '';
+                        const prevTime = existing.end_time || existing.start_time || '';
+                        if (newTime > prevTime) outletLatest[name] = visit;
+                    }
+                });
+
+                let count = 0;
+                Object.values(outletLatest).forEach(function(visit) {
+                    if (visit.visit_status !== 'completed') return;
+                    const metaKey = visit.outlet_name.toLowerCase();
+                    todayVisitedCustomers.add(metaKey);
+                    todayVisitMeta[metaKey] = {
+                        order_status: visit.order_status || null,
+                        so_amount: Number(visit.so_amount) || 0,
+                        source: 'firebase'
+                    };
+                    count++;
+                });
+
+                console.log(`🔥 Firebase sync: ${count} kunjungan completed hari ini (${today})`);
+                return count;
+            } catch (error) {
+                console.warn('⚠️ Gagal sinkron status kunjungan dari Firebase:', error.message);
+                return 0;
             }
         }
 
@@ -5785,10 +5899,14 @@
             // Only mark as visited if the visit is completed, not just started
             if (isCompleted) {
                 todayVisitedCustomers.add(outletName.toLowerCase());
-                
-                const today = new Date().toISOString().split('T')[0];
-                const visitKey = `visited_${currentSalesmanId}_${today}`;
-                
+                todayVisitMeta[outletName.toLowerCase()] = {
+                    order_status: visitSession.orderStatus || 'toko_tidak_order',
+                    so_amount: Number(visitSession.soAmount) || 0,
+                    source: 'localStorage'
+                };
+
+                const visitKey = getVisitStorageKey();
+
                 try {
                     const existingVisits = JSON.parse(localStorage.getItem(visitKey) || '[]');
                     
@@ -5817,15 +5935,19 @@
             }
         }
 
-        // Ambil order_status dari localStorage untuk outlet yang sudah dikunjungi
+        // Ambil order_status untuk outlet yang sudah dikunjungi.
+        // Cek memori (hasil localStorage + Firebase) dulu, lalu fallback ke localStorage.
         function getVisitOrderStatus(outletName) {
             try {
-                const today = new Date().toISOString().split('T')[0];
-                const visitKey = `visited_${currentSalesmanId}_${today}`;
-                const visits = JSON.parse(localStorage.getItem(visitKey) || '[]');
+                const nameKey = (outletName || '').toLowerCase();
+                if (todayVisitMeta[nameKey] && todayVisitMeta[nameKey].order_status) {
+                    return todayVisitMeta[nameKey].order_status;
+                }
+
+                const visits = JSON.parse(localStorage.getItem(getVisitStorageKey()) || '[]');
                 const record = visits.find(v =>
                     v && v.outlet_name &&
-                    v.outlet_name.toLowerCase() === outletName.toLowerCase() &&
+                    v.outlet_name.toLowerCase() === nameKey &&
                     v.visit_completed === true
                 );
                 return record ? (record.order_status || null) : null;
@@ -5851,8 +5973,8 @@
         }
 
         function removeFromLocalVisitedStorage(outletName) {
-            const today = new Date().toISOString().split('T')[0];
-            const visitKey = `visited_${currentSalesmanId}_${today}`;
+            const visitKey = getVisitStorageKey();
+            delete todayVisitMeta[(outletName || '').toLowerCase()];
             
             try {
                 const existingVisits = JSON.parse(localStorage.getItem(visitKey) || '[]');
@@ -7014,7 +7136,8 @@
                 return;
             }
             
-            const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+            const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD (UTC: sku_pom & plan_dap)
+            const todayLocal = getLocalYMD(); // YYYY-MM-DD (lokal WIB: key visited_)
             const lastLoginKey = 'last_login_date_' + currentSalesmanId;
             const lastLoginDate = localStorage.getItem(lastLoginKey);
             
@@ -7035,7 +7158,7 @@
                     
                     if (key) {
                         // Clear visited_* keys for this salesman (but not today's)
-                        if (key.startsWith('visited_' + currentSalesmanId + '_') && !key.endsWith(today)) {
+                        if (key.startsWith('visited_' + currentSalesmanId + '_') && !key.endsWith(todayLocal)) {
                             keysToRemove.push(key);
                         }
                         // Clear sku_pom_checklist_* keys for this salesman (but not today's)
@@ -8534,7 +8657,7 @@
                     hariSelect.appendChild(option);
                 });
                 
-                loadTodayVisitedCustomers();
+                await loadTodayVisitedCustomers();
                 updateCustomerListInactiveStatus();
                 
                 if (window.firebaseDB) {
